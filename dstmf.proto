@@ -1,0 +1,91 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package distbench;
+
+// Specifies how many servers there are of each type.
+// The name of an individual instance is just $server_type/$intance_number,
+// e.g. "search_leaf/0"
+message ServiceSpec {
+  optional string server_type = 1;
+  optional int32 count = 2;
+}
+
+// Specifies how multiple services may be co-located on the same machine.
+// By default each service is allocated a separate machine, if not mentioned.
+message ServiceBundle {
+  repeated string services = 1;
+  // Constraints on where to place this group of services.
+  // If empty then the name of the service group is assumed to be
+  // the node_alias
+  repeated string constraints = 2;
+}
+
+// Defines how to construct a pool of protobufs to be used as requests or responses.
+message PayloadSpec {
+  optional string name = 1;
+  optional int32 pool_size = 2;
+  optional string template_payload_name = 3;
+  optional int32 size = 4;
+  optional int32 seed = 5;
+  repeated bytes literal_contents = 6;
+}
+
+message RpcSpec {
+  optional string name = 1;
+  optional string handler_action_list_name = 2;
+  optional string request_payload_name = 3;
+  optional string response_payload_name = 4;
+  optional string fanout_filter = 5 [default = "all"];
+  optional int32 tracing_interval = 6;
+}
+
+message Iterations {
+  optional int32 max_iteration_count = 1;
+  optional int32 max_duration_us = 2;
+  optional int64 max_parallel_iterations = 3 [default = 1];
+  optional int64 open_loop_interval_ns = 4;
+  optional string open_loop_interval_distribution = 5 [default = "constant"];
+}
+
+message Action {
+  optional string name = 1;
+  repeated string dependencies = 2;
+  optional Iterations iterations = 3;
+  oneof action {
+    string rpc_name = 4;
+    string action_list_name = 5;
+  }
+}
+
+// Are these implicitly sequential ? hope not?
+// Do they automatically handle loop-carried dependencies by waiting for all
+// previous actions to complete before starting the next iteration?
+// Are loop-carried deps handled by assuming forward deps are across loop iterations?
+message ActionList {
+  optional string name = 1;
+  repeated string action_names = 2;
+  optional bool serialize_all_actions = 3;
+}
+
+message DistributedSystemDescription {
+  repeated ServiceSpec services = 1;
+  map<string, ServiceBundle> node_service_bundles = 2;
+  repeated PayloadSpec proto_descriptions = 3;
+  repeated RpcSpec rpc_descriptions = 4;
+  repeated Action action_table = 5;
+  repeated ActionList action_list_table = 6;
+}

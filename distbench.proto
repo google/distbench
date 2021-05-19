@@ -1,0 +1,185 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package distbench;
+
+import "dstmf.proto";
+
+message ProtocolDriverOptions {
+  optional string protocol_name = 1;  // required
+  optional string netdev_name = 2;
+}
+
+message TestSequence {
+  repeated DistributedSystemDescription tests = 1;
+}
+
+message NodeServiceConfig {
+  optional DistributedSystemDescription traffic_config = 1;
+  repeated string services = 2;
+  optional string node_alias = 3;
+}
+
+message TraceContext {
+  // This is set to the global ID of each engine along the RPC chain.
+  repeated int64 engine_ids = 1 [packed = true];
+
+  // Each engine along the chain also has an iteration count, in case
+  // multiple RPCs are being sent.
+  repeated int64 iterations = 2 [packed = true];
+}
+
+message RpcSample {
+  optional int64 rpc_index = 1;
+  optional int64 request_size = 2;
+  optional int64 response_size = 3;
+  optional int64 start_timestamp_ns = 4;
+  optional int64 latency_ns = 5;
+  optional int64 latency_weight = 6 [default = 1];
+  optional TraceContext trace_context = 7;
+}
+
+message PeerPerformanceLog {
+  repeated RpcSample successful_rpc_samples = 1;
+  repeated RpcSample failed_rpc_samples = 2;
+}
+
+// Logs for an individual instance of a service:
+message ServicePerformanceLog {
+  // The key is the responder service instance name
+  map<string, PeerPerformanceLog> peer_logs = 1;
+}
+
+// Logs for multiple service instances:
+message ServiceLogs {
+  // The key is the initiator service instance name
+  map <string, ServicePerformanceLog> instance_logs = 1;
+}
+
+// Logs for all services in a test config:
+message TestResult {
+  optional DistributedSystemDescription traffic_config = 1;
+  optional ServiceEndpointMap placement = 2;
+  optional ServiceLogs service_logs = 3;
+}
+
+// Logs for all a test configs in a test sequence:
+message TestSequenceResults {
+  repeated TestResult test_results = 1;
+}
+
+message Attribute {
+  optional string name = 1;
+  optional string value = 2;
+}
+
+message NodeRegistration {
+  optional string hostname = 1;
+  optional int32 control_port = 2;
+  repeated Attribute attributes = 3;
+}
+
+message NodeConfig {
+  optional int32 node_id = 1;
+  optional string node_alias = 2;
+}
+
+service DistBenchTestSequencer {
+  // Registers a new node:
+  rpc RegisterNode(NodeRegistration) returns (NodeConfig) {
+  }
+
+  // Runs a set of tests on the registered nodes:
+  rpc RunTestSequence(TestSequence) returns (TestSequenceResults) {
+  }
+}
+
+message ServiceEndpoint {
+  optional string endpoint_address = 1;
+  optional string hostname = 2;
+  optional string node_alias = 3;
+  // ?repeated key-value for attributes?
+}
+
+message ServiceEndpointMap {
+  map<string, ServiceEndpoint> service_endpoints = 1;
+}
+
+message IntroducePeersResult {
+}
+
+message RunTrafficRequest {
+}
+
+message CancelTrafficRequest {
+}
+
+message CancelTrafficResult {
+}
+
+service DistBenchNodeManager {
+  // Sets up services prior to running traffic:
+  rpc ConfigureNode(NodeServiceConfig) returns (ServiceEndpointMap) {
+  }
+
+  // Introduces NodeEngines to each other.
+  rpc IntroducePeers(ServiceEndpointMap) returns (IntroducePeersResult) {
+  }
+
+  // Runs traffic and monitors performance logs:
+  rpc RunTraffic(RunTrafficRequest) returns (ServiceLogs) {
+  }
+
+  // Cancels a currently running traffic pattern immediately:
+  rpc CancelTraffic(CancelTrafficRequest) returns (CancelTrafficResult) {
+  }
+}
+
+message ConnectRequest {
+  optional bytes initiator_info = 1;
+}
+
+message ConnectResponse {
+  optional bytes responder_info = 1;
+}
+
+service ConnectionSetup {
+  // Get a connection setup
+  rpc SetupConnection(ConnectRequest) returns (ConnectResponse) {
+  }
+}
+
+message GenericRequest {
+  optional bytes payload = 1;
+  optional int32 rpc_index = 2;
+  optional TraceContext trace_context = 3;
+}
+
+message GenericResponse {
+  optional bytes payload = 1;
+}
+
+message ServerAddress {
+  optional string ip_address = 1;
+  optional int32 port = 2;
+  optional string socket_address = 3;
+}
+
+service Traffic {
+  // One RPC to simulate them all:
+  rpc GenericRpc(GenericRequest) returns (GenericResponse) {
+  }
+}
