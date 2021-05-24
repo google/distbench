@@ -138,18 +138,4 @@ ServiceSpec GetServiceSpec(std::string_view name,
   exit(1);
 }
 
-std::string GetClientServiceName(const RpcSpec& rpc_spec) {
-  std::vector<std::string> rpc_name_parts =
-    absl::StrSplit(rpc_spec.name(), absl::MaxSplits('/', 1));
-  return rpc_name_parts[0];
-}
-
-std::string GetServerServiceName(const RpcSpec& rpc_spec) {
-  std::vector<std::string> handler_name_parts =
-    absl::StrSplit(rpc_spec.handler_action_list_name(),
-                   absl::MaxSplits('/', 1));
-  return handler_name_parts[0];
-}
-
-
 }  // namespace distbench

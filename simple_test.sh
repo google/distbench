@@ -62,7 +62,7 @@ tests {
       max_iteration_count: 3
       max_parallel_iterations: 3
     }
-    rpc_name: "load_balancer/root_query"
+    rpc_name: "root_query"
   }
   action_table {
     name: "load_balancer/do_closed_loop_root_queries_again"
@@ -71,6 +71,7 @@ tests {
       #max_iteration_count: 3
       max_duration_us: 3000000
       open_loop_interval_ns: 1000000000
+      open_loop_interval_distribution: "sync_burst"
     }
     action_list_name: "load_balancer/root_query_al"
   }
@@ -80,28 +81,30 @@ tests {
     #action_names: "root/root_query_fanout"
   }
   rpc_descriptions {
-    name: "load_balancer/root_query"
-    handler_action_list_name: "root/root_query_handler"
+    name: "root_query"
+    client: "load_balancer"
+    server: "root"
     fanout_filter: "round_robin"
     tracing_interval: 2
   }
   action_list_table {
-    name: "root/root_query_handler"
+    name: "root_query"
     action_names: "root/root_query_fanout"
     # Should be able to use an action name in-place of a single entry action list?
   }
   action_table {
     name: "root/root_query_fanout"
-    rpc_name: "root/leaf_query"
+    rpc_name: "leaf_query"
   }
   rpc_descriptions {
-    name: "root/leaf_query"
-    handler_action_list_name: "leaf/echo"
+    name: "leaf_query"
+    client: "root"
+    server: "leaf"
     fanout_filter: "all"
     tracing_interval: 2
   }
   action_list_table {
-    name: "leaf/echo"
+    name: "leaf_query"
     # no actions, NOP
   }
 }

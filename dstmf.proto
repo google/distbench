@@ -34,7 +34,8 @@ message ServiceBundle {
   repeated string constraints = 2;
 }
 
-// Defines how to construct a pool of protobufs to be used as requests or responses.
+// Defines how to construct a pool of protobufs to be used as requests or
+// responses.
 message PayloadSpec {
   optional string name = 1;
   optional int32 pool_size = 2;
@@ -46,11 +47,12 @@ message PayloadSpec {
 
 message RpcSpec {
   optional string name = 1;
-  optional string handler_action_list_name = 2;
-  optional string request_payload_name = 3;
-  optional string response_payload_name = 4;
-  optional string fanout_filter = 5 [default = "all"];
-  optional int32 tracing_interval = 6;
+  optional string client = 2;
+  optional string server = 3;
+  optional string request_payload_name = 4;
+  optional string response_payload_name = 5;
+  optional string fanout_filter = 6 [default = "all"];
+  optional int32 tracing_interval = 7;
 }
 
 message Iterations {
@@ -74,7 +76,8 @@ message Action {
 // Are these implicitly sequential ? hope not?
 // Do they automatically handle loop-carried dependencies by waiting for all
 // previous actions to complete before starting the next iteration?
-// Are loop-carried deps handled by assuming forward deps are across loop iterations?
+// Are loop-carried deps handled by assuming forward deps are across loop
+// iterations?
 message ActionList {
   optional string name = 1;
   repeated string action_names = 2;

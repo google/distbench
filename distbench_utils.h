@@ -54,9 +54,6 @@ std::map<std::string, int> EnumerateRpcs(
 ServiceSpec GetServiceSpec(std::string_view name,
                            const DistributedSystemDescription& config);
 
-std::string GetClientServiceName(const RpcSpec& rpc_spec);
-std::string GetServerServiceName(const RpcSpec& rpc_spec);
-
 void InitLibs();
 
 }  // namespace distbench

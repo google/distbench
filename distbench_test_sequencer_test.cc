@@ -111,16 +111,16 @@ TEST(DistBenchTestSequencer, nonempty_group) {
 
   auto a1 = test->add_action_table();
   a1->set_name("s1/ping");
-  a1->set_rpc_name("s1/ping_rpc");
+  a1->set_rpc_name("echo");
   a1->mutable_iterations()->set_max_iteration_count(10);
 
   auto* r1 = test->add_rpc_descriptions();
-  r1->set_name("s1/ping_rpc");
-  r1->set_handler_action_list_name("s2/echo");
+  r1->set_name("echo");
+  r1->set_client("s1");
+  r1->set_server("s2");
 
   auto* l2 = test->add_action_list_table();
-  l2->set_name("s2/echo");
-
+  l2->set_name("echo");
 
   TestSequenceResults results;
   grpc::ClientContext context;
@@ -140,13 +140,17 @@ TEST(DistBenchTestSequencer, nonempty_group) {
             test_results.service_logs().instance_logs().end());
   auto s2_0 = instance_results_it->second.peer_logs().find("s2/0");
   ASSERT_NE(s2_0, instance_results_it->second.peer_logs().end());
-  ASSERT_TRUE(s2_0->second.failed_rpc_samples().empty());
-  ASSERT_EQ(s2_0->second.successful_rpc_samples_size(), 10);
+  auto s2_0_echo = s2_0->second.rpc_logs().find(0);
+  ASSERT_NE(s2_0_echo, s2_0->second.rpc_logs().end());
+  ASSERT_TRUE(s2_0_echo->second.failed_rpc_samples().empty());
+  ASSERT_EQ(s2_0_echo->second.successful_rpc_samples_size(), 10);
 
   auto s2_1 = instance_results_it->second.peer_logs().find("s2/1");
   ASSERT_NE(s2_1, instance_results_it->second.peer_logs().end());
-  ASSERT_TRUE(s2_1->second.failed_rpc_samples().empty());
-  ASSERT_EQ(s2_1->second.successful_rpc_samples_size(), 10);
+  auto s2_1_echo = s2_1->second.rpc_logs().find(0);
+  ASSERT_NE(s2_1_echo, s2_1->second.rpc_logs().end());
+  ASSERT_TRUE(s2_1_echo->second.failed_rpc_samples().empty());
+  ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
 }
 
 }  // namespace distbench

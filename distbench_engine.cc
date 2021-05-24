@@ -121,8 +121,8 @@ absl::Status DistBenchEngine::InitializeTables() {
         action.rpc_index = it2->second;
         LOG(INFO) << "action " << action.proto.name()
                   << " has rpc index " << it2->second;
-        std::string target_service_name = GetServerServiceName(
-            traffic_config_.rpc_descriptions(action.rpc_index));
+        std::string target_service_name =
+            traffic_config_.rpc_descriptions(action.rpc_index).server();
         auto it3 = service_index_map.find(target_service_name);
         if (it3 == service_index_map.end()) {
           return absl::NotFoundError(target_service_name);
@@ -163,8 +163,8 @@ absl::Status DistBenchEngine::InitializeTables() {
 
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc = traffic_config_.rpc_descriptions(i);
-    const std::string server_service_name = GetServerServiceName(rpc);
-    const std::string client_service_name = GetClientServiceName(rpc);
+    const std::string server_service_name = rpc.server();
+    const std::string client_service_name = rpc.client();
     if (client_service_name.empty()) {
       LOG(INFO) << rpc.ShortDebugString();
       return absl::InvalidArgumentError(
@@ -185,9 +185,9 @@ absl::Status DistBenchEngine::InitializeTables() {
       server_rpc_set.insert(rpc.name());
     }
 
-    auto it = action_list_index_map.find(rpc.handler_action_list_name());
+    auto it = action_list_index_map.find(rpc.name());
     if (it == action_list_index_map.end()) {
-      return absl::NotFoundError(rpc.handler_action_list_name());
+      return absl::NotFoundError(rpc.name());
     }
     server_rpc_table_[i].handler_action_list_index = it->second;
 
