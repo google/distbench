@@ -281,7 +281,6 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     *rpc_state.request.mutable_traffic_config() = test;
-    rpc_state.request.set_node_alias(node_services.first);
     for (const auto& service : node_services.second) {
       rpc_state.request.add_services(service);
     }

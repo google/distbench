@@ -30,7 +30,6 @@ message TestSequence {
 message NodeServiceConfig {
   optional DistributedSystemDescription traffic_config = 1;
   repeated string services = 2;
-  optional string node_alias = 3;
 }
 
 message TraceContext {
@@ -43,30 +42,34 @@ message TraceContext {
 }
 
 message RpcSample {
-  optional int64 rpc_index = 1;
-  optional int64 request_size = 2;
-  optional int64 response_size = 3;
-  optional int64 start_timestamp_ns = 4;
-  optional int64 latency_ns = 5;
-  optional int64 latency_weight = 6 [default = 1];
-  optional TraceContext trace_context = 7;
+  optional int64 request_size = 1;
+  optional int64 response_size = 2;
+  optional int64 start_timestamp_ns = 3;
+  optional int64 latency_ns = 4;
+  optional int64 latency_weight = 5 [default = 1];
+  optional TraceContext trace_context = 6;
 }
 
-message PeerPerformanceLog {
+message RpcPerformanceLog {
   repeated RpcSample successful_rpc_samples = 1;
   repeated RpcSample failed_rpc_samples = 2;
 }
 
+message PeerPerformanceLog {
+  // The key is the rpc index
+  map<int32, RpcPerformanceLog> rpc_logs = 1;
+}
+
 // Logs for an individual instance of a service:
 message ServicePerformanceLog {
-  // The key is the responder service instance name
+  // The key is the server service instance name
   map<string, PeerPerformanceLog> peer_logs = 1;
 }
 
 // Logs for multiple service instances:
 message ServiceLogs {
-  // The key is the initiator service instance name
-  map <string, ServicePerformanceLog> instance_logs = 1;
+  // The key is the client service instance name
+  map<string, ServicePerformanceLog> instance_logs = 1;
 }
 
 // Logs for all services in a test config:
@@ -74,6 +77,7 @@ message TestResult {
   optional DistributedSystemDescription traffic_config = 1;
   optional ServiceEndpointMap placement = 2;
   optional ServiceLogs service_logs = 3;
+  optional string log_summary = 4;
 }
 
 // Logs for all a test configs in a test sequence:
@@ -99,18 +103,15 @@ message NodeConfig {
 
 service DistBenchTestSequencer {
   // Registers a new node:
-  rpc RegisterNode(NodeRegistration) returns (NodeConfig) {
-  }
+  rpc RegisterNode(NodeRegistration) returns (NodeConfig) {}
 
   // Runs a set of tests on the registered nodes:
-  rpc RunTestSequence(TestSequence) returns (TestSequenceResults) {
-  }
+  rpc RunTestSequence(TestSequence) returns (TestSequenceResults) {}
 }
 
 message ServiceEndpoint {
   optional string endpoint_address = 1;
   optional string hostname = 2;
-  optional string node_alias = 3;
   // ?repeated key-value for attributes?
 }
 
@@ -118,34 +119,26 @@ message ServiceEndpointMap {
   map<string, ServiceEndpoint> service_endpoints = 1;
 }
 
-message IntroducePeersResult {
-}
+message IntroducePeersResult {}
 
-message RunTrafficRequest {
-}
+message RunTrafficRequest {}
 
-message CancelTrafficRequest {
-}
+message CancelTrafficRequest {}
 
-message CancelTrafficResult {
-}
+message CancelTrafficResult {}
 
 service DistBenchNodeManager {
   // Sets up services prior to running traffic:
-  rpc ConfigureNode(NodeServiceConfig) returns (ServiceEndpointMap) {
-  }
+  rpc ConfigureNode(NodeServiceConfig) returns (ServiceEndpointMap) {}
 
   // Introduces NodeEngines to each other.
-  rpc IntroducePeers(ServiceEndpointMap) returns (IntroducePeersResult) {
-  }
+  rpc IntroducePeers(ServiceEndpointMap) returns (IntroducePeersResult) {}
 
   // Runs traffic and monitors performance logs:
-  rpc RunTraffic(RunTrafficRequest) returns (ServiceLogs) {
-  }
+  rpc RunTraffic(RunTrafficRequest) returns (ServiceLogs) {}
 
   // Cancels a currently running traffic pattern immediately:
-  rpc CancelTraffic(CancelTrafficRequest) returns (CancelTrafficResult) {
-  }
+  rpc CancelTraffic(CancelTrafficRequest) returns (CancelTrafficResult) {}
 }
 
 message ConnectRequest {
@@ -158,8 +151,7 @@ message ConnectResponse {
 
 service ConnectionSetup {
   // Get a connection setup
-  rpc SetupConnection(ConnectRequest) returns (ConnectResponse) {
-  }
+  rpc SetupConnection(ConnectRequest) returns (ConnectResponse) {}
 }
 
 message GenericRequest {
@@ -180,6 +172,5 @@ message ServerAddress {
 
 service Traffic {
   // One RPC to simulate them all:
-  rpc GenericRpc(GenericRequest) returns (GenericResponse) {
-  }
+  rpc GenericRpc(GenericRequest) returns (GenericResponse) {}
 }

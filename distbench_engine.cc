@@ -396,8 +396,7 @@ ServicePerformanceLog DistBenchEngine::FinishTrafficAndGetLogs() {
   for (size_t i = 0; i < peers_.size(); ++i) {
     for (size_t j = 0; j < peers_[i].size(); ++j) {
       absl::MutexLock m(&peers_[i][j].mutex);
-      if (!peers_[i][j].log.successful_rpc_samples().empty() ||
-          !peers_[i][j].log.failed_rpc_samples().empty()) {
+      if (!peers_[i][j].log.rpc_logs().empty()) {
         (*log.mutable_peer_logs())[peers_[i][j].log_name] =
           std::move(peers_[i][j].log);
       }
@@ -545,10 +544,11 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
     action_mu.Unlock();
   } while (!done);
 }
-
 void DistBenchEngine::ActionListState::RecordLatency(
+    int rpc_index,
     int service_type, int instance, const ClientRpcState* state) {
-  auto& log = peer_logs[service_type][instance];
+  auto& log =
+    (*peer_logs[service_type][instance].mutable_rpc_logs())[rpc_index];
   auto* sample = state->success ? log.add_successful_rpc_samples()
                                 : log.add_failed_rpc_samples();
   auto latency = state->end_time - state->start_time;
@@ -560,7 +560,6 @@ void DistBenchEngine::ActionListState::RecordLatency(
   }
   sample->set_request_size(state->request.payload().size());
   sample->set_response_size(state->response.payload().size());
-  sample->set_rpc_index(state->request.rpc_index());
   if (!state->request.trace_context().engine_ids().empty()) {
     *sample->mutable_trace_context() = state->request.trace_context();
   }
@@ -750,6 +749,7 @@ void DistBenchEngine::RunRpcActionIteration(
         ActionState* state = iteration_state->action_state;
         rpc_state->end_time = clock_->Now();
         state->s->RecordLatency(
+            state->rpc_index,
             state->rpc_service_index, peer, rpc_state);
         if (--iteration_state->remaining_rpcs == 0) {
           FinishIteration(iteration_state);

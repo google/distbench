@@ -66,7 +66,6 @@ grpc::Status NodeManager::ConfigureNode(
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(SocketAddressForDevice("", port));
     service_entry.set_hostname(Hostname());
-    service_entry.set_node_alias(request->node_alias());
   }
   return grpc::Status::OK;
 }

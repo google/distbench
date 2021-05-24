@@ -152,6 +152,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
     void RecordLatency(
+        int rpc_index,
         int service_type, int instance, const ClientRpcState* state);
 
     const ServerRpcState* incoming_rpc_state = nullptr;  // may be nullptr
