@@ -24,7 +24,7 @@ std::unique_ptr<ProtocolDriver> AllocateProtocolDriver(
     const ProtocolDriverOptions& opts) {
   if (opts.protocol_name() == "grpc") {
     return std::make_unique<ProtocolDriverGrpc>();
-  }else if (opts.protocol_name() == "grpc_async_callback") {
+  } else if (opts.protocol_name() == "grpc_async_callback") {
     return std::make_unique<ProtocolDriverGrpcAsyncCallback>();
   }
 
