@@ -25,14 +25,6 @@
 
 namespace distbench {
 
-std::string Hostname() {
-  char hostname[4096] = {};
-  if (gethostname(hostname, sizeof(hostname))) {
-    LOG(ERROR) << errno;
-  }
-  return hostname;
-}
-
 NodeManager::NodeManager(SimpleClock* clock) {
   clock_ = clock;
 }

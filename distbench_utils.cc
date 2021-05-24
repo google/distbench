@@ -17,6 +17,7 @@
 #include "interface_lookup.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include <glog/logging.h>
 #include <grpcpp/security/credentials.h>
 #include "base/logging.h"
@@ -29,6 +30,14 @@ ostream& operator<< (ostream &out, grpc::Status const& c)
 }
 
 namespace distbench {
+
+std::string Hostname() {
+  char hostname[4096] = {};
+  if (gethostname(hostname, sizeof(hostname))) {
+    LOG(ERROR) << errno;
+  }
+  return hostname;
+}
 
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials() {
   // grpc::SslCredentialsOptions sec_ops;
@@ -136,6 +145,49 @@ ServiceSpec GetServiceSpec(std::string_view name,
   }
   LOG(QFATAL) << "Service not found: " << name;
   exit(1);
+}
+
+namespace {
+
+std::string LatencySummary(std::vector<int64_t> latencies) {
+  std::string ret;
+  QCHECK(!latencies.empty());
+  size_t N =  latencies.size();
+  absl::StrAppendFormat(&ret, "N: %ld", N);
+  absl::StrAppendFormat(&ret, " min: %ldns", *latencies.begin());
+  absl::StrAppendFormat(&ret, " median: %ldns", latencies[N * 0.5]);
+  absl::StrAppendFormat(&ret, " 90%%: %ldns", latencies[N * 0.9]);
+  absl::StrAppendFormat(&ret, " 99%%: %ldns", latencies[N * 0.99]);
+  absl::StrAppendFormat(&ret, " 99.9%%: %ldns", latencies[N * 0.999]);
+  absl::StrAppendFormat(&ret, " max: %ldns", *latencies.rbegin());
+  return ret;
+}
+
+}  // anonymous namespace
+
+std::string SummarizeTestResult(const TestResult& test_result) {
+  std::string ret = "RPC latency summary:\n";
+  std::map<std::string, std::vector<int64_t>> latency_map;
+  for (const auto& instance_log : test_result.service_logs().instance_logs()) {
+    for (const auto& peer_log : instance_log.second.peer_logs()) {
+      for (const auto& rpc_log : peer_log.second.rpc_logs()) {
+        std::string rpc_name  =
+          test_result.traffic_config().rpc_descriptions(rpc_log.first).name();
+        std::vector<int64_t>& latencies = latency_map[rpc_name];
+        for (const auto& sample : rpc_log.second.successful_rpc_samples()) {
+          latencies.push_back(sample.latency_ns());
+        }
+      }
+    }
+  }
+
+  for (auto& latencies : latency_map) {
+    std::sort(latencies.second.begin(), latencies.second.end());
+    absl::StrAppendFormat(
+        &ret, "%s: %s\n", latencies.first, LatencySummary(latencies.second));
+  }
+
+  return ret;
 }
 
 }  // namespace distbench

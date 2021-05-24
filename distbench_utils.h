@@ -56,6 +56,10 @@ ServiceSpec GetServiceSpec(std::string_view name,
 
 void InitLibs();
 
+std::string Hostname();
+
+std::string SummarizeTestResult(const TestResult& test_result);
+
 }  // namespace distbench
 
 
