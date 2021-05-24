@@ -185,8 +185,9 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   NodeConfig config;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(10);
+    std::chrono::system_clock::now() + std::chrono::seconds(60);
   context.set_deadline(deadline);
+  context.set_wait_for_ready(true);
   grpc::Status status =
     test_sequencer_stub->RegisterNode(&context, reg, &config);
   if (status.ok()) {
