@@ -182,14 +182,25 @@ ProtocolDriverOptions GrpcOptions() {
   return ret;
 }
 
-void GrpcEcho(benchmark::State &state) {
+ProtocolDriverOptions GrpcCallbackOptions() {
+  ProtocolDriverOptions ret;
+  ret.set_protocol_name("grpc_async_callback");
+  return ret;
+}
+
+void BM_GrpcEcho(benchmark::State &state) {
   Echo(state, GrpcOptions());
 }
 
-BENCHMARK(GrpcEcho);
+void BM_GrpcCallbackEcho(benchmark::State &state) {
+  Echo(state, GrpcCallbackOptions());
+}
+
+BENCHMARK(BM_GrpcEcho);
+BENCHMARK(BM_GrpcCallbackEcho);
 
 INSTANTIATE_TEST_SUITE_P(
     ProtocolDriverTests, ProtocolDriverTest,
-    testing::Values(GrpcOptions()));
+    testing::Values(GrpcOptions(), GrpcCallbackOptions()));
 
 }  // namespace distbench

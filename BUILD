@@ -116,6 +116,20 @@ cc_test(
     ],
 )
 
+cc_binary(
+    name = "protocol_driver_benchmark",
+    srcs = ["protocol_driver_test.cc",
+        "gtest_utils.h"],
+    deps = [
+        ":distbench_utils",
+        ":protocol_driver_allocator",
+        "@com_google_googletest//:gtest",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_benchmark//:benchmark_main",
+        "@com_github_google_glog//:glog"
+    ],
+)
+
 proto_library(
     name = "dstmf_proto",
     srcs = ["dstmf.proto"],
