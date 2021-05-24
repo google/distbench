@@ -31,26 +31,28 @@ int main(int argc, char** argv, char** envp) {
   }
   absl::ParseCommandLine(argc, argv);
   distbench::InitLibs();
-  if (!strcmp(argv[1], "test_sequencer")) {
-    distbench::TestSequencerOpts opts = {};
-    opts.port = absl::GetFlag(FLAGS_port);
-    distbench::TestSequencer test_sequencer;
-    test_sequencer.Initialize(opts);
-    test_sequencer.Wait();
-    return 0;
-  }
-  if (!strcmp(argv[1], "node_manager")) {
-    distbench::NodeManagerOpts opts = {};
-    opts.test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer);
-    opts.port = absl::GetFlag(FLAGS_port);
-    distbench::RealClock clock;
-    distbench::NodeManager node_manager(&clock);
-    absl::Status status = node_manager.Initialize(opts);
-    if (!status.ok()) {
-      LOG(ERROR) << status;
+  for (int i = 1; i < argc; ++i) {
+    if (!strcmp(argv[i], "test_sequencer")) {
+      distbench::TestSequencerOpts opts = {};
+      opts.port = absl::GetFlag(FLAGS_port);
+      distbench::TestSequencer test_sequencer;
+      test_sequencer.Initialize(opts);
+      test_sequencer.Wait();
+      return 0;
     }
-    node_manager.Wait();
-    return !status.ok();
+    if (!strcmp(argv[i], "node_manager")) {
+      distbench::NodeManagerOpts opts = {};
+      opts.test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer);
+      opts.port = absl::GetFlag(FLAGS_port);
+      distbench::RealClock clock;
+      distbench::NodeManager node_manager(&clock);
+      absl::Status status = node_manager.Initialize(opts);
+      if (!status.ok()) {
+        LOG(ERROR) << status;
+      }
+      node_manager.Wait();
+      return !status.ok();
+    }
   }
   Usage();
   return(1);
