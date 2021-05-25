@@ -31,7 +31,7 @@
 // replaced here with dummy functions.
 void net_util::RecycleUnusedPort(int port) { }
 int net_util::PickUnusedPortOrDie(){
-  return (std::rand() % 63000) + 1025;
+  return (std::rand() % 100) + 1025;
 }
 
 bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family){
