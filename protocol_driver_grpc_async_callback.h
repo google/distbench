@@ -49,8 +49,6 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  void RpcCompletionThread();
-
   std::atomic<int> pending_rpcs_ = 0;
   absl::Notification shutdown_;
   std::unique_ptr<TrafficService> traffic_service_;

@@ -163,9 +163,6 @@ void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
     );
 }
 
-void ProtocolDriverGrpcAsyncCallback::RpcCompletionThread() {
-}
-
 void ProtocolDriverGrpcAsyncCallback::ChurnConnection(int peer) {}
 
 void ProtocolDriverGrpcAsyncCallback::ShutdownClient() {
