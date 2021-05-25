@@ -150,7 +150,8 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     if (maybe_result.ok()) {
       *response->add_test_results() = maybe_result.value();
     } else {
-      return grpc::Status(grpc::StatusCode::ABORTED, "maybe_result.status()");
+      return grpc::Status(grpc::StatusCode::ABORTED,
+                          std::string(maybe_result.status().message()));
     }
   }
   return grpc::Status::OK;

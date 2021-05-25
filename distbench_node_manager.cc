@@ -199,7 +199,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (status.ok())
     return absl::OkStatus();
 
-  return absl::InvalidArgumentError("NodeManager::Initialize failure");
+  return absl::InvalidArgumentError(status.error_message());
 }
 
 }  // namespace distbench
