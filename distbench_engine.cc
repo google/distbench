@@ -118,7 +118,7 @@ absl::Status DistBenchEngine::InitializeTables() {
           return absl::NotFoundError(action.proto.dependencies(k));
         }
         action.dependent_action_indices[k] = it->second;
-        if ((size_t)it->second >= j) {
+        if (static_cast<size_t>(it->second) >= j) {
           return absl::InvalidArgumentError(
               "dependencies must refer to prior actions");
         }
@@ -381,7 +381,7 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
 
 void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
-  QCHECK_LT((size_t)list_index, action_list_table_.size());
+  QCHECK_LT(static_cast<size_t>(list_index), action_list_table_.size());
   QCHECK_GE(list_index, 0);
   ActionListState s;
   s.peer_logs.resize(peers_.size());
@@ -526,13 +526,13 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           }).detach();
       };
   } else if (action.rpc_service_index >= 0) {
-    CHECK_LT((size_t)action.rpc_service_index, peers_.size());
+    CHECK_LT(static_cast<size_t>(action.rpc_service_index), peers_.size());
     int service_size = peers_[action.rpc_service_index].size();
     std::shared_ptr<ServerRpcState> server_rpc_state =
       std::make_shared<ServerRpcState>();
     int rpc_service_index = action.rpc_service_index;
     QCHECK_GE(rpc_service_index, 0);
-    QCHECK_LT((size_t)rpc_service_index, peers_.size());
+    QCHECK_LT(static_cast<size_t>(rpc_service_index), peers_.size());
 
     if (peers_[rpc_service_index].empty()) {
       return;
