@@ -21,22 +21,22 @@
 
 namespace distbench {
 
-ProtocolDriverOptions pdopts() {
-  auto pdo = ProtocolDriverOptions();
-  pdo.set_protocol_name("grpc_async_callback");
-  return pdo;
+ProtocolDriverOptions grpc_pd_opts() {
+  auto opts = ProtocolDriverOptions();
+  opts.set_protocol_name("grpc");
+  return opts;
 }
 
 TEST(DistBenchEngineTest, ctor) {
   RealClock clock;
-  DistBenchEngine dbe(AllocateProtocolDriver(pdopts()), &clock);
+  DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()), &clock);
 }
 
 TEST(DistBenchEngineTest, init) {
   DistributedSystemDescription desc;
   desc.add_services()->set_server_type("test_service");
   RealClock clock;
-  DistBenchEngine dbe(AllocateProtocolDriver(pdopts()), &clock);
+  DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()), &clock);
   int port = AllocatePort();
   ASSERT_OK(dbe.Initialize(port, desc, "test_service", 0));
   FreePort(port);

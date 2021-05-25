@@ -23,20 +23,20 @@
 
 namespace distbench {
 
-ProtocolDriverOptions pdopts() {
+ProtocolDriverOptions common_pd_opts() {
   return ProtocolDriverOptions();
 }
 
 TEST(DistBenchEngineTest, ctor) {
   RealClock clock;
-  DistBenchEngine dbe(AllocateProtocolDriver(pdopts()), &clock);
+  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
 }
 
 TEST(DistBenchEngineTest, init) {
   DistributedSystemDescription desc;
   desc.add_services()->set_server_type("test_service");
   RealClock clock;
-  DistBenchEngine dbe(AllocateProtocolDriver(pdopts()), &clock);
+  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
   int port = AllocatePort();
   ASSERT_OK(dbe.Initialize(port, desc, "test_service", 0));
   FreePort(port);
