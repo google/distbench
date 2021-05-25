@@ -24,31 +24,6 @@
 
 namespace distbench {
 
-grpc::Status abslStatusToGrpcStatus(const absl::Status &status){
-  if (status.ok())
-    return grpc::Status::OK;
-
-  std::string message = std::string(status.message());
-  // GRPC and ABSL (currently) share the same error codes
-  grpc::StatusCode code = (grpc::StatusCode)status.code();
-  return grpc::Status(code, message);
-}
-
-grpc::Status abslStatusOrToGrpcStatus(const absl::StatusOr<std::string> &status_or){
-  // This discard the ok value
-  return abslStatusToGrpcStatus(status_or.status());
-}
-
-absl::Status grpcStatusToAbslStatus(const grpc::Status &status){
-  if (status.ok())
-    return absl::OkStatus();
-
-  std::string message = status.error_message();
-  // GRPC and ABSL (currently) share the same error codes
-  absl::StatusCode code = (absl::StatusCode)status.error_code();
-  return absl::Status(code, message);
-}
-
 grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
                                               const ConnectRequest* request,
                                               ConnectResponse* response) {
@@ -57,7 +32,7 @@ grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
     response->set_responder_info(maybe_info.value());
     return grpc::Status::OK;
   } else {
-    return abslStatusOrToGrpcStatus(maybe_info);
+    return abslStatusToGrpcStatus(maybe_info.status());
   }
 }
 

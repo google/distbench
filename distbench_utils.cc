@@ -195,4 +195,24 @@ grpc::Status Annotate(const grpc::Status& status, std::string_view context) {
       status.error_code(), absl::StrCat(context, status.error_message()));
 }
 
+grpc::Status abslStatusToGrpcStatus(const absl::Status &status){
+  if (status.ok())
+    return grpc::Status::OK;
+
+  std::string message = std::string(status.message());
+  // GRPC and ABSL (currently) share the same error codes
+  grpc::StatusCode code = (grpc::StatusCode)status.code();
+  return grpc::Status(code, message);
+}
+
+absl::Status grpcStatusToAbslStatus(const grpc::Status &status){
+  if (status.ok())
+    return absl::OkStatus();
+
+  std::string message = status.error_message();
+  // GRPC and ABSL (currently) share the same error codes
+  absl::StatusCode code = (absl::StatusCode)status.error_code();
+  return absl::Status(code, message);
+}
+
 }  // namespace distbench
