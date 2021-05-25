@@ -703,16 +703,18 @@ void DistBenchEngine::RunRpcActionIteration(
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
   const auto& rpc_spec = client_rpc_table_[state->rpc_index].rpc_spec;
   std::vector<int> targets;
-  int num_servers = peers_[state->rpc_service_index].size();
-  auto& servers = peers_[state->rpc_service_index];
+  const auto& servers = peers_[state->rpc_service_index];
+  int num_servers = servers.size();
 
   if (rpc_spec.fanout_filter() == "all") {
     targets.reserve(servers.size());
     for (int i = 0; i < num_servers; ++i) {
       int target = servers[i].pd_id;
-      QCHECK_NE(target, -1);
-      LOG(INFO) << "targeting " << target;
-      targets.push_back(target);
+      if (state->rpc_service_index != service_index_ ||
+          target != service_instance_) {
+        QCHECK_NE(target, -1);
+        targets.push_back(target);
+      }
     }
   } else if (rpc_spec.fanout_filter() == "random") {
     targets.reserve(1);
