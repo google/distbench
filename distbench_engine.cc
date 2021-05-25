@@ -95,7 +95,7 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.rpc_index = it2->second;
         std::string target_service_name =
-            traffic_config_.rpc_descriptions(action.rpc_index).server();
+          traffic_config_.rpc_descriptions(action.rpc_index).server();
         auto it3 = service_index_map.find(target_service_name);
         if (it3 == service_index_map.end()) {
           return absl::NotFoundError(target_service_name);
@@ -296,7 +296,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
         QCHECK(rpc_state.stub);
 
         ++rpc_count;
-        rpc_state.request.set_initiator_info(pd_->Preconnect().value()); //was ValueOrDie but value will throw an exception
+        rpc_state.request.set_initiator_info(pd_->Preconnect().value());
         rpc_state.rpc = rpc_state.stub->AsyncSetupConnection(
             &rpc_state.context, rpc_state.request, &cq);
         rpc_state.rpc->Finish(
@@ -490,6 +490,7 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
     action_mu.Unlock();
   } while (!done);
 }
+
 void DistBenchEngine::ActionListState::RecordLatency(
     int rpc_index,
     int service_type, int instance, const ClientRpcState* state) {
@@ -544,7 +545,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
         RunRpcActionIteration(iteration_state);
       };
   } else {
-    LOG(QFATAL) << "Do not support computations yet";
+    LOG(QFATAL) << "Do not support simulated computations yet";
   }
 
   bool open_loop = false;
@@ -672,8 +673,7 @@ void DistBenchEngine::RunRpcActionIteration(
     }
     CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
              rpc_state->request.trace_context().iterations().size());
-    rpc_state->prior_start_time =
-      rpc_state->start_time;
+    rpc_state->prior_start_time = rpc_state->start_time;
     rpc_state->start_time = clock_->Now();
     pd_->InitiateRpc(peer, rpc_state,
         [this, rpc_state, iteration_state, peer]() mutable {
