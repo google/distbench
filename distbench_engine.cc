@@ -461,7 +461,10 @@ void DistBenchEngine::RunActionList(
   for (size_t i = 0; i < s.peer_logs.size(); ++i) {
     for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
       absl::MutexLock m(&peers_[i][j].mutex);
-      peers_[i][j].log.MergeFrom(s.peer_logs[i][j]);
+      for (const auto& rpc_log : s.peer_logs[i][j].rpc_logs()) {
+        (*peers_[i][j].log.mutable_rpc_logs())[rpc_log.first].MergeFrom(
+            rpc_log.second);
+      }
     }
   }
 }
