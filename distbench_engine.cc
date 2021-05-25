@@ -204,19 +204,9 @@ absl::Status DistBenchEngine::Initialize(
   server_ = builder.BuildAndStart();
   if (server_) {
     LOG(INFO) << "Engine server listening on " << server_address;
-    return absl::OkStatus();
   } else {
     LOG(ERROR) << "Engine start failed on " << server_address;
     return absl::UnknownError("Engine service failed to start");
-  }
-}
-
-absl::Status DistBenchEngine::ConfigurePeers(
-    const ServiceEndpointMap& peers) {
-  pd_->SetHandler([this](ServerRpcState* state) { RpcHandler(state);});
-  service_map_ = peers;
-  if (service_map_.service_endpoints_size() < 2) {
-    return absl::NotFoundError("No peers configured.");
   }
 
   std::map<std::string, int> services =
@@ -228,8 +218,19 @@ absl::Status DistBenchEngine::ConfigurePeers(
     return absl::NotFoundError("Service not found in config.");
   }
 
-  absl::Status ret = ConnectToPeers();
-  return ret;
+  service_index_ = it->second;
+  return absl::OkStatus();
+}
+
+absl::Status DistBenchEngine::ConfigurePeers(
+    const ServiceEndpointMap& peers) {
+  pd_->SetHandler([this](ServerRpcState* state) { RpcHandler(state);});
+  service_map_ = peers;
+  if (service_map_.service_endpoints_size() < 2) {
+    return absl::NotFoundError("No peers configured.");
+  }
+
+  return ConnectToPeers();
 }
 
 absl::Status DistBenchEngine::ConnectToPeers() {

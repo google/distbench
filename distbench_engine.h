@@ -189,6 +189,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::string service_name_;
   ServiceSpec service_spec_;
   std::set<std::string> dependent_services_;
+  int service_index_;
   int service_instance_;
   std::unique_ptr<grpc::Server> server_;
   std::unique_ptr<ProtocolDriver> pd_;
