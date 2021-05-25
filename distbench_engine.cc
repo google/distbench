@@ -609,8 +609,7 @@ void DistBenchEngine::FinishIteration(
   if (state->finished_iterations == state->iteration_limit) {
     done = true;
   }
-  if (state->time_limit != absl::InfiniteFuture() &&
-      state->time_limit < clock_->Now()) {
+  if (state->next_iteration_time > state->time_limit) {
     done = true;
   }
   state->iteration_mutex.Unlock();
