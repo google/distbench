@@ -11,9 +11,12 @@ wake-ups, eventually compression/decompression, encryption/decryption...
 
 ## Getting started
 
-For Debian/Ubuntu, install the required packages and run the build as follows:
+To build Distbench, you need to have Bazel installed; follow the instructions
+for your distribution at https://docs.bazel.build/versions/master/install.html
+to install Bazel.
+
+Once Bazel is installed, you can build Distbench with the following command:
 ```bash
-sudo apt install bazel   # build tool
 bazel build --cxxopt='-std=c++17' :all
 ```
 
