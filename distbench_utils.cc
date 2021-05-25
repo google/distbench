@@ -190,4 +190,9 @@ std::string SummarizeTestResult(const TestResult& test_result) {
   return ret;
 }
 
+grpc::Status Annotate(const grpc::Status& status, std::string_view context) {
+  return grpc::Status(
+      status.error_code(), absl::StrCat(context, status.error_message()));
+}
+
 }  // namespace distbench

@@ -193,7 +193,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (status.ok()) {
     LOG(INFO) << "NodeConfig: " << config.ShortDebugString();
   } else {
-    // status = util::Annotate(status, "Registering node to test sequencer.");
+    status = Annotate(status, "While Registering node to test sequencer: ");
     grpc_server_->Shutdown();
   }
   if (status.ok())
