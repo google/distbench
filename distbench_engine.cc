@@ -532,7 +532,6 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
       };
   } else if (action.rpc_service_index >= 0) {
     CHECK_LT(static_cast<size_t>(action.rpc_service_index), peers_.size());
-    int service_size = peers_[action.rpc_service_index].size();
     std::shared_ptr<ServerRpcState> server_rpc_state =
       std::make_shared<ServerRpcState>();
     int rpc_service_index = action.rpc_service_index;
@@ -577,7 +576,18 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
   action_state->iteration_mutex.Unlock();
 
   if (open_loop) {
-    StartOpenLoopIteration(action_state);
+    QCHECK_EQ(action_state->next_iteration_time, absl::InfiniteFuture());
+    absl::Duration period = absl::Nanoseconds(
+        action_state->action->proto.iterations().open_loop_interval_ns());
+    if (action_state->action->proto.iterations()
+        .open_loop_interval_distribution() == "sync_burst") {
+      absl::Duration start = clock_->Now() - absl::UnixEpoch();
+      action_state->next_iteration_time =
+        period + absl::UnixEpoch() + absl::Floor(start, period);
+    } else {
+      action_state->next_iteration_time = clock_->Now();
+      StartOpenLoopIteration(action_state);
+    }
   } else {
     int64_t parallel_copies = std::min(
         action.proto.iterations().max_parallel_iterations(), max_iterations);
@@ -590,11 +600,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
 }
 
 void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
-  if (action_state->next_iteration_time == absl::InfiniteFuture()) {
-    action_state->next_iteration_time = clock_->Now();
-  }
-  action_state->next_iteration_time += absl::Nanoseconds(
+  absl::Duration period = absl::Nanoseconds(
       action_state->action->proto.iterations().open_loop_interval_ns());
+  action_state->next_iteration_time += period;
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
   StartIteration(it_state);
