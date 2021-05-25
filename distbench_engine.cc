@@ -94,8 +94,6 @@ absl::Status DistBenchEngine::InitializeTables() {
           return absl::NotFoundError(action.proto.rpc_name());
         }
         action.rpc_index = it2->second;
-        LOG(INFO) << "action " << action.proto.name()
-                  << " has rpc index " << it2->second;
         std::string target_service_name =
             traffic_config_.rpc_descriptions(action.rpc_index).server();
         auto it3 = service_index_map.find(target_service_name);
@@ -103,8 +101,6 @@ absl::Status DistBenchEngine::InitializeTables() {
           return absl::NotFoundError(target_service_name);
         }
         action.rpc_service_index = it3->second;
-        LOG(INFO) << "action " << action.proto.name()
-                  << " has rpc service index " << it3->second;
       } else if (action.proto.has_action_list_name()) {
         auto it4 = action_list_index_map.find(action.proto.action_list_name());
         if (it4 == action_list_index_map.end()) {
@@ -153,8 +149,6 @@ absl::Status DistBenchEngine::InitializeTables() {
     if (client_service_name == service_name_) {
       client_rpc_index_map[rpc.name()] = i;
       dependent_services_.insert(server_service_name);
-      LOG(INFO) << "local service " << service_name_
-                << " uses service " << server_service_name;
     }
     if (server_service_name == service_name_) {
       server_rpc_set.insert(rpc.name());
@@ -198,7 +192,6 @@ absl::Status DistBenchEngine::Initialize(
   QCHECK(!service_name.empty());
   service_name_ = service_name;
   service_spec_ = GetServiceSpec(service_name, global_description);
-  LOG(INFO) << service_spec_.DebugString();
   service_instance_ = service_instance;
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
@@ -208,12 +201,12 @@ absl::Status DistBenchEngine::Initialize(
     MakeServerCredentials();
   builder.AddListeningPort(server_address, server_creds);
   builder.RegisterService(this);
-  LOG(INFO) << "Engine starting on " << server_address;
   server_ = builder.BuildAndStart();
   if (server_) {
     LOG(INFO) << "Engine server listening on " << server_address;
     return absl::OkStatus();
   } else {
+    LOG(ERROR) << "Engine start failed on " << server_address;
     return absl::UnknownError("Engine service failed to start");
   }
 }
@@ -268,8 +261,6 @@ absl::Status DistBenchEngine::ConnectToPeers() {
     }
     auto it2 = service_index_map.find(service_type);
     QCHECK(it2 != service_index_map.end());
-    LOG(INFO) << "peers_[" << it2->second << "][" << instance << "] = "
-              << service.first << " / " << peer_trace_id;
     peers_[it2->second][instance].log_name = service.first;
     peers_[it2->second][instance].trace_id = peer_trace_id;
 
@@ -280,8 +271,6 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       ++num_targets;
     }
   }
-  LOG(INFO) << "service " << service_name_ << " has N dep peers: "
-            << num_targets;
   pd_->SetNumPeers(num_targets);
   grpc::CompletionQueue cq;
   struct PendingRpc {
@@ -347,8 +336,6 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
     if (service_name_ == traffic_config_.action_list_table(i).name()) {
       LOG(INFO) << "running Main for " << service_name_
                 << "/" << service_instance_;
-      LOG(INFO) << "Main routine " << service_name_
-                << " is action list index " << i;
       engine_main_thread_ = RunRegisteredThread(
           "EngineMain", [this, i](){RunActionList(i, nullptr);});
     }
@@ -387,9 +374,6 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
     server_rpc_table_[state->request->rpc_index()].handler_action_list_index;
   if (handler_action_index == -1) {
   } else {
-    LOG(INFO) << service_name_ << " rpc handler doing sth! rpc_index: "
-              << state->request->rpc_index() << " list index: "
-              << handler_action_index;
     RunActionList(handler_action_index, state);
   }
   state->send_response();
@@ -409,18 +393,11 @@ void DistBenchEngine::RunActionList(
   int size = s.action_list->proto.action_names_size();
   s.finished_action_indices.reserve(size);
   s.state_table = std::make_unique<ActionState[]>(size);
-  for (const auto& action : s.action_list->list_actions) {
-    LOG(INFO) << action.proto.ShortDebugString();
-    for (const auto& j : action.dependent_action_indices) {
-      LOG(INFO) << "waits for " << j;
-    }
-  }
   while (true) {
     absl::Time now = clock_->Now();
     for (int i = 0; i < size; ++i) {
       if (s.state_table[i].started) {
         if (s.state_table[i].next_iteration_time < now) {
-          LOG(INFO) << "open loopzzzzz";
           StartOpenLoopIteration(&s.state_table[i]);
         }
         continue;
@@ -436,8 +413,6 @@ void DistBenchEngine::RunActionList(
       if (!deps_ready) {
         continue;
       }
-      LOG(INFO) << service_name_ << " action ready to run: "
-                << s.action_list->list_actions[i].proto.name();
       s.state_table[i].started = true;
       s.state_table[i].action = &s.action_list->list_actions[i];
       s.state_table[i].all_done_callback = [&s, i]() {s.FinishAction(i);};
@@ -474,8 +449,6 @@ void DistBenchEngine::RunActionList(
           absl::InfiniteFuture();
       }
       s.finished_action_indices.clear();
-    } else {
-      LOG(INFO) << "deadline exceeded without some_actions_finished";
     }
     s.action_mu.Unlock();
     if (canceled_.HasBeenNotified()) {
@@ -491,8 +464,6 @@ void DistBenchEngine::RunActionList(
       peers_[i][j].log.MergeFrom(s.peer_logs[i][j]);
     }
   }
-  LOG(INFO) << "finished running an action list: "
-            << s.action_list->proto.name();
 }
 
 void DistBenchEngine::ActionListState::FinishAction(int action_index) {
@@ -542,11 +513,8 @@ void DistBenchEngine::ActionListState::RecordLatency(
 
 void DistBenchEngine::RunAction(ActionState* action_state) {
   auto& action = *action_state->action;
-  LOG(INFO) << "Executing action: " << action.proto.ShortDebugString();
   if (action.actionlist_index >= 0) {
     int action_list_index = action.actionlist_index;
-    LOG(INFO) << service_name_ << " should be launching a new actionlist # "
-              << action_list_index;
     action_state->iteration_function =
       [this, action_list_index]
       (std::shared_ptr<ActionIterationState>iteration_state) {
@@ -555,16 +523,11 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           [this, action_list_index, iteration_state]() mutable {
             RunActionList(action_list_index, nullptr);
             FinishIteration(iteration_state);
-            LOG(INFO) << "done with popup thread";
           }).detach();
       };
   } else if (action.rpc_service_index >= 0) {
-    LOG(INFO) << "ima rpc " << action.rpc_index
-              << " to service index " << action.rpc_service_index
-              << " out of " << peers_.size();
     CHECK_LT((size_t)action.rpc_service_index, peers_.size());
     int service_size = peers_[action.rpc_service_index].size();
-    LOG(INFO) << "there are " << service_size << " replicas";
     std::shared_ptr<ServerRpcState> server_rpc_state =
       std::make_shared<ServerRpcState>();
     int rpc_service_index = action.rpc_service_index;
@@ -572,7 +535,6 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     QCHECK_LT((size_t)rpc_service_index, peers_.size());
 
     if (peers_[rpc_service_index].empty()) {
-      LOG(INFO) << "empty service";
       return;
     }
     action_state->rpc_index = action.rpc_index;
@@ -623,7 +585,6 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
 }
 
 void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
-  LOG(INFO) << "Starting open loop iteration";
   if (action_state->next_iteration_time == absl::InfiniteFuture()) {
     action_state->next_iteration_time = clock_->Now();
   }
@@ -659,8 +620,6 @@ void DistBenchEngine::StartIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   ActionState* state = iteration_state->action_state;
   state->iteration_mutex.Lock();
-  LOG(INFO) << "!!!!!! " << state->next_iteration
-            << " / " << state->iteration_limit << " " << iteration_state;
   if (state->next_iteration >= state->iteration_limit) {
     state->iteration_mutex.Unlock();
     return;
@@ -686,7 +645,6 @@ void DistBenchEngine::RunRpcActionIteration(
   int trace_count = ++client_rpc_table_[state->rpc_index].rpc_tracing_counter;
   if (rpc_spec.tracing_interval() > 0) {
     do_trace = !(trace_count % rpc_spec.tracing_interval());
-    LOG(INFO) << trace_count << " % " << rpc_spec.tracing_interval();
   }
   GenericRequest common_request;
   if (state->s->incoming_rpc_state) {
@@ -717,10 +675,8 @@ void DistBenchEngine::RunRpcActionIteration(
     rpc_state->prior_start_time =
       rpc_state->start_time;
     rpc_state->start_time = clock_->Now();
-    LOG(INFO) << service_name_ << " sending rpc to peer " << peer;
     pd_->InitiateRpc(peer, rpc_state,
         [this, rpc_state, iteration_state, peer]() mutable {
-        LOG(INFO) << "finished rpc to peer " << peer;
         ActionState* state = iteration_state->action_state;
         rpc_state->end_time = clock_->Now();
         state->s->RecordLatency(
@@ -738,7 +694,6 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
   std::vector<int> targets;
   int num_servers = peers_[state->rpc_service_index].size();
   auto& servers = peers_[state->rpc_service_index];
-  LOG(INFO) << "num_s : " << num_servers;
 
   if (rpc_spec.fanout_filter() == "all") {
     targets.reserve(servers.size());
@@ -752,20 +707,17 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     targets.reserve(1);
     int target = servers[random() % num_servers].pd_id;
     QCHECK_NE(target, -1);
-    LOG(INFO) << "targeting " << target;
     targets.push_back(target);
   } else if (rpc_spec.fanout_filter() == "round_robin") {
     targets.reserve(1);
     int64_t iteration = client_rpc_table_[state->rpc_index].rpc_tracing_counter;
     int target = servers[iteration % num_servers].pd_id;
     QCHECK_NE(target, -1);
-    LOG(INFO) << "targeting " << target;
     targets.push_back(target);
   } else {
     targets.reserve(1);
     int target = servers[0].pd_id;
     QCHECK_NE(target, -1);
-    LOG(INFO) << "targeting " << target;
     targets.push_back(target);
   }
   return targets;

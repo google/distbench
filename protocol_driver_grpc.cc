@@ -103,7 +103,6 @@ absl::Status ProtocolDriverGrpc::HandleConnect(
   QCHECK_GE(peer, 0);
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
-  LOG(INFO) << addr.DebugString();
   std::shared_ptr<grpc::ChannelCredentials> creds =
     MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel =
