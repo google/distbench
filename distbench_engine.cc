@@ -562,7 +562,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
       max_iterations = std::numeric_limits<int64_t>::max();
     }
     if (action.proto.iterations().has_max_duration_us()) {
-      time_limit = absl::Now() + absl::Microseconds(
+      time_limit = clock_->Now() + absl::Microseconds(
           action.proto.iterations().max_duration_us());
     }
     open_loop = action.proto.iterations().has_open_loop_interval_ns();
