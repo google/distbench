@@ -20,7 +20,7 @@
 #include "protocol_driver.h"
 
 namespace distbench {
-class TrafficService;
+class TrafficServiceAsync;
 
 class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
  public:
@@ -51,7 +51,7 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
  private:
   std::atomic<int> pending_rpcs_ = 0;
   absl::Notification shutdown_;
-  std::unique_ptr<TrafficService> traffic_service_;
+  std::unique_ptr<TrafficServiceAsync> traffic_service_;
   std::unique_ptr<grpc::Server> server_;
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
   int server_port_ = 0;

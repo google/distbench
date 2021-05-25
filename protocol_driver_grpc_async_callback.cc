@@ -21,9 +21,9 @@
 
 namespace distbench {
 
-class TrafficService : public Traffic::ExperimentalCallbackService {
+class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
  public:
-  ~TrafficService() override {}
+  ~TrafficServiceAsync() override {}
 
   void SetHandler (std::function<void(ServerRpcState* state)> handler) {
     handler_ = handler;
@@ -60,7 +60,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   QCHECK(port);
   server_ip_address_ = IpAddressForDevice("");
   server_socket_address_ = SocketAddressForDevice("", port);
-  traffic_service_ = absl::make_unique<TrafficService>();
+  traffic_service_ = absl::make_unique<TrafficServiceAsync>();
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
