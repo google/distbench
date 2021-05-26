@@ -66,7 +66,6 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
 grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
                                             const TestSequence* request,
                                             TestSequenceResults* response) {
-  LOG(ERROR) << "hmm got an rpc";
   std::shared_ptr<absl::Notification> prior_notification;
   CancelTraffic();
   mutex_.Lock();
@@ -95,7 +94,6 @@ grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
 }
 
 void TestSequencer::CancelTraffic() {
-  LOG(ERROR) << "ima cancel";
   absl::ReaderMutexLock m(&mutex_);
   grpc::CompletionQueue cq;
   struct PendingRpc {
