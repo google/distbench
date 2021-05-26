@@ -17,31 +17,55 @@ to install Bazel.
 
 Once Bazel is installed, you can build Distbench with the following command:
 ```bash
-bazel build --cxxopt='-std=c++17' :all
+bazel build :all
 ```
 
 ## Running unit tests
 
+You can run the unit tests included with the following command:
+
 ```bash
-bazel test --cxxopt='-std=c++17' :distbench_test_sequencer_test
-bazel test --cxxopt='-std=c++17' :distbench_engine_test
+bazel test :all
 ```
 
-## Testing
+## Testing with ./simple\_test.sh
 
-Run a simple test as follows:
+You can run a simple Distbench test on localhost using `simple_test.sh` which
+will run a simple search-like pattern with all the services (load\_balancer,
+root, leaf\*3) running on a single host.
 
+You can either use the script `start_distbench_localhost.sh`,
+to start a test\_sequencer and a node\_manager on localhost, or do it
+manually as follows:
 ```bash
-bazel run --cxxopt='-std=c++17' :distbench -- test_sequencer
-bazel run --cxxopt='-std=c++17' :distbench -- node_manager --test_sequencer=localhost:10000 --port=9999
+bazel run :distbench -- test_sequencer &
+bazel run :distbench -- node_manager --test_sequencer=localhost:10000 --port=9999 &
+```
+
+Once distbench is running; run the traffic pattern:
+```bash
 ./simple_test.sh
 ```
+
+It should output a test report:
+```
+(...)
+  }
+  log_summary: "RPC latency summary:\nleaf_query: N: 36 min: 134248ns median:
+  282243ns 90%: 1036470ns 99%: 1339838ns 99.9%: 1339838ns max:
+  1339838ns\nroot_query: N: 12 min: 594520ns median: 962939ns 90%: 5803888ns
+  99%: 6048966ns 99.9%: 6048966ns max: 6048966ns\n"
+}
+Rpc succeeded with OK status
+```
+
+## Running with debug enabled
 
 To compile and run with debugging enabled:
 
 ```bash
-bazel run --cxxopt='-std=c++17' --compilation_mode=dbg :distbench -- test_sequencer
-bazel run --cxxopt='-std=c++17' --compilation_mode=dbg :distbench -- node_manager --test_sequencer=localhost:10000 --port=9999
+bazel run --compilation_mode=dbg :distbench -- test_sequencer &
+bazel run --compilation_mode=dbg :distbench -- node_manager --test_sequencer=localhost:10000 --port=9999 &
 ./simple_test.sh
 ```
 
