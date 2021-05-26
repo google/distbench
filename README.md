@@ -71,5 +71,5 @@ bazel run --compilation_mode=dbg :distbench -- node_manager --test_sequencer=loc
 
 ## Contributing
 
-For information about contributing to Distbench, see the [code of conduct](docs/
-code-of-conduct.md) and [contributing](docs/contributing.md).
+For information about contributing to Distbench, see the
+[code of conduct](docs/code-of-conduct.md) and [contributing](docs/contributing.md).
