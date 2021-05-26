@@ -14,14 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script require that the test sequencer and node manager be started prior
-# to invoking the RPC below.
+
+# This is a simple test, doing a search like pattern but with all the services
+# located on a single node.
+
+# This script require that the test sequencer and node manager be started on
+# localhost prior to invoking the RPC below. You can either do it manually as
+# shown below or by using the start_distbench_localhost.sh script.
 #
 # To start the test_sequencer run the following in a dedicated terminal:
-# bazel run --cxxopt='-std=c++17' :distbench -- test_sequencer
-#
+# blaze run :distbench -- test_sequencer --alsologtostderr
 # To start the node manager run the following in a dedicated terminal:
-# bazel run --cxxopt='-std=c++17' :distbench -- node_manager --test_sequencer=localhost:10000 --port=9999
+# blaze run :distbench -- node_manager --alsologtostderr --test_sequencer=localhost:10000 --port=9999
 
 grpc_cli \
   --channel_creds_type=insecure \
