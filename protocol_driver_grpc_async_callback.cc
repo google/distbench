@@ -39,7 +39,8 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
     rpc_state.send_response = [&]() {
       *response = std::move(rpc_state.response);
     };
-    handler_(&rpc_state);
+    if(handler_)
+      handler_(&rpc_state);
 
     // Return reactor
     auto* reactor = context->DefaultReactor();
