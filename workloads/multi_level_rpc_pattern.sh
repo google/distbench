@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-OPTIND=1
-
 # Test variables
 VERBOSE=0
 DEFAULT_SEQUENCER=localhost:10000
@@ -40,7 +38,9 @@ show_help() {
   echo
 }
 
-while getopts "h?vs:n:" opt; do
+OPTIND=1
+
+while getopts "h?vs:r:l:" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -50,7 +50,9 @@ while getopts "h?vs:n:" opt; do
         ;;
     s)  SEQUENCER=$OPTARG
         ;;
-    n)  NODE_COUNT=$OPTARG
+    r)  ROOT_COUNT=$OPTARG
+        ;;
+    l)  LEAF_COUNT=$OPTARG
         ;;
     esac
 done
