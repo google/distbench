@@ -23,9 +23,9 @@
 # shown below or by using the start_distbench_localhost.sh script.
 #
 # To start the test_sequencer run the following in a dedicated terminal:
-# blaze run :distbench -- test_sequencer --alsologtostderr
+# bazel run :distbench -- test_sequencer
 # To start the node manager run the following in a dedicated terminal:
-# blaze run :distbench -- node_manager --alsologtostderr --test_sequencer=localhost:10000 --port=9999
+# bazel run :distbench -- node_manager --test_sequencer=localhost:10000 --port=9999
 
 grpc_cli \
   --channel_creds_type=insecure \
