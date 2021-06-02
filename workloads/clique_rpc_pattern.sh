@@ -31,7 +31,7 @@ show_help() {
   echo "   -h               Display the usage help (this)"
   echo "   -s hostname:port Connect to the test sequencer located at hostname:port"
   echo "                      default: $DEFAULT_SEQUENCER"
-  echo "   -n val           Indicate the number (val) ofi nodes (clique services) to run"
+  echo "   -n val           Indicate the number (val) of nodes (clique services) to run"
   echo "                      each service requires a node_manager"
   echo "                      default: $DEFAULT_NODE_COUNT, minimum 2"
   echo
@@ -63,7 +63,7 @@ if [ "$NODE_COUNT" -le "1" ]; then
 fi
 
 if [[ "${VERBOSE}" = "1" ]]; then
-  echo Running soft real-time pattern test
+  echo Running the Clique RPC pattern
   echo "  VERBOSE=$VERBOSE"
   echo "  SEQUENCER=$SEQUENCER"
   echo "  NODE_COUNT=$NODE_COUNT"
