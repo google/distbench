@@ -9,6 +9,18 @@ Using realistic and widely used traffic pattern, the whole RPCs stack can
 be evaluated: data serialization/de-serialization, remote calls, thread
 wake-ups, eventually compression/decompression, encryption/decryption...
 
+### Why Distbench ?
+
+- Uses an Intermediate Representation (IR) of the application traffic pattern
+  - Simulate a variety of traffic pattern with a single binary
+- Supports multiple underlying RPC stacks through the "Protocol Driver"
+  abstraction
+  - Allow the comparison of different stacks
+- Generates a complete performance reports to evaluate a variety of metrics
+  after the test has finished
+- Has an easy to use "network test as a service" model
+  - Once the test scheduler and the node managers are started, run many tests.
+
 ## Getting started
 
 ### Dependencies
