@@ -30,10 +30,11 @@ show_help() {
   echo "   -h               Display the usage help (this)"
   echo "   -s hostname:port Connect to the test sequencer located at hostname:port"
   echo "                      default: $DEFAULT_SEQUENCER"
-  echo "   -r root_cnt      Indicate the number (val) of root nodes"
+  echo "   -r root_cnt      Indicate the number (root_cnt) of root nodes"
   echo "                      default: $DEFAULT_ROOT_COUNT"
-  echo "   -l leaf_cnt      Indicate the number (val) of leaf nodes"
+  echo "   -l leaf_cnt      Indicate the number (leaf_cnt) of leaf nodes"
   echo "                      default: $DEFAULT_LEAF_COUNT"
+  echo
   echo "   Note: you will need root_cnt+leaf_cnt+1 node managers"
   echo
 }
@@ -62,7 +63,7 @@ shift $((OPTIND-1))
 [ "${1:-}" = "--" ] && shift
 
 if [[ "${VERBOSE}" = "1" ]]; then
-  echo Running the multi-level RPC tree pattern 
+  echo Running the multi-level RPC tree pattern
   echo "  VERBOSE=$VERBOSE"
   echo "  SEQUENCER=$SEQUENCER"
   echo "  ROOT_COUNT=$ROOT_COUNT"
