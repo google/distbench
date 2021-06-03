@@ -1,34 +1,102 @@
 #!/bin/bash
 
-# Verify that the needed tools are presents
+# Copyright 2021 Google LLC
 #
-if ! which bazel
-then
-  echo DistBench requires Bazel. See README.md.
-  exit 1
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+check_dependencies() {
+  # Verify that the needed tools are presents
+  #
+  if ! which bazel
+  then
+    echo DistBench requires Bazel. See README.md.
+    exit 1
+  fi
+
+  if ! which grpc_cli
+  then
+    echo DistBench requires grpc_cli. See README.md.
+    exit 1
+  fi
+}
+
+build_distbench() {
+  # Build Distbench
+  #
+  echo Attempting to build DistBench...
+  if ! bazel build :distbench -c opt
+  then
+    echo DistBench did not build successfully.
+    exit 2
+  fi
+}
+
+OPTIND=1
+
+# Script parameters
+VERBOSE=0
+DEFAULT_NODE_MANAGER_COUNT=1
+NODE_MANAGER_COUNT=$DEFAULT_NODE_MANAGER_COUNT
+
+show_help() {
+  echo "Usage: $0 [-h] [-v] [-n node_manager_cnt]"
+  echo "   Run Distbench locally."
+  echo
+  echo "   -h               Display the usage help (this)"
+  echo "   -v               Enable verbose mode"
+  echo "   -n node_manager_cnt Specify the number of node manager to start"
+  echo "                      default: $DEFAULT_NODE_MANAGER_COUNT"
+  echo
+}
+
+while getopts "h?vn:" opt; do
+    case "$opt" in
+    h|\?)
+        show_help
+        exit 0
+        ;;
+    v)  VERBOSE=1
+        ;;
+    n)  NODE_MANAGER_COUNT=$OPTARG
+        ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ "${1:-}" = "--" ] && shift
+
+if [[ "${VERBOSE}" = "1" ]]; then
+  echo Run Distbench locally
+  echo "  VERBOSE=$VERBOSE"
+  echo "  NODE_MANAGER_COUNT=$NODE_MANAGER_COUNT"
+  echo
 fi
 
-if ! which grpc_cli
-then
-  echo DistBench requires grpc_cli be installed.
-  exit 1
-fi
-
-# Build Distbench
-#
-echo Attempting to build DistBench...
-if ! bazel build :distbench -c opt
-then
-  echo DistBench did not build successfully.
-  exit 2
-fi
+check_dependencies
+build_distbench
 
 # Run a test_sequencer and node_manager instance
 #
 echo DistBench built, starting up an instance on localhost...
 set -x
 bazel run :distbench -c opt -- test_sequencer --port=10000 &
-bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=9999 &
+sleep 3
+echo Nb of NODE_MANAGER_COUNT to start $NODE_MANAGER_COUNT
+for i in $(seq 1 1 $NODE_MANAGER_COUNT)
+do
+  bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) &
+done
 set +x
 sleep 5
 
