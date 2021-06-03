@@ -87,7 +87,7 @@ message ActionList {
 message DistributedSystemDescription {
   repeated ServiceSpec services = 1;
   map<string, ServiceBundle> node_service_bundles = 2;
-  repeated PayloadSpec proto_descriptions = 3;
+  repeated PayloadSpec payload_descriptions = 3;
   repeated RpcSpec rpc_descriptions = 4;
   repeated Action action_table = 5;
   repeated ActionList action_list_table = 6;
