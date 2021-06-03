@@ -96,10 +96,10 @@ Alternatively to simply run on localhost:
 ```bash
 ~/distbench$ ./start_distbench_localhost.sh -n 2
 # CTRL-Z
+~/distbench$ bg
 ~/distbench$ cd workloads
 ~/distbench/workloads$ ./simple_client_server_rpc_pattern.sh
 ```
-
 The test should take a couple of seconds to run and you will obtain the
 following output:
 
@@ -198,7 +198,7 @@ The results contain 4 sections:
    Distbench `node_manager`.
 3. `service_logs`: a long of the different RPC performed during the test, with
    their sizes, timestamps, etc. As we specified 100 iterations, we have 100
-   successful_rpc_samples in this section.
+   `successful_rpc_samples` in this section.
 4. `log_summary`: A concise summary of the RPC performance
 
 In our case the summary is as follows:
@@ -212,12 +212,60 @@ Indicating that 100 rpc was performed (N) with a median latency of 78.5us.
 
 ## Multi-level RPC pattern
 
-For this pattern, a load balancer distributes queries to root servers. The root
-servers will then query partial results to all the leaf nodes and waits for
-those result before being able to send the response to the load balancer for the
-original query.
+For this pattern,
+1. a load balancer distributes queries to a serie of root servers.
+2. the root servers will then gather partial results from all the leaf nodes and
+   waits for those results.
+3. once all the responses are received, the original RPC response is sent to the
+   load balancer.
 
 ![Multi-level RPC pattern](images/pattern_multi_level_rpc.png)
+
+### Implementation
+
+See `multi_level_rpc_pattern.sh` for the details.
+
+```yaml
+  rpc_descriptions {
+    name: "root_query"
+    client: "load_balancer"
+    server: "root"
+    fanout_filter: "round_robin"
+    tracing_interval: 2
+  }
+```
+The `load_balancer` will distribute the requests in a `round_robin` fashion.
+
+When the `root_query` is received by the root server, it then distribute the
+queries across all the leaf servers (`fanout_filter: all`):
+
+```yaml
+  action_list_table {
+    name: "root_query"
+    action_names: "root/root_query_fanout"
+  }
+  action_table {
+    name: "root/root_query_fanout"
+    rpc_name: "leaf_query"
+  }
+  rpc_descriptions {
+    name: "leaf_query"
+    client: "root"
+    server: "leaf"
+    fanout_filter: "all"
+    tracing_interval: 2
+  }
+```
+
+### Running
+
+```bash
+~/distbench$ ./start_distbench_localhost.sh -n 6
+# CTRL-Z
+~/distbench$ bg
+~/distbench$ cd workloads
+~/distbench/workloads$ ./multi_level_rpc_pattern.sh
+```
 
 ## Clique RPC pattern
 
@@ -236,3 +284,49 @@ We target around 100 nodes for this benchmark.
 
 ![Clique RPC pattern](images/pattern_clique.png)
 
+### Implementation
+
+```yaml
+  action_table {
+    name: "clique_queries"
+    iterations {
+      max_duration_us: 10000000
+      open_loop_interval_ns: 16000000
+      open_loop_interval_distribution: "sync_burst"
+    }
+    rpc_name: "clique_query"
+  }
+  rpc_descriptions {
+    name: "clique_query"
+    client: "clique"
+    server: "clique"
+    fanout_filter: "all"
+  }
+```
+
+The `clique_query` is run every 16 ms (`open_loop_interval_ns`) in a synchronous
+fashion (`sync_burst`). The test will run for 10s (`max_duration_us`).
+
+Each clique service will send the `clique_query` (`fanout_filter: "all"`).
+
+### Running
+
+```bash
+~/distbench$ ./start_distbench_localhost.sh -n 10
+# CTRL-Z
+~/distbench$ bg
+~/distbench$ cd workloads
+~/distbench/workloads$ ./clique_rpc_pattern.sh -n 10
+```
+
+Expected output:
+```
+  log_summary: "RPC latency summary:
+    clique_query: N: 56250 min: 209506ns median: 708897ns 90%: 1273052ns 99%: 1626084ns 99.9%: 2297228ns max: 5399917ns
+  "
+}
+Rpc succeeded with OK status
+```
+
+We have 56250 RPCs (The test run for 625 cycles -10000/16- and there is 10\*9
+RPCs per cycle)
