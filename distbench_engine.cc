@@ -49,7 +49,28 @@ DistBenchEngine::~DistBenchEngine() {
   }
 }
 
+// Initialize the payload map and perform basic validation
+absl::Status DistBenchEngine::InitializePayloadsMap(){
+  for (int i = 0; i < traffic_config_.payload_descriptions_size(); ++i) {
+    const auto& payload_spec = traffic_config_.payload_descriptions(i);
+    const auto& payload_spec_name = payload_spec.name();
+
+    // Check for double declaration
+    if ( payload_map_.find(payload_spec_name) != payload_map_.end() )
+      return absl::InvalidArgumentError(
+          "Double definition of payload_descriptions: " + payload_spec_name);
+
+    payload_map_[payload_spec_name] = payload_spec;
+  }
+
+  return absl::OkStatus();
+}
+
 absl::Status DistBenchEngine::InitializeTables() {
+  auto ret_init_payload = InitializePayloadsMap();
+  if ( !ret_init_payload.ok() )
+    return ret_init_payload;
+
   // Convert the action table to a map indexed by name:
   std::map<std::string, Action> action_map;
   for (int i = 0; i < traffic_config_.action_table_size(); ++i) {
@@ -159,6 +180,7 @@ absl::Status DistBenchEngine::InitializeTables() {
       return absl::NotFoundError(rpc.name());
     }
     server_rpc_table_[i].handler_action_list_index = it->second;
+    server_rpc_table_[i].rpc_spec = rpc;
 
     auto it1 = service_index_map.find(server_service_name);
     if (it1 == service_index_map.end()) {
@@ -371,12 +393,30 @@ ServicePerformanceLog DistBenchEngine::FinishTrafficAndGetLogs() {
 void DistBenchEngine::RpcHandler(ServerRpcState* state) {
   // LOG(INFO) << state->request->ShortDebugString();
   QCHECK(state->request->has_rpc_index());
-  int handler_action_index =
-    server_rpc_table_[state->request->rpc_index()].handler_action_list_index;
+  const auto& simulated_server_rpc =
+      server_rpc_table_[state->request->rpc_index()];
+  const auto& rpc_spec = simulated_server_rpc.rpc_spec;
+
+  // Perform action list
+  int handler_action_index = simulated_server_rpc.handler_action_list_index;
   if (handler_action_index == -1) {
   } else {
     RunActionList(handler_action_index, state);
   }
+
+  // Generate response payload
+  size_t payload_size = 16;
+  if (rpc_spec.has_response_payload_name()){
+    const auto& payload_name = rpc_spec.response_payload_name();
+    const auto& payload = payload_map_[payload_name];
+    if (payload.has_size())
+      payload_size = payload.size();
+  } else {
+    LOG(ERROR) << "No payload defined\n";
+  }
+  state->response.set_payload(std::string(payload_size, 'D'));
+
+  // Send the response
   state->send_response();
 }
 
@@ -669,8 +709,15 @@ void DistBenchEngine::RunRpcActionIteration(
   }
   common_request.set_rpc_index(state->rpc_index);
 
-  // Setup the request payload:
-  common_request.set_payload(std::string(16, 'D'));
+  // Figure out the payload size
+  size_t payload_size = 16;
+  if (rpc_spec.has_request_payload_name()){
+    const auto& payload_name = rpc_spec.request_payload_name();
+    const auto& payload = payload_map_[payload_name];
+    if (payload.has_size())
+      payload_size = payload.size();
+  }
+  common_request.set_payload(std::string(payload_size, 'D'));
 
   for (size_t i = 0; i < current_targets.size(); ++i) {
     int peer = current_targets[i];

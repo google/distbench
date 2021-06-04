@@ -165,6 +165,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   };
 
   absl::Status InitializeTables();
+  absl::Status InitializePayloadsMap();
 
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state);
   void RunAction(ActionState* action_state);
@@ -194,6 +195,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::unique_ptr<grpc::Server> server_;
   std::unique_ptr<ProtocolDriver> pd_;
   std::thread engine_main_thread_;
+
+  // Payloads definitions
+  std::map<std::string, PayloadSpec> payload_map_;
 
   // The first index is the service, the second is the instance.
   std::vector<std::vector<PeerMetadata>> peers_;
