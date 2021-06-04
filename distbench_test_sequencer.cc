@@ -299,7 +299,8 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     if (ok) {
       --rpc_count;
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
-      LOG(INFO) << finished_rpc->status;
+      LOG(INFO) << "Finished RPC status:" <<
+                grpcStatusToAbslStatus(finished_rpc->status);
       if (!finished_rpc->status.ok()) {
         status = finished_rpc->status;
       }
@@ -309,7 +310,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
   if (status.ok()) {
     return ret;
   } else {
-    return absl::InvalidArgumentError("Unknown GRPC error2");
+    return grpcStatusToAbslStatus(status);
   }
 }
 
@@ -351,11 +352,8 @@ absl::Status TestSequencer::IntroducePeers(
       }
     }
   }
-  
-  if (status.ok())
-    return absl::OkStatus();
 
-  return absl::InvalidArgumentError("Unknown GRPC error");
+  return grpcStatusToAbslStatus(status);
 }
 
 absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
@@ -402,7 +400,7 @@ absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
   if (status.ok()) {
     return ret;
   } else {
-    return absl::InvalidArgumentError("Unknown GRPC error2");
+    return grpcStatusToAbslStatus(status);
   }
 }
 

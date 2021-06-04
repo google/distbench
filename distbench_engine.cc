@@ -336,7 +336,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
         status = finished_rpc->status;
-        LOG(ERROR) << finished_rpc->status;
+        LOG(ERROR) << "Finished RPC ERROR:" << finished_rpc->status;
       }
     }
   }
