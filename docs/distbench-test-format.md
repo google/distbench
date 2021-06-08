@@ -57,11 +57,18 @@ in this document.
 
 ### message `Iteration`
 
-- `max_iteration_count` (int32):
-- `max_duration_us` (int32):
-- `max_parallel_iterations` (int64, default=1):
-- `open_loop_interval_ns` (int64):
+Iterate on an action (performs repetition of the action).
+
+- `max_iteration_count` (int32): Maximum number of iteration to perform.
+- `max_duration_us` (int32): Maximum duration in microseconds.
+- `max_parallel_iterations` (int64, default=1): The number of iterations to
+  perform in parallel (at the same time).
+- `open_loop_interval_ns` (int64): Interval in nano-second for open loop
+  iterations.
 - `open_loop_interval_distribution` (string, default=constant):
+  - `sync_burst`: all the instances will _try_ to perform the action at the same
+    time.
+  - `constant`: run at a constant interval.
 
 ### message `RpcSpec`
 
@@ -88,7 +95,7 @@ in this document.
 - `name` (string): name of the PayloadSpec.
 - `pool_size` (int32) **Not currently used**
 - `template_payload_name` (string) **Not currently used**
-- `size` (int32): The size in bytes of the payload
+- `size` (int32): The size, in bytes, of the payload
 - `seed` (int32) **Not currently used**
 - `literal_contents` (repeated bytes) **Not currently used**
 
