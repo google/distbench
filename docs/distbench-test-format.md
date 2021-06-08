@@ -7,7 +7,7 @@ This documents decribe the different options available. The format is still
 evolving and subject to change.
 
 For examples of tests, a good starting point is the workloads aleady included
-with Distbench (see [workloads/README.md](../workloads/README.md).
+with Distbench (see [workloads/README.md](../workloads/README.md)).
 
 ## Distributed System Description
 
@@ -27,13 +27,15 @@ in this document.
 - `payload_descriptions`: define a payload that can be associated with an RPC.
 
 ### message `ServiceSpec`
-- `server_type` (string)
-- `count` (int32)
+- `server_type` (string): name of the service.
+- `count` (int32): number of instance to start (each instance will occupy a
+  `node_manage` unless it is bundled with other services).
 
 ### message `ServiceBundle`
 
-- `services` (string, repeated)
-- `constraints` (string, repeated)
+- `services` (string, repeated): list of the services (by name) to bundle
+  together.
+- `constraints` (string, repeated) **Not currently used**
 
 ### message `ActionList` (`action_table`)
 
@@ -63,24 +65,30 @@ in this document.
 
 ### message `RpcSpec`
 
-- `name` (string)
-- `client` (string)
-- `server` (string)
-- `request_payload_name` (string)
-- `response_payload_name` (string)
-- `fanout_filter` (string, default=all)
-  - `all`:
-  - `random`:
-  - `round_robin`:
-  - Unrecognized value targets the instance 0 of the destination
+- `name` (string): name the rpc.
+- `client` (string): The client `service` (initiator of the RPC)
+- `server` (string): The server `service` (target of the RPC)
+- `request_payload_name` (string): PayloadSpec to use as a payload for the
+  request
+- `response_payload_name` (string): PayloadSpec to use as a payload for the
+  reponse
+- `fanout_filter` (string, default=all): select the instance(s) of `server` to
+  send the RPC to.
+  - `all`: Send the RPC to all the instances of `server`, every time.
+  - `random`: Choose a random instance.
+  - `round_robin`: Choose one instance in a round-robin fashion.
+  - An unrecognized value will target the instance 0 of `server`.
 - `tracing_interval` (int32)
+  - **0**: Disable tracing
+  - **>0**: Create a trace of the RPC in the report every `tracing_interval`
+    times (`rpc.id % tracing_interval == 0`).
 
 ### message `PayloadSpec`
 
-- `name` (string)
-- `pool_size` (int32)
-- `template_payload_name` (string)
-- `size` (int32)
-- `seed` (int32)
-- `literal_contents` (repeated bytes)
+- `name` (string): name of the PayloadSpec.
+- `pool_size` (int32) **Not currently used**
+- `template_payload_name` (string) **Not currently used**
+- `size` (int32): The size in bytes of the payload
+- `seed` (int32) **Not currently used**
+- `literal_contents` (repeated bytes) **Not currently used**
 
