@@ -217,6 +217,8 @@ absl::Status DistBenchEngine::Initialize(
   service_instance_ = service_instance;
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
+
+  // Start server
   std::string server_address = absl::StrCat("[::]:", port);
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -262,12 +264,14 @@ absl::Status DistBenchEngine::ConnectToPeers() {
     EnumerateServiceInstanceIds(traffic_config_);
   std::map<std::string, int> service_index_map =
     EnumerateServiceTypes(traffic_config_);
+
+  // peers_[service_id][instance_id]
   peers_.resize(traffic_config_.services_size());
   for (int i = 0; i < traffic_config_.services_size(); ++i) {
     peers_[i].resize(traffic_config_.services(i).count());
   }
-  int num_targets = 0;
 
+  int num_targets = 0;
   std::string my_name = absl::StrCat(service_name_, "/", service_instance_);
   for (const auto& service : service_map_.service_endpoints()) {
     auto it = service_instance_ids.find(service.first);
@@ -284,16 +288,18 @@ absl::Status DistBenchEngine::ConnectToPeers() {
     }
     auto it2 = service_index_map.find(service_type);
     QCHECK(it2 != service_index_map.end());
-    peers_[it2->second][instance].log_name = service.first;
-    peers_[it2->second][instance].trace_id = peer_trace_id;
+    int service_id = it2->second;
+    peers_[service_id][instance].log_name = service.first;
+    peers_[service_id][instance].trace_id = peer_trace_id;
 
     if (dependent_services_.count(service_type)) {
-      peers_[it2->second][instance].endpoint_address =
+      peers_[service_id][instance].endpoint_address =
         service.second.endpoint_address();
-      peers_[it2->second][instance].pd_id = num_targets;
+      peers_[service_id][instance].pd_id = num_targets;
       ++num_targets;
     }
   }
+
   pd_->SetNumPeers(num_targets);
   grpc::CompletionQueue cq;
   struct PendingRpc {
@@ -425,10 +431,14 @@ void DistBenchEngine::RunActionList(
   QCHECK_LT(static_cast<size_t>(list_index), action_list_table_.size());
   QCHECK_GE(list_index, 0);
   ActionListState s;
+
+  // Allocate peer_logs for performance gathering
+  // peer_logs[service_type][instance]
   s.peer_logs.resize(peers_.size());
   for (size_t i = 0; i < peers_.size(); ++i) {
     s.peer_logs[i].resize(peers_[i].size());
   }
+
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_list_table_[list_index];
   int size = s.action_list->proto.action_names_size();
@@ -696,7 +706,7 @@ void DistBenchEngine::RunRpcActionIteration(
   bool do_trace = false;
   int trace_count = ++client_rpc_table_[state->rpc_index].rpc_tracing_counter;
   if (rpc_spec.tracing_interval() > 0) {
-    do_trace = !(trace_count % rpc_spec.tracing_interval());
+    do_trace = (trace_count % rpc_spec.tracing_interval()) == 0;
   }
   GenericRequest common_request;
   if (state->s->incoming_rpc_state) {
@@ -747,14 +757,16 @@ void DistBenchEngine::RunRpcActionIteration(
   }
 }
 
+// Return a vector of protocol_drivers endpoint ids
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
   const auto& rpc_spec = client_rpc_table_[state->rpc_index].rpc_spec;
   std::vector<int> targets;
   const auto& servers = peers_[state->rpc_service_index];
   int num_servers = servers.size();
+  const std::string& fanout_filter = rpc_spec.fanout_filter();
 
-  if (rpc_spec.fanout_filter() == "all") {
-    targets.reserve(servers.size());
+  if (fanout_filter == "all") {
+    targets.reserve(num_servers);
     for (int i = 0; i < num_servers; ++i) {
       int target = servers[i].pd_id;
       if (state->rpc_service_index != service_index_ ||
@@ -763,23 +775,23 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
         targets.push_back(target);
       }
     }
-  } else if (rpc_spec.fanout_filter() == "random") {
+  } else { // The following fanout options return 1 target
+    int target;
     targets.reserve(1);
-    int target = servers[random() % num_servers].pd_id;
-    QCHECK_NE(target, -1);
-    targets.push_back(target);
-  } else if (rpc_spec.fanout_filter() == "round_robin") {
-    targets.reserve(1);
-    int64_t iteration = client_rpc_table_[state->rpc_index].rpc_tracing_counter;
-    int target = servers[iteration % num_servers].pd_id;
-    QCHECK_NE(target, -1);
-    targets.push_back(target);
-  } else {
-    targets.reserve(1);
-    int target = servers[0].pd_id;
+    if (fanout_filter == "random") {
+      target = servers[random() % num_servers].pd_id;
+    } else if (fanout_filter == "round_robin") {
+      int64_t iteration =
+          client_rpc_table_[state->rpc_index].rpc_tracing_counter;
+      target = servers[iteration % num_servers].pd_id;
+    } else {
+      // Default case: return the first instance of the service
+      target = servers[0].pd_id;
+    }
     QCHECK_NE(target, -1);
     targets.push_back(target);
   }
+
   return targets;
 }
 
