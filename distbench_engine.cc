@@ -549,7 +549,7 @@ void DistBenchEngine::ActionListState::RecordLatency(
     int rpc_index,
     int service_type, int instance, const ClientRpcState* state) {
   auto& log =
-    (*peer_logs[service_type][instance].mutable_rpc_logs())[rpc_index];
+    (*peer_logs.at(service_type).at(instance).mutable_rpc_logs())[rpc_index];
   auto* sample = state->success ? log.add_successful_rpc_samples()
                                 : log.add_failed_rpc_samples();
   auto latency = state->end_time - state->start_time;
