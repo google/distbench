@@ -68,6 +68,15 @@ class DistBenchEngine : public ConnectionSetup::Service {
                                ConnectResponse* response) override;
 
  private:
+  struct RpcDefinition {
+    // Original proto
+    RpcSpec rpc_spec;
+
+    // Decoded
+    int request_payload_size;
+    int response_payload_size;
+  };
+
   struct PeerMetadata {
     PeerMetadata() {}
     PeerMetadata(const PeerMetadata& from) {
@@ -89,13 +98,13 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct SimulatedServerRpc {
     std::vector<GenericResponse> response_table;
     int handler_action_list_index = -1;
-    RpcSpec rpc_spec;
+    RpcDefinition rpc_definition;
   };
 
   struct SimulatedClientRpc {
     int server_type_index;
     std::vector<GenericRequest> request_table;
-    RpcSpec rpc_spec;
+    RpcDefinition rpc_definition;
     std::atomic<int64_t> rpc_tracing_counter = 0;
     std::vector<int> pending_requests_per_peer;
   };
@@ -166,6 +175,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   absl::Status InitializeTables();
   absl::Status InitializePayloadsMap();
+  absl::Status InitializeRpcDefinitionsMap();
 
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state);
   void RunAction(ActionState* action_state);
@@ -184,6 +194,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status ConnectToPeers();
   void RpcHandler(ServerRpcState* state);
 
+  int get_payload_size(const std::string& name);
+
   absl::Notification canceled_;
   DistributedSystemDescription traffic_config_;
   ServiceEndpointMap service_map_;
@@ -198,6 +210,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   // Payloads definitions
   std::map<std::string, PayloadSpec> payload_map_;
+  std::map<std::string, RpcDefinition> rpc_map_;
 
   // The first index is the service, the second is the instance.
   std::vector<std::vector<PeerMetadata>> peers_;

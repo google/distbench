@@ -66,10 +66,67 @@ absl::Status DistBenchEngine::InitializePayloadsMap(){
   return absl::OkStatus();
 }
 
+int DistBenchEngine::get_payload_size(const std::string& payload_name) {
+  const auto& payload = payload_map_[payload_name];
+  int size = -1;
+
+  if (payload.has_size()) {
+    size = payload.size();
+  } else {
+    LOG(WARNING) << "No size defined for payload " << payload_name << "\n";
+  }
+
+  return size;
+}
+
+absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
+  for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
+    const auto& rpc_spec = traffic_config_.rpc_descriptions(i);
+    const auto& rpc_name = rpc_spec.name();
+
+    RpcDefinition rpc_def;
+    rpc_def.rpc_spec = rpc_spec;
+
+    // Get request payload size
+    rpc_def.request_payload_size = -1;
+    if (rpc_spec.has_request_payload_name()){
+      const auto& payload_name = rpc_spec.request_payload_name();
+      rpc_def.request_payload_size = get_payload_size(payload_name);
+    }
+    if(rpc_def.request_payload_size == -1){
+      rpc_def.request_payload_size = 16;
+      LOG(WARNING) << "No request payload defined for " << rpc_name <<
+                 "; using a default of " <<
+                 rpc_def.request_payload_size;
+    }
+
+    // Get response payload size
+    rpc_def.response_payload_size = -1;
+    if (rpc_spec.has_response_payload_name()){
+      const auto& payload_name = rpc_spec.response_payload_name();
+      rpc_def.response_payload_size = get_payload_size(payload_name);
+    }
+    if(rpc_def.response_payload_size == -1){
+      rpc_def.response_payload_size = 32;
+      LOG(WARNING) << "No response payload defined for " << rpc_name <<
+                 "; using a default of " <<
+                 rpc_def.response_payload_size;
+    }
+
+    rpc_map_[rpc_name] = rpc_def;
+  }
+
+  return absl::OkStatus();
+}
+
 absl::Status DistBenchEngine::InitializeTables() {
   auto ret_init_payload = InitializePayloadsMap();
   if ( !ret_init_payload.ok() )
     return ret_init_payload;
+
+  auto ret_init_rpc_def = InitializeRpcDefinitionsMap();
+  if ( !ret_init_rpc_def.ok() )
+    return ret_init_rpc_def;
 
   // Convert the action table to a map indexed by name:
   std::map<std::string, Action> action_map;
@@ -180,7 +237,7 @@ absl::Status DistBenchEngine::InitializeTables() {
       return absl::NotFoundError(rpc.name());
     }
     server_rpc_table_[i].handler_action_list_index = it->second;
-    server_rpc_table_[i].rpc_spec = rpc;
+    server_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
 
     auto it1 = service_index_map.find(server_service_name);
     if (it1 == service_index_map.end()) {
@@ -197,7 +254,7 @@ absl::Status DistBenchEngine::InitializeTables() {
             client_service_name));
     }
     client_rpc_table_[i].server_type_index = it1->second;
-    client_rpc_table_[i].rpc_spec = rpc;
+    client_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
     client_rpc_table_[i].pending_requests_per_peer.resize(
         traffic_config_.services(it1->second).count(), 0);
   }
@@ -401,7 +458,7 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
   QCHECK(state->request->has_rpc_index());
   const auto& simulated_server_rpc =
       server_rpc_table_[state->request->rpc_index()];
-  const auto& rpc_spec = simulated_server_rpc.rpc_spec;
+  const auto& rpc_def = simulated_server_rpc.rpc_definition;
 
   // Perform action list
   int handler_action_index = simulated_server_rpc.handler_action_list_index;
@@ -410,17 +467,7 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
     RunActionList(handler_action_index, state);
   }
 
-  // Generate response payload
-  size_t payload_size = 16;
-  if (rpc_spec.has_response_payload_name()){
-    const auto& payload_name = rpc_spec.response_payload_name();
-    const auto& payload = payload_map_[payload_name];
-    if (payload.has_size())
-      payload_size = payload.size();
-  } else {
-    LOG(ERROR) << "No payload defined\n";
-  }
-  state->response.set_payload(std::string(payload_size, 'D'));
+  state->response.set_payload(std::string(rpc_def.response_payload_size, 'D'));
 
   // Send the response
   state->send_response();
@@ -702,7 +749,8 @@ void DistBenchEngine::RunRpcActionIteration(
   iteration_state->remaining_rpcs = current_targets.size();
 
   // Setup tracing:
-  const auto& rpc_spec = client_rpc_table_[state->rpc_index].rpc_spec;
+  const auto& rpc_def = client_rpc_table_[state->rpc_index].rpc_definition;
+  const auto& rpc_spec = rpc_def.rpc_spec;
   bool do_trace = false;
   int trace_count = ++client_rpc_table_[state->rpc_index].rpc_tracing_counter;
   if (rpc_spec.tracing_interval() > 0) {
@@ -719,15 +767,7 @@ void DistBenchEngine::RunRpcActionIteration(
   }
   common_request.set_rpc_index(state->rpc_index);
 
-  // Figure out the payload size
-  size_t payload_size = 16;
-  if (rpc_spec.has_request_payload_name()){
-    const auto& payload_name = rpc_spec.request_payload_name();
-    const auto& payload = payload_map_[payload_name];
-    if (payload.has_size())
-      payload_size = payload.size();
-  }
-  common_request.set_payload(std::string(payload_size, 'D'));
+  common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
 
   for (size_t i = 0; i < current_targets.size(); ++i) {
     int peer = current_targets[i];
@@ -759,7 +799,8 @@ void DistBenchEngine::RunRpcActionIteration(
 
 // Return a vector of protocol_drivers endpoint ids
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
-  const auto& rpc_spec = client_rpc_table_[state->rpc_index].rpc_spec;
+  const auto& rpc_spec =
+      client_rpc_table_[state->rpc_index].rpc_definition.rpc_spec;
   std::vector<int> targets;
   const auto& servers = peers_[state->rpc_service_index];
   int num_servers = servers.size();
