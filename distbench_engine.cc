@@ -16,6 +16,8 @@
 
 #include "distbench_utils.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 #include "include/grpcpp/create_channel.h"
 #include "include/grpcpp/security/credentials.h"
@@ -79,6 +81,71 @@ int DistBenchEngine::get_payload_size(const std::string& payload_name) {
   return size;
 }
 
+absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
+    RpcDefinition& rpc_def){
+  const auto& rpc_spec = rpc_def.rpc_spec;
+  std::string fanout_filter = rpc_spec.fanout_filter();
+  const std::string stochastic_keyword = "stochastic";
+
+  rpc_def.is_stochastic_fanout = false;
+
+  if (!absl::StartsWith(fanout_filter, stochastic_keyword))
+    return absl::OkStatus();
+  fanout_filter.erase(0, stochastic_keyword.length());
+
+  if (!absl::StartsWith(fanout_filter, "{")){
+    return absl::InvalidArgumentError(
+        "Invalid stochastic filter; should starts with stochastic{");
+  }
+  fanout_filter.erase(0, 1); // Consume {
+
+  if (!absl::EndsWith(fanout_filter, "}")){
+    return absl::InvalidArgumentError(
+        "Invalid stochastic filter; should ends with }");
+  }
+  fanout_filter.pop_back(); // Consume }
+
+  float total_probability = 0.;
+  for(auto s: absl::StrSplit(fanout_filter, ",")){
+    std::vector<std::string> v = absl::StrSplit(s, ":");
+    if (v.size() != 2)
+      return absl::InvalidArgumentError(
+          "Invalid stochastic filter; only 1 : accepted");
+
+    StochasticDist dist;
+    if (!absl::SimpleAtof(v[0], &dist.probability))
+      return absl::InvalidArgumentError(
+          "Invalid stochastic filter; unable to decode probability");
+    if (dist.probability < 0 || dist.probability > 1)
+      return absl::InvalidArgumentError(
+          "Invalid stochastic filter; probability should be between 0. and 1.");
+    total_probability += dist.probability;
+
+    if (!absl::SimpleAtoi(v[1], &dist.nb_targets))
+      return absl::InvalidArgumentError(
+          "Invalid stochastic filter; unable to decode nb_targets");
+    if (dist.nb_targets < 0)
+      return absl::InvalidArgumentError(
+          "Invalid stochastic filter; nb_targets should be >= 0");
+
+    rpc_def.stochastic_dist.push_back(dist);
+  }
+
+  if (total_probability != 1.0)
+    LOG(WARNING) << "The probability for the stochastic fanout of "
+                 << rpc_def.rpc_spec.name()
+                 << " does not add up to 1.0 (is "
+                 << total_probability << ")";
+
+  if (rpc_def.stochastic_dist.size() == 0)
+      return absl::InvalidArgumentError(
+          "Invalid stochastic filter; need at least a value pair");
+
+  rpc_def.is_stochastic_fanout = true;
+
+  return absl::OkStatus();
+}
+
 absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc_spec = traffic_config_.rpc_descriptions(i);
@@ -112,6 +179,10 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
                  "; using a default of " <<
                  rpc_def.response_payload_size;
     }
+
+    auto ret = InitializeRpcDefinitionStochastic(rpc_def);
+    if (!ret.ok())
+      return ret;
 
     rpc_map_[rpc_name] = rpc_def;
   }
@@ -799,14 +870,51 @@ void DistBenchEngine::RunRpcActionIteration(
 
 // Return a vector of protocol_drivers endpoint ids
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
-  const auto& rpc_spec =
-      client_rpc_table_[state->rpc_index].rpc_definition.rpc_spec;
+  const auto& rpc_def = client_rpc_table_[state->rpc_index].rpc_definition;
+  const auto& rpc_spec = rpc_def.rpc_spec;
   std::vector<int> targets;
   const auto& servers = peers_[state->rpc_service_index];
   int num_servers = servers.size();
   const std::string& fanout_filter = rpc_spec.fanout_filter();
 
-  if (fanout_filter == "all") {
+  if (rpc_def.is_stochastic_fanout){
+    int nb_targets = 0;
+    float random_val = absl::Uniform(random_generator, 0, 1.0);
+    float cur_val = 0.0;
+    for (const auto &d: rpc_def.stochastic_dist){
+      cur_val += d.probability;
+      if (random_val <= cur_val){
+        nb_targets = d.nb_targets;
+        break;
+      }
+    }
+    if(nb_targets > num_servers)
+      nb_targets = num_servers;
+
+// Potential optimization
+//    if (nb_targets == 1){
+//      int target = servers[random() % num_servers].pd_id;
+//      QCHECK_NE(target, -1);
+//      targets.push_back(target);
+//      return targets;
+//    }
+
+    // Generate a vector to pick random targets from (only done once)
+    partially_randomized_vectors.try_emplace(num_servers, std::vector<int>());
+    std::vector<int>& from_vector = partially_randomized_vectors[num_servers];
+    if (from_vector.size() == 0)
+      for (int i = 0; i < num_servers; i++)
+        from_vector.push_back(i);
+
+    // Randomize and pick up to nb_targets
+    for (int i = 0; i < nb_targets; i++){
+      int rnd_pos = i + (random() % (num_servers - i));
+      std::swap(from_vector[i], from_vector[rnd_pos]);
+      int target = servers[from_vector[i]].pd_id;
+      QCHECK_NE(target, -1);
+      targets.push_back(target);
+    }
+  } else if (fanout_filter == "all") {
     targets.reserve(num_servers);
     for (int i = 0; i < num_servers; ++i) {
       int target = servers[i].pd_id;

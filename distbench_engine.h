@@ -20,6 +20,7 @@
 #include "distbench.grpc.pb.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
+#include "absl/random/random.h"
 #include "grpcpp/server_builder.h"
 
 namespace distbench {
@@ -68,9 +69,18 @@ class DistBenchEngine : public ConnectionSetup::Service {
                                ConnectResponse* response) override;
 
  private:
+  struct StochasticDist{
+    float probability;
+    int nb_targets;
+  };
+
   struct RpcDefinition {
     // Original proto
     RpcSpec rpc_spec;
+
+    // Used to store decoded stochastic fanout
+    bool is_stochastic_fanout;
+    std::vector<StochasticDist> stochastic_dist;
 
     // Decoded
     int request_payload_size;
@@ -175,6 +185,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   absl::Status InitializeTables();
   absl::Status InitializePayloadsMap();
+  absl::Status InitializeRpcDefinitionStochastic(
+      RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
 
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state);
@@ -216,6 +228,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<std::vector<PeerMetadata>> peers_;
   int trace_id_ = -1;
   SimpleClock* clock_ = nullptr;
+
+  // Random
+  absl::BitGen random_generator;
+  std::map<int, std::vector<int>> partially_randomized_vectors;
 };
 
 }  // namespace distbench
