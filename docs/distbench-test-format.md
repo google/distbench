@@ -1,4 +1,4 @@
-# Distbench test format
+# Distbench Traffic Pattern - Test Format
 
 The distbench are tests are defined using Protobuf using the
 [dstmf.proto](../dstmf.proto) specification.
@@ -84,6 +84,13 @@ Iterate on an action (performs repetition of the action).
   - `all`: Send the RPC to all the instances of `server`, every time.
   - `random`: Choose a random instance.
   - `round_robin`: Choose one instance in a round-robin fashion.
+  - `stochastic`: Allow to specify a list of probability to reach a different
+    number of instances.
+    - Format: `stochastic{probability:nb_targets,...}`
+    - Example: `stochastic{0.7:1,0.2:3,0.1:5}` will targets:
+      - A single instance of `server` with 70% chance
+      - 3 random instances of `server` with 20% chance
+      - 5 random instances of `server` with 10% chance
   - An unrecognized value will target the instance 0 of `server`.
 - `tracing_interval` (int32)
   - **0**: Disable tracing
