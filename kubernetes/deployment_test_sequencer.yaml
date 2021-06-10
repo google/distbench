@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: distbench-test-sequencer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: distbench-test-sequencer
+  template:
+    metadata:
+      labels:
+        app: distbench-test-sequencer
+    spec:
+      containers:
+      - name: distbench-test-sequencer
+        image: gcr.io/$CLOUD_ENGINE_PROJECT/distbench:latest
+        ports:
+        - containerPort: 10000

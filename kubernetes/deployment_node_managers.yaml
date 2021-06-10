@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: distbench-node-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: distbench-node-manager
+  template:
+    metadata:
+      labels:
+        app: distbench-node-manager
+    spec:
+      containers:
+      - name: distbench-node-manager
+        image: gcr.io/$CLOUD_ENGINE_PROJECT/distbench:latest
+        ports:
+        - containerPort: 9999
+        command: ["/bin/sh"]
+        args: ["-c", "/bin/distbench node_manager --test_sequencer=$(DISTBENCH_TEST_SEQUENCER_SERVICE_HOST):10000 --port=9999"]
