@@ -52,7 +52,7 @@ DistBenchEngine::~DistBenchEngine() {
 }
 
 // Initialize the payload map and perform basic validation
-absl::Status DistBenchEngine::InitializePayloadsMap(){
+absl::Status DistBenchEngine::InitializePayloadsMap() {
   for (int i = 0; i < traffic_config_.payload_descriptions_size(); ++i) {
     const auto& payload_spec = traffic_config_.payload_descriptions(i);
     const auto& payload_spec_name = payload_spec.name();
@@ -82,7 +82,7 @@ int DistBenchEngine::get_payload_size(const std::string& payload_name) {
 }
 
 absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
-    RpcDefinition& rpc_def){
+    RpcDefinition& rpc_def) {
   const auto& rpc_spec = rpc_def.rpc_spec;
   std::string fanout_filter = rpc_spec.fanout_filter();
   const std::string stochastic_keyword = "stochastic";
@@ -93,20 +93,20 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
     return absl::OkStatus();
   fanout_filter.erase(0, stochastic_keyword.length());
 
-  if (!absl::StartsWith(fanout_filter, "{")){
+  if (!absl::StartsWith(fanout_filter, "{")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should starts with stochastic{");
   }
   fanout_filter.erase(0, 1); // Consume {
 
-  if (!absl::EndsWith(fanout_filter, "}")){
+  if (!absl::EndsWith(fanout_filter, "}")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should ends with }");
   }
   fanout_filter.pop_back(); // Consume }
 
   float total_probability = 0.;
-  for(auto s: absl::StrSplit(fanout_filter, ",")){
+  for (auto s: absl::StrSplit(fanout_filter, ",")) {
     std::vector<std::string> v = absl::StrSplit(s, ":");
     if (v.size() != 2)
       return absl::InvalidArgumentError(
@@ -156,11 +156,11 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 
     // Get request payload size
     rpc_def.request_payload_size = -1;
-    if (rpc_spec.has_request_payload_name()){
+    if (rpc_spec.has_request_payload_name()) {
       const auto& payload_name = rpc_spec.request_payload_name();
       rpc_def.request_payload_size = get_payload_size(payload_name);
     }
-    if(rpc_def.request_payload_size == -1){
+    if (rpc_def.request_payload_size == -1) {
       rpc_def.request_payload_size = 16;
       LOG(WARNING) << "No request payload defined for " << rpc_name <<
                  "; using a default of " <<
@@ -169,11 +169,11 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 
     // Get response payload size
     rpc_def.response_payload_size = -1;
-    if (rpc_spec.has_response_payload_name()){
+    if (rpc_spec.has_response_payload_name()) {
       const auto& payload_name = rpc_spec.response_payload_name();
       rpc_def.response_payload_size = get_payload_size(payload_name);
     }
-    if(rpc_def.response_payload_size == -1){
+    if (rpc_def.response_payload_size == -1) {
       rpc_def.response_payload_size = 32;
       LOG(WARNING) << "No response payload defined for " << rpc_name <<
                  "; using a default of " <<
@@ -877,22 +877,22 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
   int num_servers = servers.size();
   const std::string& fanout_filter = rpc_spec.fanout_filter();
 
-  if (rpc_def.is_stochastic_fanout){
+  if (rpc_def.is_stochastic_fanout) {
     int nb_targets = 0;
     float random_val = absl::Uniform(random_generator, 0, 1.0);
     float cur_val = 0.0;
-    for (const auto &d: rpc_def.stochastic_dist){
+    for (const auto &d: rpc_def.stochastic_dist) {
       cur_val += d.probability;
-      if (random_val <= cur_val){
+      if (random_val <= cur_val) {
         nb_targets = d.nb_targets;
         break;
       }
     }
-    if(nb_targets > num_servers)
+    if (nb_targets > num_servers)
       nb_targets = num_servers;
 
 // Potential optimization
-//    if (nb_targets == 1){
+//    if (nb_targets == 1) {
 //      int target = servers[random() % num_servers].pd_id;
 //      QCHECK_NE(target, -1);
 //      targets.push_back(target);
@@ -907,7 +907,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
         from_vector.push_back(i);
 
     // Randomize and pick up to nb_targets
-    for (int i = 0; i < nb_targets; i++){
+    for (int i = 0; i < nb_targets; i++) {
       int rnd_pos = i + (random() % (num_servers - i));
       std::swap(from_vector[i], from_vector[rnd_pos]);
       int target = servers[from_vector[i]].pd_id;
