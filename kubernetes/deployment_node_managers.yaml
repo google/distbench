@@ -12,6 +12,7 @@ spec:
       labels:
         app: distbench-node-manager
     spec:
+      setHostnameAsFQDN: true
       containers:
       - name: distbench-node-manager
         image: gcr.io/$CLOUD_ENGINE_PROJECT/distbench:latest

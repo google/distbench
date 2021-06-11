@@ -12,6 +12,7 @@ spec:
       labels:
         app: distbench-test-sequencer
     spec:
+      setHostnameAsFQDN: true
       containers:
       - name: distbench-test-sequencer
         image: gcr.io/$CLOUD_ENGINE_PROJECT/distbench:latest
