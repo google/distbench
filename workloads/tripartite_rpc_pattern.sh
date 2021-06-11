@@ -108,7 +108,7 @@ tests {
   rpc_descriptions {
     name: "client_result_rpc"
     client: "client"
-    server: "index"   # TODO: change to result when issue is fixed
+    server: "result"
     request_payload_name: "request_result_payload"
     response_payload_name: "response_result_payload"
   }
