@@ -22,13 +22,31 @@ ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 
 void Usage() {
+  std::cerr << "Usage: distbench module [options]\n";
+  std::cerr << "\n";
+  std::cerr << "  module: the module to start (test_sequencer|node_manager)\n";
+  std::cerr << "\n";
+  std::cerr << "  distbench test_sequencer [--port=port_number]\n";
+  std::cerr << "      --port=port_number    The port for the "
+                                 "test_sequencer to listen on.\n";
+  std::cerr << "  distbench node_manager [--test_sequencer=host:port] "
+                                        "[--port=port_number]\n";
+  std::cerr << "      --test_sequencer=h:p  The host:port of the "
+                          "test_sequencer to connect to.\n";
+  std::cerr << "      --port=port_number    The port for the "
+                                 "node_manager to listen on.\n";
+
+  std::cerr << "\n";
+  std::cerr << "For more options information, do\n";
+  std::cerr << "  distbench --helpfull\n";
 }
 
 int main(int argc, char** argv, char** envp) {
   if (argc < 2) {
     Usage();
-    return(1);
+    return 1;
   }
+
   absl::ParseCommandLine(argc, argv);
   distbench::InitLibs();
   for (int i = 1; i < argc; ++i) {
@@ -54,6 +72,8 @@ int main(int argc, char** argv, char** envp) {
       return !status.ok();
     }
   }
+
+  std::cerr << "Unrecognized distbench module\n";
   Usage();
-  return(1);
+  return 1;
 }
