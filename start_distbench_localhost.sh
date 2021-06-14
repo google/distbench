@@ -101,7 +101,6 @@ run_gdb_backtrace() {
 }
 
 check_dependencies
-build_distbench
 
 # Run a test_sequencer and node_manager instance
 #
@@ -117,6 +116,8 @@ if [[ "${DEBUG}" = "1" ]]; then
   done
   sleep 5
 else
+  build_distbench
+
   echo Starting the Distbench test sequencer
   echo_and_run bazel run :distbench -c opt -- test_sequencer --port=10000 &
   sleep 3
