@@ -2,12 +2,13 @@
 
 ## Introduction
 
-This benchmark is made to evaluate Remote Procedure Calls (RPCs) stacks, as
-RPCs represent an important amount of data communication in the data center.
+Distbench is a framework to evaluate Remote Procedure Calls (RPCs) stack efficiency for 
+arbitrary distributed computing patterns. RPCs are a common communication mechanism used
+for large-scale data center computations today.
 
-Using realistic and widely used traffic pattern, the whole RPCs stack can
-be evaluated: data serialization/de-serialization, remote calls, thread
-wake-ups, eventually compression/decompression, encryption/decryption...
+Distbench uses realistic and widely used traffic pattern to evaluate all attributes of an
+RPC stack such as, data serialization/de-serialization, remote calls, thread
+wake-ups, compression/decompression, encryption/decryption, network to host interactions, etc.
 
 ### Why Distbench ?
 
