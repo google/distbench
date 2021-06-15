@@ -1,0 +1,9 @@
+gcp_number_of_node_managers: 2
+gcp_base_name: ansible-distbench
+gcp_machine_type: "n1-standard-1"
+gcp_zone: 'us-central1-a'
+gcp_region: 'us-central1'
+gcp_project:
+gcp_auth_kind: serviceaccount
+gcp_service_account_file:
+

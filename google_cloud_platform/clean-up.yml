@@ -1,0 +1,50 @@
+---
+
+- name: Create Compute Engine instances
+  hosts: localhost
+  gather_facts: False
+  tasks:
+  - name: deleting instances
+    gcp_compute_instance:
+      name: "{{ gcp_base_name }}-instance-{{ item }}"
+      zone: "{{ gcp_zone }}"
+      project: "{{ gcp_project }}"
+      auth_kind: serviceaccount
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: absent
+    register: "instances"
+    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+    loop_control:
+      extended: yes
+
+  - name: delete addresses
+    gcp_compute_address:
+      name: "{{ gcp_base_name }}-address-instance-{{ item }}"
+      region: "{{ gcp_region }}"
+      project: "{{ gcp_project }}"
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: absent
+    register: "addresses"
+    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+
+  - name: delete network
+    gcp_compute_network:
+      name: "{{ gcp_base_name }}-network-instance"
+      project: "{{ gcp_project }}"
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: absent
+    register: network
+
+#  - name: delete disks
+#    gcp_compute_disk:
+#      name: "{{ gcp_base_name }}-disk-instance-{{ item }}"
+#      zone: "{{ gcp_zone }}"
+#      project: "{{ gcp_project }}"
+#      auth_kind: "{{ gcp_auth_kind }}"
+#      service_account_file: "{{ gcp_service_account_file }}"
+#      state: absent
+#    register: "disks"
+#    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+

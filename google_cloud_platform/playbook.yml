@@ -1,0 +1,90 @@
+---
+
+- name: Create Compute Engine instances
+  hosts: localhost
+  gather_facts: False
+  tasks:
+  - name: create disks
+    gcp_compute_disk:
+      name: "{{ gcp_base_name }}-disk-instance-{{ item }}"
+      size_gb: 10
+      source_image: projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts
+      zone: "{{ gcp_zone }}"
+      project: "{{ gcp_project }}"
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+    register: "disks"
+    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+
+  - name: create a network
+    gcp_compute_network:
+      name: "{{ gcp_base_name }}-network-instance"
+      project: "{{ gcp_project }}"
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+    register: network
+
+  - name: create addresses
+    gcp_compute_address:
+      name: "{{ gcp_base_name }}-address-instance-{{ item }}"
+      region: "{{ gcp_region }}"
+      project: "{{ gcp_project }}"
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+    register: "addresses"
+    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+
+  - name: allow ssh
+    gcp_compute_firewall:
+      name: "{{ gcp_base_name }}-allow-ssh"
+      allowed:
+      - ip_protocol: tcp
+        ports:
+        - '22'
+      source_ranges:
+      - "0.0.0.0/0"
+      project: "{{ gcp_project }}"
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+
+  - name: create instances
+    gcp_compute_instance:
+      name: "{{ gcp_base_name }}-instance-{{ item }}"
+      machine_type: n1-standard-1
+      disks:
+      - auto_delete: 'true'
+        boot: 'true'
+        source: "{{ disks.results[ansible_loop.index0] }}"
+      labels:
+        environment: production
+      network_interfaces:
+      - network: "{{ network }}"
+        access_configs:
+        - name: External NAT
+          nat_ip: "{{ addresses.results[ansible_loop.index0] }}"
+          type: ONE_TO_ONE_NAT
+      tags:
+        items:
+          - http-server
+          - https-server
+          - "{{ gcp_base_name }}-ssh"
+      zone: "{{ gcp_zone }}"
+      project: "{{ gcp_project }}"
+      auth_kind: serviceaccount
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: present
+    register: "instances"
+    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+    loop_control:
+      extended: yes
+  post_tasks:
+    - name: Wait for SSH for instances in first zone
+      wait_for: delay=1 host="{{ instances.results[ansible_loop.index0].networkInterfaces[0].networkIP }}" port=22 state=started timeout=30
+#      wait_for: delay=1 host="{{ addresses.results[ansible_loop.index0].address }}" port=22 state=started timeout=30
+      with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+      loop_control:
+        extended: yes
