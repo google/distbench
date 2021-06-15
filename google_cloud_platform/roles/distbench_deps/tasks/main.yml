@@ -1,0 +1,28 @@
+
+---
+- name: Run apt-get update
+  command: apt-get update
+
+- name: Installing Bazel dependencies apt-transport-https, curl, gnupg 
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  loop:
+    - apt-transport-https
+    - curl
+    - gnupg
+
+- name: Get bazel.gpg
+  shell: "curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > bazel.gpg; sudo mv bazel.gpg /etc/apt/trusted.gpg.d/"
+
+- name: Add Bazel repository
+  ansible.builtin.apt_repository:
+    repo: deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8
+    state: present
+
+- name: Installing Bazel
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  loop:
+    - bazel

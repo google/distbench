@@ -1,0 +1,9 @@
+[program:distbench_test_sequencer]
+command=/bin/distbench test_sequencer
+directory=/home
+autostart=true
+autorestart=true
+startretries=3
+stderr_logfile=/var/log/distbench/test_sequencer.err.log
+stdout_logfile=/var/log/distbench/test_sequencer.out.log
+user=root

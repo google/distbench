@@ -1,0 +1,9 @@
+---
+
+- name: Copy the local Distbench binary
+  ansible.builtin.copy:
+    src: ../bazel-bin/distbench
+    dest: /bin/distbench
+    owner: root
+    group: root
+    mode: u=rwx,g=rx,o=rx

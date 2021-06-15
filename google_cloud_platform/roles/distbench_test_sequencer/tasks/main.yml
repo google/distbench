@@ -1,0 +1,43 @@
+
+---
+- name: Installing Supervisor
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  loop:
+    - supervisor
+
+- name: Create log directory /var/log/distbench
+  file:
+    path: /var/log/distbench
+    mode: 0766
+    state: directory
+
+
+- name: Supervisor config for Distbench test sequencer 
+  template:
+    src: distbench_test_sequencer.j2
+    dest: /etc/supervisor/conf.d/distbench_test_sequencer.conf
+    backup: yes
+
+- name: Reread supervisor config
+  command: supervisorctl reread
+
+- name: Update supervisor config
+  command: supervisorctl update
+
+#- name: Ensure Supervisor is started
+#  service:
+#    name: supervisord
+#    state: started
+#
+#- name: Ensure Supervisor is enabled at boot
+#  service:
+#    name: supervisord
+#    enabled: true
+
+- name: Stop distbench test sequencer
+  command: supervisorctl stop distbench_test_sequencer
+
+- name: Start distbench test sequencer
+  command: supervisorctl start distbench_test_sequencer

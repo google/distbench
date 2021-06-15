@@ -82,9 +82,50 @@
     loop_control:
       extended: yes
   post_tasks:
-    - name: Wait for SSH for instances in first zone
+    - name: Wait for SSH for instances
       wait_for: delay=1 host="{{ instances.results[ansible_loop.index0].networkInterfaces[0].networkIP }}" port=22 state=started timeout=30
 #      wait_for: delay=1 host="{{ addresses.results[ansible_loop.index0].address }}" port=22 state=started timeout=30
       with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
       loop_control:
         extended: yes
+    - name: Save host data (gce_instances_ips)
+      add_host: hostname={{ instances.results[ansible_loop.index0].networkInterfaces[0].networkIP }} groupname=gce_instances_ips
+      with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+      loop_control:
+        extended: yes
+    - name: Save host data (distbench_node_managers)
+      add_host: hostname={{ instances.results[ansible_loop.index].networkInterfaces[0].networkIP }} groupname=distbench_node_managers
+      with_sequence: start=1 end="{{ gcp_number_of_node_managers }}" format="%02d"
+      loop_control:
+        extended: yes
+    - name: Save host data (distbench_test_sequencer)
+      add_host: hostname={{ instances.results[0].networkInterfaces[0].networkIP }} groupname=distbench_test_sequencer
+
+# - name: Install Distbench dependencies
+#   hosts: gce_instances_ips
+#   become: yes
+#   become_method: sudo
+#   roles:
+#     - distbench_deps
+
+- name: Distbench push
+  hosts: gce_instances_ips
+  become: yes
+  become_method: sudo
+  roles:
+    - distbench_push
+
+- name: Distbench test_sequencer
+  hosts: distbench_test_sequencer
+  become: yes
+  become_method: sudo
+  roles:
+    - distbench_test_sequencer
+
+- name: Distbench node_manager
+  hosts: distbench_node_managers
+  become: yes
+  become_method: sudo
+  roles:
+    - distbench_node_manager
+

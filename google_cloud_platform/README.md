@@ -13,7 +13,9 @@ See the Ansible documentation at:
 
 On Ubuntu:
 ```bash
+$ sudo apt update
 $ sudo apt install ansible
+$ apt install python3-pip
 $ pip install requests google-auth
 ```
 
@@ -24,5 +26,8 @@ $ pip install requests google-auth
 
 ### Update the configuration
 
+Edit the configuration in `group_vars/all.yml`;
+set `gcp_project` and `gcp_service_account_file` to match your GCP
+creditentials.
 
-
+The other options can be customized as well.

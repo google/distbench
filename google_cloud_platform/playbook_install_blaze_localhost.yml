@@ -1,0 +1,8 @@
+---
+
+- name: Install Distbench dependencies
+  hosts: localhost
+  become: yes
+  become_method: sudo
+  roles:
+    - distbench_deps
