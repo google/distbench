@@ -28,6 +28,17 @@
     register: "addresses"
     with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
 
+  - name: delete disks
+    gcp_compute_disk:
+      name: "{{ gcp_base_name }}-disk-instance-{{ item }}"
+      zone: "{{ gcp_zone }}"
+      project: "{{ gcp_project }}"
+      auth_kind: "{{ gcp_auth_kind }}"
+      service_account_file: "{{ gcp_service_account_file }}"
+      state: absent
+    register: "disks"
+    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
+
   - name: delete network
     gcp_compute_network:
       name: "{{ gcp_base_name }}-network-instance"
@@ -36,15 +47,4 @@
       service_account_file: "{{ gcp_service_account_file }}"
       state: absent
     register: network
-
-#  - name: delete disks
-#    gcp_compute_disk:
-#      name: "{{ gcp_base_name }}-disk-instance-{{ item }}"
-#      zone: "{{ gcp_zone }}"
-#      project: "{{ gcp_project }}"
-#      auth_kind: "{{ gcp_auth_kind }}"
-#      service_account_file: "{{ gcp_service_account_file }}"
-#      state: absent
-#    register: "disks"
-#    with_sequence: start=0 end="{{ gcp_number_of_node_managers }}" format="%02d"
 
