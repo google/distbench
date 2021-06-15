@@ -54,7 +54,7 @@
   - name: create instances
     gcp_compute_instance:
       name: "{{ gcp_base_name }}-instance-{{ item }}"
-      machine_type: n1-standard-1
+      machine_type: "{{ gcp_machine_type }}"
       disks:
       - auto_delete: 'true'
         boot: 'true'

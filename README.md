@@ -37,6 +37,7 @@ the grpc\_cli command line tool.
 Quick instructions for GRPC:
 
 ```bash
+sudo apt install cmake
 git clone https://github.com/grpc/grpc.git
 cd grpc
 git submodule update --init
