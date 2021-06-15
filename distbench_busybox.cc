@@ -20,6 +20,8 @@
 
 ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
+ABSL_FLAG(bool, use_ipv4_first, false,
+    "Listen on an IPV4 address in priority (by default Distbench will use IPV6");
 
 void Usage() {
   std::cerr << "Usage: distbench module [options]\n";
@@ -49,6 +51,7 @@ int main(int argc, char** argv, char** envp) {
 
   absl::ParseCommandLine(argc, argv);
   distbench::InitLibs();
+  distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
   for (int i = 1; i < argc; ++i) {
     if (!strcmp(argv[i], "test_sequencer")) {
       distbench::TestSequencerOpts opts = {};

@@ -33,6 +33,8 @@ ostream& operator<< (ostream &out, grpc::Status const& c);
 
 namespace distbench {
 
+void set_use_ipv4_first(bool _use_ipv4_first);
+
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
 std::string IpAddressForDevice(std::string_view netdev);

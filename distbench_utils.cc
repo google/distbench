@@ -31,6 +31,12 @@ ostream& operator<< (ostream &out, grpc::Status const& c)
 
 namespace distbench {
 
+static bool use_ipv4_first = false;
+
+void set_use_ipv4_first(bool _use_ipv4_first){
+  use_ipv4_first = _use_ipv4_first;
+}
+
 std::string Hostname() {
   char hostname[4096] = {};
   if (gethostname(hostname, sizeof(hostname))) {
@@ -79,11 +85,17 @@ std::string IpAddressForDevice(std::string_view netdev) {
 
 std::string SocketAddressForDevice(std::string_view netdev, int port) {
   net_base::IPAddress ip;
-  if (net_base::InterfaceLookup::MyIPv6Address(&ip)) {
-    return absl::StrCat("[", ip.ToString(), "]:", port);
-  } else if (net_base::InterfaceLookup::MyIPv4Address(&ip)) {
+
+  if (use_ipv4_first &&
+      net_base::InterfaceLookup::MyIPv4Address(&ip))
     return absl::StrCat(ip.ToString(), ":", port);
-  }
+
+  if (net_base::InterfaceLookup::MyIPv6Address(&ip))
+    return absl::StrCat("[", ip.ToString(), "]:", port);
+
+  if (net_base::InterfaceLookup::MyIPv4Address(&ip))
+    return absl::StrCat(ip.ToString(), ":", port);
+
   LOG(QFATAL) << "Could not get ip v4/v6 address";
   exit(1);
 }
