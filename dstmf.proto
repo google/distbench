@@ -38,11 +38,7 @@ message ServiceBundle {
 // responses.
 message PayloadSpec {
   optional string name = 1;
-  optional int32 pool_size = 2;
-  optional string template_payload_name = 3;
   optional int32 size = 4;
-  optional int32 seed = 5;
-  repeated bytes literal_contents = 6;
 }
 
 message RpcSpec {
@@ -81,7 +77,6 @@ message Action {
 message ActionList {
   optional string name = 1;
   repeated string action_names = 2;
-  optional bool serialize_all_actions = 3;
 }
 
 message DistributedSystemDescription {
