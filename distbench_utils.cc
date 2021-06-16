@@ -18,9 +18,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
-#include <glog/logging.h>
-#include <grpcpp/security/credentials.h>
-#include "base/logging.h"
+#include "glog/logging.h"
 
 namespace std {
 ostream& operator<< (ostream &out, grpc::Status const& c)
@@ -96,13 +94,13 @@ std::string SocketAddressForDevice(std::string_view netdev, int port) {
   if (net_base::InterfaceLookup::MyIPv4Address(&ip))
     return absl::StrCat(ip.ToString(), ":", port);
 
-  LOG(QFATAL) << "Could not get ip v4/v6 address";
+  LOG(FATAL) << "Could not get ip v4/v6 address";
   exit(1);
 }
 
 std::string ServiceInstanceName(std::string_view service_type, int instance) {
-  QCHECK(!service_type.empty());
-  QCHECK_GE(instance, 0);
+  CHECK(!service_type.empty());
+  CHECK_GE(instance, 0);
   return absl::StrCat(service_type, "/", instance);
 }
 
@@ -155,7 +153,7 @@ ServiceSpec GetServiceSpec(std::string_view name,
       return service;
     }
   }
-  LOG(QFATAL) << "Service not found: " << name;
+  LOG(FATAL) << "Service not found: " << name;
   exit(1);
 }
 
@@ -163,7 +161,7 @@ namespace {
 
 std::string LatencySummary(std::vector<int64_t> latencies) {
   std::string ret;
-  QCHECK(!latencies.empty());
+  CHECK(!latencies.empty());
   size_t N =  latencies.size();
   absl::StrAppendFormat(&ret, "N: %ld", N);
   absl::StrAppendFormat(&ret, " min: %ldns", *latencies.begin());

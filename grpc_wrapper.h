@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BASE_LOGGING_H_
-#define BASE_LOGGING_H_
+#ifndef GRPC_WRAPPER_H_
+#define GRPC_WRAPPER_H_
 
-#define QCHECK CHECK
-#define QCHECK_GE CHECK_GE
-#define QCHECK_LT CHECK_LT
-#define QCHECK_NE CHECK_NE
-#define QCHECK_EQ CHECK_EQ
+#include "grpcpp/create_channel.h"
+#include "grpcpp/security/credentials.h"
+#include "grpcpp/server_builder.h"
 
-#define COMPACT_GOOGLE_LOG_QFATAL COMPACT_GOOGLE_LOG_FATAL
-
-#endif  // BASE_LOGGING_H_
+#endif  // GRPC_WRAPPER_H_

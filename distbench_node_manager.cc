@@ -17,11 +17,7 @@
 #include "distbench_utils.h"
 #include "protocol_driver_allocator.h"
 #include "absl/strings/str_split.h"
-#include "include/grpcpp/create_channel.h"
-#include "include/grpcpp/security/credentials.h"
-#include "include/grpcpp/server_builder.h"
-#include <glog/logging.h>
-#include "base/logging.h"
+#include "glog/logging.h"
 
 namespace distbench {
 
@@ -41,12 +37,12 @@ grpc::Status NodeManager::ConfigureNode(
   for (const auto& service_name : request->services()) {
     std::vector<std::string> service_instance =
       absl::StrSplit(service_name, '/');
-    QCHECK_EQ(service_instance.size(), 2lu);
+    CHECK_EQ(service_instance.size(), 2lu);
 
     int port = AllocatePort();
     service_ports_.push_back(port);
     int instance;
-    QCHECK(absl::SimpleAtoi(service_instance[1], &instance));
+    CHECK(absl::SimpleAtoi(service_instance[1], &instance));
 
     absl::Status ret = AllocService({
           service_name,
@@ -72,7 +68,7 @@ void NodeManager::ClearServices() {
 
 absl::Status NodeManager::AllocService(
     const ServiceOpts& service_opts) {
-  QCHECK(service_opts.port);
+  CHECK(service_opts.port);
   ProtocolDriverOptions pd_opts;
   pd_opts.set_protocol_name("grpc");
   pd_opts.set_netdev_name("eth0");

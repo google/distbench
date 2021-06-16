@@ -10,10 +10,10 @@ cc_library(
     name = "distbench_utils",
     srcs = [
         "distbench_utils.cc",
-        "base/logging.h"
     ],
     hdrs = [
         "distbench_utils.h",
+        "grpc_wrapper.h",
     ],
     deps = [
         ":interface_lookup",

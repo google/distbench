@@ -21,7 +21,6 @@
 #include "distbench_utils.h"
 #include "protocol_driver.h"
 #include "absl/random/random.h"
-#include "grpcpp/server_builder.h"
 
 namespace distbench {
 
@@ -171,8 +170,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
     void RecordLatency(
-        int rpc_index,
-        int service_type, int instance, const ClientRpcState* state);
+        size_t rpc_index,
+        size_t service_type,
+        size_t instance,
+        const ClientRpcState* state);
 
     const ServerRpcState* incoming_rpc_state = nullptr;  // may be nullptr
     std::unique_ptr<ActionState[]> state_table;

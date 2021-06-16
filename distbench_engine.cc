@@ -19,10 +19,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
-#include "include/grpcpp/create_channel.h"
-#include "include/grpcpp/security/credentials.h"
-#include <glog/logging.h>
-#include "base/logging.h"
+#include "glog/logging.h"
 
 namespace distbench {
 
@@ -258,7 +255,7 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.actionlist_index = it4->second;
       } else {
-        LOG(QFATAL) << "only rpc actions are supported for now";
+        LOG(FATAL) << "only rpc actions are supported for now";
       }
       action.dependent_action_indices.resize(action.proto.dependencies_size());
       for (int k = 0; k < action.proto.dependencies_size(); ++k) {
@@ -339,7 +336,7 @@ absl::Status DistBenchEngine::Initialize(
     std::string_view service_name,
     int service_instance) {
   traffic_config_ = global_description;
-  QCHECK(!service_name.empty());
+  CHECK(!service_name.empty());
   service_name_ = service_name;
   service_spec_ = GetServiceSpec(service_name, global_description);
   service_instance_ = service_instance;
@@ -403,19 +400,19 @@ absl::Status DistBenchEngine::ConnectToPeers() {
   std::string my_name = absl::StrCat(service_name_, "/", service_instance_);
   for (const auto& service : service_map_.service_endpoints()) {
     auto it = service_instance_ids.find(service.first);
-    QCHECK(it != service_instance_ids.end());
+    CHECK(it != service_instance_ids.end());
     int peer_trace_id = it->second;
     std::vector<std::string> service_and_instance =
       absl::StrSplit(service.first, '/');
-    QCHECK_EQ(service_and_instance.size(), 2ul);
+    CHECK_EQ(service_and_instance.size(), 2ul);
     auto& service_type = service_and_instance[0];
     int instance;
-    QCHECK(absl::SimpleAtoi(service_and_instance[1], &instance));
+    CHECK(absl::SimpleAtoi(service_and_instance[1], &instance));
     if (service.first == my_name) {
       trace_id_ = peer_trace_id;
     }
     auto it2 = service_index_map.find(service_type);
-    QCHECK(it2 != service_index_map.end());
+    CHECK(it2 != service_index_map.end());
     int service_id = it2->second;
     peers_[service_id][instance].log_name = service.first;
     peers_[service_id][instance].trace_id = peer_trace_id;
@@ -450,7 +447,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
         std::shared_ptr<grpc::Channel> channel =
           grpc::CreateChannel(service_instance.endpoint_address, creds);
         rpc_state.stub = ConnectionSetup::NewStub(channel);
-        QCHECK(rpc_state.stub);
+        CHECK(rpc_state.stub);
 
         ++rpc_count;
         rpc_state.request.set_initiator_info(pd_->Preconnect().value());
@@ -526,7 +523,7 @@ ServicePerformanceLog DistBenchEngine::FinishTrafficAndGetLogs() {
 
 void DistBenchEngine::RpcHandler(ServerRpcState* state) {
   // LOG(INFO) << state->request->ShortDebugString();
-  QCHECK(state->request->has_rpc_index());
+  CHECK(state->request->has_rpc_index());
   const auto& simulated_server_rpc =
       server_rpc_table_[state->request->rpc_index()];
   const auto& rpc_def = simulated_server_rpc.rpc_definition;
@@ -546,8 +543,8 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
 
 void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
-  QCHECK_LT(static_cast<size_t>(list_index), action_list_table_.size());
-  QCHECK_GE(list_index, 0);
+  CHECK_LT(static_cast<size_t>(list_index), action_list_table_.size());
+  CHECK_GE(list_index, 0);
   ActionListState s;
 
   // Allocate peer_logs for performance gathering
@@ -610,7 +607,7 @@ void DistBenchEngine::RunActionList(
           &s.action_mu,
           absl::Condition(&some_actions_finished), next_iteration_time)) {
       if (s.finished_action_indices.empty()) {
-        LOG(QFATAL) << "finished_action_indices is empty";
+        LOG(FATAL) << "finished_action_indices is empty";
       }
       for (const auto& finished_action_index : s.finished_action_indices) {
         s.state_table[finished_action_index].finished = true;
@@ -664,13 +661,13 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
 }
 
 void DistBenchEngine::ActionListState::RecordLatency(
-    int rpc_index,
-    int service_type,
-    int instance,
+    size_t rpc_index,
+    size_t service_type,
+    size_t instance,
     const ClientRpcState* state) {
-  QCHECK_LT(service_type, peer_logs.size());
+  CHECK_LT(service_type, peer_logs.size());
   auto& service_log = peer_logs.at(service_type);
-  QCHECK_LT(instance, service_log.size());
+  CHECK_LT(instance, service_log.size());
   auto& peer_log = service_log.at(instance);
   auto& rpc_log = (*peer_log.mutable_rpc_logs())[rpc_index];
   auto* sample = state->success ? rpc_log.add_successful_rpc_samples()
@@ -708,8 +705,8 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     std::shared_ptr<ServerRpcState> server_rpc_state =
       std::make_shared<ServerRpcState>();
     int rpc_service_index = action.rpc_service_index;
-    QCHECK_GE(rpc_service_index, 0);
-    QCHECK_LT(static_cast<size_t>(rpc_service_index), peers_.size());
+    CHECK_GE(rpc_service_index, 0);
+    CHECK_LT(static_cast<size_t>(rpc_service_index), peers_.size());
 
     if (peers_[rpc_service_index].empty()) {
       return;
@@ -721,7 +718,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
         RunRpcActionIteration(iteration_state);
       };
   } else {
-    LOG(QFATAL) << "Do not support simulated computations yet";
+    LOG(FATAL) << "Do not support simulated computations yet";
   }
 
   bool open_loop = false;
@@ -749,7 +746,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
   action_state->iteration_mutex.Unlock();
 
   if (open_loop) {
-    QCHECK_EQ(action_state->next_iteration_time, absl::InfiniteFuture());
+    CHECK_EQ(action_state->next_iteration_time, absl::InfiniteFuture());
     absl::Duration period = absl::Nanoseconds(
         action_state->action->proto.iterations().open_loop_interval_ns());
     if (action_state->action->proto.iterations()
@@ -902,7 +899,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
 // Potential optimization
 //    if (nb_targets == 1) {
 //      int target = random() % num_servers;
-//      QCHECK_NE(target, -1);
+//      CHECK_NE(target, -1);
 //      targets.push_back(target);
 //      return targets;
 //    }
@@ -919,7 +916,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
       int rnd_pos = i + (random() % (num_servers - i));
       std::swap(from_vector[i], from_vector[rnd_pos]);
       int target = from_vector[i];
-      QCHECK_NE(target, -1);
+      CHECK_NE(target, -1);
       targets.push_back(target);
     }
   } else if (fanout_filter == "all") {
@@ -928,7 +925,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
       int target = i;
       if (state->rpc_service_index != service_index_ ||
           target != service_instance_) {
-        QCHECK_NE(target, -1);
+        CHECK_NE(target, -1);
         targets.push_back(target);
       }
     }
@@ -945,7 +942,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
       // Default case: return the first instance of the service
       target = 0;
     }
-    QCHECK_NE(target, -1);
+    CHECK_NE(target, -1);
     targets.push_back(target);
   }
 

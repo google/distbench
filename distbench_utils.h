@@ -21,11 +21,8 @@
 #include "distbench.pb.h"
 #include "dstmf.pb.h"
 #include "absl/status/statusor.h"
-#include "src/core/lib/security/credentials/credentials.h"
-#include "include/grpc++/server_builder.h"
 #include "google/protobuf/stubs/status_macros.h"
-
-#include <grpcpp/security/credentials.h>
+#include "grpc_wrapper.h"
 
 namespace std{
 ostream& operator<< (ostream &out, grpc::Status const& c);

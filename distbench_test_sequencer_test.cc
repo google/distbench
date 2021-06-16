@@ -17,10 +17,9 @@
 #include "distbench_node_manager.h"
 #include "distbench_utils.h"
 #include "protocol_driver_allocator.h"
-#include "include/grpcpp/create_channel.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
-#include <glog/logging.h>
+#include "glog/logging.h"
 
 namespace distbench {
 

@@ -15,9 +15,7 @@
 #include "protocol_driver_grpc_async_callback.h"
 
 #include "distbench_utils.h"
-#include "include/grpcpp/create_channel.h"
-#include <glog/logging.h>
-#include "base/logging.h"
+#include "glog/logging.h"
 
 namespace distbench {
 
@@ -58,7 +56,7 @@ ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     std::string_view netdev_name, int port) {
   server_port_ = port;
-  QCHECK(port);
+  CHECK(port);
   server_ip_address_ = IpAddressForDevice("");
   server_socket_address_ = SocketAddressForDevice("", port);
   traffic_service_ = absl::make_unique<TrafficServiceAsync>();
@@ -103,8 +101,8 @@ absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
 
 absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
     std::string remote_connection_info, int peer) {
-  QCHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
-  QCHECK_GE(peer, 0);
+  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
+  CHECK_GE(peer, 0);
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
   LOG(INFO) << addr.DebugString();

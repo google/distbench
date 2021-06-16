@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "benchmark/benchmark.h"
-#include <glog/logging.h>
+#include "glog/logging.h"
 
 namespace distbench {
 

@@ -16,7 +16,6 @@
 #include "distbench_test_sequencer.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
-#include <glog/logging.h>
 
 ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
@@ -69,7 +68,8 @@ int main(int argc, char** argv, char** envp) {
       distbench::NodeManager node_manager(&clock);
       absl::Status status = node_manager.Initialize(opts);
       if (!status.ok()) {
-        LOG(ERROR) << status;
+        std::cerr << "Initializing the node manager failed: "
+                  << status << std::endl;
       }
       node_manager.Wait();
       return !status.ok();

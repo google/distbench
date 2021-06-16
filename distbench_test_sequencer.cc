@@ -15,11 +15,7 @@
 #include "distbench_test_sequencer.h"
 
 #include "distbench_utils.h"
-#include "include/grpcpp/create_channel.h"
-#include "include/grpcpp/security/credentials.h"
-#include "include/grpcpp/server_builder.h"
-#include <glog/logging.h>
-#include "base/logging.h"
+#include "glog/logging.h"
 
 namespace distbench {
 
@@ -287,7 +283,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
       rpc_state.request.add_services(service);
     }
     auto it = node_map_.find(node_services.first);
-    QCHECK(it != node_map_.end());
+    CHECK(it != node_map_.end());
     rpc_state.rpc = it->second.stub->AsyncConfigureNode(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
@@ -335,7 +331,7 @@ absl::Status TestSequencer::IntroducePeers(
     ++rpc_count;
     rpc_state.request = service_map;
     auto it = node_map_.find(node_services.first);
-    QCHECK(it != node_map_.end());
+    CHECK(it != node_map_.end());
     rpc_state.rpc = it->second.stub->AsyncIntroducePeers(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
@@ -376,7 +372,7 @@ absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     auto it = node_map_.find(node_services.first);
-    QCHECK(it != node_map_.end());
+    CHECK(it != node_map_.end());
     rpc_state.node = &it->second;
     it->second.idle = false;
     rpc_state.rpc = it->second.stub->AsyncRunTraffic(
