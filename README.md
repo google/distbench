@@ -9,7 +9,7 @@ remote calls, thread wake-ups, compression, encryption, network to host interact
 
 A Distbench test consists of a controller process and a set of worker processes. The controller initiates
 a traffic pattern among the set of workers and generates a performance report for the RPCs. The traffic
-pattern, specified spatially and temporally and the RPC stack are all configured using a configuration language.
+pattern, specified spatially and temporally and the RPC stack are all runtime configurable.
 A block diagram is shown below.
 
 ![image](https://user-images.githubusercontent.com/22774907/122141907-2cfe0200-ce03-11eb-8c43-ce679d9639ac.png)
