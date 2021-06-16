@@ -883,6 +883,9 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
   const std::string& fanout_filter = rpc_spec.fanout_filter();
 
   if (rpc_def.is_stochastic_fanout) {
+    std::map<int, std::vector<int>> partial_rand_vects =
+        state->partially_randomized_vectors;
+
     int nb_targets = 0;
     float random_val = absl::Uniform(random_generator, 0, 1.0);
     float cur_val = 0.0;
@@ -905,8 +908,8 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
 //    }
 
     // Generate a vector to pick random targets from (only done once)
-    partially_randomized_vectors.try_emplace(num_servers, std::vector<int>());
-    std::vector<int>& from_vector = partially_randomized_vectors[num_servers];
+    partial_rand_vects.try_emplace(num_servers, std::vector<int>());
+    std::vector<int>& from_vector = partial_rand_vects[num_servers];
     if (from_vector.size() == 0)
       for (int i = 0; i < num_servers; i++)
         from_vector.push_back(i);

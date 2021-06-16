@@ -164,6 +164,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::function<void(std::shared_ptr<ActionIterationState> iteration_state)>
       iteration_function;
     std::function<void(void)> all_done_callback;
+
+    std::map<int, std::vector<int>> partially_randomized_vectors;
   };
 
   struct ActionListState {
@@ -232,7 +234,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   // Random
   absl::BitGen random_generator;
-  std::map<int, std::vector<int>> partially_randomized_vectors;
 };
 
 }  // namespace distbench
