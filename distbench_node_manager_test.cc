@@ -24,7 +24,9 @@
 namespace distbench {
 
 ProtocolDriverOptions common_pd_opts() {
-  return ProtocolDriverOptions();
+  auto opts = ProtocolDriverOptions();
+  opts.set_protocol_name("grpc");
+  return opts;
 }
 
 TEST(DistBenchEngineTest, ctor) {
