@@ -49,7 +49,8 @@ grpc::Status NodeManager::ConfigureNode(
           service_instance[0],
           instance,
           port,
-          "grpc"});
+          traffic_config_.default_protocol(),
+          "eth0"});
     if (!ret.ok()) grpc::Status(grpc::StatusCode::UNKNOWN, "AllocService failure");
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(SocketAddressForDevice("", port));
@@ -70,8 +71,8 @@ absl::Status NodeManager::AllocService(
     const ServiceOpts& service_opts) {
   CHECK(service_opts.port);
   ProtocolDriverOptions pd_opts;
-  pd_opts.set_protocol_name("grpc");
-  pd_opts.set_netdev_name("eth0");
+  pd_opts.set_protocol_name(std::string(service_opts.protocol));
+  pd_opts.set_netdev_name(std::string(service_opts.netdev));
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(pd_opts);
   absl::Status ret = pd->Initialize("eth0", AllocatePort());
   if (!ret.ok()) return ret;

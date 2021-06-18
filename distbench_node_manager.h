@@ -62,6 +62,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
     int service_instance;
     int port;
     std::string_view protocol;
+    std::string_view netdev;
   };
 
   absl::Status AllocService(const ServiceOpts& service_opts)
