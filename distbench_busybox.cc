@@ -43,6 +43,8 @@ void Usage() {
 }
 
 int main(int argc, char** argv, char** envp) {
+  ::google::InitGoogleLogging(argv[0]);
+
   if (argc < 2) {
     Usage();
     return 1;
