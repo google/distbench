@@ -53,7 +53,7 @@ std::map<std::string, int> EnumerateRpcs(
 ServiceSpec GetServiceSpec(std::string_view name,
                            const DistributedSystemDescription& config);
 
-void InitLibs();
+void InitLibs(const char* argv0);
 
 std::string Hostname();
 

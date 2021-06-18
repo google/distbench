@@ -43,15 +43,13 @@ void Usage() {
 }
 
 int main(int argc, char** argv, char** envp) {
-  ::google::InitGoogleLogging(argv[0]);
-
   if (argc < 2) {
     Usage();
     return 1;
   }
 
   absl::ParseCommandLine(argc, argv);
-  distbench::InitLibs();
+  distbench::InitLibs(argv[0]);
   distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
   for (int i = 1; i < argc; ++i) {
     if (!strcmp(argv[i], "test_sequencer")) {

@@ -70,8 +70,10 @@ void FreePort(int port) {
   net_util::RecycleUnusedPort(port);
 }
 
-void InitLibs() {
+void InitLibs(const char* argv0) {
   // Extra library initialization can go here
+  ::google::InitGoogleLogging(argv0);
+
 }
 
 std::string IpAddressForDevice(std::string_view netdev) {
