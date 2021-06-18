@@ -759,6 +759,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
       StartOpenLoopIteration(action_state);
     }
   } else {
+    action_state->next_iteration_time = clock_->Now();
     int64_t parallel_copies = std::min(
         action.proto.iterations().max_parallel_iterations(), max_iterations);
     for (int i = 0; i < parallel_copies; ++i) {
