@@ -166,6 +166,7 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   if (test.services().empty()) {
     return absl::InvalidArgumentError("No services defined.");
   }
+  std::vector<std::string> all_services;
   std::set<std::string> unplaced_services;
   std::set<std::string> idle_nodes;
   {
@@ -175,11 +176,19 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
     }
   }
 
+  int total_services = 0;
+  for (const auto& service_node : test.services()) {
+    for (int i = 0; i < service_node.count(); ++i) {
+      ++total_services;
+    }
+  }
+  all_services.reserve(total_services);
   for (const auto& service_node : test.services()) {
     for (int i = 0; i < service_node.count(); ++i) {
       std::string service_instance =
         absl::StrCat(service_node.server_type(), "/", i);
       unplaced_services.insert(service_instance);
+      all_services.push_back(service_instance);
     }
   }
 
@@ -209,31 +218,44 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   } else {
     LOG(INFO) << "After manually assigned services "
               << unplaced_services.size() << " still need to be placed";
-  }
 
-  std::string failures;
-  for (const auto& service : unplaced_services) {
-    if (idle_nodes.empty()) {
-      LOG(INFO) << "couldn't place service " << service;
-      if (!failures.empty()) {
-        absl::StrAppend(&failures, ", ");
+    std::vector<std::string> remaining_services;
+    for (const auto& service : all_services) {
+      auto it = unplaced_services.find(service);
+      if (it != unplaced_services.end()) {
+        remaining_services.push_back(service);
       }
-      absl::StrAppend(&failures, service);
-    } else {
-      auto it = idle_nodes.begin();
-      node_service_map[*it].insert(service);
-      LOG(INFO) << "Placed service '" << service << "' on " << *it;
-      idle_nodes.erase(it);
+    }
+    std::vector<std::string> remaining_nodes;
+    for (const auto& node : registered_nodes_) {
+      auto it = idle_nodes.find(node.node_alias);
+      if (it != idle_nodes.end()) {
+        remaining_nodes.push_back(node.node_alias);
+      }
+    }
+    std::string failures;
+    for (size_t i = 0; i < remaining_services.size(); ++i) {
+      if (i >= remaining_nodes.size()) {
+        LOG(INFO) << "couldn't place service " << remaining_services[i];
+        if (!failures.empty()) {
+          absl::StrAppend(&failures, ", ");
+        }
+        absl::StrAppend(&failures, remaining_services[i]);
+      } else {
+        node_service_map[remaining_nodes[i]].insert(remaining_services[i]);
+        LOG(INFO) << "Placed service '" << remaining_services[i] << "' on " << remaining_nodes[i];
+      }
+    }
+
+    if (!failures.empty()) {
+      return absl::NotFoundError(absl::StrCat(
+            "No idle node for placement of services: ", failures));
     }
   }
 
-  if (!failures.empty()) {
-    return absl::NotFoundError(absl::StrCat(
-          "No idle node for placement of services: ", failures));
-  }
-
-  for (const auto& idle_node : idle_nodes) {
-    node_service_map[idle_node];
+  // Make sure there is an entry for every registered node:
+  for (const auto& node : registered_nodes_) {
+    node_service_map[node.node_alias];
   }
 
   LOG(INFO) << "Service Placement:";
