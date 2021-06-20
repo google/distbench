@@ -23,9 +23,10 @@
 
 namespace distbench {
 
-struct Node {
+struct RegisteredNode {
   NodeRegistration registration;
   std::unique_ptr<DistBenchNodeManager::Stub> stub;
+  std::string node_alias;
   bool idle = true;
 };
 
@@ -73,8 +74,9 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
   void CancelTraffic() ABSL_LOCKS_EXCLUDED(mutex_);
 
   absl::Mutex mutex_;
-  std::map<std::string, Node> node_map_ ABSL_GUARDED_BY(mutex_);
-  std::map<std::string, int> node_id_map_ ABSL_GUARDED_BY(mutex_);
+  std::vector<RegisteredNode> registered_nodes_ ABSL_GUARDED_BY(mutex_);
+  std::map<std::string, int> node_alias_id_map_ ABSL_GUARDED_BY(mutex_);
+  std::map<std::string, int> node_registration_id_map_ ABSL_GUARDED_BY(mutex_);
   grpc::ServerContext* running_test_sequence_context_ ABSL_GUARDED_BY(mutex_)
     = nullptr;
   std::shared_ptr<absl::Notification> running_test_notification_

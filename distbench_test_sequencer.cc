@@ -28,14 +28,20 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
   }
 
   absl::MutexLock m(&mutex_);
-  int node_id = node_map_.size();
+  int node_id = registered_nodes_.size();
+  std::string node_alias;
   std::string registration = request->DebugString();
-  auto it = node_id_map_.find(registration);
-  if (it != node_id_map_.end()) {
+  auto it = node_registration_id_map_.find(registration);
+  if (it != node_registration_id_map_.end()) {
     node_id = it->second;
+    node_alias = registered_nodes_[node_id].node_alias;
     LOG(INFO) << "got repeated registration for node" << node_id;
   } else {
-    node_id_map_[registration] = node_id;
+    registered_nodes_.emplace_back();
+    node_alias = absl::StrCat("node", node_id);
+    registered_nodes_.back().node_alias = node_alias;
+    node_registration_id_map_[registration] = node_id;
+    node_alias_id_map_[node_alias] = node_id;
   }
 
   std::shared_ptr<grpc::ChannelCredentials> creds =
@@ -47,8 +53,8 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
   auto stub = DistBenchNodeManager::NewStub(channel);
   if (stub) {
     response->set_node_id(node_id);
-    response->set_node_alias(absl::StrCat("node", node_id));
-    auto& node = node_map_[response->node_alias()];
+    response->set_node_alias(node_alias);
+    auto& node = registered_nodes_[node_id];
     node.registration = *request;
     node.stub = std::move(stub);
     LOG(INFO) << "Connected to " << response->node_alias()
@@ -98,20 +104,20 @@ void TestSequencer::CancelTraffic() {
     grpc::Status status;
     CancelTrafficRequest request;
     CancelTrafficResult response;
-    Node* node;
+    RegisteredNode* node;
   };
-  std::vector<PendingRpc> pending_rpcs(node_map_.size());
+  std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
   int rpc_count = 0;
-  for (auto& node_it : node_map_) {
-    if (node_it.second.idle) {
-      LOG(INFO) << "node " << node_it.first << " was already idle";
+  for (auto& node_it : registered_nodes_) {
+    if (node_it.idle) {
+      LOG(INFO) << "node " << node_it.node_alias << " was already idle";
       continue;
     }
-    LOG(INFO) << "node " << node_it.first << " was busy";
+    LOG(INFO) << "node " << node_it.node_alias << " was busy";
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
-    rpc_state.node = &node_it.second;
-    rpc_state.rpc = node_it.second.stub->AsyncCancelTraffic(
+    rpc_state.node = &node_it;
+    rpc_state.rpc = node_it.stub->AsyncCancelTraffic(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
@@ -164,8 +170,8 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   std::set<std::string> idle_nodes;
   {
     absl::MutexLock m(&mutex_);
-    for (const auto& node : node_map_) {
-      idle_nodes.insert(node.first);
+    for (const auto& node : registered_nodes_) {
+      idle_nodes.insert(node.node_alias);
     }
   }
 
@@ -208,6 +214,7 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   std::string failures;
   for (const auto& service : unplaced_services) {
     if (idle_nodes.empty()) {
+      LOG(INFO) << "couldn't place service " << service;
       if (!failures.empty()) {
         absl::StrAppend(&failures, ", ");
       }
@@ -282,9 +289,9 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     for (const auto& service : node_services.second) {
       rpc_state.request.add_services(service);
     }
-    auto it = node_map_.find(node_services.first);
-    CHECK(it != node_map_.end());
-    rpc_state.rpc = it->second.stub->AsyncConfigureNode(
+    auto it = node_alias_id_map_.find(node_services.first);
+    CHECK(it != node_alias_id_map_.end()) << "couldn't find " << node_services.first;
+    rpc_state.rpc = registered_nodes_[it->second].stub->AsyncConfigureNode(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
@@ -330,9 +337,9 @@ absl::Status TestSequencer::IntroducePeers(
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     rpc_state.request = service_map;
-    auto it = node_map_.find(node_services.first);
-    CHECK(it != node_map_.end());
-    rpc_state.rpc = it->second.stub->AsyncIntroducePeers(
+    auto it = node_alias_id_map_.find(node_services.first);
+    CHECK(it != node_alias_id_map_.end());
+    rpc_state.rpc = registered_nodes_[it->second].stub->AsyncIntroducePeers(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
@@ -362,7 +369,7 @@ absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
     grpc::Status status;
     RunTrafficRequest request;
     ServiceLogs response;
-    Node* node;
+    RegisteredNode* node;
   };
   grpc::Status status;
   ServiceLogs ret;
@@ -371,11 +378,11 @@ absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
-    auto it = node_map_.find(node_services.first);
-    CHECK(it != node_map_.end());
-    rpc_state.node = &it->second;
-    it->second.idle = false;
-    rpc_state.rpc = it->second.stub->AsyncRunTraffic(
+    auto it = node_alias_id_map_.find(node_services.first);
+    CHECK(it != node_alias_id_map_.end());
+    rpc_state.node = &registered_nodes_[it->second];
+    rpc_state.node->idle = false;
+    rpc_state.rpc = rpc_state.node->stub->AsyncRunTraffic(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
