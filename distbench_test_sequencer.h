@@ -60,6 +60,10 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
       grpc::ServerContext* context,
       const DistributedSystemDescription& test);
 
+  absl::StatusOr<std::map<std::string, std::set<std::string>>> PlaceServices(
+      const DistributedSystemDescription& test);
+
+
   absl::StatusOr<ServiceEndpointMap> ConfigureNodes(
       const std::map<std::string, std::set<std::string>>& node_service_map,
       const DistributedSystemDescription& test);

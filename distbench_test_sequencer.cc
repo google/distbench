@@ -160,17 +160,13 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
   return grpc::Status::OK;
 }
 
-absl::StatusOr<TestResult> TestSequencer::DoRunTest(
-    grpc::ServerContext* context,
-    const DistributedSystemDescription& test) {
-  if (test.services().empty()) {
-    return absl::InvalidArgumentError("No services defined.");
-  }
+absl::StatusOr<std::map<std::string, std::set<std::string>>>
+TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
+  absl::MutexLock m(&mutex_);
   std::vector<std::string> all_services;
   std::set<std::string> unplaced_services;
   std::set<std::string> idle_nodes;
   {
-    absl::MutexLock m(&mutex_);
     for (const auto& node : registered_nodes_) {
       idle_nodes.insert(node.node_alias);
     }
@@ -191,7 +187,6 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
       all_services.push_back(service_instance);
     }
   }
-
   std::map<std::string, std::set<std::string>> node_service_map;
   for (const auto& service_bundle : test.node_service_bundles()) {
     for (const auto& service : service_bundle.second.services()) {
@@ -265,6 +260,21 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
       LOG(INFO) << "  " << service;
     }
   }
+  return node_service_map;
+}
+
+absl::StatusOr<TestResult> TestSequencer::DoRunTest(
+    grpc::ServerContext* context,
+    const DistributedSystemDescription& test) {
+  if (test.services().empty()) {
+    return absl::InvalidArgumentError("No services defined.");
+  }
+
+  auto maybe_map = PlaceServices(test);
+  if (!maybe_map.ok()) {
+    return maybe_map.status();
+  }
+  std::map<std::string, std::set<std::string>> node_service_map = maybe_map.value();
 
   ServiceEndpointMap service_map;
   auto cret = ConfigureNodes(node_service_map, test);
