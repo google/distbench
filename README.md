@@ -33,4 +33,4 @@ Use Distbench to:
 
 For contributors, make sure you also consult the following:
 - [Code of conduct](docs/code-of-conduct.md)
-- [Contributing](docs/contributing.md).
+- [Contributing](docs/contributing.md)

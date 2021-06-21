@@ -73,12 +73,13 @@ The Protocol Driver:
   RPC stacks, work needed is now of O(N+K)...
 
 The details of the Intermediate Representation (IR) of traffic patterns and the
-spatial distribution are provided in later sections.
+spatial distribution are provided in the
+[Distbench Traffic Pattern - Format](distbench-test-format.md)
 
 ## Other documentation
 
-- [Distbench Overview](docs/quick-overview.md)
-- [Distbench Getting Started](docs/getting-started.md)
-- [Distbench Workloads](workloads/README.md)
-- [Distbench Traffic Patterm - Format](docs/distbench-test-format.md)
+- [Distbench README](../README.md)
+- [Distbench Getting Started](getting-started.md)
+- [Distbench Workloads](../workloads/README.md)
+- [Distbench Traffic Pattern - Format](distbench-test-format.md)
 

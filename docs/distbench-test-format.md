@@ -9,6 +9,9 @@ evolving and subject to change.
 For examples of tests, a good starting point is the workloads already included
 with Distbench (see [workloads/README.md](../workloads/README.md)).
 
+For pointers to other Distbench Documents, see the
+[Distbench README](../README.md).
+
 ## Distributed System Description
 
 The test is defined by a `DistributedSystemDescription` message with the
