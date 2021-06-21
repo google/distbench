@@ -76,7 +76,7 @@ grpc_cli \
 <<EOF
 tests {
   services {
-    server_type: "clique"
+    name: "clique"
     count: $NODE_COUNT
   }
   action_lists {

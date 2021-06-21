@@ -36,7 +36,7 @@ TEST(DistBenchEngineTest, ctor) {
 
 TEST(DistBenchEngineTest, init) {
   DistributedSystemDescription desc;
-  desc.add_services()->set_server_type("test_service");
+  desc.add_services()->set_name("test_service");
   RealClock clock;
   DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
   int port = AllocatePort();

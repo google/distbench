@@ -77,15 +77,15 @@ grpc_cli \
 <<EOF
 tests {
   services {
-    server_type: "load_balancer"
+    name: "load_balancer"
     count: 1
   }
   services {
-    server_type: "root"
+    name: "root"
     count: $ROOT_COUNT
   }
   services {
-    server_type: "leaf"
+    name: "leaf"
     count: $LEAF_COUNT
   }
   action_lists {

@@ -111,7 +111,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   };
 
   struct SimulatedClientRpc {
-    int server_type_index;
+    int service_index;
     std::vector<GenericRequest> request_table;
     RpcDefinition rpc_definition;
     std::atomic<int64_t> rpc_tracing_counter = 0;

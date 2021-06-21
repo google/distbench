@@ -17,10 +17,10 @@ syntax = "proto2";
 package distbench;
 
 // Specifies how many servers there are of each type.
-// The name of an individual instance is just $server_type/$intance_number,
+// The name of an individual instance is just $name/$intance_number,
 // e.g. "search_leaf/0"
 message ServiceSpec {
-  optional string server_type = 1;
+  optional string name = 1;
   optional int32 count = 2;
 }
 

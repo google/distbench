@@ -321,7 +321,7 @@ absl::Status DistBenchEngine::InitializeTables() {
             "Rpc ", rpc.name(), " specifies unknown client service_type ",
             client_service_name));
     }
-    client_rpc_table_[i].server_type_index = it1->second;
+    client_rpc_table_[i].service_index = it1->second;
     client_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
     client_rpc_table_[i].pending_requests_per_peer.resize(
         traffic_config_.services(it1->second).count(), 0);

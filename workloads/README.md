@@ -13,11 +13,11 @@ First two services are implemented and named client and server.
 ```yaml
 tests {
   services {
-    server_type: "client"
+    name: "client"
     count: $CLIENT_COUNT
   }
   services {
-    server_type: "server"
+    name: "server"
     count: $SERVER_COUNT
   }
 ```
@@ -108,11 +108,11 @@ connecting to localhost:10000
 test_results {
   traffic_config {
     services {
-      server_type: "client"
+      name: "client"
       count: 1
     }
     services {
-      server_type: "server"
+      name: "server"
       count: 1
     }
     payload_descriptions {

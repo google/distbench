@@ -34,7 +34,7 @@ names. So a `services` block describes a single service, but there may be
 multiple of them.
 
 ### message `ServiceSpec`
-- `server_type` (string): name of the service.
+- `name` (string): name of the service.
 - `count` (int32): number of instances to start (each instance will occupy a
   `node_manage` unless it is bundled with other services).
 

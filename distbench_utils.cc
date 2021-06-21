@@ -110,8 +110,8 @@ std::map<std::string, int> EnumerateServiceTypes(
     const DistributedSystemDescription& config) {
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
-    // LOG(INFO) << "service " << service.server_type() << " = " << ret.size();
-    ret[service.server_type()] = ret.size();
+    // LOG(INFO) << "service " << service.name() << " = " << ret.size();
+    ret[service.name()] = ret.size();
   }
   return ret;
 }
@@ -120,8 +120,8 @@ std::map<std::string, int> EnumerateServiceSizes(
     const DistributedSystemDescription& config) {
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
-    // LOG(INFO) << "service " << service.server_type() << " = " << ret.size();
-    ret[service.server_type()] = service.count();
+    // LOG(INFO) << "service " << service.name() << " = " << ret.size();
+    ret[service.name()] = service.count();
   }
   return ret;
 }
@@ -140,7 +140,7 @@ std::map<std::string, int> EnumerateServiceInstanceIds(
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
     for (int i = 0; i < service.count(); ++i) {
-      std::string instance = ServiceInstanceName(service.server_type(), i);
+      std::string instance = ServiceInstanceName(service.name(), i);
       // LOG(INFO) << "service " << instance << " = " << ret.size();
       ret[instance] = ret.size();
     }
@@ -151,7 +151,7 @@ std::map<std::string, int> EnumerateServiceInstanceIds(
 ServiceSpec GetServiceSpec(std::string_view name,
                            const DistributedSystemDescription& config) {
   for (const auto& service : config.services()) {
-    if (service.server_type() == name) {
+    if (service.name() == name) {
       return service;
     }
   }

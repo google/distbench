@@ -185,7 +185,7 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   for (const auto& service_node : test.services()) {
     for (int i = 0; i < service_node.count(); ++i) {
       std::string service_instance =
-        absl::StrCat(service_node.server_type(), "/", i);
+        absl::StrCat(service_node.name(), "/", i);
       unplaced_services.insert(service_instance);
       all_services.push_back(service_instance);
     }

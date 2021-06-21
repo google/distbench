@@ -79,11 +79,11 @@ grpc_cli \
 <<EOF
 tests {
   services {
-    server_type: "client"
+    name: "client"
     count: $CLIENT_COUNT
   }
   services {
-    server_type: "server"
+    name: "server"
     count: $SERVER_COUNT
   }
   rpc_descriptions {

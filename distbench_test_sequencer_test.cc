@@ -98,10 +98,10 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
   auto* s1 = test->add_services();
-  s1->set_server_type("s1");
+  s1->set_name("s1");
   s1->set_count(1);
   auto* s2 = test->add_services();
-  s2->set_server_type("s2");
+  s2->set_name("s2");
   s2->set_count(2);
 
   auto* l1 = test->add_action_lists();
