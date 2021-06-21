@@ -238,7 +238,8 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
         absl::StrAppend(&failures, remaining_services[i]);
       } else {
         node_service_map[remaining_nodes[i]].insert(remaining_services[i]);
-        LOG(INFO) << "Placed service '" << remaining_services[i] << "' on " << remaining_nodes[i];
+        LOG(INFO) << "Placed service '" << remaining_services[i]
+                  << "' on node " << remaining_nodes[i];
       }
     }
 
@@ -274,7 +275,8 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   if (!maybe_map.ok()) {
     return maybe_map.status();
   }
-  std::map<std::string, std::set<std::string>> node_service_map = maybe_map.value();
+  std::map<std::string, std::set<std::string>> node_service_map =
+    maybe_map.value();
 
   ServiceEndpointMap service_map;
   auto cret = ConfigureNodes(node_service_map, test);
@@ -322,7 +324,8 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
       rpc_state.request.add_services(service);
     }
     auto it = node_alias_id_map_.find(node_services.first);
-    CHECK(it != node_alias_id_map_.end()) << "couldn't find " << node_services.first;
+    CHECK(it != node_alias_id_map_.end())
+      << "couldn't find " << node_services.first;
     rpc_state.rpc = registered_nodes_[it->second].stub->AsyncConfigureNode(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
