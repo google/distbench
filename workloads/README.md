@@ -35,7 +35,7 @@ start. In that case it will run the action `run_queries`.
 The action is then defined as follows, in this case `run_queries` will perform
 the `client_server_rpc` rpc 100 times:
 ```yaml
-  action_table {
+  actions {
     name: "run_queries"
     rpc_name: "client_server_rpc"
     iterations {
@@ -130,7 +130,7 @@ test_results {
       request_payload_name: "request_payload"
       response_payload_name: "response_payload"
     }
-    action_table {
+    actions {
       name: "run_queries"
       iterations {
         max_iteration_count: 100
@@ -244,7 +244,7 @@ queries across all the leaf servers (`fanout_filter: all`):
     name: "root_query"
     action_names: "root/root_query_fanout"
   }
-  action_table {
+  actions {
     name: "root/root_query_fanout"
     rpc_name: "leaf_query"
   }
@@ -287,7 +287,7 @@ We target around 100 nodes for this benchmark.
 ### Implementation
 
 ```yaml
-  action_table {
+  actions {
     name: "clique_queries"
     iterations {
       max_duration_us: 10000000

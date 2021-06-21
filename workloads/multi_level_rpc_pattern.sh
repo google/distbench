@@ -93,7 +93,7 @@ tests {
     action_names: "load_balancer/do_closed_loop_root_queries"
     action_names: "load_balancer/do_closed_loop_root_queries_again"
   }
-  action_table {
+  actions {
     name: "load_balancer/do_closed_loop_root_queries"
     iterations {
       max_iteration_count: 3
@@ -101,7 +101,7 @@ tests {
     }
     rpc_name: "root_query"
   }
-  action_table {
+  actions {
     name: "load_balancer/do_closed_loop_root_queries_again"
     dependencies : "load_balancer/do_closed_loop_root_queries"
     iterations {
@@ -129,7 +129,7 @@ tests {
     action_names: "root/root_query_fanout"
     # Should be able to use an action name in-place of a single entry action list?
   }
-  action_table {
+  actions {
     name: "root/root_query_fanout"
     rpc_name: "leaf_query"
   }

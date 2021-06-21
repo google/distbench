@@ -106,7 +106,7 @@ tests {
     name: "client"
     action_names: "run_queries"
   }
-  action_table {
+  actions {
     name: "run_queries"
     rpc_name: "client_server_rpc"
     iterations {

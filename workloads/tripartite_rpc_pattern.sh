@@ -124,7 +124,7 @@ tests {
     name: "client"
     action_names: "client_do_many_queries"
   }
-  action_table {
+  actions {
     name: "client_do_many_queries"
     iterations {
       max_iteration_count: 10
@@ -136,7 +136,7 @@ tests {
     action_names: "client_queryindex"
     action_names: "client_queryresult"
   }
-  action_table {
+  actions {
     name: "client_queryindex"
     rpc_name: "client_index_rpc"
   }
@@ -148,7 +148,7 @@ tests {
     name: "client_result_rpc"
     # No action on the client; just send the response
   }
-  action_table {
+  actions {
     name: "client_queryresult"
     rpc_name: "client_result_rpc"
     dependencies: "client_queryindex"

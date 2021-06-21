@@ -198,9 +198,9 @@ absl::Status DistBenchEngine::InitializeTables() {
 
   // Convert the action table to a map indexed by name:
   std::map<std::string, Action> action_map;
-  for (int i = 0; i < traffic_config_.action_table_size(); ++i) {
-    const auto& action = traffic_config_.action_table(i);
-    action_map[action.name()] = traffic_config_.action_table(i);
+  for (int i = 0; i < traffic_config_.actions_size(); ++i) {
+    const auto& action = traffic_config_.actions(i);
+    action_map[action.name()] = traffic_config_.actions(i);
   }
   std::map<std::string, int> rpc_name_index_map =
     EnumerateRpcs(traffic_config_);

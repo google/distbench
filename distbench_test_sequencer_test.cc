@@ -108,7 +108,7 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   l1->set_name("s1");
   l1->add_action_names("s1/ping");
 
-  auto a1 = test->add_action_table();
+  auto a1 = test->add_actions();
   a1->set_name("s1/ping");
   a1->set_rpc_name("echo");
   a1->mutable_iterations()->set_max_iteration_count(10);

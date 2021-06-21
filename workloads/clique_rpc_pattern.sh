@@ -83,7 +83,7 @@ tests {
     name: "clique"
     action_names: "clique_queries"
   }
-  action_table {
+  actions {
     name: "clique_queries"
     iterations {
       max_duration_us: 10000000
