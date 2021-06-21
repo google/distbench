@@ -22,9 +22,9 @@ in this document.
   create. Each instance will be placed on a Distbench `node_manager`.
 - `node_service_bundles`: a map of services to bundle; each bundle will share a
   Distbench `node_manager`.
-- `action_list_table`: define a list of action to execute.
+- `action_lists`: define a list of action to execute.
 - `action_table`: define a action to execute such as running a RPC or calling
-  another `action_list_table` repetitively.
+  another `action_lists` repetitively.
 - `rpc_descriptions`: describe a RPC to perform, including the type of payload
   and fanout involved.
 - `payload_descriptions`: define a payload that can be associated with an RPC.
@@ -56,7 +56,7 @@ Note: the actions specified are run in no specific order, unless a
 - `iterations` (Iteration): optionally define iterations (see next section)
 - `action`: Define the action to execute, as one of the following:
   - `rpc_name`: run the RPC (defined in a `rpc_descriptions`).
-  - `action_list_table`: run another ActionList (defined by an `action_table`)
+  - `action_lists`: run another ActionList (defined by an `action_table`)
 
 ### message `Iteration`
 

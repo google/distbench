@@ -204,7 +204,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   std::unique_ptr<SimulatedClientRpc[]> client_rpc_table_;
   std::vector<SimulatedServerRpc> server_rpc_table_;
-  std::vector<ActionListTableEntry> action_list_table_;
+  std::vector<ActionListTableEntry> action_lists_;
 
   absl::Status ConnectToPeers();
   void RpcHandler(ServerRpcState* state);

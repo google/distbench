@@ -26,7 +26,7 @@ Then an action list is defined for the client, the name matches the service we
 defined earlier. It will define what the actions for client are, when the test
 start. In that case it will run the action `run_queries`.
 ```yaml
-  action_list_table {
+  action_lists {
     name: "client"
     action_names: "run_queries"
   }
@@ -69,7 +69,7 @@ Finally, the action performed when the `client_server_rpc` request is received
 by the server is defined. In this case, no extra processing is performed, so
 there is no action to perform. The response to the RPC is implied.
 ```yaml
-  action_list_table {
+  action_lists {
     name: "client_server_rpc"
     # No action on the server; just send the response
   }
@@ -137,11 +137,11 @@ test_results {
       }
       rpc_name: "client_server_rpc"
     }
-    action_list_table {
+    action_lists {
       name: "client"
       action_names: "run_queries"
     }
-    action_list_table {
+    action_lists {
       name: "client_server_rpc"
     }
   }
@@ -240,7 +240,7 @@ When the `root_query` is received by the root server, it then distribute the
 queries across all the leaf servers (`fanout_filter: all`):
 
 ```yaml
-  action_list_table {
+  action_lists {
     name: "root_query"
     action_names: "root/root_query_fanout"
   }

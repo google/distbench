@@ -208,16 +208,16 @@ absl::Status DistBenchEngine::InitializeTables() {
     EnumerateServiceTypes(traffic_config_);
 
   std::map<std::string, int> action_list_index_map;
-  action_list_table_.resize(traffic_config_.action_list_table().size());
-  for (int i = 0; i < traffic_config_.action_list_table_size(); ++i) {
-    const auto& action_list = traffic_config_.action_list_table(i);
+  action_lists_.resize(traffic_config_.action_lists().size());
+  for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
+    const auto& action_list = traffic_config_.action_lists(i);
     action_list_index_map[action_list.name()] = i;
-    action_list_table_[i].proto = action_list;
-    action_list_table_[i].list_actions.resize(action_list.action_names_size());
+    action_lists_[i].proto = action_list;
+    action_lists_[i].list_actions.resize(action_list.action_names_size());
   }
 
-  for (int i = 0; i < traffic_config_.action_list_table_size(); ++i) {
-    const auto& action_list = traffic_config_.action_list_table(i);
+  for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
+    const auto& action_list = traffic_config_.action_lists(i);
     std::map<std::string, int> list_action_indices;
     for (int j = 0; j < action_list.action_names().size(); ++j) {
       const auto& action_name = action_list.action_names(j);
@@ -229,11 +229,11 @@ absl::Status DistBenchEngine::InitializeTables() {
       if (it->second.has_rpc_name()) {
         // Validate rpc can be sent from this local node
       }
-      action_list_table_[i].list_actions[j].proto = it->second;
+      action_lists_[i].list_actions[j].proto = it->second;
     }
     // second pass to fixup deps:
-    for (size_t j = 0; j < action_list_table_[i].list_actions.size(); ++j) {
-      auto& action = action_list_table_[i].list_actions[j];
+    for (size_t j = 0; j < action_lists_[i].list_actions.size(); ++j) {
+      auto& action = action_lists_[i].list_actions[j];
       if (action.proto.has_rpc_name()) {
         auto it2 = rpc_name_index_map.find(action.proto.rpc_name());
         if (it2 == rpc_name_index_map.end()) {
@@ -486,8 +486,8 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   if (service_map_.service_endpoints_size() < 2) {
     return absl::NotFoundError("No peers configured.");
   }
-  for (int i = 0; i < traffic_config_.action_list_table_size(); ++i) {
-    if (service_name_ == traffic_config_.action_list_table(i).name()) {
+  for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
+    if (service_name_ == traffic_config_.action_lists(i).name()) {
       LOG(INFO) << "running Main for " << service_name_
                 << "/" << service_instance_;
       engine_main_thread_ = RunRegisteredThread(
@@ -543,7 +543,7 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
 
 void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
-  CHECK_LT(static_cast<size_t>(list_index), action_list_table_.size());
+  CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
   ActionListState s;
 
@@ -555,7 +555,7 @@ void DistBenchEngine::RunActionList(
   }
 
   s.incoming_rpc_state = incoming_rpc_state;
-  s.action_list = &action_list_table_[list_index];
+  s.action_list = &action_lists_[list_index];
   int size = s.action_list->proto.action_names_size();
   s.finished_action_indices.reserve(size);
   s.state_table = std::make_unique<ActionState[]>(size);

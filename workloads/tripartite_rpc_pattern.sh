@@ -120,7 +120,7 @@ tests {
     name: "response_payload"
     size: 1024
   }
-  action_list_table {
+  action_lists {
     name: "client"
     action_names: "client_do_many_queries"
   }
@@ -131,7 +131,7 @@ tests {
     }
     action_list_name: "client_do_one_query"
   }
-  action_list_table {
+  action_lists {
     name: "client_do_one_query"
     action_names: "client_queryindex"
     action_names: "client_queryresult"
@@ -140,11 +140,11 @@ tests {
     name: "client_queryindex"
     rpc_name: "client_index_rpc"
   }
-  action_list_table {
+  action_lists {
     name: "client_index_rpc"
     # No action on the client; just send the response
   }
-  action_list_table {
+  action_lists {
     name: "client_result_rpc"
     # No action on the client; just send the response
   }

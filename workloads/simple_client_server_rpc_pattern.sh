@@ -101,7 +101,7 @@ tests {
     name: "response_payload"
     size: 262144
   }
-  action_list_table {
+  action_lists {
     name: "client"
     action_names: "run_queries"
   }
@@ -112,7 +112,7 @@ tests {
       max_iteration_count: 100
     }
   }
-  action_list_table {
+  action_lists {
     name: "client_server_rpc"
     # No action on the server; just send the response
   }

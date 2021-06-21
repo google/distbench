@@ -79,7 +79,7 @@ tests {
     server_type: "clique"
     count: $NODE_COUNT
   }
-  action_list_table {
+  action_lists {
     name: "clique"
     action_names: "clique_queries"
   }
@@ -99,7 +99,7 @@ tests {
     fanout_filter: "all"
     tracing_interval: 2
   }
-  action_list_table {
+  action_lists {
     name: "clique_query"
     # no actions, NOP
   }

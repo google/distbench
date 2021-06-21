@@ -76,6 +76,6 @@ message DistributedSystemDescription {
   repeated PayloadSpec payload_descriptions = 3;
   repeated RpcSpec rpc_descriptions = 4;
   repeated Action action_table = 5;
-  repeated ActionList action_list_table = 6;
+  repeated ActionList action_lists = 6;
   optional string default_protocol = 7 [default = "grpc"];
 }

@@ -104,7 +104,7 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   s2->set_server_type("s2");
   s2->set_count(2);
 
-  auto* l1 = test->add_action_list_table();
+  auto* l1 = test->add_action_lists();
   l1->set_name("s1");
   l1->add_action_names("s1/ping");
 
@@ -118,7 +118,7 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   r1->set_client("s1");
   r1->set_server("s2");
 
-  auto* l2 = test->add_action_list_table();
+  auto* l2 = test->add_action_lists();
   l2->set_name("echo");
 
   TestSequenceResults results;
