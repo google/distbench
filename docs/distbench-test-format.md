@@ -29,6 +29,10 @@ in this document.
   and fanout involved.
 - `payload_descriptions`: define a payload that can be associated with an RPC.
 
+**Note:** by convention, repeated fields in the proto are described by plural
+names. So a `services` block describes a single service, but there may be
+multiple of them.
+
 ### message `ServiceSpec`
 - `server_type` (string): name of the service.
 - `count` (int32): number of instances to start (each instance will occupy a
@@ -41,7 +45,7 @@ in this document.
 
 ### message `ActionList` (`actions`)
 
-- `name` (string): name the actionlist. If the name match a service, the action
+- `name` (string): name of the ActionList. If the name match a service, the action
   list will be automatically executed by the service.
 - `action_names` (string, repeated): define the list of actions to run.
 
