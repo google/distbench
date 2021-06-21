@@ -65,11 +65,6 @@ message Action {
   }
 }
 
-// Are these implicitly sequential ? hope not?
-// Do they automatically handle loop-carried dependencies by waiting for all
-// previous actions to complete before starting the next iteration?
-// Are loop-carried deps handled by assuming forward deps are across loop
-// iterations?
 message ActionList {
   optional string name = 1;
   repeated string action_names = 2;

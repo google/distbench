@@ -1,7 +1,7 @@
 # Distbench Traffic Pattern - Test Format
 
 The distbench are tests are defined using Protobuf using the
-[dstmf.proto](../dstmf.proto) specification.
+[traffic_config.proto](../traffic_config.proto) specification.
 
 This document decribes the different options available. The format is still
 evolving and subject to change.

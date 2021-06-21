@@ -19,7 +19,7 @@
 #include <thread>
 
 #include "distbench.pb.h"
-#include "dstmf.pb.h"
+#include "traffic_config.pb.h"
 #include "absl/status/statusor.h"
 #include "google/protobuf/stubs/status_macros.h"
 #include "grpc_wrapper.h"

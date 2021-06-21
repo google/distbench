@@ -18,7 +18,7 @@ cc_library(
     deps = [
         ":interface_lookup",
         ":distbench_cc_proto",
-        ":dstmf_cc_proto",
+        ":traffic_config_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_github_grpc_grpc//:grpc++",
@@ -131,19 +131,19 @@ cc_binary(
 )
 
 proto_library(
-    name = "dstmf_proto",
-    srcs = ["dstmf.proto"],
+    name = "traffic_config_proto",
+    srcs = ["traffic_config.proto"],
 )
 
 cc_proto_library(
-    name = "dstmf_cc_proto",
-    deps = [":dstmf_proto"],
+    name = "traffic_config_cc_proto",
+    deps = [":traffic_config_proto"],
 )
 
 proto_library(
     name = "distbench_proto",
     srcs = ["distbench.proto"],
-    deps = ["dstmf_proto"],
+    deps = ["traffic_config_proto"],
 )
 
 cc_proto_library(
