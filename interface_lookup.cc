@@ -49,12 +49,12 @@ bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family){
       continue;
 
     family = ifa->ifa_addr->sa_family;
-    if(family == AF_PACKET)
+    if (family == AF_PACKET)
       continue;
-    if(strcmp(ifa->ifa_name, "lo") == 0)
+    if (strcmp(ifa->ifa_name, "lo") == 0)
       continue;
 
-    if(family == which_family){
+    if (family == which_family) {
       s = getnameinfo(ifa->ifa_addr,
                       (family == AF_INET) ? sizeof(struct sockaddr_in) :
                       sizeof(struct sockaddr_in6),
@@ -65,7 +65,7 @@ bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family){
       if (s != 0) {
         freeifaddrs(ifaddr);
         return false;
-      }else{
+      } else {
         ip_address.from_c_str(host);
         freeifaddrs(ifaddr);
         return true;

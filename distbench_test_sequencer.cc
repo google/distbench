@@ -24,7 +24,8 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
                                          NodeConfig* response) {
   if (request->hostname().empty() ||
       request->control_port() <= 0) {
-    return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "Invalid Registration");
+    return grpc::Status(
+        grpc::StatusCode::INVALID_ARGUMENT, "Invalid Registration");
   }
 
   absl::MutexLock m(&mutex_);
@@ -61,7 +62,8 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
               << " @ " << node_service;
     return grpc::Status::OK;
   } else {
-    return grpc::Status(grpc::StatusCode::UNKNOWN, "Could not create node stub.");
+    return grpc::Status(
+        grpc::StatusCode::UNKNOWN, "Could not create node stub.");
   }
 }
 
@@ -143,7 +145,8 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     {
       absl::MutexLock m(&mutex_);
       if (running_test_sequence_context_->IsCancelled()) {
-        return grpc::Status(grpc::StatusCode::ABORTED, "Cancelled by new test sequence.");
+        return grpc::Status(
+            grpc::StatusCode::ABORTED, "Cancelled by new test sequence.");
       }
     }
     auto maybe_result = DoRunTest(context, test);

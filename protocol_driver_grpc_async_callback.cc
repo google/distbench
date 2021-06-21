@@ -33,13 +33,12 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
       grpc::CallbackServerContext* context,
       const GenericRequest* request,
       GenericResponse* response) override {
-
     ServerRpcState rpc_state;
     rpc_state.request = request;
     rpc_state.send_response = [&]() {
       *response = std::move(rpc_state.response);
     };
-    if(handler_)
+    if (handler_)
       handler_(&rpc_state);
 
     // Return reactor
@@ -147,7 +146,7 @@ void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
   new_rpc->request = std::move(state->request);
 
   auto callback_fct = [this, new_rpc, done_callback](const grpc::Status& status) {
-    if (!status.ok()){
+    if (!status.ok()) {
       LOG(ERROR) << new_rpc->status;
       new_rpc->state->success = false;
     } else {

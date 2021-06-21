@@ -51,7 +51,9 @@ grpc::Status NodeManager::ConfigureNode(
           port,
           traffic_config_.default_protocol(),
           "eth0"});
-    if (!ret.ok()) grpc::Status(grpc::StatusCode::UNKNOWN, "AllocService failure");
+    if (!ret.ok())
+      grpc::Status(grpc::StatusCode::UNKNOWN,
+          absl::StrCat("AllocService failure: ", ret.ToString()));
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(SocketAddressForDevice("", port));
     service_entry.set_hostname(Hostname());
@@ -190,8 +192,10 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (status.ok()) {
     LOG(INFO) << "NodeConfig: " << config.ShortDebugString();
   } else {
-    status = Annotate(status, "While registering node to test sequencer(" +
-		    opts_.test_sequencer_service_address + "): ");
+    status = Annotate(status, absl::StrCat(
+          "While registering node to test sequencer(",
+          opts_.test_sequencer_service_address,
+          "): "));
     grpc_server_->Shutdown();
   }
   if (status.ok())

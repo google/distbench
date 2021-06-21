@@ -94,16 +94,16 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should starts with stochastic{");
   }
-  fanout_filter.erase(0, 1); // Consume {
+  fanout_filter.erase(0, 1);  // Consume the '{'
 
   if (!absl::EndsWith(fanout_filter, "}")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should ends with }");
   }
-  fanout_filter.pop_back(); // Consume }
+  fanout_filter.pop_back();  // Consume the '}'
 
   float total_probability = 0.;
-  for (auto s: absl::StrSplit(fanout_filter, ",")) {
+  for (auto s : absl::StrSplit(fanout_filter, ",")) {
     std::vector<std::string> v = absl::StrSplit(s, ":");
     if (v.size() != 2)
       return absl::InvalidArgumentError(
@@ -899,7 +899,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     int nb_targets = 0;
     float random_val = absl::Uniform(random_generator, 0, 1.0);
     float cur_val = 0.0;
-    for (const auto &d: rpc_def.stochastic_dist) {
+    for (const auto &d : rpc_def.stochastic_dist) {
       cur_val += d.probability;
       if (random_val <= cur_val) {
         nb_targets = d.nb_targets;
@@ -920,9 +920,10 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     // Generate a vector to pick random targets from (only done once)
     partial_rand_vects.try_emplace(num_servers, std::vector<int>());
     std::vector<int>& from_vector = partial_rand_vects[num_servers];
-    if (from_vector.size() == 0)
+    if (from_vector.size() == 0) {
       for (int i = 0; i < num_servers; i++)
         from_vector.push_back(i);
+    }
 
     // Randomize and pick up to nb_targets
     for (int i = 0; i < nb_targets; i++) {
@@ -942,7 +943,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
         targets.push_back(target);
       }
     }
-  } else { // The following fanout options return 1 target
+  } else {  // The following fanout options return 1 target
     int target;
     targets.reserve(1);
     if (fanout_filter == "random") {
