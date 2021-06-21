@@ -19,6 +19,8 @@
 
 namespace distbench {
 
+namespace {
+
 class TrafficService : public Traffic::Service {
  public:
   ~TrafficService() override {}
@@ -44,6 +46,8 @@ class TrafficService : public Traffic::Service {
  private:
   std::function<void(ServerRpcState* state)> handler_;
 };
+
+}  // anonymous namespace
 
 ProtocolDriverGrpc::ProtocolDriverGrpc() {
 }
@@ -72,7 +76,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
 
 void ProtocolDriverGrpc::SetHandler(
     std::function<void(ServerRpcState* state)> handler) {
-  traffic_service_->SetHandler(handler);
+  static_cast<TrafficService*>(traffic_service_.get())->SetHandler(handler);
 }
 
 void ProtocolDriverGrpc::SetNumPeers(int num_peers) {

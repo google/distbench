@@ -19,6 +19,8 @@
 
 namespace distbench {
 
+namespace {
+
 class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
  public:
   ~TrafficServiceAsync() override {}
@@ -50,6 +52,8 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
   std::function<void(ServerRpcState* state)> handler_;
 };
 
+}  // anonymous namespace
+
 ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 }
 
@@ -67,16 +71,18 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
   if (server_) {
-    LOG(INFO) << "Grpc Async Callback Traffic server listening on " << server_socket_address_;
+    LOG(INFO) << "Grpc Async Callback Traffic server listening on "
+              << server_socket_address_;
     return absl::OkStatus();
   } else {
-    return absl::UnknownError("Grpc Async Callback Traffic service failed to start");
+    return absl::UnknownError(
+        "Grpc Async Callback Traffic service failed to start");
   }
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetHandler(
     std::function<void(ServerRpcState* state)> handler) {
-  traffic_service_->SetHandler(handler);
+  static_cast<TrafficServiceAsync*>(traffic_service_.get())->SetHandler(handler);
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
