@@ -557,9 +557,12 @@ void DistBenchEngine::RunActionList(
 
   // Allocate peer_logs for performance gathering
   // peer_logs[service_type][instance]
-  s.peer_logs.resize(peers_.size());
-  for (size_t i = 0; i < peers_.size(); ++i) {
-    s.peer_logs[i].resize(peers_[i].size());
+  {
+    absl::MutexLock m(&s.action_mu);
+    s.peer_logs.resize(peers_.size());
+    for (size_t i = 0; i < peers_.size(); ++i) {
+      s.peer_logs[i].resize(peers_[i].size());
+    }
   }
 
   s.incoming_rpc_state = incoming_rpc_state;
@@ -631,7 +634,8 @@ void DistBenchEngine::RunActionList(
       break;
     }
   }
-  // Merge the per-thread logs into the overall logs:
+  // Merge the per-action-list logs into the overall logs:
+  absl::MutexLock m(&s.action_mu);
   for (size_t i = 0; i < s.peer_logs.size(); ++i) {
     for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
       absl::MutexLock m(&peers_[i][j].mutex);
@@ -673,6 +677,7 @@ void DistBenchEngine::ActionListState::RecordLatency(
     size_t service_type,
     size_t instance,
     const ClientRpcState* state) {
+  absl::MutexLock m(&action_mu);
   CHECK_LT(service_type, peer_logs.size());
   auto& service_log = peer_logs.at(service_type);
   CHECK_LT(instance, service_log.size());

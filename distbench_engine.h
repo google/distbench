@@ -183,7 +183,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     absl::Mutex action_mu;
     std::vector<int> finished_action_indices;
 
-    std::vector<std::vector<PeerPerformanceLog>> peer_logs;
+    std::vector<std::vector<PeerPerformanceLog>> peer_logs ABSL_GUARDED_BY(action_mu);
   };
 
   absl::Status InitializeTables();
