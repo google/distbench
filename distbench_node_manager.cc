@@ -21,7 +21,8 @@
 
 namespace distbench {
 
-NodeManager::NodeManager(SimpleClock* clock) {
+NodeManager::NodeManager(SimpleClock* clock, PortAllocator& pa) :
+  port_allocator_(pa) {
   clock_ = clock;
 }
 
@@ -39,7 +40,7 @@ grpc::Status NodeManager::ConfigureNode(
       absl::StrSplit(service_name, '/');
     CHECK_EQ(service_instance.size(), 2lu);
 
-    int port = AllocatePort();
+    int port = port_allocator_.AllocatePort();
     service_ports_.push_back(port);
     int instance;
     CHECK(absl::SimpleAtoi(service_instance[1], &instance));
@@ -65,7 +66,7 @@ grpc::Status NodeManager::ConfigureNode(
 void NodeManager::ClearServices() {
   service_engines_.clear();
   for (const auto& port : service_ports_) {
-    FreePort(port);
+    port_allocator_.ReleasePort(port);
   }
   service_ports_.clear();
 }
@@ -77,7 +78,7 @@ absl::Status NodeManager::AllocService(
   pd_opts.set_protocol_name(std::string(service_opts.protocol));
   pd_opts.set_netdev_name(std::string(service_opts.netdev));
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(pd_opts);
-  absl::Status ret = pd->Initialize("eth0", AllocatePort());
+  absl::Status ret = pd->Initialize("eth0", port_allocator_.AllocatePort());
   if (!ret.ok()) return ret;
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd), clock_);
   ret = engine->Initialize(

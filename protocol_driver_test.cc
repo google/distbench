@@ -23,7 +23,31 @@ namespace distbench {
 
 class ProtocolDriverTest
   : public testing::TestWithParam<ProtocolDriverOptions> {
+
+ public:
+  // Per-test-suite set-up.
+  static void SetUpTestSuite() {
+    port_allocator_ = new PortAllocator();
+    port_allocator_->AddPortsToPoolFromString("20200-20299");
+  }
+
+  // Per-test-suite tear-down.
+  static void TearDownTestSuite() {
+    delete port_allocator_;
+    port_allocator_ = nullptr;
+  }
+
+  // You can define per-test set-up logic as usual.
+  void SetUp() override { }
+
+  // You can define per-test tear-down logic as usual.
+  void TearDown() override { }
+
+  // Shared PortAllocator
+  static PortAllocator* port_allocator_;
 };
+
+PortAllocator* ProtocolDriverTest::port_allocator_= nullptr;
 
 TEST_P(ProtocolDriverTest, ctor) {
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
@@ -32,7 +56,7 @@ TEST_P(ProtocolDriverTest, ctor) {
 TEST_P(ProtocolDriverTest, initialize) {
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
   pd->SetNumPeers(1);
-  ASSERT_OK(pd->Initialize("", AllocatePort()));
+  ASSERT_OK(pd->Initialize("", port_allocator_->AllocatePort()));
   pd->SetHandler([](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
   });
@@ -43,7 +67,7 @@ TEST_P(ProtocolDriverTest, get_addr) {
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   ASSERT_OK(
-      pd->Initialize("", AllocatePort()));
+      pd->Initialize("", port_allocator_->AllocatePort()));
   pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_EQ(server_rpc_count, 0);
@@ -53,7 +77,7 @@ TEST_P(ProtocolDriverTest, get_set_addr) {
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  ASSERT_OK(pd->Initialize("", AllocatePort()));
+  ASSERT_OK(pd->Initialize("", port_allocator_->AllocatePort()));
   pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -64,7 +88,7 @@ TEST_P(ProtocolDriverTest, invoke) {
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  ASSERT_OK(pd->Initialize("", AllocatePort()));
+  ASSERT_OK(pd->Initialize("", port_allocator_->AllocatePort()));
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->send_response();
@@ -86,7 +110,7 @@ TEST_P(ProtocolDriverTest, self_echo) {
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  ASSERT_OK(pd->Initialize("", AllocatePort()));
+  ASSERT_OK(pd->Initialize("", port_allocator_->AllocatePort()));
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
@@ -112,14 +136,14 @@ TEST_P(ProtocolDriverTest, echo) {
   std::unique_ptr<ProtocolDriver> pd1 = AllocateProtocolDriver(GetParam());
   std::unique_ptr<ProtocolDriver> pd2 = AllocateProtocolDriver(GetParam());
   std::atomic<int> server_rpc_count = 0;
-  ASSERT_OK(pd2->Initialize("", AllocatePort()));
+  ASSERT_OK(pd2->Initialize("", port_allocator_->AllocatePort()));
   pd2->SetNumPeers(1);
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
     s->send_response();
   });
-  ASSERT_OK(pd1->Initialize("", AllocatePort()));
+  ASSERT_OK(pd1->Initialize("", port_allocator_->AllocatePort()));
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
@@ -142,18 +166,19 @@ TEST_P(ProtocolDriverTest, echo) {
   EXPECT_EQ(client_rpc_count, 1);
 }
 
-void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
+void Echo(benchmark::State &state, ProtocolDriverOptions opts,
+          PortAllocator &port_allocator) {
   std::unique_ptr<ProtocolDriver> pd1 = AllocateProtocolDriver(opts);
   std::unique_ptr<ProtocolDriver> pd2 = AllocateProtocolDriver(opts);
   std::atomic<int> server_rpc_count = 0;
-  ASSERT_OK(pd2->Initialize("", AllocatePort()));
+  ASSERT_OK(pd2->Initialize("", port_allocator.AllocatePort()));
   pd2->SetNumPeers(1);
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
     s->send_response();
   });
-  ASSERT_OK(pd1->Initialize("", AllocatePort()));
+  ASSERT_OK(pd1->Initialize("", port_allocator.AllocatePort()));
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
@@ -189,11 +214,15 @@ ProtocolDriverOptions GrpcCallbackOptions() {
 }
 
 void BM_GrpcEcho(benchmark::State &state) {
-  Echo(state, GrpcOptions());
+  PortAllocator port_allocator;
+  port_allocator.AddPortsToPoolFromString("25000-25010");
+  Echo(state, GrpcOptions(), port_allocator);
 }
 
 void BM_GrpcCallbackEcho(benchmark::State &state) {
-  Echo(state, GrpcCallbackOptions());
+  PortAllocator port_allocator;
+  port_allocator.AddPortsToPoolFromString("25011-25020");
+  Echo(state, GrpcCallbackOptions(), port_allocator);
 }
 
 BENCHMARK(BM_GrpcEcho);

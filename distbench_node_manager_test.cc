@@ -29,19 +29,45 @@ ProtocolDriverOptions common_pd_opts() {
   return opts;
 }
 
-TEST(DistBenchEngineTest, ctor) {
+class DistBenchNodeManagerTest : public testing::Test {
+ protected:
+  // Per-test-suite set-up.
+  static void SetUpTestSuite() {
+    port_allocator_ = new PortAllocator();
+    port_allocator_->AddPortsToPoolFromString("20300-20399");
+  }
+
+  // Per-test-suite tear-down.
+  static void TearDownTestSuite() {
+    delete port_allocator_;
+    port_allocator_ = nullptr;
+  }
+
+  // You can define per-test set-up logic as usual.
+  void SetUp() override { }
+
+  // You can define per-test tear-down logic as usual.
+  void TearDown() override { }
+
+  // Shared PortAllocator
+  static PortAllocator* port_allocator_;
+};
+
+PortAllocator* DistBenchNodeManagerTest::port_allocator_= nullptr;
+
+TEST_F(DistBenchNodeManagerTest, ctor) {
   RealClock clock;
   DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
 }
 
-TEST(DistBenchEngineTest, init) {
+TEST_F(DistBenchNodeManagerTest, init) {
   DistributedSystemDescription desc;
   desc.add_services()->set_name("test_service");
   RealClock clock;
   DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
-  int port = AllocatePort();
+  int port = port_allocator_->AllocatePort();
   ASSERT_OK(dbe.Initialize(port, desc, "test_service", 0));
-  FreePort(port);
+  port_allocator_->ReleasePort(port);
 }
 
 }  // namespace distbench

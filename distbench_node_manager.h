@@ -35,7 +35,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   void Wait();
   const std::string& service_address() { return service_address_; }
 
-  explicit NodeManager(SimpleClock* clock);
+  explicit NodeManager(SimpleClock* clock, PortAllocator &pa);
 
   grpc::Status ConfigureNode(grpc::ServerContext* context,
                              const NodeServiceConfig* request,
@@ -54,6 +54,8 @@ class NodeManager final : public DistBenchNodeManager::Service {
                              CancelTrafficResult* response) override;
 
  private:
+  PortAllocator& port_allocator_;
+
   void ClearServices() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   struct ServiceOpts {

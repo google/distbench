@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <thread>
+#include <unordered_set>
 
 #include "distbench.pb.h"
 #include "traffic_config.pb.h"
@@ -30,6 +31,34 @@ ostream& operator<< (ostream &out, grpc::Status const& c);
 
 namespace distbench {
 
+class PortAllocator {
+ public:
+  // Parse a string like "10001:11000,12000" and add them to pool list
+  void AddPortsToPoolFromString(std::string arg);
+
+  int AllocatePort();
+  void ReleasePort(int port);
+
+  // Interface to plug another port allocator
+  void SetExtraPortAllocatorFct(std::function<int()>);
+  void SetExtraPortReleaseFct(std::function<void(int)>);
+  void ReleaseAllExtras();
+
+ private:
+  void AddPortNoDuplicate(int port);
+
+   std::vector<int> available_ports_ ABSL_GUARDED_BY(mutex_);
+   std::unordered_set<int> available_ports_set_ ABSL_GUARDED_BY(mutex_);
+   std::unordered_set<int> used_ports_ ABSL_GUARDED_BY(mutex_);
+
+   // Handle extra ports
+   std::unordered_set<int> extra_ports_ ABSL_GUARDED_BY(mutex_);
+   std::function<int()> extra_port_allocate_ ABSL_GUARDED_BY(mutex_);
+   std::function<void(int)> extra_port_release_ ABSL_GUARDED_BY(mutex_);
+
+   absl::Mutex mutex_;
+};
+
 void set_use_ipv4_first(bool _use_ipv4_first);
 
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
@@ -38,8 +67,6 @@ std::string IpAddressForDevice(std::string_view netdev);
 std::string SocketAddressForDevice(std::string_view netdev, int port);
 std::thread RunRegisteredThread(const std::string& thread_name,
                                 std::function<void()> f);
-int AllocatePort();
-void FreePort(int port);
 
 std::string ServiceInstanceName(std::string_view service_type, int instance);
 std::map<std::string, int> EnumerateServiceSizes(
