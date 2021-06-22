@@ -51,9 +51,10 @@ grpc::Status NodeManager::ConfigureNode(
           port,
           traffic_config_.default_protocol(),
           "eth0"});
-    if (!ret.ok())
-      grpc::Status(grpc::StatusCode::UNKNOWN,
+    if (!ret.ok()) {
+      return grpc::Status(grpc::StatusCode::UNKNOWN,
           absl::StrCat("AllocService failure: ", ret.ToString()));
+    }
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(SocketAddressForDevice("", port));
     service_entry.set_hostname(Hostname());
