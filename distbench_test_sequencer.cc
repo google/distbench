@@ -470,6 +470,7 @@ void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> creds = MakeServerCredentials();
   builder.AddListeningPort(service_address_, creds);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
   LOG(INFO) << "Server listening on " << service_address_;

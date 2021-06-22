@@ -349,6 +349,7 @@ absl::Status DistBenchEngine::Initialize(
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort(server_address, server_creds);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   server_ = builder.BuildAndStart();
   if (server_) {

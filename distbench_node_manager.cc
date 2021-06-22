@@ -170,6 +170,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort(service_address_, server_creds);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
   if (grpc_server_) {

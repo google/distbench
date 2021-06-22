@@ -67,6 +67,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort(server_socket_address_, server_creds);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
   if (server_) {
