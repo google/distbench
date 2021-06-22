@@ -150,6 +150,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     absl::Mutex iteration_mutex;
     int next_iteration ABSL_GUARDED_BY(iteration_mutex);
+    int started_iterations ABSL_GUARDED_BY(iteration_mutex);
     int finished_iterations ABSL_GUARDED_BY(iteration_mutex);
     absl::Time next_iteration_time = absl::InfiniteFuture();
 

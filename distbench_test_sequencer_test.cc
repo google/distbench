@@ -152,4 +152,77 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
 }
 
+void RunIntenseTraffic(const char* protocol) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(6));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  test->set_default_protocol(protocol);
+  auto* s1 = test->add_services();
+  s1->set_name("s1");
+  s1->set_count(1);
+  auto* s2 = test->add_services();
+  s2->set_name("s2");
+  s2->set_count(5);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("s1");
+  l1->add_action_names("s1/ping");
+
+  auto a1 = test->add_actions();
+  a1->set_name("s1/ping");
+  a1->set_rpc_name("echo");
+  a1->mutable_iterations()->set_max_iteration_count(10);
+
+  auto* iterations = a1->mutable_iterations();
+  iterations->set_max_duration_us(200000);
+  iterations->set_max_iteration_count(2000);
+  iterations->set_max_parallel_iterations(10);
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("echo");
+  r1->set_client("s1");
+  r1->set_server("s2");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("echo");
+
+  TestSequenceResults results;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(200);
+  grpc::ClientContext context;
+  grpc::ClientContext context2;
+  grpc::ClientContext context3;
+  context.set_deadline(deadline);
+  context2.set_deadline(deadline);
+  context3.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+
+  iterations->clear_max_iteration_count();
+  status = tester.test_sequencer_stub->RunTestSequence(
+      &context2, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+
+  iterations->clear_max_duration_us();
+  iterations->set_max_iteration_count(2000);
+  status = tester.test_sequencer_stub->RunTestSequence(
+      &context3, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+  return;
+}
+
+TEST(DistBenchTestSequencer, 100k_grpc) {
+  RunIntenseTraffic("grpc");
+}
+TEST(DistBenchTestSequencer, 100k_grpc_async_callback) {
+  RunIntenseTraffic("grpc_async_callback");
+}
+
+
 }  // namespace distbench
