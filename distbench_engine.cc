@@ -435,6 +435,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
     grpc::Status status;
     ConnectRequest request;
     ConnectResponse response;
+    std::string server_address;
   };
   grpc::Status status;
   std::vector<PendingRpc> pending_rpcs(num_targets);
@@ -448,6 +449,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
         std::shared_ptr<grpc::Channel> channel =
           grpc::CreateChannel(service_instance.endpoint_address, creds);
         rpc_state.stub = ConnectionSetup::NewStub(channel);
+        rpc_state.server_address = service_instance.endpoint_address;
         CHECK(rpc_state.stub);
 
         ++rpc_count;
@@ -468,7 +470,12 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
         status = finished_rpc->status;
-        LOG(ERROR) << "Finished RPC ERROR:" << finished_rpc->status;
+        LOG(ERROR) << "ConnectToPeers error:"
+                   << finished_rpc->status.error_code()
+                   << " "
+                   << finished_rpc->status.error_message()
+                   << " connecting to "
+                   << finished_rpc->server_address;
       }
     }
   }
