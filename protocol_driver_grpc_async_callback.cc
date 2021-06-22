@@ -106,8 +106,8 @@ absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
 
 absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
     std::string remote_connection_info, int peer) {
-  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   CHECK_GE(peer, 0);
+  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
   LOG(INFO) << addr.DebugString();
@@ -136,8 +136,8 @@ struct PendingRpc {
 void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
     int peer_index, ClientRpcState* state,
     std::function<void(void)> done_callback) {
-  CHECK_LT(static_cast<size_t>(peer_index), grpc_client_stubs_.size());
   CHECK_GE(peer_index, 0);
+  CHECK_LT(static_cast<size_t>(peer_index), grpc_client_stubs_.size());
 
   ++pending_rpcs_;
   PendingRpc* new_rpc = new PendingRpc;
