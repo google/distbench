@@ -330,3 +330,56 @@ Rpc succeeded with OK status
 
 We have 56250 RPCs (The test run for 625 cycles -10000/16- and there is 10\*9
 RPCs per cycle)
+
+## Tripartite RPC pattern
+
+This pattern involves three types of nodes:
+- client nodes
+- index nodes
+- result nodes
+
+![Tripartite RPC pattern nodes](images/pattern_tripartite_nodes.png)
+
+The client nodes retrieves results by performing sequential pair of RPCs:
+- Querying the location of the result to an index host
+- Retrieving the contents of that record from a result host
+
+The dependencies between each pair of RPCs are properly handled.
+
+![Tripartite RPC pattern sequence](images/pattern_tripartite_sequence.png)
+
+### Implementation
+
+The dependency between the index and the result query is handled by a
+dependencies as shown below:
+
+```yaml
+  action_lists {
+    name: "client_do_one_query"
+    action_names: "client_queryindex"
+    action_names: "client_queryresult"
+  }
+  actions {
+    name: "client_queryindex"
+    rpc_name: "client_index_rpc"
+  }
+  actions {
+    name: "client_queryresult"
+    rpc_name: "client_result_rpc"
+    dependencies: "client_queryindex"
+  }
+```
+## Test Stochastic Example
+
+This example demonstrates the stochastic fanout option. In this pattern, the
+client will perform a random number of requests to the server. It is defined by
+the `fanout_filter`, in this case in 70% of the cases the client will perform
+one request, and in 30% of the cases it will do the request to 4 distinct
+servers.
+
+```yaml
+fanout_filter: "stochastic{0.7:1,0.3:4}
+```
+
+The number of RPCs will slightly vary from run to run due to the random
+parameter.
