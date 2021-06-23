@@ -21,18 +21,28 @@
 
 namespace distbench {
 
+class DistBenchEngineTest : public testing::Test {
+ protected:
+  // Per-test-suite set-up.
+  static void SetUpTestSuite() {
+    distbench::PortAllocator &port_allocator =
+        distbench::GetMainPortAllocator();
+    port_allocator.AddPortsToPoolFromString("20400-20499");
+  }
+};
+
 ProtocolDriverOptions grpc_pd_opts() {
   auto opts = ProtocolDriverOptions();
   opts.set_protocol_name("grpc");
   return opts;
 }
 
-TEST(DistBenchEngineTest, ctor) {
+TEST_F(DistBenchEngineTest, ctor) {
   RealClock clock;
   DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()), &clock);
 }
 
-TEST(DistBenchEngineTest, init) {
+TEST_F(DistBenchEngineTest, init) {
   DistributedSystemDescription desc;
   desc.add_services()->set_name("test_service");
   RealClock clock;

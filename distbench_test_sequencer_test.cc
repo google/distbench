@@ -23,6 +23,15 @@
 
 namespace distbench {
 
+class DistBenchTestSequencerTest : public testing::Test {
+ protected:
+  // Per-test-suite set-up.
+  static void SetUpTestSuite() {
+    distbench::PortAllocator &port_allocator = distbench::GetMainPortAllocator();
+    port_allocator.AddPortsToPoolFromString("20300-20399");
+  }
+};
+
 struct DistBenchTester {
   ~DistBenchTester();
   absl::Status Initialize(int num_nodes);
@@ -73,11 +82,11 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
   return absl::OkStatus();
 }
 
-TEST(DistBenchTestSequencer, ctor) {
+TEST_F(DistBenchTestSequencerTest, ctor) {
   TestSequencer test_sequencer;
 }
 
-TEST(DistBenchTestSequencer, init) {
+TEST_F(DistBenchTestSequencerTest, init) {
   distbench::TestSequencerOpts ts_opts = {};
   ts_opts.port = AllocatePort();
   TestSequencer test_sequencer;
@@ -86,12 +95,12 @@ TEST(DistBenchTestSequencer, init) {
   FreePort(ts_opts.port);
 }
 
-TEST(DistBenchTestSequencer, empty_group) {
+TEST_F(DistBenchTestSequencerTest, empty_group) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(0));
 }
 
-TEST(DistBenchTestSequencer, nonempty_group) {
+TEST_F(DistBenchTestSequencerTest, nonempty_group) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(3));
 
@@ -217,10 +226,10 @@ void RunIntenseTraffic(const char* protocol) {
   return;
 }
 
-TEST(DistBenchTestSequencer, 100k_grpc) {
+TEST_F(DistBenchTestSequencerTest, 100k_grpc) {
   RunIntenseTraffic("grpc");
 }
-TEST(DistBenchTestSequencer, 100k_grpc_async_callback) {
+TEST_F(DistBenchTestSequencerTest, 100k_grpc_async_callback) {
   RunIntenseTraffic("grpc_async_callback");
 }
 

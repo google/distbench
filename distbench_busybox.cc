@@ -21,6 +21,7 @@ ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 ABSL_FLAG(bool, use_ipv4_first, false,
     "Prefer IPv4 addresses to IPv6 addresses when both are available");
+ABSL_FLAG(std::string, ports_to_use, "10001-11000", "ports to available to use");
 
 void Usage() {
   std::cerr << "Usage: distbench module [options]\n";
@@ -50,6 +51,10 @@ int main(int argc, char** argv, char** envp) {
 
   absl::ParseCommandLine(argc, argv);
   distbench::InitLibs(argv[0]);
+
+  distbench::PortAllocator &port_allocator = distbench::GetMainPortAllocator();
+  port_allocator.AddPortsToPoolFromString(absl::GetFlag(FLAGS_ports_to_use));
+
   distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
   for (int i = 1; i < argc; ++i) {
     if (!strcmp(argv[i], "test_sequencer")) {

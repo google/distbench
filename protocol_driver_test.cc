@@ -21,9 +21,23 @@
 
 namespace distbench {
 
+void PopulatePortAllocator(){
+    distbench::PortAllocator &port_allocator =
+        distbench::GetMainPortAllocator();
+    if (port_allocator.TotalMumberOfAddedPorts() != 0)
+      return;
+    port_allocator.AddPortsToPoolFromString("20100-20199");
+}
+
 class ProtocolDriverTest
   : public testing::TestWithParam<ProtocolDriverOptions> {
+ public:
+  // Per-test-suite set-up.
+  static void SetUpTestSuite() {
+    PopulatePortAllocator();
+  }
 };
+
 
 TEST_P(ProtocolDriverTest, ctor) {
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
@@ -143,6 +157,8 @@ TEST_P(ProtocolDriverTest, echo) {
 }
 
 void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
+  PopulatePortAllocator();
+
   std::unique_ptr<ProtocolDriver> pd1 = AllocateProtocolDriver(opts);
   std::unique_ptr<ProtocolDriver> pd2 = AllocateProtocolDriver(opts);
   std::atomic<int> server_rpc_count = 0;

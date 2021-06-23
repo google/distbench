@@ -107,12 +107,12 @@ check_dependencies
 echo DistBench built, starting up an instance on localhost...
 if [[ "${DEBUG}" = "1" ]]; then
   echo_and_run bazel build --compilation_mode=dbg :all
-  run_gdb_backtrace bazel-bin/distbench test_sequencer --port=10000 &
+  run_gdb_backtrace bazel-bin/distbench test_sequencer --port=10000 --ports_to_use 10001-10100 &
   sleep 3
   run_gdb_backtrace
   for i in $(seq 1 1 $NODE_MANAGER_COUNT)
   do
-    run_gdb_backtrace bazel-bin/distbench node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) &
+    run_gdb_backtrace bazel-bin/distbench node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) --ports_to_use $((11100 + $(($i*100)) ))-$((11199 + $(($i*100)) )) &
   done
   sleep 5
 else
@@ -125,7 +125,7 @@ else
   echo Starting $NODE_MANAGER_COUNT Distbench node managers
   for i in $(seq 1 1 $NODE_MANAGER_COUNT)
   do
-    echo_and_run bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) &
+    echo_and_run bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) --ports_to_use $((11100 + $(($i*100)) ))-$((11199 + $(($i*100)) )) &
   done
   sleep 5
 fi

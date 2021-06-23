@@ -29,12 +29,22 @@ ProtocolDriverOptions common_pd_opts() {
   return opts;
 }
 
-TEST(DistBenchEngineTest, ctor) {
+class DistBenchNodeManagerTest : public testing::Test {
+ protected:
+  // Per-test-suite set-up.
+  static void SetUpTestSuite() {
+    distbench::PortAllocator &port_allocator =
+        distbench::GetMainPortAllocator();
+    port_allocator.AddPortsToPoolFromString("20200-20299");
+  }
+};
+
+TEST_F(DistBenchNodeManagerTest, ctor) {
   RealClock clock;
   DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
 }
 
-TEST(DistBenchEngineTest, init) {
+TEST_F(DistBenchNodeManagerTest, init) {
   DistributedSystemDescription desc;
   desc.add_services()->set_name("test_service");
   RealClock clock;

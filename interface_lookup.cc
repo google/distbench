@@ -27,13 +27,6 @@
 #include <string.h>
 #include "interface_lookup.h"
 
-// These functions only make sense with a port server,
-// replaced here with dummy functions.
-void net_util::RecycleUnusedPort(int port) { }
-int net_util::PickUnusedPortOrDie(){
-  return (std::rand() % 100) + 1025;
-}
-
 bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family){
   struct ifaddrs *ifaddr;
   int family, s;

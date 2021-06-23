@@ -15,9 +15,10 @@
 #include "distbench_utils.h"
 
 #include "interface_lookup.h"
-#include "absl/strings/str_split.h"
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/str_split.h"
 #include "glog/logging.h"
 
 namespace std {
@@ -29,9 +30,137 @@ ostream& operator<< (ostream &out, grpc::Status const& c)
 
 namespace distbench {
 
+void PortAllocator::AddPortsToPoolFromString(std::string port_list) {
+  absl::MutexLock lock(&mutex_);
+
+  for (auto port_range: absl::StrSplit(port_list, ",")) {
+    std::vector<std::string> ports = absl::StrSplit(port_range, "-");
+    if (ports.size() == 1) {
+      int port;
+      if (!absl::SimpleAtoi(ports[0], &port)) {
+        LOG(ERROR) << "Invalid port: " << port_range;
+        continue;
+      }
+      if (port <= 0 || port > 65536) {
+        LOG(ERROR) << "Invalid port value: " << port_range;
+        continue;
+      }
+      LOG(INFO) << "PortAllocator adding port: " << port;
+      AddPortNoDuplicate(port);
+    } else if (ports.size() == 2) {
+      int port_lo, port_hi;
+      if (!absl::SimpleAtoi(ports[0], &port_lo) ||
+          !absl::SimpleAtoi(ports[1], &port_hi)) {
+        LOG(ERROR) << "Invalid port range: " << port_range;
+        continue;
+      }
+      if (port_lo <= 0 || port_hi < port_lo || port_hi > 65536) {
+        LOG(ERROR) << "Invalid port range: " << port_range;
+        continue;
+      }
+      LOG(INFO) << "PortAllocator adding range: " << port_lo << "-" << port_hi;
+      for (int i=port_lo; i<=port_hi; i++) {
+        AddPortNoDuplicate(i);
+      }
+    } else {
+      LOG(ERROR) << "Invalid port range: " << port_range;
+    }
+  }
+
+  std::reverse(available_ports_.begin(), available_ports_.end());
+}
+
+// Add port, ignoring duplicate
+// Lock needs to be held
+void PortAllocator::AddPortNoDuplicate(int port) {
+  if (available_ports_set_.count(port) == 1) {
+    LOG(ERROR) << "Port has already been added: " << port;
+    return;
+  }
+  available_ports_set_.insert(port);
+  available_ports_.push_back(port);
+}
+
+int PortAllocator::AllocatePort() {
+  absl::MutexLock lock(&mutex_);
+
+  if (available_ports_.size() == 0) {
+    if (extra_port_allocate_) {
+      int new_port = extra_port_allocate_();
+      extra_ports_.insert(new_port);
+      if (available_ports_set_.count(new_port) != 0) {
+        LOG(ERROR) << "Extra port is already in used !";
+        return 0;
+      } else {
+        AddPortNoDuplicate(new_port);
+      }
+    } else {
+      LOG(ERROR) << "No available ports";
+      return 0;
+    }
+  }
+
+  int port = available_ports_.back();
+  available_ports_.pop_back();
+  used_ports_.insert(port);
+
+  return port;
+}
+
+int PortAllocator::TotalMumberOfAddedPorts(){
+  absl::MutexLock lock(&mutex_);
+
+  return available_ports_set_.size();
+}
+
+void PortAllocator::ReleasePort(int port) {
+  absl::MutexLock lock(&mutex_);
+
+  if (used_ports_.count(port) == 0) {
+    LOG(ERROR) << "Attempting to release unused port: " << port;
+    return;
+  }
+
+  available_ports_.push_back(port);
+  used_ports_.erase(port);
+}
+
+void PortAllocator::SetExtraPortAllocatorFct(std::function<int()> fct) {
+  extra_port_allocate_ = fct;
+}
+
+void PortAllocator::SetExtraPortReleaseFct(std::function<void(int)> fct) {
+  extra_port_release_ = fct;
+}
+
+void PortAllocator::ReleaseAllExtras() {
+  absl::MutexLock lock(&mutex_);
+
+  if (!extra_port_release_) {
+    if (extra_ports_.size() != 0) {
+      LOG(ERROR) << "No ExtraPortRelease function defined.";
+    }
+    return;
+  }
+
+  for (int port : extra_ports_) {
+    if (used_ports_.count(port) != 0) {
+      LOG(ERROR) << "Not releasing extra port " << port <<
+                 " as it is still in use.";
+    } else {
+      extra_port_release_(port);
+    }
+  }
+}
+
+PortAllocator& GetMainPortAllocator() {
+  static auto* const kInstance = new PortAllocator();
+  return *kInstance;
+}
+
 static bool use_ipv4_first = false;
 
-void set_use_ipv4_first(bool _use_ipv4_first){
+void set_use_ipv4_first(bool _use_ipv4_first) {
   use_ipv4_first = _use_ipv4_first;
 }
 
@@ -63,11 +192,13 @@ std::thread RunRegisteredThread(const std::string& thread_name,
 }
 
 int AllocatePort() {
-  return net_util::PickUnusedPortOrDie();
+  PortAllocator &port_allocator = GetMainPortAllocator();
+  return port_allocator.AllocatePort();
 }
 
 void FreePort(int port) {
-  net_util::RecycleUnusedPort(port);
+  PortAllocator &port_allocator = GetMainPortAllocator();
+  port_allocator.ReleasePort(port);
 }
 
 void InitLibs(const char* argv0) {
