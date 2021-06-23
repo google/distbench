@@ -224,5 +224,70 @@ TEST(DistBenchTestSequencer, 100k_grpc_async_callback) {
   RunIntenseTraffic("grpc_async_callback");
 }
 
+TEST(DistBenchTestSequencer, clique_test) {
+  int nb_cliques = 3;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* s1 = test->add_services();
+  s1->set_name("clique");
+  s1->set_count(nb_cliques);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("clique");
+  l1->add_action_names("clique_queries");
+
+  auto a1 = test->add_actions();
+  a1->set_name("clique_queries");
+  a1->mutable_iterations()->set_max_duration_us(10000000);
+  a1->mutable_iterations()->set_open_loop_interval_ns(16000000);
+  a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
+  a1->set_rpc_name("clique_query");
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("clique_query");
+  r1->set_client("clique");
+  r1->set_server("clique");
+  r1->set_fanout_filter("all");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("clique_query");
+
+  TestSequenceResults results;
+  grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(15);
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  ASSERT_OK(status);
+  LOG(INFO) << "TestSequenceResults: " << results.DebugString();
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto &log_summary = test_results.log_summary();
+  size_t pos = log_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = log_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(" "));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+
+  bool correct_number = (624 * (nb_cliques * (nb_cliques - 1)) <= N) &&
+                        (626 * (nb_cliques * (nb_cliques - 1)) >= N);
+  ASSERT_EQ(correct_number, true);
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
+  const auto& instance_results_it =
+    test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+}
 
 }  // namespace distbench
