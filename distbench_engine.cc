@@ -331,10 +331,10 @@ absl::Status DistBenchEngine::InitializeTables() {
 }
 
 absl::Status DistBenchEngine::Initialize(
-    int port,
     const DistributedSystemDescription& global_description,
     std::string_view service_name,
-    int service_instance) {
+    int service_instance,
+    int* port) {
   traffic_config_ = global_description;
   CHECK(!service_name.empty());
   service_name_ = service_name;
@@ -344,14 +344,15 @@ absl::Status DistBenchEngine::Initialize(
   if (!ret.ok()) return ret;
 
   // Start server
-  std::string server_address = absl::StrCat("[::]:", port);
+  std::string server_address = absl::StrCat("[::]:", *port);
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
-  builder.AddListeningPort(server_address, server_creds);
+  builder.AddListeningPort(server_address, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   server_ = builder.BuildAndStart();
+  server_address = absl::StrCat("[::]:", *port);  // port may have changed
   if (server_) {
     LOG(INFO) << "Engine server listening on " << server_address;
   } else {

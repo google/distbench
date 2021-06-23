@@ -39,9 +39,8 @@ TEST(DistBenchEngineTest, init) {
   desc.add_services()->set_name("test_service");
   RealClock clock;
   DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
-  int port = AllocatePort();
-  ASSERT_OK(dbe.Initialize(port, desc, "test_service", 0));
-  FreePort(port);
+  int port = 0;
+  ASSERT_OK(dbe.Initialize(desc, "test_service", 0, &port));
 }
 
 }  // namespace distbench

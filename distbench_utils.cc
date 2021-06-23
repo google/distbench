@@ -62,14 +62,6 @@ std::thread RunRegisteredThread(const std::string& thread_name,
   });
 }
 
-int AllocatePort() {
-  return net_util::PickUnusedPortOrDie();
-}
-
-void FreePort(int port) {
-  net_util::RecycleUnusedPort(port);
-}
-
 void InitLibs(const char* argv0) {
   // Extra library initialization can go here
   ::google::InitGoogleLogging(argv0);

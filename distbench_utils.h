@@ -38,8 +38,6 @@ std::string IpAddressForDevice(std::string_view netdev);
 std::string SocketAddressForDevice(std::string_view netdev, int port);
 std::thread RunRegisteredThread(const std::string& thread_name,
                                 std::function<void()> f);
-int AllocatePort();
-void FreePort(int port);
 
 std::string ServiceInstanceName(std::string_view service_type, int instance);
 std::map<std::string, int> EnumerateServiceSizes(

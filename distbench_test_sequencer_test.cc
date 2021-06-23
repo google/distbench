@@ -42,22 +42,20 @@ DistBenchTester::~DistBenchTester() {
   for (size_t i = 0; i < nodes.size(); ++i) {
     nodes[i]->Wait();
   }
-  FreePort(test_sequencer->GetOpts().port);
-  for (size_t i = 0; i < nodes.size(); ++i) {
-    FreePort(nodes[i]->GetOpts().port);
-  }
 }
 
 absl::Status DistBenchTester::Initialize(int num_nodes) {
   test_sequencer = std::make_unique<TestSequencer>();
   distbench::TestSequencerOpts ts_opts = {};
-  ts_opts.port = AllocatePort();
+  int port = 0;
+  ts_opts.port = &port;
   test_sequencer->Initialize(ts_opts);
   nodes.resize(num_nodes);
   clock = std::make_unique<distbench::RealClock>();
   for (int i = 0; i < num_nodes; ++i) {
     distbench::NodeManagerOpts nm_opts = {};
-    nm_opts.port = AllocatePort();
+    int port = 0;
+    nm_opts.port = &port;
     nm_opts.test_sequencer_service_address =
       test_sequencer->service_address();
     nodes[i] = std::make_unique<NodeManager>(clock.get());
@@ -79,11 +77,11 @@ TEST(DistBenchTestSequencer, ctor) {
 
 TEST(DistBenchTestSequencer, init) {
   distbench::TestSequencerOpts ts_opts = {};
-  ts_opts.port = AllocatePort();
+  int port = 0;
+  ts_opts.port = &port;
   TestSequencer test_sequencer;
   test_sequencer.Initialize(ts_opts);
   test_sequencer.Shutdown();
-  FreePort(ts_opts.port);
 }
 
 TEST(DistBenchTestSequencer, empty_group) {

@@ -27,7 +27,7 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   ~ProtocolDriverGrpc() override;
 
   absl::Status Initialize(
-      std::string_view netdev_name, int port) override;
+      std::string_view netdev_name, int* port) override;
 
   void SetHandler(std::function<void(ServerRpcState* state)> handler) override;
   void SetNumPeers(int num_peers) override;

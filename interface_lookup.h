@@ -17,11 +17,6 @@
 
 #include <string>
 
-namespace net_util{
-  int PickUnusedPortOrDie();
-  void RecycleUnusedPort(int port);
-}
-
 namespace net_base{
 class IPAddress{
  private:

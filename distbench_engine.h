@@ -52,10 +52,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
   ~DistBenchEngine() override;
 
   absl::Status Initialize(
-      int port,
       const DistributedSystemDescription& global_description,
       std::string_view service_name,
-      int service_instance);
+      int service_instance,
+      int* port);
 
   absl::Status ConfigurePeers(const ServiceEndpointMap& peers);
   absl::Status RunTraffic(const RunTrafficRequest* request);

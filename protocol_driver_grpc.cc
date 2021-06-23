@@ -53,19 +53,20 @@ ProtocolDriverGrpc::ProtocolDriverGrpc() {
 }
 
 absl::Status ProtocolDriverGrpc::Initialize(
-    std::string_view netdev_name, int port) {
-  server_port_ = port;
-  CHECK(port);
+    std::string_view netdev_name, int* port) {
   server_ip_address_ = IpAddressForDevice("");
-  server_socket_address_ = SocketAddressForDevice("", port);
+  server_socket_address_ = SocketAddressForDevice("", *port);
+  server_socket_address_ = "[::]:0";
   traffic_service_ = absl::make_unique<TrafficService>();
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
-  builder.AddListeningPort(server_socket_address_, server_creds);
+  builder.AddListeningPort(server_socket_address_, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
+  server_port_ = *port;
+  server_socket_address_ = SocketAddressForDevice("", *port);
   if (server_) {
     LOG(INFO) << "Grpc Traffic server listening on " << server_socket_address_;
     cq_poller_ = std::thread(&ProtocolDriverGrpc::RpcCompletionThread, this);

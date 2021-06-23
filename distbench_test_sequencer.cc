@@ -466,13 +466,14 @@ TestSequencer::~TestSequencer() {
 
 void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   opts_ = opts;
-  service_address_ = absl::StrCat("[::]:", opts_.port);
+  service_address_ = absl::StrCat("[::]:", *opts_.port);
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> creds = MakeServerCredentials();
-  builder.AddListeningPort(service_address_, creds);
+  builder.AddListeningPort(service_address_, creds, opts_.port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
+  service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
   LOG(INFO) << "Server listening on " << service_address_;
 }
 

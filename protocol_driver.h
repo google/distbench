@@ -49,7 +49,7 @@ class ProtocolDriver {
  public:
   virtual ~ProtocolDriver() {}
   virtual absl::Status Initialize(
-      std::string_view netdev_name, int port) = 0;
+      std::string_view netdev_name, int* port) = 0;
 
   virtual void SetHandler(
       std::function<void(ServerRpcState* state)> handler) = 0;
