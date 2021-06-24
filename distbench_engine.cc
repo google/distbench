@@ -778,6 +778,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     for (int i = 0; i < parallel_copies; ++i) {
       auto it_state = std::make_shared<ActionIterationState>();
       it_state->action_state = action_state;
+      action_state->iteration_mutex.Lock();
+      it_state->iteration_number = ++action_state->next_iteration;
+      action_state->iteration_mutex.Unlock();
       StartIteration(it_state);
     }
   }
@@ -786,55 +789,56 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
 void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
   absl::Duration period = absl::Nanoseconds(
       action_state->action->proto.iterations().open_loop_interval_ns());
-  action_state->next_iteration_time += period;
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
+  action_state->iteration_mutex.Lock();
+  action_state->next_iteration_time += period;
+  it_state->iteration_number = ++action_state->next_iteration;
+  action_state->iteration_mutex.Unlock();
   StartIteration(it_state);
 }
 
 void DistBenchEngine::FinishIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   ActionState* state = iteration_state->action_state;
+  bool open_loop = state->action->proto.iterations().has_open_loop_interval_ns();
+  bool start_another_iteration = !open_loop;
   bool done = false;
   state->iteration_mutex.Lock();
   ++state->finished_iterations;
-  if (state->started_iterations == state->iteration_limit) {
+  if (state->next_iteration == state->iteration_limit) {
     done = true;
+    start_another_iteration = false;
   } else if (state->next_iteration_time == absl::InfiniteFuture()) {
     // Closed loop iteration:
     if (state->time_limit != absl::InfiniteFuture()) {
       if (clock_->Now() > state->time_limit) {
         done = true;
+        start_another_iteration = false;
       }
     }
   } else {
     // Open loop (possibly sync_burst) iteration:
     if (state->next_iteration_time > state->time_limit) {
       done = true;
+      start_another_iteration = false;
     }
   }
-  int pending_iterations = state->started_iterations - state->finished_iterations;
+  int pending_iterations = state->next_iteration - state->finished_iterations;
+  if (start_another_iteration) {
+    ++state->next_iteration;
+  }
   state->iteration_mutex.Unlock();
   if (done && !pending_iterations) {
     state->all_done_callback();
-  } else if (!state->action->proto.iterations().has_open_loop_interval_ns()) {
+  } else if (start_another_iteration) {
     StartIteration(iteration_state);
   }
 }
 
 void DistBenchEngine::StartIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
-  ActionState* state = iteration_state->action_state;
-  state->iteration_mutex.Lock();
-  ++state->started_iterations;
-  if (state->next_iteration >= state->iteration_limit) {
-    state->iteration_mutex.Unlock();
-    return;
-  }
-
-  iteration_state->iteration_number = ++state->next_iteration;
-  state->iteration_mutex.Unlock();
-  state->iteration_function(iteration_state);
+  iteration_state->action_state->iteration_function(iteration_state);
 }
 
 // This works fine for 1-at-a-time closed-loop iterations:

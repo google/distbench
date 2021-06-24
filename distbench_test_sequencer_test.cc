@@ -122,7 +122,7 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(10);
+    std::chrono::system_clock::now() + std::chrono::seconds(70);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
