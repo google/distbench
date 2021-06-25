@@ -472,6 +472,7 @@ void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   builder.AddListeningPort(service_address_, creds, opts_.port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
+  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   grpc_server_ = builder.BuildAndStart();
   service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
   LOG(INFO) << "Server listening on " << service_address_;
