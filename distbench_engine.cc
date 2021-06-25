@@ -227,6 +227,7 @@ absl::Status DistBenchEngine::InitializeTables() {
         return absl::NotFoundError(action_name);
       }
       if (it->second.has_rpc_name()) {
+        action_lists_[i].has_rpcs = true;
         // Validate rpc can be sent from this local node
       }
       action_lists_[i].list_actions[j].proto = it->second;
@@ -555,10 +556,11 @@ void DistBenchEngine::RunActionList(
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
   ActionListState s;
+  s.incoming_rpc_state = incoming_rpc_state;
+  s.action_list = &action_lists_[list_index];
 
-  // Allocate peer_logs for performance gathering
-  // peer_logs[service_type][instance]
-  {
+  // Allocate peer_logs for performance gathering, if needed:
+  if (s.action_list->has_rpcs) {
     absl::MutexLock m(&s.action_mu);
     s.peer_logs.resize(peers_.size());
     for (size_t i = 0; i < peers_.size(); ++i) {
@@ -566,8 +568,6 @@ void DistBenchEngine::RunActionList(
     }
   }
 
-  s.incoming_rpc_state = incoming_rpc_state;
-  s.action_list = &action_lists_[list_index];
   int size = s.action_list->proto.action_names_size();
   s.finished_action_indices.reserve(size);
   s.state_table = std::make_unique<ActionState[]>(size);
@@ -636,13 +636,15 @@ void DistBenchEngine::RunActionList(
     }
   }
   // Merge the per-action-list logs into the overall logs:
-  absl::MutexLock m(&s.action_mu);
-  for (size_t i = 0; i < s.peer_logs.size(); ++i) {
-    for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
-      absl::MutexLock m(&peers_[i][j].mutex);
-      for (const auto& rpc_log : s.peer_logs[i][j].rpc_logs()) {
-        (*peers_[i][j].log.mutable_rpc_logs())[rpc_log.first].MergeFrom(
-            rpc_log.second);
+  if (s.action_list->has_rpcs) {
+    absl::MutexLock m(&s.action_mu);
+    for (size_t i = 0; i < s.peer_logs.size(); ++i) {
+      for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
+        absl::MutexLock m(&peers_[i][j].mutex);
+        for (const auto& rpc_log : s.peer_logs[i][j].rpc_logs()) {
+          (*peers_[i][j].log.mutable_rpc_logs())[rpc_log.first].MergeFrom(
+              rpc_log.second);
+        }
       }
     }
   }

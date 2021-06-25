@@ -131,6 +131,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionListTableEntry {
     ActionList proto;
     std::vector<ActionTableEntry> list_actions;
+    bool has_rpcs = false;
   };
 
   struct ActionListState;
