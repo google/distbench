@@ -212,7 +212,6 @@ void RunIntenseTraffic(const char* protocol) {
       &context3, test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
-  return;
 }
 
 TEST(DistBenchTestSequencer, 100k_grpc) {
@@ -273,7 +272,7 @@ TEST(DistBenchTestSequencer, clique_test) {
   ASSERT_NE(pos, std::string::npos);
   const std::string N_value = log_summary.substr(pos);
 
-  std::string N_value2 = N_value.substr(0, N_value.find(" "));
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
   int N;
   ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
 

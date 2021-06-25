@@ -89,7 +89,6 @@ std::string SocketAddressForDevice(std::string_view netdev, int port) {
     return absl::StrCat(ip.ToString(), ":", port);
 
   LOG(FATAL) << "Could not get ip v4/v6 address";
-  exit(1);
 }
 
 std::string ServiceInstanceName(std::string_view service_type, int instance) {
@@ -148,7 +147,6 @@ ServiceSpec GetServiceSpec(std::string_view name,
     }
   }
   LOG(FATAL) << "Service not found: " << name;
-  exit(1);
 }
 
 namespace {

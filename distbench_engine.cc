@@ -103,8 +103,8 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
   fanout_filter.pop_back();  // Consume the '}'
 
   float total_probability = 0.;
-  for (auto s : absl::StrSplit(fanout_filter, ",")) {
-    std::vector<std::string> v = absl::StrSplit(s, ":");
+  for (auto s : absl::StrSplit(fanout_filter, ',')) {
+    std::vector<std::string> v = absl::StrSplit(s, ':');
     if (v.size() != 2)
       return absl::InvalidArgumentError(
           "Invalid stochastic filter; only 1 : accepted");
@@ -134,9 +134,10 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
                  << " does not add up to 1.0 (is "
                  << total_probability << ")";
 
-  if (rpc_def.stochastic_dist.size() == 0)
+  if (rpc_def.stochastic_dist.empty()) {
       return absl::InvalidArgumentError(
           "Invalid stochastic filter; need at least a value pair");
+  }
 
   rpc_def.is_stochastic_fanout = true;
 
@@ -941,7 +942,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     // Generate a vector to pick random targets from (only done once)
     partial_rand_vects.try_emplace(num_servers, std::vector<int>());
     std::vector<int>& from_vector = partial_rand_vects[num_servers];
-    if (from_vector.size() == 0) {
+    if (from_vector.empty()) {
       for (int i = 0; i < num_servers; i++)
         from_vector.push_back(i);
     }
