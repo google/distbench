@@ -24,7 +24,8 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
                                          NodeConfig* response) {
   if (request->hostname().empty() ||
       request->control_port() <= 0) {
-    return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "Invalid Registration");
+    return grpc::Status(
+        grpc::StatusCode::INVALID_ARGUMENT, "Invalid Registration");
   }
 
   absl::MutexLock m(&mutex_);
@@ -61,7 +62,8 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
               << " @ " << node_service;
     return grpc::Status::OK;
   } else {
-    return grpc::Status(grpc::StatusCode::UNKNOWN, "Could not create node stub.");
+    return grpc::Status(
+        grpc::StatusCode::UNKNOWN, "Could not create node stub.");
   }
 }
 
@@ -143,7 +145,8 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     {
       absl::MutexLock m(&mutex_);
       if (running_test_sequence_context_->IsCancelled()) {
-        return grpc::Status(grpc::StatusCode::ABORTED, "Cancelled by new test sequence.");
+        return grpc::Status(
+            grpc::StatusCode::ABORTED, "Cancelled by new test sequence.");
       }
     }
     auto maybe_result = DoRunTest(context, test);
@@ -182,7 +185,7 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   for (const auto& service_node : test.services()) {
     for (int i = 0; i < service_node.count(); ++i) {
       std::string service_instance =
-        absl::StrCat(service_node.server_type(), "/", i);
+        absl::StrCat(service_node.name(), "/", i);
       unplaced_services.insert(service_instance);
       all_services.push_back(service_instance);
     }
@@ -463,12 +466,15 @@ TestSequencer::~TestSequencer() {
 
 void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   opts_ = opts;
-  service_address_ = absl::StrCat("[::]:", opts_.port);
+  service_address_ = absl::StrCat("[::]:", *opts_.port);
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> creds = MakeServerCredentials();
-  builder.AddListeningPort(service_address_, creds);
+  builder.AddListeningPort(service_address_, creds, opts_.port);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
+  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   grpc_server_ = builder.BuildAndStart();
+  service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
   LOG(INFO) << "Server listening on " << service_address_;
 }
 

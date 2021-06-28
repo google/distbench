@@ -34,12 +34,11 @@ TEST(DistBenchEngineTest, ctor) {
 
 TEST(DistBenchEngineTest, init) {
   DistributedSystemDescription desc;
-  desc.add_services()->set_server_type("test_service");
+  desc.add_services()->set_name("test_service");
   RealClock clock;
   DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()), &clock);
-  int port = AllocatePort();
-  ASSERT_OK(dbe.Initialize(port, desc, "test_service", 0));
-  FreePort(port);
+  int port = 0;
+  ASSERT_OK(dbe.Initialize(desc, "test_service", 0, &port));
 }
 
 }  // namespace distbench

@@ -94,17 +94,17 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should starts with stochastic{");
   }
-  fanout_filter.erase(0, 1); // Consume {
+  fanout_filter.erase(0, 1);  // Consume the '{'
 
   if (!absl::EndsWith(fanout_filter, "}")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should ends with }");
   }
-  fanout_filter.pop_back(); // Consume }
+  fanout_filter.pop_back();  // Consume the '}'
 
   float total_probability = 0.;
-  for (auto s: absl::StrSplit(fanout_filter, ",")) {
-    std::vector<std::string> v = absl::StrSplit(s, ":");
+  for (auto s : absl::StrSplit(fanout_filter, ',')) {
+    std::vector<std::string> v = absl::StrSplit(s, ':');
     if (v.size() != 2)
       return absl::InvalidArgumentError(
           "Invalid stochastic filter; only 1 : accepted");
@@ -134,9 +134,10 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
                  << " does not add up to 1.0 (is "
                  << total_probability << ")";
 
-  if (rpc_def.stochastic_dist.size() == 0)
+  if (rpc_def.stochastic_dist.empty()) {
       return absl::InvalidArgumentError(
           "Invalid stochastic filter; need at least a value pair");
+  }
 
   rpc_def.is_stochastic_fanout = true;
 
@@ -198,9 +199,9 @@ absl::Status DistBenchEngine::InitializeTables() {
 
   // Convert the action table to a map indexed by name:
   std::map<std::string, Action> action_map;
-  for (int i = 0; i < traffic_config_.action_table_size(); ++i) {
-    const auto& action = traffic_config_.action_table(i);
-    action_map[action.name()] = traffic_config_.action_table(i);
+  for (int i = 0; i < traffic_config_.actions_size(); ++i) {
+    const auto& action = traffic_config_.actions(i);
+    action_map[action.name()] = traffic_config_.actions(i);
   }
   std::map<std::string, int> rpc_name_index_map =
     EnumerateRpcs(traffic_config_);
@@ -208,16 +209,16 @@ absl::Status DistBenchEngine::InitializeTables() {
     EnumerateServiceTypes(traffic_config_);
 
   std::map<std::string, int> action_list_index_map;
-  action_list_table_.resize(traffic_config_.action_list_table().size());
-  for (int i = 0; i < traffic_config_.action_list_table_size(); ++i) {
-    const auto& action_list = traffic_config_.action_list_table(i);
+  action_lists_.resize(traffic_config_.action_lists().size());
+  for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
+    const auto& action_list = traffic_config_.action_lists(i);
     action_list_index_map[action_list.name()] = i;
-    action_list_table_[i].proto = action_list;
-    action_list_table_[i].list_actions.resize(action_list.action_names_size());
+    action_lists_[i].proto = action_list;
+    action_lists_[i].list_actions.resize(action_list.action_names_size());
   }
 
-  for (int i = 0; i < traffic_config_.action_list_table_size(); ++i) {
-    const auto& action_list = traffic_config_.action_list_table(i);
+  for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
+    const auto& action_list = traffic_config_.action_lists(i);
     std::map<std::string, int> list_action_indices;
     for (int j = 0; j < action_list.action_names().size(); ++j) {
       const auto& action_name = action_list.action_names(j);
@@ -227,13 +228,14 @@ absl::Status DistBenchEngine::InitializeTables() {
         return absl::NotFoundError(action_name);
       }
       if (it->second.has_rpc_name()) {
+        action_lists_[i].has_rpcs = true;
         // Validate rpc can be sent from this local node
       }
-      action_list_table_[i].list_actions[j].proto = it->second;
+      action_lists_[i].list_actions[j].proto = it->second;
     }
     // second pass to fixup deps:
-    for (size_t j = 0; j < action_list_table_[i].list_actions.size(); ++j) {
-      auto& action = action_list_table_[i].list_actions[j];
+    for (size_t j = 0; j < action_lists_[i].list_actions.size(); ++j) {
+      auto& action = action_lists_[i].list_actions[j];
       if (action.proto.has_rpc_name()) {
         auto it2 = rpc_name_index_map.find(action.proto.rpc_name());
         if (it2 == rpc_name_index_map.end()) {
@@ -321,7 +323,7 @@ absl::Status DistBenchEngine::InitializeTables() {
             "Rpc ", rpc.name(), " specifies unknown client service_type ",
             client_service_name));
     }
-    client_rpc_table_[i].server_type_index = it1->second;
+    client_rpc_table_[i].service_index = it1->second;
     client_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
     client_rpc_table_[i].pending_requests_per_peer.resize(
         traffic_config_.services(it1->second).count(), 0);
@@ -331,10 +333,10 @@ absl::Status DistBenchEngine::InitializeTables() {
 }
 
 absl::Status DistBenchEngine::Initialize(
-    int port,
     const DistributedSystemDescription& global_description,
     std::string_view service_name,
-    int service_instance) {
+    int service_instance,
+    int* port) {
   traffic_config_ = global_description;
   CHECK(!service_name.empty());
   service_name_ = service_name;
@@ -344,13 +346,15 @@ absl::Status DistBenchEngine::Initialize(
   if (!ret.ok()) return ret;
 
   // Start server
-  std::string server_address = absl::StrCat("[::]:", port);
+  std::string server_address = absl::StrCat("[::]:", *port);
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
-  builder.AddListeningPort(server_address, server_creds);
+  builder.AddListeningPort(server_address, server_creds, port);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   server_ = builder.BuildAndStart();
+  server_address = absl::StrCat("[::]:", *port);  // port may have changed
   if (server_) {
     LOG(INFO) << "Engine server listening on " << server_address;
   } else {
@@ -434,6 +438,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
     grpc::Status status;
     ConnectRequest request;
     ConnectResponse response;
+    std::string server_address;
   };
   grpc::Status status;
   std::vector<PendingRpc> pending_rpcs(num_targets);
@@ -447,6 +452,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
         std::shared_ptr<grpc::Channel> channel =
           grpc::CreateChannel(service_instance.endpoint_address, creds);
         rpc_state.stub = ConnectionSetup::NewStub(channel);
+        rpc_state.server_address = service_instance.endpoint_address;
         CHECK(rpc_state.stub);
 
         ++rpc_count;
@@ -467,7 +473,12 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
         status = finished_rpc->status;
-        LOG(ERROR) << "Finished RPC ERROR:" << finished_rpc->status;
+        LOG(ERROR) << "ConnectToPeers error:"
+                   << finished_rpc->status.error_code()
+                   << " "
+                   << finished_rpc->status.error_message()
+                   << " connecting to "
+                   << finished_rpc->server_address;
       }
     }
   }
@@ -486,8 +497,8 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   if (service_map_.service_endpoints_size() < 2) {
     return absl::NotFoundError("No peers configured.");
   }
-  for (int i = 0; i < traffic_config_.action_list_table_size(); ++i) {
-    if (service_name_ == traffic_config_.action_list_table(i).name()) {
+  for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
+    if (service_name_ == traffic_config_.action_lists(i).name()) {
       LOG(INFO) << "running Main for " << service_name_
                 << "/" << service_instance_;
       engine_main_thread_ = RunRegisteredThread(
@@ -543,19 +554,21 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
 
 void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
-  CHECK_LT(static_cast<size_t>(list_index), action_list_table_.size());
+  CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
   ActionListState s;
+  s.incoming_rpc_state = incoming_rpc_state;
+  s.action_list = &action_lists_[list_index];
 
-  // Allocate peer_logs for performance gathering
-  // peer_logs[service_type][instance]
-  s.peer_logs.resize(peers_.size());
-  for (size_t i = 0; i < peers_.size(); ++i) {
-    s.peer_logs[i].resize(peers_[i].size());
+  // Allocate peer_logs for performance gathering, if needed:
+  if (s.action_list->has_rpcs) {
+    absl::MutexLock m(&s.action_mu);
+    s.peer_logs.resize(peers_.size());
+    for (size_t i = 0; i < peers_.size(); ++i) {
+      s.peer_logs[i].resize(peers_[i].size());
+    }
   }
 
-  s.incoming_rpc_state = incoming_rpc_state;
-  s.action_list = &action_list_table_[list_index];
   int size = s.action_list->proto.action_names_size();
   s.finished_action_indices.reserve(size);
   s.state_table = std::make_unique<ActionState[]>(size);
@@ -623,13 +636,16 @@ void DistBenchEngine::RunActionList(
       break;
     }
   }
-  // Merge the per-thread logs into the overall logs:
-  for (size_t i = 0; i < s.peer_logs.size(); ++i) {
-    for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
-      absl::MutexLock m(&peers_[i][j].mutex);
-      for (const auto& rpc_log : s.peer_logs[i][j].rpc_logs()) {
-        (*peers_[i][j].log.mutable_rpc_logs())[rpc_log.first].MergeFrom(
-            rpc_log.second);
+  // Merge the per-action-list logs into the overall logs:
+  if (s.action_list->has_rpcs) {
+    absl::MutexLock m(&s.action_mu);
+    for (size_t i = 0; i < s.peer_logs.size(); ++i) {
+      for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
+        absl::MutexLock m(&peers_[i][j].mutex);
+        for (const auto& rpc_log : s.peer_logs[i][j].rpc_logs()) {
+          (*peers_[i][j].log.mutable_rpc_logs())[rpc_log.first].MergeFrom(
+              rpc_log.second);
+        }
       }
     }
   }
@@ -665,6 +681,7 @@ void DistBenchEngine::ActionListState::RecordLatency(
     size_t service_type,
     size_t instance,
     const ClientRpcState* state) {
+  absl::MutexLock m(&action_mu);
   CHECK_LT(service_type, peer_logs.size());
   auto& service_log = peer_logs.at(service_type);
   CHECK_LT(instance, service_log.size());
@@ -764,6 +781,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     for (int i = 0; i < parallel_copies; ++i) {
       auto it_state = std::make_shared<ActionIterationState>();
       it_state->action_state = action_state;
+      action_state->iteration_mutex.Lock();
+      it_state->iteration_number = ++action_state->next_iteration;
+      action_state->iteration_mutex.Unlock();
       StartIteration(it_state);
     }
   }
@@ -772,54 +792,56 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
 void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
   absl::Duration period = absl::Nanoseconds(
       action_state->action->proto.iterations().open_loop_interval_ns());
-  action_state->next_iteration_time += period;
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
+  action_state->iteration_mutex.Lock();
+  action_state->next_iteration_time += period;
+  it_state->iteration_number = ++action_state->next_iteration;
+  action_state->iteration_mutex.Unlock();
   StartIteration(it_state);
 }
 
 void DistBenchEngine::FinishIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   ActionState* state = iteration_state->action_state;
+  bool open_loop = state->action->proto.iterations().has_open_loop_interval_ns();
+  bool start_another_iteration = !open_loop;
   bool done = false;
   state->iteration_mutex.Lock();
   ++state->finished_iterations;
-  if (state->finished_iterations == state->iteration_limit) {
+  if (state->next_iteration == state->iteration_limit) {
     done = true;
-  }
-  if (state->next_iteration_time == absl::InfiniteFuture()) {
+    start_another_iteration = false;
+  } else if (state->next_iteration_time == absl::InfiniteFuture()) {
     // Closed loop iteration:
     if (state->time_limit != absl::InfiniteFuture()) {
       if (clock_->Now() > state->time_limit) {
         done = true;
+        start_another_iteration = false;
       }
     }
   } else {
     // Open loop (possibly sync_burst) iteration:
     if (state->next_iteration_time > state->time_limit) {
       done = true;
+      start_another_iteration = false;
     }
   }
+  int pending_iterations = state->next_iteration - state->finished_iterations;
+  if (start_another_iteration) {
+    ++state->next_iteration;
+  }
   state->iteration_mutex.Unlock();
-  if (done) {
+  if (done && !pending_iterations) {
     state->all_done_callback();
-  } else if (!state->action->proto.iterations().has_open_loop_interval_ns()) {
+  } else if (start_another_iteration) {
     StartIteration(iteration_state);
   }
 }
 
 void DistBenchEngine::StartIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
-  ActionState* state = iteration_state->action_state;
-  state->iteration_mutex.Lock();
-  if (state->next_iteration >= state->iteration_limit) {
-    state->iteration_mutex.Unlock();
-    return;
-  }
-
-  iteration_state->iteration_number = ++state->next_iteration;
-  state->iteration_mutex.Unlock();
-  state->iteration_function(iteration_state);
+  iteration_state->action_state->iteration_function(iteration_state);
 }
 
 // This works fine for 1-at-a-time closed-loop iterations:
@@ -899,7 +921,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     int nb_targets = 0;
     float random_val = absl::Uniform(random_generator, 0, 1.0);
     float cur_val = 0.0;
-    for (const auto &d: rpc_def.stochastic_dist) {
+    for (const auto &d : rpc_def.stochastic_dist) {
       cur_val += d.probability;
       if (random_val <= cur_val) {
         nb_targets = d.nb_targets;
@@ -920,9 +942,10 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     // Generate a vector to pick random targets from (only done once)
     partial_rand_vects.try_emplace(num_servers, std::vector<int>());
     std::vector<int>& from_vector = partial_rand_vects[num_servers];
-    if (from_vector.size() == 0)
+    if (from_vector.empty()) {
       for (int i = 0; i < num_servers; i++)
         from_vector.push_back(i);
+    }
 
     // Randomize and pick up to nb_targets
     for (int i = 0; i < nb_targets; i++) {
@@ -942,7 +965,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
         targets.push_back(target);
       }
     }
-  } else { // The following fanout options return 1 target
+  } else {  // The following fanout options return 1 target
     int target;
     targets.reserve(1);
     if (fanout_filter == "random") {

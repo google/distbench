@@ -19,6 +19,8 @@
 
 namespace distbench {
 
+namespace {
+
 class TrafficService : public Traffic::Service {
  public:
   ~TrafficService() override {}
@@ -45,22 +47,26 @@ class TrafficService : public Traffic::Service {
   std::function<void(ServerRpcState* state)> handler_;
 };
 
+}  // anonymous namespace
+
 ProtocolDriverGrpc::ProtocolDriverGrpc() {
 }
 
 absl::Status ProtocolDriverGrpc::Initialize(
-    std::string_view netdev_name, int port) {
-  server_port_ = port;
-  CHECK(port);
+    std::string_view netdev_name, int* port) {
   server_ip_address_ = IpAddressForDevice("");
-  server_socket_address_ = SocketAddressForDevice("", port);
+  server_socket_address_ = SocketAddressForDevice("", *port);
+  server_socket_address_ = "[::]:0";
   traffic_service_ = absl::make_unique<TrafficService>();
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
-  builder.AddListeningPort(server_socket_address_, server_creds);
+  builder.AddListeningPort(server_socket_address_, server_creds, port);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
+  server_port_ = *port;
+  server_socket_address_ = SocketAddressForDevice("", *port);
   if (server_) {
     LOG(INFO) << "Grpc Traffic server listening on " << server_socket_address_;
     cq_poller_ = std::thread(&ProtocolDriverGrpc::RpcCompletionThread, this);
@@ -72,7 +78,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
 
 void ProtocolDriverGrpc::SetHandler(
     std::function<void(ServerRpcState* state)> handler) {
-  traffic_service_->SetHandler(handler);
+  static_cast<TrafficService*>(traffic_service_.get())->SetHandler(handler);
 }
 
 void ProtocolDriverGrpc::SetNumPeers(int num_peers) {
@@ -97,8 +103,8 @@ absl::StatusOr<std::string> ProtocolDriverGrpc::HandlePreConnect(
 
 absl::Status ProtocolDriverGrpc::HandleConnect(
     std::string remote_connection_info, int peer) {
-  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   CHECK_GE(peer, 0);
+  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
   std::shared_ptr<grpc::ChannelCredentials> creds =
@@ -126,8 +132,8 @@ struct PendingRpc {
 void ProtocolDriverGrpc::InitiateRpc(
     int peer_index, ClientRpcState* state,
     std::function<void(void)> done_callback) {
-  CHECK_LT(static_cast<size_t>(peer_index), grpc_client_stubs_.size());
   CHECK_GE(peer_index, 0);
+  CHECK_LT(static_cast<size_t>(peer_index), grpc_client_stubs_.size());
   ++pending_rpcs_;
   PendingRpc* new_rpc = new PendingRpc;
   new_rpc->done_callback = done_callback;

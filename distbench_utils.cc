@@ -62,14 +62,6 @@ std::thread RunRegisteredThread(const std::string& thread_name,
   });
 }
 
-int AllocatePort() {
-  return net_util::PickUnusedPortOrDie();
-}
-
-void FreePort(int port) {
-  net_util::RecycleUnusedPort(port);
-}
-
 void InitLibs(const char* argv0) {
   // Extra library initialization can go here
   ::google::InitGoogleLogging(argv0);
@@ -97,7 +89,6 @@ std::string SocketAddressForDevice(std::string_view netdev, int port) {
     return absl::StrCat(ip.ToString(), ":", port);
 
   LOG(FATAL) << "Could not get ip v4/v6 address";
-  exit(1);
 }
 
 std::string ServiceInstanceName(std::string_view service_type, int instance) {
@@ -110,8 +101,8 @@ std::map<std::string, int> EnumerateServiceTypes(
     const DistributedSystemDescription& config) {
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
-    // LOG(INFO) << "service " << service.server_type() << " = " << ret.size();
-    ret[service.server_type()] = ret.size();
+    // LOG(INFO) << "service " << service.name() << " = " << ret.size();
+    ret[service.name()] = ret.size();
   }
   return ret;
 }
@@ -120,8 +111,8 @@ std::map<std::string, int> EnumerateServiceSizes(
     const DistributedSystemDescription& config) {
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
-    // LOG(INFO) << "service " << service.server_type() << " = " << ret.size();
-    ret[service.server_type()] = service.count();
+    // LOG(INFO) << "service " << service.name() << " = " << ret.size();
+    ret[service.name()] = service.count();
   }
   return ret;
 }
@@ -140,7 +131,7 @@ std::map<std::string, int> EnumerateServiceInstanceIds(
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
     for (int i = 0; i < service.count(); ++i) {
-      std::string instance = ServiceInstanceName(service.server_type(), i);
+      std::string instance = ServiceInstanceName(service.name(), i);
       // LOG(INFO) << "service " << instance << " = " << ret.size();
       ret[instance] = ret.size();
     }
@@ -151,12 +142,11 @@ std::map<std::string, int> EnumerateServiceInstanceIds(
 ServiceSpec GetServiceSpec(std::string_view name,
                            const DistributedSystemDescription& config) {
   for (const auto& service : config.services()) {
-    if (service.server_type() == name) {
+    if (service.name() == name) {
       return service;
     }
   }
   LOG(FATAL) << "Service not found: " << name;
-  exit(1);
 }
 
 namespace {

@@ -23,7 +23,7 @@ namespace distbench {
 
 struct NodeManagerOpts {
   std::string test_sequencer_service_address;
-  int port;
+  int* port;
 };
 
 class NodeManager final : public DistBenchNodeManager::Service {
@@ -60,7 +60,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
     std::string_view service_name;
     std::string_view service_type;
     int service_instance;
-    int port;
+    int* port;
     std::string_view protocol;
     std::string_view netdev;
   };
@@ -75,7 +75,6 @@ class NodeManager final : public DistBenchNodeManager::Service {
   std::map<std::string, std::unique_ptr<DistBenchEngine>> service_engines_
     ABSL_GUARDED_BY(mutex_);
 
-  std::vector<int> service_ports_ ABSL_GUARDED_BY(mutex_);
   SimpleClock* clock_ = nullptr;
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;

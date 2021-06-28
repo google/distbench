@@ -52,10 +52,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
   ~DistBenchEngine() override;
 
   absl::Status Initialize(
-      int port,
       const DistributedSystemDescription& global_description,
       std::string_view service_name,
-      int service_instance);
+      int service_instance,
+      int* port);
 
   absl::Status ConfigurePeers(const ServiceEndpointMap& peers);
   absl::Status RunTraffic(const RunTrafficRequest* request);
@@ -111,7 +111,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   };
 
   struct SimulatedClientRpc {
-    int server_type_index;
+    int service_index;
     std::vector<GenericRequest> request_table;
     RpcDefinition rpc_definition;
     std::atomic<int64_t> rpc_tracing_counter = 0;
@@ -131,6 +131,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionListTableEntry {
     ActionList proto;
     std::vector<ActionTableEntry> list_actions;
+    bool has_rpcs = false;
   };
 
   struct ActionListState;
@@ -183,7 +184,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     absl::Mutex action_mu;
     std::vector<int> finished_action_indices;
 
-    std::vector<std::vector<PeerPerformanceLog>> peer_logs;
+    std::vector<std::vector<PeerPerformanceLog>> peer_logs ABSL_GUARDED_BY(action_mu);
   };
 
   absl::Status InitializeTables();
@@ -204,7 +205,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   std::unique_ptr<SimulatedClientRpc[]> client_rpc_table_;
   std::vector<SimulatedServerRpc> server_rpc_table_;
-  std::vector<ActionListTableEntry> action_list_table_;
+  std::vector<ActionListTableEntry> action_lists_;
 
   absl::Status ConnectToPeers();
   void RpcHandler(ServerRpcState* state);

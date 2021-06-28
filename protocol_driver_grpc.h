@@ -20,7 +20,6 @@
 #include "protocol_driver.h"
 
 namespace distbench {
-class TrafficService;
 
 class ProtocolDriverGrpc : public ProtocolDriver {
  public:
@@ -28,7 +27,7 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   ~ProtocolDriverGrpc() override;
 
   absl::Status Initialize(
-      std::string_view netdev_name, int port) override;
+      std::string_view netdev_name, int* port) override;
 
   void SetHandler(std::function<void(ServerRpcState* state)> handler) override;
   void SetNumPeers(int num_peers) override;
@@ -55,7 +54,7 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   absl::Notification shutdown_;
   std::thread cq_poller_;
   grpc::CompletionQueue cq_;
-  std::unique_ptr<TrafficService> traffic_service_;
+  std::unique_ptr<Traffic::Service> traffic_service_;
   std::unique_ptr<grpc::Server> server_;
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
   int server_port_ = 0;

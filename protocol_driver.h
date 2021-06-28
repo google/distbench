@@ -15,11 +15,11 @@
 #ifndef DISTBENCH_PROTOCOL_DRIVER_H_
 #define DISTBENCH_PROTOCOL_DRIVER_H_
 
+#include <string_view>
 #include "distbench.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
-#include <string_view>
 
 namespace distbench {
 
@@ -49,7 +49,7 @@ class ProtocolDriver {
  public:
   virtual ~ProtocolDriver() {}
   virtual absl::Status Initialize(
-      std::string_view netdev_name, int port) = 0;
+      std::string_view netdev_name, int* port) = 0;
 
   virtual void SetHandler(
       std::function<void(ServerRpcState* state)> handler) = 0;

@@ -79,11 +79,11 @@ grpc_cli \
 <<EOF
 tests {
   services {
-    server_type: "client"
+    name: "client"
     count: $CLIENT_COUNT
   }
   services {
-    server_type: "server"
+    name: "server"
     count: $SERVER_COUNT
   }
   rpc_descriptions {
@@ -102,18 +102,18 @@ tests {
     name: "response_payload"
     size: 262144
   }
-  action_list_table {
+  action_lists {
     name: "client"
     action_names: "run_queries"
   }
-  action_table {
+  actions {
     name: "run_queries"
     rpc_name: "client_server_rpc"
     iterations {
       max_iteration_count: 100
     }
   }
-  action_list_table {
+  action_lists {
     name: "client_server_rpc"
     # No action on the server; just send the response
   }

@@ -19,6 +19,8 @@
 
 namespace distbench {
 
+namespace {
+
 class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
  public:
   ~TrafficServiceAsync() override {}
@@ -31,13 +33,12 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
       grpc::CallbackServerContext* context,
       const GenericRequest* request,
       GenericResponse* response) override {
-
     ServerRpcState rpc_state;
     rpc_state.request = request;
     rpc_state.send_response = [&]() {
       *response = std::move(rpc_state.response);
     };
-    if(handler_)
+    if (handler_)
       handler_(&rpc_state);
 
     // Return reactor
@@ -50,33 +51,38 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
   std::function<void(ServerRpcState* state)> handler_;
 };
 
+}  // anonymous namespace
+
 ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 }
 
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
-    std::string_view netdev_name, int port) {
-  server_port_ = port;
-  CHECK(port);
+    std::string_view netdev_name, int* port) {
   server_ip_address_ = IpAddressForDevice("");
-  server_socket_address_ = SocketAddressForDevice("", port);
+  server_socket_address_ = SocketAddressForDevice("", *port);
   traffic_service_ = absl::make_unique<TrafficServiceAsync>();
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
-  builder.AddListeningPort(server_socket_address_, server_creds);
+  builder.AddListeningPort(server_socket_address_, server_creds, port);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
+  server_port_ = *port;
+  server_socket_address_ = SocketAddressForDevice("", *port);
   if (server_) {
-    LOG(INFO) << "Grpc Async Callback Traffic server listening on " << server_socket_address_;
+    LOG(INFO) << "Grpc Async Callback Traffic server listening on "
+              << server_socket_address_;
     return absl::OkStatus();
   } else {
-    return absl::UnknownError("Grpc Async Callback Traffic service failed to start");
+    return absl::UnknownError(
+        "Grpc Async Callback Traffic service failed to start");
   }
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetHandler(
     std::function<void(ServerRpcState* state)> handler) {
-  traffic_service_->SetHandler(handler);
+  static_cast<TrafficServiceAsync*>(traffic_service_.get())->SetHandler(handler);
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
@@ -101,8 +107,8 @@ absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
 
 absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
     std::string remote_connection_info, int peer) {
-  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   CHECK_GE(peer, 0);
+  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
   LOG(INFO) << addr.DebugString();
@@ -131,8 +137,8 @@ struct PendingRpc {
 void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
     int peer_index, ClientRpcState* state,
     std::function<void(void)> done_callback) {
-  CHECK_LT(static_cast<size_t>(peer_index), grpc_client_stubs_.size());
   CHECK_GE(peer_index, 0);
+  CHECK_LT(static_cast<size_t>(peer_index), grpc_client_stubs_.size());
 
   ++pending_rpcs_;
   PendingRpc* new_rpc = new PendingRpc;
@@ -141,7 +147,7 @@ void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
   new_rpc->request = std::move(state->request);
 
   auto callback_fct = [this, new_rpc, done_callback](const grpc::Status& status) {
-    if (!status.ok()){
+    if (!status.ok()) {
       LOG(ERROR) << new_rpc->status;
       new_rpc->state->success = false;
     } else {

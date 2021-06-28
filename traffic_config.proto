@@ -17,10 +17,10 @@ syntax = "proto2";
 package distbench;
 
 // Specifies how many servers there are of each type.
-// The name of an individual instance is just $server_type/$intance_number,
+// The name of an individual instance is just $name/$intance_number,
 // e.g. "search_leaf/0"
 message ServiceSpec {
-  optional string server_type = 1;
+  optional string name = 1;
   optional int32 count = 2;
 }
 
@@ -65,11 +65,6 @@ message Action {
   }
 }
 
-// Are these implicitly sequential ? hope not?
-// Do they automatically handle loop-carried dependencies by waiting for all
-// previous actions to complete before starting the next iteration?
-// Are loop-carried deps handled by assuming forward deps are across loop
-// iterations?
 message ActionList {
   optional string name = 1;
   repeated string action_names = 2;
@@ -80,7 +75,7 @@ message DistributedSystemDescription {
   map<string, ServiceBundle> node_service_bundles = 2;
   repeated PayloadSpec payload_descriptions = 3;
   repeated RpcSpec rpc_descriptions = 4;
-  repeated Action action_table = 5;
-  repeated ActionList action_list_table = 6;
+  repeated Action actions = 5;
+  repeated ActionList action_lists = 6;
   optional string default_protocol = 7 [default = "grpc"];
 }

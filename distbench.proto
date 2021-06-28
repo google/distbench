@@ -16,7 +16,7 @@ syntax = "proto2";
 
 package distbench;
 
-import "dstmf.proto";
+import "traffic_config.proto";
 
 message ProtocolDriverOptions {
   optional string protocol_name = 1;  // required

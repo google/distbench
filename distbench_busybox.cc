@@ -20,7 +20,7 @@
 ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 ABSL_FLAG(bool, use_ipv4_first, false,
-    "Listen on an IPV4 address in priority (by default Distbench will use IPV6");
+    "Prefer IPv4 addresses to IPv6 addresses when both are available");
 
 void Usage() {
   std::cerr << "Usage: distbench module [options]\n";
@@ -54,7 +54,8 @@ int main(int argc, char** argv, char** envp) {
   for (int i = 1; i < argc; ++i) {
     if (!strcmp(argv[i], "test_sequencer")) {
       distbench::TestSequencerOpts opts = {};
-      opts.port = absl::GetFlag(FLAGS_port);
+      int port = absl::GetFlag(FLAGS_port);
+      opts.port = &port;
       distbench::TestSequencer test_sequencer;
       test_sequencer.Initialize(opts);
       test_sequencer.Wait();
@@ -63,7 +64,8 @@ int main(int argc, char** argv, char** envp) {
     if (!strcmp(argv[i], "node_manager")) {
       distbench::NodeManagerOpts opts = {};
       opts.test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer);
-      opts.port = absl::GetFlag(FLAGS_port);
+      int port = absl::GetFlag(FLAGS_port);
+      opts.port = &port;
       distbench::RealClock clock;
       distbench::NodeManager node_manager(&clock);
       absl::Status status = node_manager.Initialize(opts);

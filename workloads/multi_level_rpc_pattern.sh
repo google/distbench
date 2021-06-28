@@ -77,23 +77,23 @@ grpc_cli \
 <<EOF
 tests {
   services {
-    server_type: "load_balancer"
+    name: "load_balancer"
     count: 1
   }
   services {
-    server_type: "root"
+    name: "root"
     count: $ROOT_COUNT
   }
   services {
-    server_type: "leaf"
+    name: "leaf"
     count: $LEAF_COUNT
   }
-  action_list_table {
+  action_lists {
     name: "load_balancer"
     action_names: "load_balancer/do_closed_loop_root_queries"
     action_names: "load_balancer/do_closed_loop_root_queries_again"
   }
-  action_table {
+  actions {
     name: "load_balancer/do_closed_loop_root_queries"
     iterations {
       max_iteration_count: 3
@@ -101,7 +101,7 @@ tests {
     }
     rpc_name: "root_query"
   }
-  action_table {
+  actions {
     name: "load_balancer/do_closed_loop_root_queries_again"
     dependencies : "load_balancer/do_closed_loop_root_queries"
     iterations {
@@ -112,7 +112,7 @@ tests {
     }
     action_list_name: "load_balancer/root_query_al"
   }
-  action_list_table {
+  action_lists {
     name: "load_balancer/root_query_al"
     action_names: "load_balancer/do_closed_loop_root_queries"
     #action_names: "root/root_query_fanout"
@@ -124,12 +124,12 @@ tests {
     fanout_filter: "round_robin"
     tracing_interval: 2
   }
-  action_list_table {
+  action_lists {
     name: "root_query"
     action_names: "root/root_query_fanout"
     # Should be able to use an action name in-place of a single entry action list?
   }
-  action_table {
+  actions {
     name: "root/root_query_fanout"
     rpc_name: "leaf_query"
   }
@@ -140,7 +140,7 @@ tests {
     fanout_filter: "all"
     tracing_interval: 2
   }
-  action_list_table {
+  action_lists {
     name: "leaf_query"
     # no actions, NOP
   }

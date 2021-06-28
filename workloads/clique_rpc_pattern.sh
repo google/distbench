@@ -76,14 +76,14 @@ grpc_cli \
 <<EOF
 tests {
   services {
-    server_type: "clique"
+    name: "clique"
     count: $NODE_COUNT
   }
-  action_list_table {
+  action_lists {
     name: "clique"
     action_names: "clique_queries"
   }
-  action_table {
+  actions {
     name: "clique_queries"
     iterations {
       max_duration_us: 10000000
@@ -99,7 +99,7 @@ tests {
     fanout_filter: "all"
     tracing_interval: 2
   }
-  action_list_table {
+  action_lists {
     name: "clique_query"
     # no actions, NOP
   }

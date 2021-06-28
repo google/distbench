@@ -42,22 +42,20 @@ DistBenchTester::~DistBenchTester() {
   for (size_t i = 0; i < nodes.size(); ++i) {
     nodes[i]->Wait();
   }
-  FreePort(test_sequencer->GetOpts().port);
-  for (size_t i = 0; i < nodes.size(); ++i) {
-    FreePort(nodes[i]->GetOpts().port);
-  }
 }
 
 absl::Status DistBenchTester::Initialize(int num_nodes) {
   test_sequencer = std::make_unique<TestSequencer>();
   distbench::TestSequencerOpts ts_opts = {};
-  ts_opts.port = AllocatePort();
+  int port = 0;
+  ts_opts.port = &port;
   test_sequencer->Initialize(ts_opts);
   nodes.resize(num_nodes);
   clock = std::make_unique<distbench::RealClock>();
   for (int i = 0; i < num_nodes; ++i) {
     distbench::NodeManagerOpts nm_opts = {};
-    nm_opts.port = AllocatePort();
+    int port = 0;
+    nm_opts.port = &port;
     nm_opts.test_sequencer_service_address =
       test_sequencer->service_address();
     nodes[i] = std::make_unique<NodeManager>(clock.get());
@@ -79,11 +77,11 @@ TEST(DistBenchTestSequencer, ctor) {
 
 TEST(DistBenchTestSequencer, init) {
   distbench::TestSequencerOpts ts_opts = {};
-  ts_opts.port = AllocatePort();
+  int port = 0;
+  ts_opts.port = &port;
   TestSequencer test_sequencer;
   test_sequencer.Initialize(ts_opts);
   test_sequencer.Shutdown();
-  FreePort(ts_opts.port);
 }
 
 TEST(DistBenchTestSequencer, empty_group) {
@@ -98,17 +96,17 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
   auto* s1 = test->add_services();
-  s1->set_server_type("s1");
+  s1->set_name("s1");
   s1->set_count(1);
   auto* s2 = test->add_services();
-  s2->set_server_type("s2");
+  s2->set_name("s2");
   s2->set_count(2);
 
-  auto* l1 = test->add_action_list_table();
+  auto* l1 = test->add_action_lists();
   l1->set_name("s1");
   l1->add_action_names("s1/ping");
 
-  auto a1 = test->add_action_table();
+  auto a1 = test->add_actions();
   a1->set_name("s1/ping");
   a1->set_rpc_name("echo");
   a1->mutable_iterations()->set_max_iteration_count(10);
@@ -118,13 +116,13 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   r1->set_client("s1");
   r1->set_server("s2");
 
-  auto* l2 = test->add_action_list_table();
+  auto* l2 = test->add_action_lists();
   l2->set_name("echo");
 
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(10);
+    std::chrono::system_clock::now() + std::chrono::seconds(70);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -150,6 +148,143 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   ASSERT_NE(s2_1_echo, s2_1->second.rpc_logs().end());
   ASSERT_TRUE(s2_1_echo->second.failed_rpc_samples().empty());
   ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
+}
+
+void RunIntenseTraffic(const char* protocol) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(6));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  test->set_default_protocol(protocol);
+  auto* s1 = test->add_services();
+  s1->set_name("s1");
+  s1->set_count(1);
+  auto* s2 = test->add_services();
+  s2->set_name("s2");
+  s2->set_count(5);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("s1");
+  l1->add_action_names("s1/ping");
+
+  auto a1 = test->add_actions();
+  a1->set_name("s1/ping");
+  a1->set_rpc_name("echo");
+  a1->mutable_iterations()->set_max_iteration_count(10);
+
+  auto* iterations = a1->mutable_iterations();
+  iterations->set_max_duration_us(200000);
+  iterations->set_max_iteration_count(2000);
+  iterations->set_max_parallel_iterations(10);
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("echo");
+  r1->set_client("s1");
+  r1->set_server("s2");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("echo");
+
+  TestSequenceResults results;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(200);
+  grpc::ClientContext context;
+  grpc::ClientContext context2;
+  grpc::ClientContext context3;
+  context.set_deadline(deadline);
+  context2.set_deadline(deadline);
+  context3.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+
+  iterations->clear_max_iteration_count();
+  status = tester.test_sequencer_stub->RunTestSequence(
+      &context2, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+
+  iterations->clear_max_duration_us();
+  iterations->set_max_iteration_count(2000);
+  status = tester.test_sequencer_stub->RunTestSequence(
+      &context3, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+}
+
+TEST(DistBenchTestSequencer, 100k_grpc) {
+  RunIntenseTraffic("grpc");
+}
+TEST(DistBenchTestSequencer, 100k_grpc_async_callback) {
+  RunIntenseTraffic("grpc_async_callback");
+}
+
+TEST(DistBenchTestSequencer, clique_test) {
+  int nb_cliques = 3;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* s1 = test->add_services();
+  s1->set_name("clique");
+  s1->set_count(nb_cliques);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("clique");
+  l1->add_action_names("clique_queries");
+
+  auto a1 = test->add_actions();
+  a1->set_name("clique_queries");
+  a1->mutable_iterations()->set_max_duration_us(10000000);
+  a1->mutable_iterations()->set_open_loop_interval_ns(16000000);
+  a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
+  a1->set_rpc_name("clique_query");
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("clique_query");
+  r1->set_client("clique");
+  r1->set_server("clique");
+  r1->set_fanout_filter("all");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("clique_query");
+
+  TestSequenceResults results;
+  grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(15);
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  ASSERT_OK(status);
+  LOG(INFO) << "TestSequenceResults: " << results.DebugString();
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto &log_summary = test_results.log_summary();
+  size_t pos = log_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = log_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+
+  bool correct_number = (624 * (nb_cliques * (nb_cliques - 1)) <= N) &&
+                        (626 * (nb_cliques * (nb_cliques - 1)) >= N);
+  ASSERT_EQ(correct_number, true);
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
+  const auto& instance_results_it =
+    test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
 }
 
 }  // namespace distbench

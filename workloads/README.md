@@ -13,11 +13,11 @@ First two services are implemented and named client and server.
 ```yaml
 tests {
   services {
-    server_type: "client"
+    name: "client"
     count: $CLIENT_COUNT
   }
   services {
-    server_type: "server"
+    name: "server"
     count: $SERVER_COUNT
   }
 ```
@@ -26,7 +26,7 @@ Then an action list is defined for the client, the name matches the service we
 defined earlier. It will define what the actions for client are, when the test
 start. In that case it will run the action `run_queries`.
 ```yaml
-  action_list_table {
+  action_lists {
     name: "client"
     action_names: "run_queries"
   }
@@ -35,7 +35,7 @@ start. In that case it will run the action `run_queries`.
 The action is then defined as follows, in this case `run_queries` will perform
 the `client_server_rpc` rpc 100 times:
 ```yaml
-  action_table {
+  actions {
     name: "run_queries"
     rpc_name: "client_server_rpc"
     iterations {
@@ -69,7 +69,7 @@ Finally, the action performed when the `client_server_rpc` request is received
 by the server is defined. In this case, no extra processing is performed, so
 there is no action to perform. The response to the RPC is implied.
 ```yaml
-  action_list_table {
+  action_lists {
     name: "client_server_rpc"
     # No action on the server; just send the response
   }
@@ -108,11 +108,11 @@ connecting to localhost:10000
 test_results {
   traffic_config {
     services {
-      server_type: "client"
+      name: "client"
       count: 1
     }
     services {
-      server_type: "server"
+      name: "server"
       count: 1
     }
     payload_descriptions {
@@ -130,18 +130,18 @@ test_results {
       request_payload_name: "request_payload"
       response_payload_name: "response_payload"
     }
-    action_table {
+    actions {
       name: "run_queries"
       iterations {
         max_iteration_count: 100
       }
       rpc_name: "client_server_rpc"
     }
-    action_list_table {
+    action_lists {
       name: "client"
       action_names: "run_queries"
     }
-    action_list_table {
+    action_lists {
       name: "client_server_rpc"
     }
   }
@@ -240,11 +240,11 @@ When the `root_query` is received by the root server, it then distribute the
 queries across all the leaf servers (`fanout_filter: all`):
 
 ```yaml
-  action_list_table {
+  action_lists {
     name: "root_query"
     action_names: "root/root_query_fanout"
   }
-  action_table {
+  actions {
     name: "root/root_query_fanout"
     rpc_name: "leaf_query"
   }
@@ -287,7 +287,7 @@ We target around 100 nodes for this benchmark.
 ### Implementation
 
 ```yaml
-  action_table {
+  actions {
     name: "clique_queries"
     iterations {
       max_duration_us: 10000000
@@ -330,3 +330,56 @@ Rpc succeeded with OK status
 
 We have 56250 RPCs (The test run for 625 cycles -10000/16- and there is 10\*9
 RPCs per cycle)
+
+## Tripartite RPC pattern
+
+This pattern involves three types of nodes:
+- client nodes
+- index nodes
+- result nodes
+
+![Tripartite RPC pattern nodes](images/pattern_tripartite_nodes.png)
+
+The client nodes retrieves results by performing sequential pair of RPCs:
+- Querying the location of the result to an index host
+- Retrieving the contents of that record from a result host
+
+The dependencies between each pair of RPCs are properly handled.
+
+![Tripartite RPC pattern sequence](images/pattern_tripartite_sequence.png)
+
+### Implementation
+
+The dependency between the index and the result query is handled by a
+dependencies as shown below:
+
+```yaml
+  action_lists {
+    name: "client_do_one_query"
+    action_names: "client_queryindex"
+    action_names: "client_queryresult"
+  }
+  actions {
+    name: "client_queryindex"
+    rpc_name: "client_index_rpc"
+  }
+  actions {
+    name: "client_queryresult"
+    rpc_name: "client_result_rpc"
+    dependencies: "client_queryindex"
+  }
+```
+## Test Stochastic Example
+
+This example demonstrates the stochastic fanout option. In this pattern, the
+client will perform a random number of requests to the server. It is defined by
+the `fanout_filter`, in this case in 70% of the cases the client will perform
+one request, and in 30% of the cases it will do the request to 4 distinct
+servers.
+
+```yaml
+fanout_filter: "stochastic{0.7:1,0.3:4}
+```
+
+The number of RPCs will slightly vary from run to run due to the random
+parameter.

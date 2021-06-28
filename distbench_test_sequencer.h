@@ -31,7 +31,7 @@ struct RegisteredNode {
 };
 
 struct TestSequencerOpts {
-  int port;
+  int* port;
 };
 
 class TestSequencer final : public DistBenchTestSequencer::Service {

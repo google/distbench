@@ -20,7 +20,6 @@
 #include "protocol_driver.h"
 
 namespace distbench {
-class TrafficServiceAsync;
 
 class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
  public:
@@ -28,7 +27,7 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
   ~ProtocolDriverGrpcAsyncCallback() override;
 
   absl::Status Initialize(
-      std::string_view netdev_name, int port) override;
+      std::string_view netdev_name, int* port) override;
 
   void SetHandler(std::function<void(ServerRpcState* state)> handler) override;
   void SetNumPeers(int num_peers) override;
@@ -51,7 +50,7 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
  private:
   std::atomic<int> pending_rpcs_ = 0;
   absl::Notification shutdown_;
-  std::unique_ptr<TrafficServiceAsync> traffic_service_;
+  std::unique_ptr<Traffic::ExperimentalCallbackService> traffic_service_;
   std::unique_ptr<grpc::Server> server_;
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
   int server_port_ = 0;

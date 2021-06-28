@@ -39,19 +39,21 @@ grpc::Status NodeManager::ConfigureNode(
       absl::StrSplit(service_name, '/');
     CHECK_EQ(service_instance.size(), 2lu);
 
-    int port = AllocatePort();
-    service_ports_.push_back(port);
     int instance;
     CHECK(absl::SimpleAtoi(service_instance[1], &instance));
 
+    int port = 0;
     absl::Status ret = AllocService({
           service_name,
           service_instance[0],
           instance,
-          port,
+          &port,
           traffic_config_.default_protocol(),
           "eth0"});
-    if (!ret.ok()) grpc::Status(grpc::StatusCode::UNKNOWN, "AllocService failure");
+    if (!ret.ok()) {
+      return grpc::Status(grpc::StatusCode::UNKNOWN,
+          absl::StrCat("AllocService failure: ", ret.ToString()));
+    }
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(SocketAddressForDevice("", port));
     service_entry.set_hostname(Hostname());
@@ -61,10 +63,6 @@ grpc::Status NodeManager::ConfigureNode(
 
 void NodeManager::ClearServices() {
   service_engines_.clear();
-  for (const auto& port : service_ports_) {
-    FreePort(port);
-  }
-  service_ports_.clear();
 }
 
 absl::Status NodeManager::AllocService(
@@ -74,12 +72,13 @@ absl::Status NodeManager::AllocService(
   pd_opts.set_protocol_name(std::string(service_opts.protocol));
   pd_opts.set_netdev_name(std::string(service_opts.netdev));
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(pd_opts);
-  absl::Status ret = pd->Initialize("eth0", AllocatePort());
+  int port = 0;
+  absl::Status ret = pd->Initialize("eth0", &port);
   if (!ret.ok()) return ret;
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd), clock_);
   ret = engine->Initialize(
-        service_opts.port, traffic_config_, service_opts.service_type,
-        service_opts.service_instance);
+        traffic_config_, service_opts.service_type,
+        service_opts.service_instance, service_opts.port);
   if (!ret.ok()) return ret;
 
   service_engines_[std::string(service_opts.service_name)] = std::move(engine);
@@ -163,13 +162,15 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub =
     DistBenchTestSequencer::NewStub(channel);
 
-  service_address_ = absl::StrCat("[::]:", opts_.port);
+  service_address_ = absl::StrCat("[::]:", *opts_.port);
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
-  builder.AddListeningPort(service_address_, server_creds);
+  builder.AddListeningPort(service_address_, server_creds, opts_.port);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
+  service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
   if (grpc_server_) {
     LOG(INFO) << "Server listening on " << service_address_;
   }
@@ -178,7 +179,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   }
   NodeRegistration reg;
   reg.set_hostname(Hostname());
-  reg.set_control_port(opts_.port);
+  reg.set_control_port(*opts_.port);
   NodeConfig config;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
@@ -190,8 +191,10 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (status.ok()) {
     LOG(INFO) << "NodeConfig: " << config.ShortDebugString();
   } else {
-    status = Annotate(status, "While registering node to test sequencer(" +
-		    opts_.test_sequencer_service_address + "): ");
+    status = Annotate(status, absl::StrCat(
+          "While registering node to test sequencer(",
+          opts_.test_sequencer_service_address,
+          "): "));
     grpc_server_->Shutdown();
   }
   if (status.ok())

@@ -17,19 +17,16 @@
 
 #include <string>
 
-namespace net_util{
-  int PickUnusedPortOrDie();
-  void RecycleUnusedPort(int port);
-}
-
 namespace net_base{
 class IPAddress{
  private:
   std::string address;
 
  public:
-  std::string ToString() const{return this->address;};
-  void from_c_str(const char *s_address){this->address=std::string(s_address);};
+  std::string ToString() const{return this->address;}
+  void from_c_str(const char *s_address){
+    this->address = std::string(s_address);
+  }
 };
 
 namespace InterfaceLookup{
@@ -37,7 +34,7 @@ namespace InterfaceLookup{
 bool MyIPv4Address(IPAddress *addr);
 bool MyIPv6Address(IPAddress *addr);
 
-}; // namespace InterfaceLookup
-};
+};  // namespace InterfaceLookup
+};  // namespace net_base
 
 #endif  // INTERFACELOOKUP_INTERFACE_LOOKUP_H_

@@ -87,15 +87,15 @@ grpc_cli \
 <<EOF
 tests {
   services {
-    server_type: "client"
+    name: "client"
     count: $CLIENT_COUNT
   }
   services {
-    server_type: "index"
+    name: "index"
     count: $INDEX_COUNT
   }
   services {
-    server_type: "result"
+    name: "result"
     count: $RESULT_COUNT
   }
   rpc_descriptions {
@@ -120,35 +120,35 @@ tests {
     name: "response_payload"
     size: 1024
   }
-  action_list_table {
+  action_lists {
     name: "client"
     action_names: "client_do_many_queries"
   }
-  action_table {
+  actions {
     name: "client_do_many_queries"
     iterations {
       max_iteration_count: 10
     }
     action_list_name: "client_do_one_query"
   }
-  action_list_table {
+  action_lists {
     name: "client_do_one_query"
     action_names: "client_queryindex"
     action_names: "client_queryresult"
   }
-  action_table {
+  actions {
     name: "client_queryindex"
     rpc_name: "client_index_rpc"
   }
-  action_list_table {
+  action_lists {
     name: "client_index_rpc"
     # No action on the client; just send the response
   }
-  action_list_table {
+  action_lists {
     name: "client_result_rpc"
     # No action on the client; just send the response
   }
-  action_table {
+  actions {
     name: "client_queryresult"
     rpc_name: "client_result_rpc"
     dependencies: "client_queryindex"

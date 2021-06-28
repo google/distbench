@@ -1,7 +1,7 @@
 # Distbench Traffic Pattern - Test Format
 
 The distbench are tests are defined using Protobuf using the
-[dstmf.proto](../dstmf.proto) specification.
+[traffic_config.proto](../traffic_config.proto) specification.
 
 This document decribes the different options available. The format is still
 evolving and subject to change.
@@ -22,15 +22,19 @@ in this document.
   create. Each instance will be placed on a Distbench `node_manager`.
 - `node_service_bundles`: a map of services to bundle; each bundle will share a
   Distbench `node_manager`.
-- `action_list_table`: define a list of action to execute.
-- `action_table`: define a action to execute such as running a RPC or calling
-  another `action_list_table` repetitively.
+- `action_lists`: define a list of action to execute.
+- `actions`: define a action to execute such as running a RPC or calling
+  another `action_lists` repetitively.
 - `rpc_descriptions`: describe a RPC to perform, including the type of payload
   and fanout involved.
 - `payload_descriptions`: define a payload that can be associated with an RPC.
 
+**Note:** by convention, repeated fields in the proto are described by plural
+names. So a `services` block describes a single service, but there may be
+multiple of them.
+
 ### message `ServiceSpec`
-- `server_type` (string): name of the service.
+- `name` (string): name of the service.
 - `count` (int32): number of instances to start (each instance will occupy a
   `node_manage` unless it is bundled with other services).
 
@@ -39,16 +43,16 @@ in this document.
 - `services` (string, repeated): list of the services (by name) to bundle
   together.
 
-### message `ActionList` (`action_table`)
+### message `ActionList` (`actions`)
 
-- `name` (string): name the actionlist. If the name match a service, the action
+- `name` (string): name of the ActionList. If the name match a service, the action
   list will be automatically executed by the service.
 - `action_names` (string, repeated): define the list of actions to run.
 
 Note: the actions specified are run in no specific order, unless a
 `dependencies` is specified in the `Action` itself.
 
-### message `Action` (`action_table`)
+### message `Action` (`actions`)
 
 - `name` (string): name the action.
 - `dependencies` (string, repeated): define a dependency on another action. This
@@ -56,7 +60,7 @@ Note: the actions specified are run in no specific order, unless a
 - `iterations` (Iteration): optionally define iterations (see next section)
 - `action`: Define the action to execute, as one of the following:
   - `rpc_name`: run the RPC (defined in a `rpc_descriptions`).
-  - `action_list_table`: run another ActionList (defined by an `action_table`)
+  - `action_lists`: run another ActionList (defined by an `actions`)
 
 ### message `Iteration`
 
