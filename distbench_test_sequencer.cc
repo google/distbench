@@ -151,9 +151,11 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     }
     auto maybe_result = DoRunTest(context, test);
     if (maybe_result.ok()) {
-      std::string summary = SummarizeTestResult(maybe_result.value());
-      maybe_result->set_log_summary(summary);
-      LOG(INFO) << summary;
+      auto summary = SummarizeTestResult(maybe_result.value());
+      for (auto s: summary) {
+        maybe_result->add_log_summary(s);
+        LOG(INFO) << s;
+      }
       *response->add_test_results() = maybe_result.value();
     } else {
       return grpc::Status(grpc::StatusCode::ABORTED,
