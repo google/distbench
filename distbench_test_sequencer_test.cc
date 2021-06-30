@@ -267,10 +267,11 @@ TEST(DistBenchTestSequencer, clique_test) {
   ASSERT_EQ(results.test_results().size(), 1);
   auto& test_results = results.test_results(0);
 
-  const auto &log_summary = test_results.log_summary();
-  size_t pos = log_summary.find("N: ") + 3;
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
   ASSERT_NE(pos, std::string::npos);
-  const std::string N_value = log_summary.substr(pos);
+  const std::string N_value = latency_summary.substr(pos);
 
   std::string N_value2 = N_value.substr(0, N_value.find(' '));
   int N;

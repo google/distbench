@@ -178,25 +178,28 @@ struct instance_summary {
   int64_t rx_payload_bytes = 0;
 };
 
-std::string CommunicationSummary(double total_time_seconds,
-              std::map<t_string_pair, rpc_traffic_summary> perf_map) {
-  std::string ret = "Communication summary:\n";
+void AddCommunicationSummaryTo(std::vector<std::string> &ret,
+    double total_time_seconds,
+    std::map<t_string_pair, rpc_traffic_summary> perf_map) {
+  ret.push_back("Communication summary:");
   constexpr double MiB = 1024 * 1024;
   for (auto& perf_r : perf_map) {
     std::string name = perf_r.first.first + " -> " + perf_r.first.second;
     auto& perf = perf_r.second;
-    absl::StrAppendFormat(&ret,
+    std::string str{};
+    absl::StrAppendFormat(&str,
         "  %s: RPCs: %d (%3.2f kQPS) "
-        "Request: %3.1f MiB/s Response: %3.1f MiB/s\n",
+        "Request: %3.1f MiB/s Response: %3.1f MiB/s",
         name, perf.nb_rpcs, (double)perf.nb_rpcs / total_time_seconds / 1000.,
         (double)perf.request_size / MiB / total_time_seconds,
         (double)perf.response_size / MiB / total_time_seconds);
+    ret.push_back(str);
   }
-  return ret;
 }
 
-std::string InstanceSummary(double total_time_seconds,
-              std::map<t_string_pair, rpc_traffic_summary> perf_map) {
+void AddInstanceSummaryTo(std::vector<std::string> &ret,
+    double total_time_seconds,
+    std::map<t_string_pair, rpc_traffic_summary> perf_map) {
   std::map<std::string, instance_summary> instance_summary_map;
   int64_t total_rpcs = 0;
   int64_t total_tx_bytes = 0;
@@ -226,30 +229,35 @@ std::string InstanceSummary(double total_time_seconds,
     instance_summary_map[target_name] = inst_summary;
   }
 
-  std::string ret = "Instance summary:\n";
+  ret.push_back("Instance summary:");
   constexpr int64_t MiB = 1024 * 1024;
   for (auto& instance_sum: instance_summary_map) {
     instance_summary inst_summary = instance_sum.second;
-    absl::StrAppendFormat(&ret, "  %s: Tx: %3.1f MiB/s, Rx:%3.1f MiB/s\n",
+    std::string str{};
+    absl::StrAppendFormat(&str, "  %s: Tx: %3.1f MiB/s, Rx:%3.1f MiB/s",
         instance_sum.first,
         (double)inst_summary.tx_payload_bytes / MiB / total_time_seconds,
         (double)inst_summary.rx_payload_bytes / MiB / total_time_seconds);
+    ret.push_back(str);
   }
-  absl::StrAppendFormat(&ret,
-      "\nTotal time: %3.3fs Total Tx: %d MiB (%3.1f MiB/s), ",
-      total_time_seconds,
+
+  std::string str{};
+  ret.push_back("Global summary:");
+  absl::StrAppendFormat(&str, "  Total time: %3.3fs", total_time_seconds);
+  ret.push_back(str);
+  str = "";
+  absl::StrAppendFormat(&str, "  Total Tx: %d MiB (%3.1f MiB/s), ",
       total_tx_bytes / MiB,
       (double)total_tx_bytes / MiB / total_time_seconds);
-  absl::StrAppendFormat(&ret,
-      "Total Nb RPCs: %d (%3.2f kQPS)\n",
+  absl::StrAppendFormat(&str,
+      "Total Nb RPCs: %d (%3.2f kQPS)",
       total_rpcs, (double)total_rpcs / 1000 / total_time_seconds);
-
-  return ret;
+  ret.push_back(str);
 }
 
 }  // anonymous namespace
 
-std::string SummarizeTestResult(const TestResult& test_result) {
+std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
   std::map<std::string, std::vector<int64_t>> latency_map;
   std::map<t_string_pair, rpc_traffic_summary> perf_map;
   int64_t test_time = 0;
@@ -290,16 +298,19 @@ std::string SummarizeTestResult(const TestResult& test_result) {
     }
   }
 
-  std::string ret = "RPC latency summary:\n";
+  std::vector<std::string> ret;
+  ret.push_back("RPC latency summary:");
   for (auto& latencies : latency_map) {
+    std::string str{};
     std::sort(latencies.second.begin(), latencies.second.end());
     absl::StrAppendFormat(
-        &ret, "%s: %s\n", latencies.first, LatencySummary(latencies.second));
+        &str, "  %s: %s", latencies.first, LatencySummary(latencies.second));
+    ret.push_back(str);
   }
 
   double total_time_seconds = (double)test_time / 1000 / 1000 / 1000;
-  absl::StrAppend(&ret, CommunicationSummary(total_time_seconds, perf_map));
-  absl::StrAppend(&ret, InstanceSummary(total_time_seconds, perf_map));
+  AddCommunicationSummaryTo(ret, total_time_seconds, perf_map);
+  AddInstanceSummaryTo(ret, total_time_seconds, perf_map);
   return ret;
 }
 

@@ -77,7 +77,7 @@ message TestResult {
   optional DistributedSystemDescription traffic_config = 1;
   optional ServiceEndpointMap placement = 2;
   optional ServiceLogs service_logs = 3;
-  optional string log_summary = 4;
+  repeated string log_summary = 4;
 }
 
 // Logs for all a test configs in a test sequence:
