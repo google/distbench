@@ -1,5 +1,13 @@
 ---
 
+- name: apt-get update
+  apt:
+    update_cache: yes
+
+- name: apt-get dist-upgrade
+  apt:
+    upgrade: dist
+
 - name: Copy the local Distbench binary
   ansible.builtin.copy:
     src: ../bazel-bin/distbench
