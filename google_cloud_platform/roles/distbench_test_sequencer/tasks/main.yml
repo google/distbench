@@ -10,9 +10,8 @@
 - name: Create log directory /var/log/distbench
   file:
     path: /var/log/distbench
-    mode: 0766
+    mode: 0755
     state: directory
-
 
 - name: Supervisor config for Distbench test sequencer 
   template:
