@@ -27,7 +27,7 @@
 #include <string.h>
 #include "interface_lookup.h"
 
-bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family){
+bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family) {
   struct ifaddrs *ifaddr;
   int family, s;
   char host[NI_MAXHOST];
@@ -70,11 +70,11 @@ bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family){
   return false;
 }
 
-bool net_base::InterfaceLookup::MyIPv4Address(IPAddress *addr){
+bool net_base::InterfaceLookup::MyIPv4Address(IPAddress *addr) {
   return GetFirstAddress(*addr, AF_INET);
 }
 
-bool net_base::InterfaceLookup::MyIPv6Address(IPAddress *addr){
+bool net_base::InterfaceLookup::MyIPv6Address(IPAddress *addr) {
   return GetFirstAddress(*addr, AF_INET6);
 }
 
