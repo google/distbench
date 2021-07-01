@@ -50,7 +50,8 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
   std::string node_service =
     absl::StrCat("dns:///", request->hostname(), ":", request->control_port());
   std::shared_ptr<grpc::Channel> channel =
-          grpc::CreateChannel(node_service, creds);
+    grpc::CreateCustomChannel(node_service, creds,
+                              GetDefaultChannelArguments());
   auto stub = DistBenchNodeManager::NewStub(channel);
   if (stub) {
     response->set_node_id(node_id);
@@ -470,11 +471,11 @@ void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   opts_ = opts;
   service_address_ = absl::StrCat("[::]:", *opts_.port);
   grpc::ServerBuilder builder;
+  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> creds = MakeServerCredentials();
   builder.AddListeningPort(service_address_, creds, opts_.port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
-  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   grpc_server_ = builder.BuildAndStart();
   service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
   LOG(INFO) << "Server listening on " << service_address_;

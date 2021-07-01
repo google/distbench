@@ -157,13 +157,15 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   }
   std::shared_ptr<grpc::ChannelCredentials> client_creds =
     MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(
-      opts_.test_sequencer_service_address, client_creds);
+  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+      opts_.test_sequencer_service_address, client_creds,
+      GetDefaultChannelArguments());
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub =
     DistBenchTestSequencer::NewStub(channel);
 
   service_address_ = absl::StrCat("[::]:", *opts_.port);
   grpc::ServerBuilder builder;
+  builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort(service_address_, server_creds, opts_.port);
