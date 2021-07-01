@@ -83,12 +83,6 @@ class ProtocolDriver {
   virtual void ChurnConnection(int peer) = 0;
   virtual void ShutdownServer() = 0;
   virtual void ShutdownClient() = 0;
-#if 0
-
-  // Not implemented yet:
-  virtual absl::Status CancelRpc(RpcId);
-  virtual absl::Status StreamRpc();
-#endif
 };
 
 }  // namespace distbench
