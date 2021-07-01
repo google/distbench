@@ -560,6 +560,10 @@ void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
+  // Optimize the "NOP" case:
+  if (action_lists_[list_index].proto.action_names().empty()) {
+    return;
+  }
   ActionListState s;
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
