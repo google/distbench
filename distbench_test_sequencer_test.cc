@@ -276,10 +276,10 @@ TEST(DistBenchTestSequencer, clique_test) {
   std::string N_value2 = N_value.substr(0, N_value.find(' '));
   int N;
   ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
-
-  bool correct_number = (624 * (nb_cliques * (nb_cliques - 1)) <= N) &&
-                        (626 * (nb_cliques * (nb_cliques - 1)) >= N);
-  ASSERT_EQ(correct_number, true);
+  int min = 624 * (nb_cliques * (nb_cliques - 1));
+  int max = 626 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_LE(N, max);
+  ASSERT_GE(N, min);
 
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
   const auto& instance_results_it =
