@@ -78,4 +78,5 @@ message DistributedSystemDescription {
   repeated Action actions = 5;
   repeated ActionList action_lists = 6;
   optional string default_protocol = 7 [default = "grpc_async_callback"];
+  optional bool keep_instance_log = 8 [default = true];
 }
