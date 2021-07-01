@@ -106,6 +106,14 @@ Iterate on an action (performs repetition of the action).
 
 ### message `PayloadSpec`
 
+Define the payload attached to an RPC.
+
 - `name` (string): name of the PayloadSpec.
 - `size` (int32): The size, in bytes, of the payload
+
+### Misc settings
+
+- `default_protocol`: Select the protocol driver to use (by default `grpc_async_callback` is used)
+  - `grpc`: Use a completion thread to poll the completion queue
+  - `grpc_async_callback`: Use the Asynchronous API with a callback function
 
