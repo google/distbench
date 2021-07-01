@@ -24,7 +24,7 @@ class IPAddress{
 
  public:
   std::string ToString() const{return this->address;}
-  void from_c_str(const char *s_address){
+  void from_c_str(const char *s_address) {
     this->address = std::string(s_address);
   }
 };

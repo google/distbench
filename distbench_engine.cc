@@ -506,7 +506,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
       LOG(INFO) << "running Main for " << service_name_
                 << "/" << service_instance_;
       engine_main_thread_ = RunRegisteredThread(
-          "EngineMain", [this, i](){RunActionList(i, nullptr);});
+          "EngineMain", [this, i]() {RunActionList(i, nullptr);});
     }
   }
   return absl::OkStatus();
@@ -620,7 +620,7 @@ void DistBenchEngine::RunActionList(
     if (done) {
       break;
     }
-    auto some_actions_finished = [&s](){
+    auto some_actions_finished = [&s]() {
       return !s.finished_action_indices.empty();
     };
 
@@ -666,7 +666,7 @@ void DistBenchEngine::ActionListState::FinishAction(int action_index) {
 }
 
 void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
-  auto some_actions_finished = [&](){return !finished_action_indices.empty();};
+  auto some_actions_finished = [&]() {return !finished_action_indices.empty();};
   bool done;
   do {
     action_mu.LockWhen(absl::Condition(&some_actions_finished));

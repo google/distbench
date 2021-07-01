@@ -31,7 +31,7 @@ namespace distbench {
 
 static bool use_ipv4_first = false;
 
-void set_use_ipv4_first(bool _use_ipv4_first){
+void set_use_ipv4_first(bool _use_ipv4_first) {
   use_ipv4_first = _use_ipv4_first;
 }
 
@@ -319,7 +319,7 @@ grpc::Status Annotate(const grpc::Status& status, std::string_view context) {
       status.error_code(), absl::StrCat(context, status.error_message()));
 }
 
-grpc::Status abslStatusToGrpcStatus(const absl::Status &status){
+grpc::Status abslStatusToGrpcStatus(const absl::Status &status) {
   if (status.ok())
     return grpc::Status::OK;
 
@@ -329,7 +329,7 @@ grpc::Status abslStatusToGrpcStatus(const absl::Status &status){
   return grpc::Status(code, message);
 }
 
-absl::Status grpcStatusToAbslStatus(const grpc::Status &status){
+absl::Status grpcStatusToAbslStatus(const grpc::Status &status) {
   if (status.ok())
     return absl::OkStatus();
 
