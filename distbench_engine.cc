@@ -46,6 +46,10 @@ DistBenchEngine::~DistBenchEngine() {
     server_->Shutdown();
     server_->Wait();
   }
+  if (pd_) {
+    pd_->ShutdownServer();
+    pd_->ShutdownClient();
+  }
 }
 
 // Initialize the payload map and perform basic validation
@@ -827,10 +831,10 @@ void DistBenchEngine::FinishIteration(
       start_another_iteration = false;
     }
   }
-  int pending_iterations = state->next_iteration - state->finished_iterations;
   if (start_another_iteration) {
     ++state->next_iteration;
   }
+  int pending_iterations = state->next_iteration - state->finished_iterations;
   state->iteration_mutex.Unlock();
   if (done && !pending_iterations) {
     state->all_done_callback();
