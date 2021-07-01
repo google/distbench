@@ -77,5 +77,5 @@ message DistributedSystemDescription {
   repeated RpcSpec rpc_descriptions = 4;
   repeated Action actions = 5;
   repeated ActionList action_lists = 6;
-  optional string default_protocol = 7 [default = "grpc"];
+  optional string default_protocol = 7 [default = "grpc_async_callback"];
 }
