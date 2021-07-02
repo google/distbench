@@ -154,7 +154,7 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     if (maybe_result.ok()) {
       auto &result = maybe_result.value();
       auto summary = SummarizeTestResult(result);
-      for (auto s: summary) {
+      for (const auto& s: summary) {
         maybe_result->add_log_summary(s);
         LOG(INFO) << s;
       }
