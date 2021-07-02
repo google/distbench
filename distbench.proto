@@ -23,8 +23,13 @@ message ProtocolDriverOptions {
   optional string netdev_name = 2;
 }
 
+message TestsSetting {
+  optional bool keep_instance_log = 1 [default = true];
+}
+
 message TestSequence {
   repeated DistributedSystemDescription tests = 1;
+  optional TestsSetting tests_setting = 2;
 }
 
 message NodeServiceConfig {

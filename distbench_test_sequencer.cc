@@ -158,7 +158,8 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
         maybe_result->add_log_summary(s);
         LOG(INFO) << s;
       }
-      if (!test.keep_instance_log())
+      if (request->has_tests_setting() &&
+          !request->tests_setting().keep_instance_log())
         result.mutable_service_logs()->clear_instance_logs();
       *response->add_test_results() = result;
     } else {
