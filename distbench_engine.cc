@@ -456,7 +456,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
           MakeChannelCredentials();
         std::shared_ptr<grpc::Channel> channel =
           grpc::CreateCustomChannel(service_instance.endpoint_address, creds,
-                                    GetDefaultChannelArguments());
+                                    DistbenchCustomChannelArguments());
         rpc_state.stub = ConnectionSetup::NewStub(channel);
         rpc_state.server_address = service_instance.endpoint_address;
         CHECK(rpc_state.stub);

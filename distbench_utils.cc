@@ -43,7 +43,7 @@ std::string Hostname() {
   return hostname;
 }
 
-grpc::ChannelArguments GetDefaultChannelArguments() {
+grpc::ChannelArguments DistbenchCustomChannelArguments() {
   grpc::ChannelArguments args;
   args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH,
               std::numeric_limits<int32_t>::max());

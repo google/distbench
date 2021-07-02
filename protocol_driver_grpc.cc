@@ -111,7 +111,7 @@ absl::Status ProtocolDriverGrpc::HandleConnect(
     MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel =
     grpc::CreateCustomChannel(addr.socket_address(), creds,
-                              GetDefaultChannelArguments());
+                              DistbenchCustomChannelArguments());
   grpc_client_stubs_[peer] = Traffic::NewStub(channel);
   return absl::OkStatus();
 }

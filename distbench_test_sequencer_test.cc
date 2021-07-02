@@ -67,7 +67,7 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
     MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
       test_sequencer->service_address(), client_creds,
-      GetDefaultChannelArguments());
+      DistbenchCustomChannelArguments());
   test_sequencer_stub = DistBenchTestSequencer::NewStub(channel);
   return absl::OkStatus();
 }

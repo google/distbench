@@ -159,7 +159,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
     MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
       opts_.test_sequencer_service_address, client_creds,
-      GetDefaultChannelArguments());
+      DistbenchCustomChannelArguments());
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub =
     DistBenchTestSequencer::NewStub(channel);
 

@@ -51,7 +51,7 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
     absl::StrCat("dns:///", request->hostname(), ":", request->control_port());
   std::shared_ptr<grpc::Channel> channel =
     grpc::CreateCustomChannel(node_service, creds,
-                              GetDefaultChannelArguments());
+                              DistbenchCustomChannelArguments());
   auto stub = DistBenchNodeManager::NewStub(channel);
   if (stub) {
     response->set_node_id(node_id);
