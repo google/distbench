@@ -352,6 +352,7 @@ absl::Status DistBenchEngine::Initialize(
   // Start server
   std::string server_address = absl::StrCat("[::]:", *port);
   grpc::ServerBuilder builder;
+  builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort(server_address, server_creds, port);
@@ -454,7 +455,8 @@ absl::Status DistBenchEngine::ConnectToPeers() {
         std::shared_ptr<grpc::ChannelCredentials> creds =
           MakeChannelCredentials();
         std::shared_ptr<grpc::Channel> channel =
-          grpc::CreateChannel(service_instance.endpoint_address, creds);
+          grpc::CreateCustomChannel(service_instance.endpoint_address, creds,
+                                    DistbenchCustomChannelArguments());
         rpc_state.stub = ConnectionSetup::NewStub(channel);
         rpc_state.server_address = service_instance.endpoint_address;
         CHECK(rpc_state.stub);

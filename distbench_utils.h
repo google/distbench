@@ -32,6 +32,7 @@ namespace distbench {
 
 void set_use_ipv4_first(bool _use_ipv4_first);
 
+grpc::ChannelArguments DistbenchCustomChannelArguments();
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
 std::string IpAddressForDevice(std::string_view netdev);

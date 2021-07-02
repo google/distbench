@@ -43,6 +43,13 @@ std::string Hostname() {
   return hostname;
 }
 
+grpc::ChannelArguments DistbenchCustomChannelArguments() {
+  grpc::ChannelArguments args;
+  args.SetInt(GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH,
+              std::numeric_limits<int32_t>::max());
+  return args;
+}
+
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials() {
   // grpc::SslCredentialsOptions sec_ops;
   // return grpc::SslCredentials(sec_ops);

@@ -3,7 +3,7 @@
 echo Building static Distbench binary
 (
 	cd ..
-	bazel build --cxxopt='-std=c++17' --linkopt='--static -fPIC'  :distbench
+	bazel build -c opt --cxxopt='-std=c++17' --linkopt='--static -fPIC'  :distbench
 )
 
 echo Running playbook

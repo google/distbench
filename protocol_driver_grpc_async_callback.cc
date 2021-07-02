@@ -62,6 +62,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   server_socket_address_ = SocketAddressForDevice("", *port);
   traffic_service_ = absl::make_unique<TrafficServiceAsync>();
   grpc::ServerBuilder builder;
+  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort(server_socket_address_, server_creds, port);
@@ -115,7 +116,8 @@ absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
   std::shared_ptr<grpc::ChannelCredentials> creds =
     MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel =
-    grpc::CreateChannel(addr.socket_address(), creds);
+    grpc::CreateCustomChannel(addr.socket_address(), creds,
+                              DistbenchCustomChannelArguments());
   grpc_client_stubs_[peer] = Traffic::NewStub(channel);
   return absl::OkStatus();
 }

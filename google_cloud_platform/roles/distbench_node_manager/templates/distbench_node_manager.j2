@@ -1,4 +1,5 @@
 [program:distbench_node_manager]
+environment=GLOG_alsologtostderr=1,GLOG_stderrthreshold=0
 command=/bin/distbench node_manager --test_sequencer={{ groups['distbench_test_sequencer'][0] }}:10000 --port=9999 --use_ipv4_first
 directory=/home
 autostart=true
