@@ -177,7 +177,7 @@ void RunIntenseTraffic(const char* protocol) {
   auto* iterations = a1->mutable_iterations();
   iterations->set_max_duration_us(200000);
   iterations->set_max_iteration_count(2000);
-  iterations->set_max_parallel_iterations(10);
+  iterations->set_max_parallel_iterations(100);
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo");
