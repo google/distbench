@@ -77,8 +77,13 @@ void InitLibs(const char* argv0) {
 
 std::string IpAddressForDevice(std::string_view netdev) {
   net_base::IPAddress ip;
-  CHECK(net_base::InterfaceLookup::MyIPv6Address(&ip) ||
-        net_base::InterfaceLookup::MyIPv4Address(&ip));
+  if (use_ipv4_first) {
+    CHECK(net_base::InterfaceLookup::MyIPv4Address(&ip) ||
+          net_base::InterfaceLookup::MyIPv6Address(&ip));
+  } else {
+    CHECK(net_base::InterfaceLookup::MyIPv6Address(&ip) ||
+          net_base::InterfaceLookup::MyIPv4Address(&ip));
+  }
   return ip.ToString();
 }
 

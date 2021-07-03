@@ -97,8 +97,9 @@ message Attribute {
 
 message NodeRegistration {
   optional string hostname = 1;
-  optional int32 control_port = 2;
-  repeated Attribute attributes = 3;
+  optional string control_ip = 2;
+  optional int32 control_port = 3;
+  repeated Attribute attributes = 4;
 }
 
 message NodeConfig {
