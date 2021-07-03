@@ -14,6 +14,7 @@
 
 #include "distbench_test_sequencer.h"
 
+#include "absl/strings/match.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
@@ -23,6 +24,7 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
                                          const NodeRegistration* request,
                                          NodeConfig* response) {
   if (request->hostname().empty() ||
+      request->control_ip().empty() ||
       request->control_port() <= 0) {
     return grpc::Status(
         grpc::StatusCode::INVALID_ARGUMENT, "Invalid Registration");
@@ -47,8 +49,14 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
 
   std::shared_ptr<grpc::ChannelCredentials> creds =
     MakeChannelCredentials();
-  std::string node_service =
-    absl::StrCat("dns:///", request->hostname(), ":", request->control_port());
+  std::string node_service;
+  if (absl::StrContains(request->control_ip(), ":")) {
+    node_service = absl::StrCat(
+        "ipv6:///[", request->control_ip(), "]:", request->control_port());
+  } else {
+    node_service = absl::StrCat(
+        "ipv4:///", request->control_ip(), ":", request->control_port());
+  }
   std::shared_ptr<grpc::Channel> channel =
     grpc::CreateCustomChannel(node_service, creds,
                               DistbenchCustomChannelArguments());
@@ -347,7 +355,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     if (ok) {
       --rpc_count;
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
-      LOG(INFO) << "Finished RPC status:" <<
+      LOG(INFO) << "Finished AsyncConfigureNode status:" <<
                 grpcStatusToAbslStatus(finished_rpc->status);
       if (!finished_rpc->status.ok()) {
         status = finished_rpc->status;

@@ -181,6 +181,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   }
   NodeRegistration reg;
   reg.set_hostname(Hostname());
+  reg.set_control_ip(IpAddressForDevice(""));
   reg.set_control_port(*opts_.port);
   NodeConfig config;
   grpc::ClientContext context;
