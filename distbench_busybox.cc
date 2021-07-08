@@ -17,11 +17,13 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 
+namespace {
 bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
                              size_t min_expected, size_t max_expected);
 int MainTestSequencer(std::vector<char*> &arguments);
 int MainNodeManager(std::vector<char*> &arguments);
 void Usage();
+}  // anonymous namespace
 
 ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
@@ -54,6 +56,7 @@ int main(int argc, char** argv, char** envp) {
   return 1;
 }
 
+namespace {
 bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
                              size_t min_expected, size_t max_expected) {
   size_t nb_arguments = remaining_arguments.size();
@@ -125,3 +128,4 @@ void Usage() {
   std::cerr << "For more options information, do\n";
   std::cerr << "  distbench --helpfull\n";
 }
+}  // anonymous namespace
