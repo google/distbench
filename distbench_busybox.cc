@@ -17,10 +17,66 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 
+int MainTestSequencer();
+int MainNodeManager();
+void Usage();
+
 ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 ABSL_FLAG(bool, use_ipv4_first, false,
     "Prefer IPv4 addresses to IPv6 addresses when both are available");
+
+int main(int argc, char** argv, char** envp) {
+  std::vector<char*> other_arguments = absl::ParseCommandLine(argc, argv);
+  distbench::InitLibs(argv[0]);
+  distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
+
+  if (other_arguments.size() < 2) {
+    Usage();
+    return 1;
+  }
+
+  char *distbench_module = other_arguments[1];
+
+  // Remove argv[0] and distbench_module
+  other_arguments.erase(other_arguments.begin(), other_arguments.begin() + 2);
+
+  if (!strcmp(distbench_module, "test_sequencer")) {
+    return MainTestSequencer();
+  } else if (!strcmp(distbench_module, "node_manager")) {
+    return MainNodeManager();
+  }
+
+  std::cerr << "Unrecognized distbench module: " << distbench_module << "\n";
+  Usage();
+  return 1;
+}
+
+int MainTestSequencer() {
+  distbench::TestSequencerOpts opts = {};
+  int port = absl::GetFlag(FLAGS_port);
+  opts.port = &port;
+  distbench::TestSequencer test_sequencer;
+  test_sequencer.Initialize(opts);
+  test_sequencer.Wait();
+  return 0;
+}
+
+int MainNodeManager() {
+  distbench::NodeManagerOpts opts = {};
+  opts.test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer);
+  int port = absl::GetFlag(FLAGS_port);
+  opts.port = &port;
+  distbench::RealClock clock;
+  distbench::NodeManager node_manager(&clock);
+  absl::Status status = node_manager.Initialize(opts);
+  if (!status.ok()) {
+    std::cerr << "Initializing the node manager failed: "
+              << status << std::endl;
+  }
+  node_manager.Wait();
+  return !status.ok();
+}
 
 void Usage() {
   std::cerr << "Usage: distbench module [options]\n";
@@ -40,45 +96,4 @@ void Usage() {
   std::cerr << "\n";
   std::cerr << "For more options information, do\n";
   std::cerr << "  distbench --helpfull\n";
-}
-
-int main(int argc, char** argv, char** envp) {
-  if (argc < 2) {
-    Usage();
-    return 1;
-  }
-
-  absl::ParseCommandLine(argc, argv);
-  distbench::InitLibs(argv[0]);
-  distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
-  for (int i = 1; i < argc; ++i) {
-    if (!strcmp(argv[i], "test_sequencer")) {
-      distbench::TestSequencerOpts opts = {};
-      int port = absl::GetFlag(FLAGS_port);
-      opts.port = &port;
-      distbench::TestSequencer test_sequencer;
-      test_sequencer.Initialize(opts);
-      test_sequencer.Wait();
-      return 0;
-    }
-    if (!strcmp(argv[i], "node_manager")) {
-      distbench::NodeManagerOpts opts = {};
-      opts.test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer);
-      int port = absl::GetFlag(FLAGS_port);
-      opts.port = &port;
-      distbench::RealClock clock;
-      distbench::NodeManager node_manager(&clock);
-      absl::Status status = node_manager.Initialize(opts);
-      if (!status.ok()) {
-        std::cerr << "Initializing the node manager failed: "
-                  << status << std::endl;
-      }
-      node_manager.Wait();
-      return !status.ok();
-    }
-  }
-
-  std::cerr << "Unrecognized distbench module\n";
-  Usage();
-  return 1;
 }
