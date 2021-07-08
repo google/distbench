@@ -17,6 +17,8 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 
+bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
+                             size_t min_expected, size_t max_expected);
 int MainTestSequencer();
 int MainNodeManager();
 void Usage();
@@ -31,10 +33,9 @@ int main(int argc, char** argv, char** envp) {
   distbench::InitLibs(argv[0]);
   distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
 
-  if (other_arguments.size() < 2) {
-    Usage();
+  if (!AreRemainingArgumentsOK(other_arguments,
+                               2, std::numeric_limits<size_t>::max()))
     return 1;
-  }
 
   char *distbench_module = other_arguments[1];
 
@@ -42,14 +43,39 @@ int main(int argc, char** argv, char** envp) {
   other_arguments.erase(other_arguments.begin(), other_arguments.begin() + 2);
 
   if (!strcmp(distbench_module, "test_sequencer")) {
+    if (!AreRemainingArgumentsOK(other_arguments, 0, 0))
+      return 1;
     return MainTestSequencer();
   } else if (!strcmp(distbench_module, "node_manager")) {
+    if (!AreRemainingArgumentsOK(other_arguments, 0, 0))
+      return 1;
     return MainNodeManager();
   }
 
   std::cerr << "Unrecognized distbench module: " << distbench_module << "\n";
   Usage();
   return 1;
+}
+
+bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
+                             size_t min_expected, size_t max_expected) {
+  size_t nb_arguments = remaining_arguments.size();
+  if (nb_arguments < min_expected) {
+    std::cerr << "Not enough arguments provided\n";
+    Usage();
+    return false;
+  }
+
+  if (nb_arguments > max_expected) {
+    for (auto it=remaining_arguments.begin() + min_expected;
+         it < remaining_arguments.end(); it++) {
+      std::cerr << "Unrecognized argument: " << *it << "\n";
+    }
+    Usage();
+    return false;
+  }
+
+  return true;
 }
 
 int MainTestSequencer() {
