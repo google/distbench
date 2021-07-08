@@ -128,11 +128,11 @@ The `TestSequence` RPC also have the following options:
   default, the instance log which include a trace of all the RPCs executed. If
   the output is too verbose, the instance log can be suppressed by assigning
   false to this setting:
-```yaml
-tests_setting {
-  keep_instance_log: false
-}
-tests {
-...
-```
+  ```yaml
+  tests_setting {
+    keep_instance_log: false
+  }
+  tests {
+  ...
+  ```
 
