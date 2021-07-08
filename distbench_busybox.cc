@@ -19,8 +19,8 @@
 
 bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
                              size_t min_expected, size_t max_expected);
-int MainTestSequencer();
-int MainNodeManager();
+int MainTestSequencer(std::vector<char*> &arguments);
+int MainNodeManager(std::vector<char*> &arguments);
 void Usage();
 
 ABSL_FLAG(int, port, 10000, "port to listen on");
@@ -29,27 +29,24 @@ ABSL_FLAG(bool, use_ipv4_first, false,
     "Prefer IPv4 addresses to IPv6 addresses when both are available");
 
 int main(int argc, char** argv, char** envp) {
-  std::vector<char*> other_arguments = absl::ParseCommandLine(argc, argv);
+  std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
   distbench::InitLibs(argv[0]);
   distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
 
-  if (!AreRemainingArgumentsOK(other_arguments,
+  if (!AreRemainingArgumentsOK(remaining_arguments,
                                2, std::numeric_limits<size_t>::max()))
     return 1;
 
-  char *distbench_module = other_arguments[1];
+  char *distbench_module = remaining_arguments[1];
 
   // Remove argv[0] and distbench_module
-  other_arguments.erase(other_arguments.begin(), other_arguments.begin() + 2);
+  remaining_arguments.erase(remaining_arguments.begin(),
+                            remaining_arguments.begin() + 2);
 
   if (!strcmp(distbench_module, "test_sequencer")) {
-    if (!AreRemainingArgumentsOK(other_arguments, 0, 0))
-      return 1;
-    return MainTestSequencer();
+    return MainTestSequencer(remaining_arguments);
   } else if (!strcmp(distbench_module, "node_manager")) {
-    if (!AreRemainingArgumentsOK(other_arguments, 0, 0))
-      return 1;
-    return MainNodeManager();
+    return MainNodeManager(remaining_arguments);
   }
 
   std::cerr << "Unrecognized distbench module: " << distbench_module << "\n";
@@ -69,8 +66,9 @@ bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
   if (nb_arguments > max_expected) {
     for (auto it=remaining_arguments.begin() + min_expected;
          it < remaining_arguments.end(); it++) {
-      std::cerr << "Unrecognized argument: " << *it << "\n";
+      std::cerr << "Error: unexpected command line argument: " << *it << "\n";
     }
+    std::cerr << "\n";
     Usage();
     return false;
   }
@@ -78,7 +76,9 @@ bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
   return true;
 }
 
-int MainTestSequencer() {
+int MainTestSequencer(std::vector<char*> &arguments) {
+  if (!AreRemainingArgumentsOK(arguments, 0, 0))
+    return 1;
   distbench::TestSequencerOpts opts = {};
   int port = absl::GetFlag(FLAGS_port);
   opts.port = &port;
@@ -88,7 +88,9 @@ int MainTestSequencer() {
   return 0;
 }
 
-int MainNodeManager() {
+int MainNodeManager(std::vector<char*> &arguments) {
+  if (!AreRemainingArgumentsOK(arguments, 0, 0))
+    return 1;
   distbench::NodeManagerOpts opts = {};
   opts.test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer);
   int port = absl::GetFlag(FLAGS_port);
