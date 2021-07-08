@@ -72,7 +72,7 @@ std::thread RunRegisteredThread(const std::string& thread_name,
 void InitLibs(const char* argv0) {
   // Extra library initialization can go here
   ::google::InitGoogleLogging(argv0);
-
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
 std::string IpAddressForDevice(std::string_view netdev) {
