@@ -113,7 +113,26 @@ Define the payload attached to an RPC.
 
 ### Misc settings
 
-- `default_protocol`: Select the protocol driver to use (by default `grpc_async_callback` is used)
+- `default_protocol`: Select the protocol driver to use (by default
+  `grpc_async_callback` is used)
   - `grpc`: Use a completion thread to poll the completion queue
   - `grpc_async_callback`: Use the Asynchronous API with a callback function
+
+## Other options
+
+The `TestSequence` RPC also have the following options:
+
+### `tests_setting`
+
+- `keep_instance_log` (boolean, default=true): The test results contains, by
+  default, the instance log which include a trace of all the RPCs executed. If
+  the output is too verbose, the instance log can be suppressed by assigning
+  false to this setting:
+  ```yaml
+  tests_setting {
+    keep_instance_log: false
+  }
+  tests {
+  ...
+  ```
 
