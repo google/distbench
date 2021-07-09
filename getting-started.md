@@ -79,28 +79,10 @@ spatial distribution are provided in later sections.
 
 ### Dependencies
 
-To build Distbench, you need to have Bazel and grpc\_cli installed.
+To build Distbench, you need to have Bazel.
 
 Follow the instructions for your distribution at
 <https://docs.bazel.build/versions/master/install.html> to install Bazel.
-
-For grpc\_cli, follows the instruction at
-<https://github.com/grpc/grpc/blob/master/doc/command_line_tool.md> to build
-the grpc\_cli command line tool.
-
-Quick instructions for GRPC:
-
-```bash
-sudo apt install cmake
-git clone https://github.com/grpc/grpc.git
-cd grpc
-git submodule update --init
-mkdir -p cmake/build
-cd cmake/build
-cmake -DgRPC_BUILD_TESTS=ON ../..
-make grpc_cli
-export PATH=`pwd`:$PATH
-```
 
 ### Building Distbench
 
