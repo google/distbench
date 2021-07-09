@@ -23,7 +23,7 @@
 namespace std {
 ostream& operator<< (ostream &out, grpc::Status const& c)
 {
-    return out << "(grpc::status" << c.error_message() << ")";
+    return out << "(grpc::status: " << c.error_message() << ")";
 }
 }
 
