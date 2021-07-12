@@ -98,20 +98,23 @@ bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
 absl::Status ParseTestSequenceProtoFromFile(
     const std::string &filename,
     distbench::TestSequence *test_sequence) {
-  int fd_proto = open(filename.c_str(), O_RDONLY);
-  if (fd_proto < 0) {
-    std::string error_message{"Error opening the TestSequence proto file for "
-      "reading: "};
-    return absl::InvalidArgumentError(error_message + filename);
-  }
 
-  google::protobuf::io::FileInputStream fis_testproto(fd_proto);
-  if (!google::protobuf::TextFormat::Parse(&fis_testproto, test_sequence)) {
-    return absl::InvalidArgumentError(
-        "Error parsing the TestSequence proto file");
-  }
+  absl::StatusOr<std::string> proto_string =
+      distbench::ReadFileToString(filename);
+  if (!proto_string.ok())
+    return proto_string.status();
 
-  return absl::OkStatus();
+  // Attempt to parse, assuming it is binary
+  if (test_sequence->ParseFromString(*proto_string))
+    return absl::OkStatus();
+
+  // Attempt to parse, assuming it is text
+  if (google::protobuf::TextFormat::ParseFromString(*proto_string,
+                                                     test_sequence))
+    return absl::OkStatus();
+
+  return absl::InvalidArgumentError(
+      "Error parsing the TestSequence proto file");
 }
 
 absl::Status SaveResultProtoToFile(const std::string &filename,
@@ -152,8 +155,10 @@ int MainRunTests(std::vector<char*> &arguments) {
   const std::string infile = absl::GetFlag(FLAGS_infile);
   absl::Status parse_status = ParseTestSequenceProtoFromFile(infile,
                                                              &test_sequence);
-  if (!parse_status.ok())
+  if (!parse_status.ok()) {
+    std::cerr << "Error reading test sequence: " << parse_status << "\n";
     return 1;
+  }
 
   std::shared_ptr<grpc::ChannelCredentials> client_creds =
       distbench::MakeChannelCredentials();

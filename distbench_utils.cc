@@ -14,6 +14,10 @@
 
 #include "distbench_utils.h"
 
+#include <cerrno>
+#include <fstream>
+#include <streambuf>
+
 #include "interface_lookup.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/str_cat.h"
@@ -349,6 +353,22 @@ absl::Status grpcStatusToAbslStatus(const grpc::Status &status) {
   // GRPC and ABSL (currently) share the same error codes
   absl::StatusCode code = (absl::StatusCode)status.error_code();
   return absl::Status(code, message);
+}
+
+absl::StatusOr<std::string> ReadFileToString(const std::string &filename) {
+  std::ifstream in(filename, std::ios::in | std::ios::binary);
+  if (!in) {
+    std::string error_message{"Error reading input file:" + filename + "; "};
+    error_message += std::strerror(errno);
+    return absl::InvalidArgumentError(error_message);
+  }
+
+  std::istreambuf_iterator<char> it(in);
+  std::istreambuf_iterator<char> end;
+  std::string str(it, end);
+
+  in.close();
+  return str;
 }
 
 }  // namespace distbench
