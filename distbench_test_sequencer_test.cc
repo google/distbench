@@ -20,6 +20,7 @@
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "glog/logging.h"
+#include "google/protobuf/text_format.h"
 
 namespace distbench {
 
@@ -287,6 +288,82 @@ TEST(DistBenchTestSequencer, clique_test) {
     test_results.service_logs().instance_logs().find("clique/0");
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
+}
+
+TEST(DistBenchTestSequencer, stochastic_test) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(6));
+
+  TestSequence test_sequence;
+
+  const std::string proto = R"(
+tests {
+  services {
+    name: "client"
+    count: 1
+  }
+  services {
+    name: "server"
+    count: 5
+  }
+  rpc_descriptions {
+    name: "client_server_rpc"
+    client: "client"
+    server: "server"
+    request_payload_name: "request_payload"
+    response_payload_name: "response_payload"
+    fanout_filter: "stochastic{0.7:1,0.3:4}"
+  }
+  payload_descriptions {
+    name: "request_payload"
+    size: 196
+  }
+  payload_descriptions {
+    name: "response_payload"
+    size: 262144
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_queries"
+  }
+  actions {
+    name: "run_queries"
+    rpc_name: "client_server_rpc"
+    iterations {
+      max_iteration_count: 1000
+    }
+  }
+  action_lists {
+    name: "client_server_rpc"
+  }
+})";
+  bool parse_result = google::protobuf::TextFormat::ParseFromString(
+      proto, &test_sequence);
+  ASSERT_EQ(parse_result, true);
+
+  TestSequenceResults results;
+  grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(15);
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  ASSERT_OK(status);
+
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  ASSERT_LE(N, 2300);
+  ASSERT_GE(N, 1500);
 }
 
 }  // namespace distbench
