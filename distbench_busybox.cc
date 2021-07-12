@@ -37,6 +37,8 @@ ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 ABSL_FLAG(bool, use_ipv4_first, false,
     "Prefer IPv4 addresses to IPv6 addresses when both are available");
+ABSL_FLAG(bool, save_binary_protobuf, false,
+    "Save protobufs in binary mode");
 
 int main(int argc, char** argv, char** envp) {
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
@@ -134,6 +136,18 @@ absl::Status SaveResultProtoToFile(char *filename,
   return absl::OkStatus();
 }
 
+absl::Status SaveResultProtoToFileBinary(char *filename,
+                              const distbench::TestSequenceResults &result) {
+  std::fstream output(filename, std::ios::out | std::ios::trunc |
+                                std::ios::binary);
+  if (!result.SerializeToOstream(&output)) {
+    return absl::InvalidArgumentError(
+        "Error writing the result proto file in binary mode");
+  }
+
+  return absl::OkStatus();
+}
+
 int MainRunTests(std::vector<char*> &arguments) {
   // arguments: test_sequence.proto_text [result.proto_text]
   if (!AreRemainingArgumentsOK(arguments, 1, 2))
@@ -176,8 +190,12 @@ int MainRunTests(std::vector<char*> &arguments) {
 
   if (arguments.size() == 2) {
     char *result_filename = arguments[1];
-    absl::Status save_status = SaveResultProtoToFile(result_filename,
-                                                     test_results);
+    absl::Status save_status;
+    if (absl::GetFlag(FLAGS_save_binary_protobuf)) {
+      save_status = SaveResultProtoToFileBinary(result_filename, test_results);
+    } else {
+      save_status = SaveResultProtoToFile(result_filename, test_results);
+    }
     if (!save_status.ok()) {
       std::cerr << "Unable to save the results: " << save_status << "\n";
       return 1;
