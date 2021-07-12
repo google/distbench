@@ -29,7 +29,8 @@ Use Distbench to:
   how to compile and run Distbench for the first time.
 - [Distbench Workloads](workloads/README.md): Describes the workloads included.
 - [Distbench Traffic Pattern - Format](docs/distbench-test-format.md): Defined
-  the traffic pattern test format.
+- [Distbench Command Line Arguments](docs/command-line.md): Overview
+  of the Distbench command line arguments.
 
 For contributors, make sure you also consult the following:
 - [Code of conduct](docs/code-of-conduct.md)

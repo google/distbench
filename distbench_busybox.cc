@@ -61,11 +61,14 @@ int main(int argc, char** argv, char** envp) {
     return MainNodeManager(remaining_arguments);
   } else if (!strcmp(distbench_module, "run_tests")) {
     return MainRunTests(remaining_arguments);
+  } else if (!strcmp(distbench_module, "help")) {
+    Usage();
+    return 0;
+  } else {
+    std::cerr << "Unrecognized distbench module: " << distbench_module << "\n";
+    Usage();
+    return 1;
   }
-
-  std::cerr << "Unrecognized distbench module: " << distbench_module << "\n";
-  Usage();
-  return 1;
 }
 
 namespace {
@@ -243,6 +246,7 @@ void Usage() {
   std::cerr << "  distbench test_sequencer [--port=port_number]\n";
   std::cerr << "      --port=port_number    The port for the "
                                  "test_sequencer to listen on.\n";
+  std::cerr << "\n";
   std::cerr << "  distbench node_manager [--test_sequencer=host:port] "
                                         "[--port=port_number]\n";
   std::cerr << "      --test_sequencer=h:p  The host:port of the "
@@ -250,8 +254,11 @@ void Usage() {
   std::cerr << "      --port=port_number    The port for the "
                                  "node_manager to listen on.\n";
 
+  std::cerr << "\n";
   std::cerr << "  distbench run_tests test_sequence.proto_text "
                     "[result.proto_text] [--test_sequencer=host:port]\n";
+  std::cerr << "\n";
+  std::cerr << "  distbench help\n";
   std::cerr << "\n";
   std::cerr << "For more options information, do\n";
   std::cerr << "  distbench --helpfull\n";
