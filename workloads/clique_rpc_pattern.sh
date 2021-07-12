@@ -69,7 +69,7 @@ if [[ "${VERBOSE}" = "1" ]]; then
   echo "  NODE_COUNT=$NODE_COUNT"
 fi
 
-../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER - - \
+../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER \
 <<EOF
 tests {
   services {

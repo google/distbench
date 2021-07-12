@@ -37,8 +37,9 @@ ABSL_FLAG(int, port, 10000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 ABSL_FLAG(bool, use_ipv4_first, false,
     "Prefer IPv4 addresses to IPv6 addresses when both are available");
-ABSL_FLAG(bool, save_binary_protobuf, false,
-    "Save protobufs in binary mode");
+ABSL_FLAG(bool, binary_output, false, "Save protobufs in binary mode");
+ABSL_FLAG(std::string, infile, "/dev/stdin", "Input file");
+ABSL_FLAG(std::string, outfile, "/dev/stdout", "Output file");
 
 int main(int argc, char** argv, char** envp) {
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
@@ -95,11 +96,9 @@ bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
 }
 
 absl::Status ParseTestSequenceProtoFromFile(
-    char *filename,
+    const std::string &filename,
     distbench::TestSequence *test_sequence) {
-  int fd_proto = STDIN_FILENO;
-  if (strcmp(filename, "-") != 0)
-    fd_proto = open(filename, O_RDONLY);
+  int fd_proto = open(filename.c_str(), O_RDONLY);
   if (fd_proto < 0) {
     std::string error_message{"Error opening the TestSequence proto file for "
       "reading: "};
@@ -107,8 +106,6 @@ absl::Status ParseTestSequenceProtoFromFile(
   }
 
   google::protobuf::io::FileInputStream fis_testproto(fd_proto);
-  if (fd_proto != STDIN_FILENO)
-    fis_testproto.SetCloseOnDelete(true);
   if (!google::protobuf::TextFormat::Parse(&fis_testproto, test_sequence)) {
     return absl::InvalidArgumentError(
         "Error parsing the TestSequence proto file");
@@ -117,11 +114,9 @@ absl::Status ParseTestSequenceProtoFromFile(
   return absl::OkStatus();
 }
 
-absl::Status SaveResultProtoToFile(char *filename,
+absl::Status SaveResultProtoToFile(const std::string &filename,
                               const distbench::TestSequenceResults &result) {
-  int fd_proto = STDOUT_FILENO;
-  if (strcmp(filename, "-") != 0)
-    fd_proto = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  int fd_proto = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd_proto < 0) {
     std::string error_message{"Error opening the output result proto file for "
       "writing: "};
@@ -129,8 +124,6 @@ absl::Status SaveResultProtoToFile(char *filename,
   }
 
   google::protobuf::io::FileOutputStream fos_resultproto(fd_proto);
-  if (fd_proto != STDOUT_FILENO)
-    fos_resultproto.SetCloseOnDelete(true);
   if (!google::protobuf::TextFormat::Print(result, &fos_resultproto)) {
     return absl::InvalidArgumentError(
         "Error writing the result proto file");
@@ -139,7 +132,7 @@ absl::Status SaveResultProtoToFile(char *filename,
   return absl::OkStatus();
 }
 
-absl::Status SaveResultProtoToFileBinary(char *filename,
+absl::Status SaveResultProtoToFileBinary(const std::string &filename,
                               const distbench::TestSequenceResults &result) {
   std::fstream output(filename, std::ios::out | std::ios::trunc |
                                 std::ios::binary);
@@ -152,12 +145,12 @@ absl::Status SaveResultProtoToFileBinary(char *filename,
 }
 
 int MainRunTests(std::vector<char*> &arguments) {
-  // arguments: test_sequence.proto_text [result.proto_text]
-  if (!AreRemainingArgumentsOK(arguments, 1, 2))
+  if (!AreRemainingArgumentsOK(arguments, 0, 0))
     return 1;
 
   distbench::TestSequence test_sequence;
-  absl::Status parse_status = ParseTestSequenceProtoFromFile(arguments[0],
+  const std::string infile = absl::GetFlag(FLAGS_infile);
+  absl::Status parse_status = ParseTestSequenceProtoFromFile(infile,
                                                              &test_sequence);
   if (!parse_status.ok())
     return 1;
@@ -191,10 +184,10 @@ int MainRunTests(std::vector<char*> &arguments) {
     std::cerr << "Failed! " << status << "\n";
   }
 
-  if (arguments.size() == 2) {
-    char *result_filename = arguments[1];
+  const std::string result_filename = absl::GetFlag(FLAGS_outfile);
+  if (result_filename != "") {
     absl::Status save_status;
-    if (absl::GetFlag(FLAGS_save_binary_protobuf)) {
+    if (absl::GetFlag(FLAGS_binary_output)) {
       save_status = SaveResultProtoToFileBinary(result_filename, test_results);
     } else {
       save_status = SaveResultProtoToFile(result_filename, test_results);
@@ -255,8 +248,12 @@ void Usage() {
                                  "node_manager to listen on.\n";
 
   std::cerr << "\n";
-  std::cerr << "  distbench run_tests test_sequence.proto_text "
-                    "[result.proto_text] [--test_sequencer=host:port]\n";
+  std::cerr << "  distbench run_tests "
+            "--test_sequencer=host:port "
+            "[--infile test_sequence.proto_text] "
+            "[--outfile result.proto_text] "
+            "[--binary_output]"
+            "\n";
   std::cerr << "\n";
   std::cerr << "  distbench help\n";
   std::cerr << "\n";

@@ -70,7 +70,7 @@ if [[ "${VERBOSE}" = "1" ]]; then
   echo "  LEAF_COUNT=$LEAF_COUNT"
 fi
 
-../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER - - \
+../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER \
 <<EOF
 tests {
   services {

@@ -126,7 +126,7 @@ fi
 
 # Verify that Distbench is up and running
 #
-echo | bazel run :distbench -c opt -- run_tests --test_sequencer=localhost:10000 -
+echo | bazel run :distbench -c opt -- run_tests --test_sequencer=localhost:10000
 if [ $? -ne 0 ]; then
   echo Error could not connect to the distbench test sequencer.
   echo Something went wrong while starting Distbench...

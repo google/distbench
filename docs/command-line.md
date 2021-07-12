@@ -36,19 +36,21 @@ Options:
 
 Connect to a `test_sequencer` and send the specified TestSequence protobuf. Once
 the execution is completed, a summary will be displayed. If a result filename is
-specified (or - for stdout), the TestResult will also be saved.
+specified, the TestResult will also be saved.
 
 ``` bash
-distbench run_tests test_sequence.proto_text [result.proto] [--test_sequencer=host:port]
+distbench run_tests [--infile test_sequence.proto_text] [--outfile result.proto] [--test_sequencer=host:port] [--binary_output]
 ```
 
 Options:
 - `--test_sequencer=h:p`: The host:port of the `test_sequencer` to connect to.
-- `--save_binary_protobuf`: Save the test result protobuf in binary
-- `test_sequence.proto_text`: The protobuf filename of the test sequence to
-  submit to the test sequencer. Use '-' to read from stdin
-- `result.proto`: The protobuf filename that is used to save the test result.
-  Specify `--save_binary_protobuf` to save in binary mode.
+- `--binary_output`: Save the test result protobuf in binary
+- `--infile test_sequence.proto_text`: The protobuf filename of the test
+  sequence to submit to the test sequencer.
+- `--outfile result.proto`: The protobuf filename that is used to save the test
+  result.  Specify `--binary_output` to save in binary mode. An empty filename
+  (--outfile "") will suppress the output (only the test summary will be
+  displayed).
 
 ## help
 
