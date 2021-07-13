@@ -62,6 +62,8 @@ grpc::Status Annotate(const grpc::Status& status, std::string_view context);
 
 grpc::Status abslStatusToGrpcStatus(const absl::Status &status);
 absl::Status grpcStatusToAbslStatus(const grpc::Status &status);
+
+absl::StatusOr<std::string> ReadFileToString(const std::string &filename);
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

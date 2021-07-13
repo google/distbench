@@ -27,10 +27,8 @@
 # To start the node manager run the following in a dedicated terminal:
 # bazel run :distbench -- node_manager --test_sequencer=localhost:10000 --port=9999
 
-grpc_cli \
-  --channel_creds_type=insecure \
-  call localhost:10000 \
-  distbench.DistBenchTestSequencer.RunTestSequence \
+bazel run :distbench -c opt -- run_tests --test_sequencer=localhost:10000 \
+  --outfile "" \
 <<EOF
 tests {
   services {

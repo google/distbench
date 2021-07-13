@@ -22,12 +22,6 @@ check_dependencies() {
     echo DistBench requires Bazel. See README.md.
     exit 1
   fi
-
-  if ! which grpc_cli
-  then
-    echo DistBench requires grpc_cli. See README.md.
-    exit 1
-  fi
 }
 
 build_distbench() {
@@ -132,9 +126,10 @@ fi
 
 # Verify that Distbench is up and running
 #
-if ! grpc_cli --channel_creds_type=insecure ls localhost:10000
-then
-  echo Error could not run grpc_cli ls on the the local instance.
+echo | bazel run :distbench -c opt -- run_tests --test_sequencer=localhost:10000
+if [ $? -ne 0 ]; then
+  echo Error could not connect to the distbench test sequencer.
+  echo Something went wrong while starting Distbench...
   exit 3
 fi
 

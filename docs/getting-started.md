@@ -10,28 +10,10 @@ For general information about Distbench, please consult the
 
 ### Dependencies
 
-To build Distbench, you need to have Bazel and grpc\_cli installed.
+To build Distbench, you need to have Bazel installed.
 
 Follow the instructions for your distribution at
 <https://docs.bazel.build/versions/master/install.html> to install Bazel.
-
-For grpc\_cli, follows the instruction at
-<https://github.com/grpc/grpc/blob/master/doc/command_line_tool.md> to build
-the grpc\_cli command line tool.
-
-Quick instructions for GRPC:
-
-```bash
-sudo apt install cmake
-git clone https://github.com/grpc/grpc.git
-cd grpc
-git submodule update --init
-mkdir -p cmake/build
-cd cmake/build
-cmake -DgRPC_BUILD_TESTS=ON ../..
-make grpc_cli
-export PATH=`pwd`:$PATH
-```
 
 ### Building Distbench
 
@@ -67,16 +49,25 @@ Once distbench is running; run the traffic pattern:
 ./simple_test.sh
 ```
 
-It should output a test report:
+It should output the summary of test result:
 ```
-(...)
-  }
-  log_summary: "RPC latency summary:\nleaf_query: N: 36 min: 134248ns median:
-  282243ns 90%: 1036470ns 99%: 1339838ns 99.9%: 1339838ns max:
-  1339838ns\nroot_query: N: 12 min: 594520ns median: 962939ns 90%: 5803888ns
-  99%: 6048966ns 99.9%: 6048966ns max: 6048966ns\n"
-}
-Rpc succeeded with OK status
+RPC latency summary:
+  leaf_query: N: 36 min: 474609ns median: 886503ns 90%: 1411603ns 99%: 1713296ns 99.9%: 1713296ns max: 1713296ns
+  root_query: N: 12 min: 1191994ns median: 1817132ns 90%: 6142479ns 99%: 6469017ns 99.9%: 6469017ns max: 6469017ns
+Communication summary:
+  load_balancer/0 -> root/0: RPCs: 12 (0.01 kQPS) Request: 0.0 MiB/s Response: 0.0 MiB/s
+  root/0 -> leaf/0: RPCs: 12 (0.01 kQPS) Request: 0.0 MiB/s Response: 0.0 MiB/s
+  root/0 -> leaf/1: RPCs: 12 (0.01 kQPS) Request: 0.0 MiB/s Response: 0.0 MiB/s
+  root/0 -> leaf/2: RPCs: 12 (0.01 kQPS) Request: 0.0 MiB/s Response: 0.0 MiB/s
+Instance summary:
+  leaf/0: Tx: 0.0 MiB/s, Rx:0.0 MiB/s
+  leaf/1: Tx: 0.0 MiB/s, Rx:0.0 MiB/s
+  leaf/2: Tx: 0.0 MiB/s, Rx:0.0 MiB/s
+  load_balancer/0: Tx: 0.0 MiB/s, Rx:0.0 MiB/s
+  root/0: Tx: 0.0 MiB/s, Rx:0.0 MiB/s
+Global summary:
+  Total time: 2.099s
+  Total Tx: 0 MiB (0.0 MiB/s), Total Nb RPCs: 48 (0.02 kQPS)
 ```
 
 ## Running with debug enabled

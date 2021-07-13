@@ -69,10 +69,7 @@ if [[ "${VERBOSE}" = "1" ]]; then
   echo "  NODE_COUNT=$NODE_COUNT"
 fi
 
-grpc_cli \
-  --channel_creds_type=insecure \
-  call $SEQUENCER \
-  distbench.DistBenchTestSequencer.RunTestSequence \
+../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER \
 <<EOF
 tests {
   services {
