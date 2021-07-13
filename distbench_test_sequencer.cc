@@ -176,7 +176,7 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     }
   }
   if (request->tests_setting().shutdown_after_tests()) {
-    shutdown_requested_ = true;
+    shutdown_requested_.Notify();
   }
   return grpc::Status::OK;
 }
@@ -470,14 +470,9 @@ void TestSequencer::Shutdown() {
 }
 
 void TestSequencer::Wait() {
-  while (1) {
-    if (shutdown_requested_) {
-      Shutdown();
-      break;
-    }
-    sleep(1);
-  }
   if (grpc_server_) {
+    shutdown_requested_.WaitForNotification();
+    Shutdown();
     grpc_server_->Wait();
   }
 }
