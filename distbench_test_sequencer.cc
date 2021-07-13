@@ -464,20 +464,22 @@ absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
 }
 
 void TestSequencer::Shutdown() {
+  shutdown_requested_.Notify();
   if (grpc_server_) {
     grpc_server_->Shutdown();
   }
 }
 
 void TestSequencer::Wait() {
+  shutdown_requested_.WaitForNotification();
   if (grpc_server_) {
-    shutdown_requested_.WaitForNotification();
     Shutdown();
     grpc_server_->Wait();
   }
 }
 
 TestSequencer::~TestSequencer() {
+  Shutdown();
   if (grpc_server_) {
     grpc_server_->Shutdown();
     grpc_server_->Wait();
