@@ -464,6 +464,39 @@ absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
 }
 
 void TestSequencer::Shutdown() {
+  grpc::CompletionQueue cq;
+  struct PendingRpc {
+    grpc::ClientContext context;
+    std::unique_ptr<grpc::ClientAsyncResponseReader<ShutdownNodeResult>> rpc;
+    grpc::Status status;
+    ShutdownNodeRequest request;
+    ShutdownNodeResult response;
+    RegisteredNode* node;
+  };
+  grpc::Status status;
+  std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
+  int rpc_count = 0;
+  for (auto& node : registered_nodes_) {
+    auto& rpc_state = pending_rpcs[rpc_count];
+    ++rpc_count;
+    rpc_state.node = &node;
+    rpc_state.rpc = rpc_state.node->stub->AsyncShutdownNode(
+          &rpc_state.context, rpc_state.request, &cq);
+    rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
+  }
+  while (rpc_count) {
+    bool ok;
+    void* tag;
+    cq.Next(&tag, &ok);
+    if (ok) {
+      --rpc_count;
+      PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
+      if (!finished_rpc->status.ok()) {
+        status = finished_rpc->status;
+      }
+      finished_rpc->node->idle = true;
+    }
+  }
   shutdown_requested_.Notify();
   if (grpc_server_) {
     grpc_server_->Shutdown();

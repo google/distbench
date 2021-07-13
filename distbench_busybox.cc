@@ -224,7 +224,6 @@ int MainTestSequencer(std::vector<char*> &arguments) {
   distbench::RealClock clock;
   distbench::NodeManager node_manager(&clock);
   for (int i = 0; i < num_nodes; ++i) {
-    std::cerr << "wgh\n";
     int new_port = 0;
     distbench::NodeManagerOpts opts = {};
     opts.port = & new_port;
@@ -237,9 +236,7 @@ int MainTestSequencer(std::vector<char*> &arguments) {
     }
   }
   test_sequencer.Wait();
-    std::cerr << "wgh!!!\n";
   for (int i = 0; i < num_nodes; ++i) {
-    std::cerr << "WGH\n";
     nodes[i]->Shutdown();
     nodes[i]->Wait();
   }
