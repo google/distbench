@@ -16,6 +16,7 @@
 #include "distbench_test_sequencer.h"
 
 #include <fcntl.h>
+#include <stdlib.h>
 
 #include <fstream>
 
@@ -40,8 +41,12 @@ ABSL_FLAG(bool, use_ipv4_first, false,
 ABSL_FLAG(bool, binary_output, false, "Save protobufs in binary mode");
 ABSL_FLAG(std::string, infile, "/dev/stdin", "Input file");
 ABSL_FLAG(std::string, outfile, "/dev/stdout", "Output file");
+ABSL_FLAG(int, local_nodes, 0,
+    "The number of node managers to run alongside the test sequencer "
+    "(primarily for debugging locally)");
 
 int main(int argc, char** argv, char** envp) {
+  setenv("GLOG_logtostderr", "1", 1);
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
   distbench::InitLibs(argv[0]);
   distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
@@ -215,7 +220,31 @@ int MainTestSequencer(std::vector<char*> &arguments) {
   opts.port = &port;
   distbench::TestSequencer test_sequencer;
   test_sequencer.Initialize(opts);
+  int num_nodes = absl::GetFlag(FLAGS_local_nodes);
+  std::vector<std::unique_ptr<distbench::NodeManager>> nodes;
+  nodes.reserve(num_nodes);
+  distbench::RealClock clock;
+  distbench::NodeManager node_manager(&clock);
+  for (int i = 0; i < num_nodes; ++i) {
+    std::cerr << "wgh\n";
+    int new_port = 0;
+    distbench::NodeManagerOpts opts = {};
+    opts.port = & new_port;
+    opts.test_sequencer_service_address = test_sequencer.service_address();
+    nodes.push_back(std::make_unique<distbench::NodeManager>(&clock));
+    absl::Status status = nodes.back()->Initialize(opts);
+    if (!status.ok()) {
+      std::cerr << "Initializing one of the node managers failed: "
+                << status << std::endl;
+    }
+  }
   test_sequencer.Wait();
+    std::cerr << "wgh!!!\n";
+  for (int i = 0; i < num_nodes; ++i) {
+    std::cerr << "WGH\n";
+    nodes[i]->Shutdown();
+    nodes[i]->Wait();
+  }
   return 0;
 }
 

@@ -94,6 +94,7 @@ run_gdb_backtrace() {
   gdb -batch -ex "run" -ex "bt" --args "$@" 2>&1 | grep -v ^"No stack."$
 }
 
+export GLOG_logtostderr=1
 check_dependencies
 
 # Run a test_sequencer and node_manager instance

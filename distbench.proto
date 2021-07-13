@@ -25,6 +25,7 @@ message ProtocolDriverOptions {
 
 message TestsSetting {
   optional bool keep_instance_log = 1 [default = true];
+  optional bool shutdown_after_tests = 2 [default = false];
 }
 
 message TestSequence {

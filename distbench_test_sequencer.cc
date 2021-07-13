@@ -167,14 +167,16 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
         maybe_result->add_log_summary(s);
         LOG(INFO) << s;
       }
-      if (request->has_tests_setting() &&
-          !request->tests_setting().keep_instance_log())
+      if (!request->tests_setting().keep_instance_log())
         result.mutable_service_logs()->clear_instance_logs();
       *response->add_test_results() = result;
     } else {
       return grpc::Status(grpc::StatusCode::ABORTED,
                           std::string(maybe_result.status().message()));
     }
+  }
+  if (request->tests_setting().shutdown_after_tests()) {
+    shutdown_requested_ = true;
   }
   return grpc::Status::OK;
 }
@@ -468,6 +470,13 @@ void TestSequencer::Shutdown() {
 }
 
 void TestSequencer::Wait() {
+  while (1) {
+    if (shutdown_requested_) {
+      Shutdown();
+      break;
+    }
+    sleep(1);
+  }
   if (grpc_server_) {
     grpc_server_->Wait();
   }
