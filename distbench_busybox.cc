@@ -16,7 +16,6 @@
 #include "distbench_test_sequencer.h"
 
 #include <fcntl.h>
-#include <stdlib.h>
 
 #include <fstream>
 
@@ -46,7 +45,6 @@ ABSL_FLAG(int, local_nodes, 0,
     "(primarily for debugging locally)");
 
 int main(int argc, char** argv, char** envp) {
-  setenv("GLOG_logtostderr", "1", 1);
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
   distbench::InitLibs(argv[0]);
   distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
