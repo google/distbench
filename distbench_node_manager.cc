@@ -138,7 +138,9 @@ grpc::Status NodeManager::ShutdownNode(grpc::ServerContext* context,
 }
 
 void NodeManager::Shutdown() {
-  shutdown_requested_.Notify();
+  if (!shutdown_requested_.HasBeenNotified()) {
+    shutdown_requested_.Notify();
+  }
   if (grpc_server_) {
     grpc_server_->Shutdown();
   }

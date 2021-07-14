@@ -497,7 +497,9 @@ void TestSequencer::Shutdown() {
       finished_rpc->node->idle = true;
     }
   }
-  shutdown_requested_.Notify();
+  if (!shutdown_requested_.HasBeenNotified()) {
+    shutdown_requested_.Notify();
+  }
   if (grpc_server_) {
     grpc_server_->Shutdown();
   }
