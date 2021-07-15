@@ -177,20 +177,21 @@ int MainRunTests(std::vector<char*> &arguments) {
   distbench::TestSequenceResults test_results;
   grpc::Status status = stub->RunTestSequence(&context, test_sequence,
                                               &test_results);
-  if (status.ok()) {
-    for (const auto& test_result: test_results.test_results()) {
-      std::cout << "Test summary:\n";
-      for (const auto& log_summary: test_result.log_summary()) {
-        std::cout << log_summary << "\n";
-      }
-      std::cout << "\n";
-    }
-  } else {
+  if (!status.ok()) {
     std::cerr << "Failed! " << status << "\n";
+    return 1;
+  }
+
+  for (const auto& test_result: test_results.test_results()) {
+    std::cout << "Test summary:\n";
+    for (const auto& log_summary: test_result.log_summary()) {
+      std::cout << log_summary << "\n";
+    }
+    std::cout << "\n";
   }
 
   const std::string result_filename = absl::GetFlag(FLAGS_outfile);
-  if (result_filename != "") {
+  if (!result_filename.empty()) {
     absl::Status save_status;
     if (absl::GetFlag(FLAGS_binary_output)) {
       save_status = SaveResultProtoToFileBinary(result_filename, test_results);

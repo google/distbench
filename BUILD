@@ -7,6 +7,23 @@ package(
 )
 
 cc_library(
+    name = "distbench_summary",
+    srcs = [
+        "distbench_summary.cc",
+    ],
+    hdrs = [
+        "distbench_summary.h",
+    ],
+    deps = [
+        ":distbench_cc_proto",
+        ":traffic_config_cc_proto",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_github_google_glog//:glog"
+    ],
+)
+
+cc_library(
     name = "distbench_utils",
     srcs = [
         "distbench_utils.cc",
@@ -165,6 +182,7 @@ cc_library(
     deps = [
         ":distbench_cc_grpc_proto",
         ":distbench_utils",
+        ":distbench_summary",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_github_grpc_grpc//:grpc++",

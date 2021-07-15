@@ -15,6 +15,7 @@
 #include "distbench_test_sequencer.h"
 
 #include "absl/strings/match.h"
+#include "distbench_summary.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
