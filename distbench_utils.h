@@ -56,8 +56,6 @@ void InitLibs(const char* argv0);
 
 std::string Hostname();
 
-std::vector<std::string> SummarizeTestResult(const TestResult& test_result);
-
 grpc::Status Annotate(const grpc::Status& status, std::string_view context);
 
 grpc::Status abslStatusToGrpcStatus(const absl::Status &status);
