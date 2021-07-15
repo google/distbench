@@ -190,7 +190,7 @@ int MainRunTests(std::vector<char*> &arguments) {
   }
 
   const std::string result_filename = absl::GetFlag(FLAGS_outfile);
-  if (result_filename != "") {
+  if (!result_filename.empty()) {
     absl::Status save_status;
     if (absl::GetFlag(FLAGS_binary_output)) {
       save_status = SaveResultProtoToFileBinary(result_filename, test_results);
