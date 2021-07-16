@@ -78,8 +78,13 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
       return address;
   }
 
+  if (!netdev.empty()) {
+    LOG(FATAL) << "No address found for netdev=" << netdev
+               << " prefer_ipv4=" << prefer_ipv4;
+  }
+
   int score = 0;
-  DeviceIpAddress best_match("127.0.0.1", "lo", AF_INET);
+  DeviceIpAddress best_match;
   for (const auto& address: all_addresses) {
     int cur_score = 0;
     if (address.isIPv4() == prefer_ipv4)
@@ -94,9 +99,13 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
     }
   }
 
-  LOG(WARNING) << "No perfect match found, using " << best_match.ToString()
-               << "(score=" << score << ", searched_netdev="
-               << netdev << ", prefer_ipv4=" << prefer_ipv4 << ")";
+  if (score == 0)
+    LOG(FATAL) << "No interface available to use";
+
+  LOG(WARNING) << "Using " << best_match.ToString()
+               << "(score=" << score
+               << ", prefer_ipv4=" << prefer_ipv4 << ")";
+
   return best_match;
 }
 

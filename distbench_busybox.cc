@@ -43,7 +43,7 @@ ABSL_FLAG(std::string, outfile, "/dev/stdout", "Output file");
 ABSL_FLAG(int, local_nodes, 0,
     "The number of node managers to run alongside the test sequencer "
     "(primarily for debugging locally)");
-ABSL_FLAG(std::string, default_data_plane_device, "eth0",
+ABSL_FLAG(std::string, default_data_plane_device, "",
           "Default netdevice to use for the data plane (protocol driver)");
 
 int main(int argc, char** argv, char** envp) {
