@@ -23,6 +23,7 @@ namespace distbench {
 
 struct NodeManagerOpts {
   std::string test_sequencer_service_address;
+  std::string default_data_plane_device;
   int* port;
 };
 

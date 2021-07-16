@@ -107,7 +107,7 @@ if [[ "${DEBUG}" = "1" ]]; then
   run_gdb_backtrace
   for i in $(seq 1 1 $NODE_MANAGER_COUNT)
   do
-    run_gdb_backtrace bazel-bin/distbench node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) &
+    run_gdb_backtrace bazel-bin/distbench node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) --default_data_plane_device=lo &
   done
   sleep 5
 else
@@ -120,7 +120,7 @@ else
   echo Starting $NODE_MANAGER_COUNT Distbench node managers
   for i in $(seq 1 1 $NODE_MANAGER_COUNT)
   do
-    echo_and_run bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) &
+    echo_and_run bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) --default_data_plane_device=lo &
   done
   sleep 5
 fi

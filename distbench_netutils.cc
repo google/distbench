@@ -95,7 +95,8 @@ IPAddressWithInfos GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   }
 
   LOG(WARNING) << "No perfect match found, using " << best_match.ToString()
-               << "(score=" << score << ")";
+               << "(score=" << score << ", searched_netdev="
+               << netdev << ", prefer_ipv4=" << prefer_ipv4 << ")";
   return best_match;
 }
 
