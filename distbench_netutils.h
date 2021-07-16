@@ -20,14 +20,14 @@
 
 namespace distbench {
 
-class IPAddressWithInfos {
+class DeviceIpAddress {
  private:
   std::string ip_;
   std::string device_;
   int net_family_;
 
  public:
-  IPAddressWithInfos(const char *host, const char *devname, int family) {
+  DeviceIpAddress(const char *host, const char *devname, int family) {
     ip_ = std::string(host);
     device_ = std::string(devname);
     net_family_ = family;
@@ -43,8 +43,8 @@ class IPAddressWithInfos {
   }
 };
 
-std::vector<IPAddressWithInfos> GetAllAddresses();
-IPAddressWithInfos GetBestAddress(bool prefer_ipv4, std::string_view netdev);
+std::vector<DeviceIpAddress> GetAllAddresses();
+DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev);
 
 };  // namespace distbench
 

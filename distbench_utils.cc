@@ -82,12 +82,12 @@ void InitLibs(const char* argv0) {
 }
 
 std::string IpAddressForDevice(std::string_view netdev) {
-  IPAddressWithInfos address = GetBestAddress(use_ipv4_first, netdev);
+  DeviceIpAddress address = GetBestAddress(use_ipv4_first, netdev);
   return address.ip();
 }
 
 std::string SocketAddressForDevice(std::string_view netdev, int port) {
-  IPAddressWithInfos address = GetBestAddress(use_ipv4_first, netdev);
+  DeviceIpAddress address = GetBestAddress(use_ipv4_first, netdev);
   if (address.isIPv4())
     return absl::StrCat(address.ip(), ":", port);
 

@@ -35,11 +35,11 @@
 
 namespace distbench {
 
-std::vector<IPAddressWithInfos> GetAllAddresses() {
+std::vector<DeviceIpAddress> GetAllAddresses() {
   struct ifaddrs *ifaddr;
   int family, s;
   char host[NI_MAXHOST];
-  std::vector<IPAddressWithInfos> result;
+  std::vector<DeviceIpAddress> result;
 
   if (getifaddrs(&ifaddr) == -1)
     return result;
@@ -59,7 +59,7 @@ std::vector<IPAddressWithInfos> GetAllAddresses() {
                                           sizeof(struct sockaddr_in6),
                     host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
     if (s == 0) { // Success
-      IPAddressWithInfos ip_address(host, ifa->ifa_name, family);
+      DeviceIpAddress ip_address(host, ifa->ifa_name, family);
       result.push_back(ip_address);
     }
   }
@@ -68,7 +68,7 @@ std::vector<IPAddressWithInfos> GetAllAddresses() {
   return result;
 }
 
-IPAddressWithInfos GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
+DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   auto all_addresses = GetAllAddresses();
 
   // Exact match
@@ -79,7 +79,7 @@ IPAddressWithInfos GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   }
 
   int score = 0;
-  IPAddressWithInfos best_match("127.0.0.1", "lo", AF_INET);
+  DeviceIpAddress best_match("127.0.0.1", "lo", AF_INET);
   for (const auto& address: all_addresses) {
     int cur_score = 0;
     if (address.isIPv4() == prefer_ipv4)
@@ -100,11 +100,11 @@ IPAddressWithInfos GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   return best_match;
 }
 
-bool IPAddressWithInfos::isIPv4() const {
+bool DeviceIpAddress::isIPv4() const {
   return net_family_ == AF_INET;
 }
 
-std::string IPAddressWithInfos::ToString() const {
+std::string DeviceIpAddress::ToString() const {
   std::string ret = ip_ + " on " + device_ + " ";
   if (isIPv4())
     ret += "(ipv4)";
