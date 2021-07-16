@@ -474,6 +474,7 @@ void TestSequencer::Shutdown() {
     RegisteredNode* node;
   };
   grpc::Status status;
+  absl::MutexLock m(&mutex_);
   std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
   int rpc_count = 0;
   for (auto& node : registered_nodes_) {
