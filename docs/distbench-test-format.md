@@ -135,4 +135,5 @@ The `TestSequence` RPC also have the following options:
   tests {
   ...
   ```
-
+- `shutdown_after_tests` (boolean, default=false): If true, quit Distbench (node
+  managers & test sequencers) when all the tests in the RPC are done.

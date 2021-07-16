@@ -88,6 +88,7 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;
   TestSequencerOpts opts_;
+  absl::Notification shutdown_requested_;
 };
 
 }  // namespace distbench

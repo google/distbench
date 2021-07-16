@@ -167,14 +167,16 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
         maybe_result->add_log_summary(s);
         LOG(INFO) << s;
       }
-      if (request->has_tests_setting() &&
-          !request->tests_setting().keep_instance_log())
+      if (!request->tests_setting().keep_instance_log())
         result.mutable_service_logs()->clear_instance_logs();
       *response->add_test_results() = result;
     } else {
       return grpc::Status(grpc::StatusCode::ABORTED,
                           std::string(maybe_result.status().message()));
     }
+  }
+  if (request->tests_setting().shutdown_after_tests()) {
+    shutdown_requested_.Notify();
   }
   return grpc::Status::OK;
 }
@@ -462,18 +464,57 @@ absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
 }
 
 void TestSequencer::Shutdown() {
+  grpc::CompletionQueue cq;
+  struct PendingRpc {
+    grpc::ClientContext context;
+    std::unique_ptr<grpc::ClientAsyncResponseReader<ShutdownNodeResult>> rpc;
+    grpc::Status status;
+    ShutdownNodeRequest request;
+    ShutdownNodeResult response;
+    RegisteredNode* node;
+  };
+  grpc::Status status;
+  std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
+  int rpc_count = 0;
+  for (auto& node : registered_nodes_) {
+    auto& rpc_state = pending_rpcs[rpc_count];
+    ++rpc_count;
+    rpc_state.node = &node;
+    rpc_state.rpc = rpc_state.node->stub->AsyncShutdownNode(
+          &rpc_state.context, rpc_state.request, &cq);
+    rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
+  }
+  while (rpc_count) {
+    bool ok;
+    void* tag;
+    cq.Next(&tag, &ok);
+    if (ok) {
+      --rpc_count;
+      PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
+      if (!finished_rpc->status.ok()) {
+        status = finished_rpc->status;
+      }
+      finished_rpc->node->idle = true;
+    }
+  }
+  if (!shutdown_requested_.HasBeenNotified()) {
+    shutdown_requested_.Notify();
+  }
   if (grpc_server_) {
     grpc_server_->Shutdown();
   }
 }
 
 void TestSequencer::Wait() {
+  shutdown_requested_.WaitForNotification();
   if (grpc_server_) {
+    Shutdown();
     grpc_server_->Wait();
   }
 }
 
 TestSequencer::~TestSequencer() {
+  Shutdown();
   if (grpc_server_) {
     grpc_server_->Shutdown();
     grpc_server_->Wait();

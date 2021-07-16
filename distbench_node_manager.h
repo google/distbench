@@ -53,6 +53,11 @@ class NodeManager final : public DistBenchNodeManager::Service {
                              const CancelTrafficRequest* request,
                              CancelTrafficResult* response) override;
 
+  grpc::Status ShutdownNode(grpc::ServerContext* context,
+                            const ShutdownNodeRequest* request,
+                            ShutdownNodeResult* response) override;
+
+
  private:
   void ClearServices() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
@@ -79,6 +84,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;
   NodeManagerOpts opts_;
+  absl::Notification shutdown_requested_;
 };
 
 }  // namespace distbench

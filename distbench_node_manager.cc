@@ -118,8 +118,8 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
 }
 
 grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
-                                      const CancelTrafficRequest* request,
-                                      CancelTrafficResult* response) {
+                                        const CancelTrafficRequest* request,
+                                        CancelTrafficResult* response) {
   LOG(INFO) << "saw the cancelation now";
   absl::ReaderMutexLock m (&mutex_);
   for (const auto& service_engine : service_engines_) {
@@ -129,19 +129,32 @@ grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
   return grpc::Status::OK;
 }
 
+grpc::Status NodeManager::ShutdownNode(grpc::ServerContext* context,
+                                        const ShutdownNodeRequest* request,
+                                        ShutdownNodeResult* response) {
+  LOG(INFO) << "Shutting down...";
+  shutdown_requested_.Notify();
+  return grpc::Status::OK;
+}
+
 void NodeManager::Shutdown() {
+  if (!shutdown_requested_.HasBeenNotified()) {
+    shutdown_requested_.Notify();
+  }
   if (grpc_server_) {
     grpc_server_->Shutdown();
   }
 }
 
 void NodeManager::Wait() {
+  shutdown_requested_.WaitForNotification();
   if (grpc_server_) {
     grpc_server_->Wait();
   }
 }
 
 NodeManager::~NodeManager() {
+  Shutdown();
   ClearServices();
   if (grpc_server_) {
     grpc_server_->Shutdown();

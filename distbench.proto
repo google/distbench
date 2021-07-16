@@ -25,6 +25,7 @@ message ProtocolDriverOptions {
 
 message TestsSetting {
   optional bool keep_instance_log = 1 [default = true];
+  optional bool shutdown_after_tests = 2 [default = false];
 }
 
 message TestSequence {
@@ -133,6 +134,10 @@ message CancelTrafficRequest {}
 
 message CancelTrafficResult {}
 
+message ShutdownNodeRequest {}
+
+message ShutdownNodeResult {}
+
 service DistBenchNodeManager {
   // Sets up services prior to running traffic:
   rpc ConfigureNode(NodeServiceConfig) returns (ServiceEndpointMap) {}
@@ -145,6 +150,9 @@ service DistBenchNodeManager {
 
   // Cancels a currently running traffic pattern immediately:
   rpc CancelTraffic(CancelTrafficRequest) returns (CancelTrafficResult) {}
+
+  // Shuts down a node manager after any active test completes:
+  rpc ShutdownNode(ShutdownNodeRequest) returns (ShutdownNodeResult) {}
 }
 
 message ConnectRequest {
