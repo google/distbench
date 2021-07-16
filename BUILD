@@ -7,6 +7,21 @@ package(
 )
 
 cc_library(
+    name = "distbench_netutils",
+    srcs = [
+        "distbench_netutils.cc",
+    ],
+    hdrs = [
+        "distbench_netutils.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_github_google_glog//:glog"
+    ],
+)
+
+cc_library(
     name = "distbench_summary",
     srcs = [
         "distbench_summary.cc",
@@ -33,6 +48,7 @@ cc_library(
         "grpc_wrapper.h",
     ],
     deps = [
+        ":distbench_netutils",
         ":interface_lookup",
         ":distbench_cc_proto",
         ":traffic_config_cc_proto",

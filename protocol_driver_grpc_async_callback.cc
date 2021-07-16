@@ -58,9 +58,10 @@ ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     std::string_view netdev_name, int* port) {
-  server_ip_address_ = IpAddressForDevice("");
-  server_socket_address_ = SocketAddressForDevice("", *port);
+  server_ip_address_ = IpAddressForDevice(netdev_name);
+  server_socket_address_ = SocketAddressForDevice(netdev_name, *port);
   traffic_service_ = absl::make_unique<TrafficServiceAsync>();
+
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -69,16 +70,17 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
+
   server_port_ = *port;
-  server_socket_address_ = SocketAddressForDevice("", *port);
-  if (server_) {
-    LOG(INFO) << "Grpc Async Callback Traffic server listening on "
-              << server_socket_address_;
-    return absl::OkStatus();
-  } else {
+  server_socket_address_ = SocketAddressForDevice(netdev_name, *port);
+  if (!server_) {
     return absl::UnknownError(
         "Grpc Async Callback Traffic service failed to start");
   }
+
+  LOG(INFO) << "Grpc Async Callback Traffic server listening on "
+            << server_socket_address_;
+  return absl::OkStatus();
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetHandler(

@@ -24,6 +24,8 @@
 #include "absl/strings/str_format.h"
 #include "glog/logging.h"
 
+#include "distbench_netutils.h"
+
 namespace std {
 ostream& operator<< (ostream &out, grpc::Status const& c)
 {
@@ -80,31 +82,16 @@ void InitLibs(const char* argv0) {
 }
 
 std::string IpAddressForDevice(std::string_view netdev) {
-  net_base::IPAddress ip;
-  if (use_ipv4_first) {
-    CHECK(net_base::InterfaceLookup::MyIPv4Address(&ip) ||
-          net_base::InterfaceLookup::MyIPv6Address(&ip));
-  } else {
-    CHECK(net_base::InterfaceLookup::MyIPv6Address(&ip) ||
-          net_base::InterfaceLookup::MyIPv4Address(&ip));
-  }
-  return ip.ToString();
+  IPAddressWithInfos address = GetBestAddress(use_ipv4_first, netdev);
+  return address.ip();
 }
 
 std::string SocketAddressForDevice(std::string_view netdev, int port) {
-  net_base::IPAddress ip;
+  IPAddressWithInfos address = GetBestAddress(use_ipv4_first, netdev);
+  if (address.isIPv4())
+    return absl::StrCat(address.ip(), ":", port);
 
-  if (use_ipv4_first &&
-      net_base::InterfaceLookup::MyIPv4Address(&ip))
-    return absl::StrCat(ip.ToString(), ":", port);
-
-  if (net_base::InterfaceLookup::MyIPv6Address(&ip))
-    return absl::StrCat("[", ip.ToString(), "]:", port);
-
-  if (net_base::InterfaceLookup::MyIPv4Address(&ip))
-    return absl::StrCat(ip.ToString(), ":", port);
-
-  LOG(FATAL) << "Could not get ip v4/v6 address";
+  return absl::StrCat("[", address.ip(), "]:", port);
 }
 
 std::string ServiceInstanceName(std::string_view service_type, int instance) {
