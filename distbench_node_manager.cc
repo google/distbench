@@ -132,7 +132,7 @@ grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
 grpc::Status NodeManager::ShutdownNode(grpc::ServerContext* context,
                                         const ShutdownNodeRequest* request,
                                         ShutdownNodeResult* response) {
-  LOG(INFO) << "Shuting down...";
+  LOG(INFO) << "Shutting down...";
   shutdown_requested_.Notify();
   return grpc::Status::OK;
 }
