@@ -97,8 +97,6 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
     int cur_score = 0;
     if (address.isIPv4() == prefer_ipv4)
       cur_score += 2048;
-    if (address.netdevice() == netdev)
-      cur_score += 4096;
     if (address.netdevice() != "lo")
       cur_score += 1024;
     if (cur_score > score) {
