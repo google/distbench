@@ -60,7 +60,7 @@ std::vector<DeviceIpAddress> GetAllAddresses() {
                     host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
     if (s == 0) { // Success
       DeviceIpAddress ip_address(host, ifa->ifa_name, family);
-      result.push_back(ip_address);
+      result.emplace_back(ip_address);
     }
   }
 
