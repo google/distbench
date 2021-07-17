@@ -78,10 +78,18 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
       return address;
   }
 
-  if (!netdev.empty()) {
+  // Match the device with any IP type
+  for (const auto& address: all_addresses) {
+    if (address.netdevice() == netdev) {
+      LOG(WARNING) << "Using " << address.ToString()
+                   << " which is not of the favorite ip type (v4/v6).";
+      return address;
+    }
+  }
+
+  if (!netdev.empty())
     LOG(FATAL) << "No address found for netdev=" << netdev
                << " prefer_ipv4=" << prefer_ipv4;
-  }
 
   int score = 0;
   DeviceIpAddress best_match;
