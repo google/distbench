@@ -49,13 +49,14 @@ grpc::Status NodeManager::ConfigureNode(
           instance,
           &port,
           traffic_config_.default_protocol(),
-          "eth0"});
+          opts_.default_data_plane_device});
     if (!ret.ok()) {
       return grpc::Status(grpc::StatusCode::UNKNOWN,
           absl::StrCat("AllocService failure: ", ret.ToString()));
     }
     auto& service_entry = service_map[service_name];
-    service_entry.set_endpoint_address(SocketAddressForDevice("", port));
+    service_entry.set_endpoint_address(
+        SocketAddressForDevice(opts_.default_data_plane_device, port));
     service_entry.set_hostname(Hostname());
   }
   return grpc::Status::OK;
@@ -73,7 +74,7 @@ absl::Status NodeManager::AllocService(
   pd_opts.set_netdev_name(std::string(service_opts.netdev));
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(pd_opts);
   int port = 0;
-  absl::Status ret = pd->Initialize("eth0", &port);
+  absl::Status ret = pd->Initialize(service_opts.netdev, &port);
   if (!ret.ok()) return ret;
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd), clock_);
   ret = engine->Initialize(
