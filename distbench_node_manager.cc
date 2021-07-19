@@ -121,12 +121,12 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
 grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
                                         const CancelTrafficRequest* request,
                                         CancelTrafficResult* response) {
-  LOG(INFO) << "saw the cancelation now";
+  LOG(INFO) << "Starting CancelTraffic";
   absl::ReaderMutexLock m (&mutex_);
   for (const auto& service_engine : service_engines_) {
     service_engine.second->CancelTraffic();
   }
-  LOG(INFO) << "finished all the cancelations now";
+  LOG(INFO) << "Finished CancelTraffic";
   return grpc::Status::OK;
 }
 
