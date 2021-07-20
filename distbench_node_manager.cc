@@ -187,12 +187,11 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
   service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
-  if (grpc_server_) {
-    LOG(INFO) << "Server listening on " << service_address_;
-  }
   if (!grpc_server_) {
     return absl::UnknownError("NodeManager service failed to start");
   }
+  LOG(INFO) << "Server listening on " << service_address_;
+
   NodeRegistration reg;
   reg.set_hostname(Hostname());
   reg.set_control_ip(IpAddressForDevice(""));
@@ -205,19 +204,17 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   context.set_wait_for_ready(true);
   grpc::Status status =
     test_sequencer_stub->RegisterNode(&context, reg, &config);
-  if (status.ok()) {
-    LOG(INFO) << "NodeConfig: " << config.ShortDebugString();
-  } else {
+  if (!status.ok()) {
     status = Annotate(status, absl::StrCat(
           "While registering node to test sequencer(",
           opts_.test_sequencer_service_address,
           "): "));
     grpc_server_->Shutdown();
+    return absl::InvalidArgumentError(status.error_message());
   }
-  if (status.ok())
-    return absl::OkStatus();
 
-  return absl::InvalidArgumentError(status.error_message());
+  LOG(INFO) << "NodeConfig: " << config.ShortDebugString();
+  return absl::OkStatus();
 }
 
 }  // namespace distbench

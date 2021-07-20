@@ -360,12 +360,11 @@ absl::Status DistBenchEngine::Initialize(
   builder.RegisterService(this);
   server_ = builder.BuildAndStart();
   server_address = absl::StrCat("[::]:", *port);  // port may have changed
-  if (server_) {
-    LOG(INFO) << "Engine server listening on " << server_address;
-  } else {
+  if (!server_) {
     LOG(ERROR) << "Engine start failed on " << server_address;
     return absl::UnknownError("Engine service failed to start");
   }
+  LOG(INFO) << "Engine server listening on " << server_address;
 
   std::map<std::string, int> services =
     EnumerateServiceTypes(traffic_config_);
