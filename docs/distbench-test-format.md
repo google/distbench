@@ -133,7 +133,7 @@ Configure the protocol driver options. It can be refered by the service message.
       int_value: 1
     }
   ```
-  See [https://grpc.github.io/grpc/core/group__grpc__arg__keys.html](GRPC Options)
+  See [GRPC Options](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html)
   for applicable options.
 
 ### Misc settings
