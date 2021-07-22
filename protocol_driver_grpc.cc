@@ -52,15 +52,17 @@ class TrafficService : public Traffic::Service {
 ProtocolDriverGrpc::ProtocolDriverGrpc() {
 }
 
-absl::Status ProtocolDriverGrpc::Initialize(
-    std::string_view netdev_name, int* port) {
-  traffic_service_ = absl::make_unique<TrafficService>();
 
+absl::Status ProtocolDriverGrpc::Initialize(
+    const ProtocolDriverOptions &pd_opts, int* port) {
+  std::string netdev_name = pd_opts.netdev_name();
+  traffic_service_ = absl::make_unique<TrafficService>();
   grpc::ServerBuilder builder;
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort("[::]:0", server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  ApplyServerSettingsToGrpcBuilder(builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
 

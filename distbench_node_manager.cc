@@ -106,7 +106,7 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   ProtocolDriverOptions pd_opts = GetProtocolDriverOptionsFor(service_opts);
   std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(pd_opts);
   int port = 0;
-  absl::Status ret = pd->Initialize(pd_opts.netdev_name(), &port);
+  absl::Status ret = pd->Initialize(pd_opts, &port);
   if (!ret.ok()) return ret;
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd), clock_);
   ret = engine->Initialize(

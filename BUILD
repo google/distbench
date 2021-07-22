@@ -69,6 +69,7 @@ cc_library(
     ],
     deps = [
         ":distbench_cc_proto",
+        ":distbench_utils",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",

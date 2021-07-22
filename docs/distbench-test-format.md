@@ -122,6 +122,19 @@ Configure the protocol driver options. It can be refered by the service message.
   `grpc_async_callback`)
 - `netdev_name` (string): name of the network device interface to use (e.g.
   `eth0`)
+- `server_settings`: Setting to apply to the protocol driver, for example:
+  ```
+    server_settings {
+      name: "grpc.max_send_message_length"
+      int_value: 2048
+    }
+    server_settings {
+      name: "grpc.per_message_compression"
+      int_value: 1
+    }
+  ```
+  See [https://grpc.github.io/grpc/core/group__grpc__arg__keys.html](GRPC Options)
+  for applicable options.
 
 ### Misc settings
 
