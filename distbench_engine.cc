@@ -502,6 +502,9 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   if (service_map_.service_endpoints_size() < 2) {
     return absl::NotFoundError("No peers configured.");
   }
+
+  rusage_start_test_ = DoGetRusage();
+
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
     if (service_name_ == traffic_config_.action_lists(i).name()) {
       LOG(INFO) << "running Main for " << service_name_
@@ -524,7 +527,19 @@ ServicePerformanceLog DistBenchEngine::FinishTrafficAndGetLogs() {
     LOG(INFO) << "Finished running Main for "
               << service_name_ << "/" << service_instance_;
   }
+
+  struct rusage rusage_end_test = DoGetRusage();
+  RUsage *rusage_start = new RUsage();
+  RUsage *rusage_diff = new RUsage();
+
+  *rusage_start = StructRUsageToMessage(rusage_start_test_);
+  *rusage_diff = DiffStructRUsageToMessage(rusage_start_test_, rusage_end_test);
+
   ServicePerformanceLog log;
+
+  log.set_allocated_rusage_start(rusage_start);
+  log.set_allocated_rusage_diff(rusage_diff);
+
   for (size_t i = 0; i < peers_.size(); ++i) {
     for (size_t j = 0; j < peers_[i].size(); ++j) {
       absl::MutexLock m(&peers_[i][j].mutex);

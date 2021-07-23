@@ -15,6 +15,8 @@
 #ifndef DISTBENCH_DISTBENCH_UTILS_H_
 #define DISTBENCH_DISTBENCH_UTILS_H_
 
+#include <sys/resource.h>
+
 #include <memory>
 #include <thread>
 
@@ -65,6 +67,12 @@ absl::StatusOr<std::string> ReadFileToString(const std::string &filename);
 
 void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
       const ProtocolDriverOptions &pd_opts);
+
+// RUsage functions
+RUsage StructRUsageToMessage(struct rusage &s_rusage);
+RUsage DiffStructRUsageToMessage(struct rusage &start, struct rusage &end);
+struct rusage DoGetRusage();
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

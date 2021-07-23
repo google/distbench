@@ -61,10 +61,31 @@ message PeerPerformanceLog {
   map<int32, RpcPerformanceLog> rpc_logs = 1;
 }
 
+message RUsage {
+  optional double user_cpu_time = 1;
+  optional double system_cpu_time = 2;
+  optional int64 max_resident_set_size = 3;
+  optional int64 integral_shared_memory_size = 4;
+  optional int64 integral_unshared_data_size = 5;
+  optional int64 integral_unshared_stack_size = 6;
+  optional int64 page_reclaims_soft_page_faults = 7;
+  optional int64 page_faults_hard_page_faults = 8;
+  optional int64 swaps = 9;
+  optional int64 block_input_operations = 10;
+  optional int64 block_output_operations = 11;
+  optional int64 ipc_messages_sent = 12;
+  optional int64 ipc_messages_received = 13;
+  optional int64 signals_received = 14;
+  optional int64 voluntary_context_switches = 15;
+  optional int64 involuntary_context_switches = 16;
+}
+
 // Logs for an individual instance of a service:
 message ServicePerformanceLog {
   // The key is the server service instance name
   map<string, PeerPerformanceLog> peer_logs = 1;
+  optional RUsage rusage_start = 2;
+  optional RUsage rusage_diff = 3;
 }
 
 // Logs for multiple service instances:
