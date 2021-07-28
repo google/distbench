@@ -26,31 +26,4 @@ void ProtocolDriver::HandleConnectFailure(
     std::string_view local_connection_info) {
 }
 
-void ProtocolDriver::ApplyServerSettingsToGrpcBuilder(
-    grpc::ServerBuilder &builder,
-    const ProtocolDriverOptions &pd_opts) {
-  for (const auto &setting: pd_opts.server_settings()) {
-    if (!setting.has_name()) {
-      LOG(INFO) << "ProtocolDriverOptions NamedSetting has no name !";
-      continue;
-    }
-    const auto &name = setting.name();
-    if (setting.has_str_value()) {
-      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]="
-                << setting.str_value();
-      builder.AddChannelArgument(name, setting.str_value());
-      continue;
-    }
-    if (setting.has_int_value()) {
-      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]="
-                << setting.int_value();
-      builder.AddChannelArgument(name, setting.int_value());
-      continue;
-    }
-
-    LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]"
-              << " not setting found (str or int)!";
-  }
-}
-
 }  // namespace distbench

@@ -62,7 +62,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
     MakeServerCredentials();
   builder.AddListeningPort("[::]:0", server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
-  ApplyServerSettingsToGrpcBuilder(builder, pd_opts);
+  ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
 

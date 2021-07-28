@@ -84,11 +84,6 @@ class ProtocolDriver {
   virtual void ChurnConnection(int peer) = 0;
   virtual void ShutdownServer() = 0;
   virtual void ShutdownClient() = 0;
-
- protected:
-  void ApplyServerSettingsToGrpcBuilder(
-      grpc::ServerBuilder &builder,
-      const ProtocolDriverOptions &pd_opts);
 };
 
 }  // namespace distbench
