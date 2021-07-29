@@ -71,7 +71,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
     std::string_view netdev;
   };
 
-  ProtocolDriverOptions GetProtocolDriverOptionsFor(
+  absl::StatusOr<ProtocolDriverOptions> GetProtocolDriverOptionsFor(
     const ServiceOpts& service_opts);
 
   absl::Status AllocService(const ServiceOpts& service_opts)

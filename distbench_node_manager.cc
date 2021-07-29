@@ -66,7 +66,7 @@ void NodeManager::ClearServices() {
   service_engines_.clear();
 }
 
-ProtocolDriverOptions NodeManager::GetProtocolDriverOptionsFor(
+absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
     const ServiceOpts& service_opts) {
   ProtocolDriverOptions pd_opts;
   std::string pd_options_name = "";
@@ -77,7 +77,8 @@ ProtocolDriverOptions NodeManager::GetProtocolDriverOptionsFor(
       if (service.has_protocol_driver_options_name()) {
         pd_options_name = service.protocol_driver_options_name();
         if (pd_options_name.empty()) {
-          LOG(FATAL) << "An empty name cannot be specified";
+          return absl::InvalidArgumentError(
+              "An empty name cannot be specified");
         }
       }
     }
@@ -103,10 +104,12 @@ ProtocolDriverOptions NodeManager::GetProtocolDriverOptionsFor(
 
 absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   CHECK(service_opts.port);
-  ProtocolDriverOptions pd_opts = GetProtocolDriverOptionsFor(service_opts);
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(pd_opts);
+  absl::StatusOr<ProtocolDriverOptions> pd_opts =
+      GetProtocolDriverOptionsFor(service_opts);
+  if (!pd_opts.ok()) return pd_opts.status();
+  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(*pd_opts);
   int port = 0;
-  absl::Status ret = pd->Initialize(pd_opts, &port);
+  absl::Status ret = pd->Initialize(*pd_opts, &port);
   if (!ret.ok()) return ret;
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd), clock_);
   ret = engine->Initialize(
