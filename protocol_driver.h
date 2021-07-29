@@ -20,6 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
+#include "grpc_wrapper.h"
 
 namespace distbench {
 
@@ -49,7 +50,7 @@ class ProtocolDriver {
  public:
   virtual ~ProtocolDriver() {}
   virtual absl::Status Initialize(
-      std::string_view netdev_name, int* port) = 0;
+      const ProtocolDriverOptions &pd_opts, int* port) = 0;
 
   virtual void SetHandler(
       std::function<void(ServerRpcState* state)> handler) = 0;

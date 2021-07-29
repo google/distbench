@@ -22,6 +22,7 @@ package distbench;
 message ServiceSpec {
   optional string name = 1;
   optional int32 count = 2;
+  optional string protocol_driver_options_name = 3;
 }
 
 // Specifies how multiple services may be co-located on the same machine.
@@ -70,6 +71,19 @@ message ActionList {
   repeated string action_names = 2;
 }
 
+message NamedSetting {
+  optional string name = 1;
+  optional string str_value = 2;
+  optional int64  int_value = 3;
+}
+
+message ProtocolDriverOptions {
+  optional string name = 1;
+  optional string protocol_name = 2;
+  optional string netdev_name = 3;
+  repeated NamedSetting server_settings = 4;
+}
+
 message DistributedSystemDescription {
   repeated ServiceSpec services = 1;
   map<string, ServiceBundle> node_service_bundles = 2;
@@ -78,4 +92,5 @@ message DistributedSystemDescription {
   repeated Action actions = 5;
   repeated ActionList action_lists = 6;
   optional string default_protocol = 7 [default = "grpc"];
+  repeated ProtocolDriverOptions protocol_driver_options = 8;
 }

@@ -66,15 +66,50 @@ void NodeManager::ClearServices() {
   service_engines_.clear();
 }
 
-absl::Status NodeManager::AllocService(
+absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
     const ServiceOpts& service_opts) {
-  CHECK(service_opts.port);
   ProtocolDriverOptions pd_opts;
-  pd_opts.set_protocol_name(std::string(service_opts.protocol));
-  pd_opts.set_netdev_name(std::string(service_opts.netdev));
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(pd_opts);
+  std::string pd_options_name = "";
+
+  // ProtocolDriverOptions specified in Service ?
+  for (const auto& service: traffic_config_.services() ) {
+    if (service.name() == service_opts.service_type) {
+      if (service.has_protocol_driver_options_name()) {
+        pd_options_name = service.protocol_driver_options_name();
+        if (pd_options_name.empty()) {
+          return absl::InvalidArgumentError(
+              "An empty name cannot be specified");
+        }
+      }
+    }
+  }
+
+  // ProtocolDriverOptions found in config ?
+  for (const auto& pd_opts_enum: traffic_config_.protocol_driver_options() ) {
+    if (pd_opts_enum.name() == pd_options_name) {
+      pd_opts = pd_opts_enum;
+    }
+  }
+
+  // Use defaults to complete options
+  if (pd_options_name.empty())
+    pd_opts.set_name("generated_default");
+  if (!pd_opts.has_protocol_name())
+    pd_opts.set_protocol_name(std::string(service_opts.protocol));
+  if (!pd_opts.has_netdev_name())
+    pd_opts.set_netdev_name(std::string(service_opts.netdev));
+
+  return pd_opts;
+}
+
+absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
+  CHECK(service_opts.port);
+  absl::StatusOr<ProtocolDriverOptions> pd_opts =
+      GetProtocolDriverOptionsFor(service_opts);
+  if (!pd_opts.ok()) return pd_opts.status();
+  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(*pd_opts);
   int port = 0;
-  absl::Status ret = pd->Initialize(service_opts.netdev, &port);
+  absl::Status ret = pd->Initialize(*pd_opts, &port);
   if (!ret.ok()) return ret;
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd), clock_);
   ret = engine->Initialize(

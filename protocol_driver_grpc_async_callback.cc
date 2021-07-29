@@ -57,7 +57,8 @@ ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 }
 
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
-    std::string_view netdev_name, int* port) {
+    const ProtocolDriverOptions &pd_opts, int* port) {
+  std::string netdev_name = pd_opts.netdev_name();
   server_ip_address_ = IpAddressForDevice(netdev_name);
   server_socket_address_ = SocketAddressForDevice(netdev_name, *port);
   traffic_service_ = absl::make_unique<TrafficServiceAsync>();
@@ -68,6 +69,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     MakeServerCredentials();
   builder.AddListeningPort(server_socket_address_, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
 

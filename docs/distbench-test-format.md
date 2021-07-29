@@ -37,6 +37,8 @@ multiple of them.
 - `name` (string): name of the service.
 - `count` (int32): number of instances to start (each instance will occupy a
   `node_manage` unless it is bundled with other services).
+- `protocol_driver_options_name`: name of the ProtocolDriverOptions to use for
+  the service.
 
 ### message `ServiceBundle`
 
@@ -110,6 +112,29 @@ Define the payload attached to an RPC.
 
 - `name` (string): name of the PayloadSpec.
 - `size` (int32): The size, in bytes, of the payload
+
+### message `ProtocolDriverOptions`
+
+Configure the protocol driver options. It can be refered by the service message.
+
+- `name` (string): name the ProtocolDriverOptions
+- `protocol_name` (string): name of the protocol driver to use (e.g. `grpc`,
+  `grpc_async_callback`)
+- `netdev_name` (string): name of the network device interface to use (e.g.
+  `eth0`)
+- `server_settings`: Setting to apply to the protocol driver, for example:
+  ```
+    server_settings {
+      name: "grpc.max_send_message_length"
+      int_value: 2048
+    }
+    server_settings {
+      name: "grpc.per_message_compression"
+      int_value: 1
+    }
+  ```
+  See [GRPC Options](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html)
+  for applicable options.
 
 ### Misc settings
 

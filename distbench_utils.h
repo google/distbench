@@ -62,6 +62,9 @@ grpc::Status abslStatusToGrpcStatus(const absl::Status &status);
 absl::Status grpcStatusToAbslStatus(const grpc::Status &status);
 
 absl::StatusOr<std::string> ReadFileToString(const std::string &filename);
+
+void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
+      const ProtocolDriverOptions &pd_opts);
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

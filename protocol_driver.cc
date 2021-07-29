@@ -14,6 +14,8 @@
 
 #include "protocol_driver.h"
 
+#include "glog/logging.h"
+
 namespace distbench {
 
 absl::StatusOr<std::string> ProtocolDriver::Preconnect() {
@@ -23,6 +25,5 @@ absl::StatusOr<std::string> ProtocolDriver::Preconnect() {
 void ProtocolDriver::HandleConnectFailure(
     std::string_view local_connection_info) {
 }
-
 
 }  // namespace distbench
