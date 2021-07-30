@@ -135,7 +135,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int64_t iteration_limit = std::numeric_limits<int64_t>::max();
     absl::Time time_limit = absl::InfiniteFuture();
 
-
     const ActionTableEntry* action = nullptr;
     int rpc_index;
     int rpc_service_index;

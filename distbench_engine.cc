@@ -70,7 +70,7 @@ absl::Status DistBenchEngine::InitializePayloadsMap() {
 
 int DistBenchEngine::get_payload_size(const std::string& payload_name) {
   const auto& payload = payload_map_[payload_name];
-  int size = -1;
+  int size = -1; // Not found value
 
   if (payload.has_size()) {
     size = payload.size();
@@ -509,6 +509,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
           "EngineMain", [this, i]() {RunActionList(i, nullptr);});
     }
   }
+
   return absl::OkStatus();
 }
 
@@ -547,8 +548,7 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
 
   // Perform action list
   int handler_action_index = simulated_server_rpc.handler_action_list_index;
-  if (handler_action_index == -1) {
-  } else {
+  if (handler_action_index != -1) {
     RunActionList(handler_action_index, state);
   }
 
