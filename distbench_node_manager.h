@@ -72,7 +72,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   };
 
   absl::StatusOr<ProtocolDriverOptions> GetProtocolDriverOptionsFor(
-    const ServiceOpts& service_opts);
+      const ServiceOpts& service_opts) ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   absl::Status AllocService(const ServiceOpts& service_opts)
     ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
