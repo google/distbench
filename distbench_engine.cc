@@ -502,9 +502,6 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   if (service_map_.service_endpoints_size() < 2) {
     return absl::NotFoundError("No peers configured.");
   }
-
-  rusage_start_test_ = DoGetRusage();
-
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
     if (service_name_ == traffic_config_.action_lists(i).name()) {
       LOG(INFO) << "running Main for " << service_name_

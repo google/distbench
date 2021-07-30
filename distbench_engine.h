@@ -235,8 +235,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   // Random
   absl::BitGen random_generator;
-
-  struct rusage rusage_start_test_;
 };
 
 }  // namespace distbench
