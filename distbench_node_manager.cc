@@ -231,14 +231,14 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   reg.set_hostname(Hostname());
   reg.set_control_ip(IpAddressForDevice(""));
   reg.set_control_port(*opts_.port);
-  NodeConfig config;
+
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
     std::chrono::system_clock::now() + std::chrono::seconds(60);
   context.set_deadline(deadline);
   context.set_wait_for_ready(true);
   grpc::Status status =
-    test_sequencer_stub->RegisterNode(&context, reg, &config);
+    test_sequencer_stub->RegisterNode(&context, reg, &config_);
   if (!status.ok()) {
     status = Annotate(status, absl::StrCat(
           "While registering node to test sequencer(",
@@ -248,7 +248,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
     return absl::InvalidArgumentError(status.error_message());
   }
 
-  LOG(INFO) << "NodeConfig: " << config.ShortDebugString();
+  LOG(INFO) << "NodeConfig: " << config_.ShortDebugString();
+
   return absl::OkStatus();
 }
 

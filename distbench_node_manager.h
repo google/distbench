@@ -89,6 +89,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   std::string service_address_;
   NodeManagerOpts opts_;
   absl::Notification shutdown_requested_;
+  NodeConfig config_;
 };
 
 }  // namespace distbench
