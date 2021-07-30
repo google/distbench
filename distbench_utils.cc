@@ -223,12 +223,12 @@ void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
 
 // RUsage functions
 namespace {
-double TimevalToDouble(struct timeval &t){
+double TimevalToDouble(const struct timeval &t){
   return (double)t.tv_usec / 1000000.0 + t.tv_sec;
 }
 };  // Anonymous namespace
 
-RUsage StructRUsageToMessage(struct rusage &s_rusage) {
+RUsage StructRUsageToMessage(const struct rusage &s_rusage) {
   RUsage rusage;
 
   rusage.set_user_cpu_time(TimevalToDouble(s_rusage.ru_utime));
@@ -251,7 +251,8 @@ RUsage StructRUsageToMessage(struct rusage &s_rusage) {
   return rusage;
 }
 
-RUsage DiffStructRUsageToMessage(struct rusage &start, struct rusage &end) {
+RUsage DiffStructRUsageToMessage(const struct rusage &start,
+                                 const struct rusage &end) {
   RUsage rusage;
 
   rusage.set_user_cpu_time(TimevalToDouble(end.ru_utime) -
@@ -274,6 +275,18 @@ RUsage DiffStructRUsageToMessage(struct rusage &start, struct rusage &end) {
   rusage.set_involuntary_context_switches(end.ru_nivcsw - start.ru_nivcsw);
 
   return rusage;
+}
+
+RUsageStats GetRUsageStatsFromStructs(const struct rusage &start,
+                                      const struct rusage &end) {
+  RUsage *rusage_start = new RUsage();
+  RUsage *rusage_diff = new RUsage();
+  *rusage_start = StructRUsageToMessage(start);
+  *rusage_diff = DiffStructRUsageToMessage(start, end);
+  RUsageStats rusage_stats;
+  rusage_stats.set_allocated_rusage_start(rusage_start);
+  rusage_stats.set_allocated_rusage_diff(rusage_diff);
+  return rusage_stats;
 }
 
 struct rusage DoGetRusage() {

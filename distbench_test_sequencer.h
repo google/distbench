@@ -72,7 +72,7 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
       const std::map<std::string, std::set<std::string>>& node_service_map,
       ServiceEndpointMap service_map);
 
-  absl::StatusOr<ServiceLogs> RunTraffic(
+  absl::StatusOr<RunTrafficResponse> RunTraffic(
       const std::map<std::string, std::set<std::string>>& node_service_map);
 
   void CancelTraffic() ABSL_LOCKS_EXCLUDED(mutex_);

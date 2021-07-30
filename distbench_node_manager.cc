@@ -136,20 +136,30 @@ grpc::Status NodeManager::IntroducePeers(grpc::ServerContext* context,
 
 grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
                                      const RunTrafficRequest* request,
-                                     ServiceLogs* response) {
+                                     RunTrafficResponse* response) {
   absl::ReaderMutexLock m (&mutex_);
+
+  struct rusage rusage_start_test = DoGetRusage();
+
   for (const auto& service_engine : service_engines_) {
     auto ret = service_engine.second->RunTraffic(request);
     if (!ret.ok())
       return grpc::Status(grpc::StatusCode::UNKNOWN, "RunTraffic failure");
   }
+
   for (const auto& service_engine : service_engines_) {
     auto log = service_engine.second->FinishTrafficAndGetLogs();
     if (!log.peer_logs().empty()) {
-      (*response->mutable_instance_logs())[service_engine.first] =
-        std::move(log);
+      (*response->mutable_service_logs()
+       ->mutable_instance_logs())[service_engine.first] = std::move(log);
     }
   }
+
+  RUsageStats rusage_stats = GetRUsageStatsFromStructs(rusage_start_test,
+                                                       DoGetRusage());
+  (*response->mutable_node_usages())[config_.node_alias()] =
+      std::move(rusage_stats);
+
   return grpc::Status::OK;
 }
 

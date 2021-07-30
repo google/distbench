@@ -48,7 +48,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
 
   grpc::Status RunTraffic(grpc::ServerContext* context,
                           const RunTrafficRequest* request,
-                          ServiceLogs* response) override;
+                          RunTrafficResponse* response) override;
 
   grpc::Status CancelTraffic(grpc::ServerContext* context,
                              const CancelTrafficRequest* request,

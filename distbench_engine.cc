@@ -528,17 +528,7 @@ ServicePerformanceLog DistBenchEngine::FinishTrafficAndGetLogs() {
               << service_name_ << "/" << service_instance_;
   }
 
-  struct rusage rusage_end_test = DoGetRusage();
-  RUsage *rusage_start = new RUsage();
-  RUsage *rusage_diff = new RUsage();
-
-  *rusage_start = StructRUsageToMessage(rusage_start_test_);
-  *rusage_diff = DiffStructRUsageToMessage(rusage_start_test_, rusage_end_test);
-
   ServicePerformanceLog log;
-
-  log.set_allocated_rusage_start(rusage_start);
-  log.set_allocated_rusage_diff(rusage_diff);
 
   for (size_t i = 0; i < peers_.size(); ++i) {
     for (size_t j = 0; j < peers_[i].size(); ++j) {

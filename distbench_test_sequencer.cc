@@ -292,6 +292,8 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
     return absl::InvalidArgumentError("No services defined.");
   }
 
+  struct rusage rusage_start_test = DoGetRusage();
+
   auto maybe_map = PlaceServices(test);
   if (!maybe_map.ok()) {
     return maybe_map.status();
@@ -314,7 +316,15 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
     TestResult ret;
     *ret.mutable_traffic_config() = test;
     *ret.mutable_placement() = service_map;
-    *ret.mutable_service_logs() = maybe_logs.value();
+    *ret.mutable_service_logs() = maybe_logs.value().service_logs();
+    *ret.mutable_ressource_usage_logs()->mutable_node_usages() =
+        maybe_logs.value().node_usages();
+
+    RUsageStats rusage_stats = GetRUsageStatsFromStructs(rusage_start_test,
+                                                         DoGetRusage());
+    *ret.mutable_ressource_usage_logs()->mutable_test_sequencer_usage() =
+        std::move(rusage_stats);
+
     return ret;
   } else {
     return maybe_logs.status();
@@ -415,20 +425,20 @@ absl::Status TestSequencer::IntroducePeers(
   return grpcStatusToAbslStatus(status);
 }
 
-absl::StatusOr<ServiceLogs> TestSequencer::RunTraffic(
+absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
     const std::map<std::string, std::set<std::string>>& node_service_map) {
   absl::ReaderMutexLock m(&mutex_);
   grpc::CompletionQueue cq;
   struct PendingRpc {
     grpc::ClientContext context;
-    std::unique_ptr<grpc::ClientAsyncResponseReader<ServiceLogs>> rpc;
+    std::unique_ptr<grpc::ClientAsyncResponseReader<RunTrafficResponse>> rpc;
     grpc::Status status;
     RunTrafficRequest request;
-    ServiceLogs response;
+    RunTrafficResponse response;
     RegisteredNode* node;
   };
   grpc::Status status;
-  ServiceLogs ret;
+  RunTrafficResponse ret;
   std::vector<PendingRpc> pending_rpcs(node_service_map.size());
   int rpc_count = 0;
   for (const auto& node_services : node_service_map) {
