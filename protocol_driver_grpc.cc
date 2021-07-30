@@ -122,6 +122,7 @@ std::vector<TransportStat> ProtocolDriverGrpc::GetTransportStats() {
   return {};
 }
 
+namespace {
 struct PendingRpc {
   grpc::ClientContext context;
   std::unique_ptr<grpc::ClientAsyncResponseReader<GenericResponse>> rpc;
@@ -131,6 +132,7 @@ struct PendingRpc {
   std::function<void(void)> done_callback;
   ClientRpcState* state;
 };
+}  // anonymous namespace
 
 void ProtocolDriverGrpc::InitiateRpc(
     int peer_index, ClientRpcState* state,
