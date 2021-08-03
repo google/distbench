@@ -31,6 +31,7 @@ Use Distbench to:
 - [Distbench Traffic Pattern - Format](docs/distbench-test-format.md): Defined
 - [Distbench Command Line Arguments](docs/command-line.md): Overview
   of the Distbench command line arguments.
+- [Distbench FAQs](docs/faq.md)
 
 For contributors, make sure you also consult the following:
 - [Code of conduct](docs/code-of-conduct.md)
