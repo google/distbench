@@ -948,14 +948,6 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     if (nb_targets > num_servers)
       nb_targets = num_servers;
 
-// Potential optimization
-//    if (nb_targets == 1) {
-//      int target = random() % num_servers;
-//      CHECK_NE(target, -1);
-//      targets.push_back(target);
-//      return targets;
-//    }
-
     // Generate a vector to pick random targets from (only done once)
     partial_rand_vects.try_emplace(num_servers, std::vector<int>());
     std::vector<int>& from_vector = partial_rand_vects[num_servers];
