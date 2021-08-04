@@ -27,12 +27,11 @@ grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
                                               const ConnectRequest* request,
                                               ConnectResponse* response) {
   auto maybe_info = pd_->HandlePreConnect(request->initiator_info(), 0);
-  if (maybe_info.ok()) {
-    response->set_responder_info(maybe_info.value());
-    return grpc::Status::OK;
-  } else {
+  if (!maybe_info.ok()) {
     return abslStatusToGrpcStatus(maybe_info.status());
   }
+  response->set_responder_info(maybe_info.value());
+  return grpc::Status::OK;
 }
 
 DistBenchEngine::DistBenchEngine(std::unique_ptr<ProtocolDriver> pd)
