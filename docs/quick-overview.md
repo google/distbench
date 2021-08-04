@@ -83,4 +83,5 @@ spatial distribution are provided in the
 - [Distbench Workloads](../workloads/README.md)
 - [Distbench Traffic Pattern - Format](distbench-test-format.md)
 - [Distbench Command Line Arguments](command-line.md)
+- [Distbench FAQs](faq.md)
 
