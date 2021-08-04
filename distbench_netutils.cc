@@ -109,7 +109,8 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
     LOG(FATAL) << "No interface available to use";
 
   LOG(WARNING) << "Using " << best_match.ToString()
-               << "(score=" << score
+               << " for netdev " << netdev
+               << " (score=" << score
                << ", prefer_ipv4=" << prefer_ipv4 << ")";
 
   return best_match;

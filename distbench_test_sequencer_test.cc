@@ -219,6 +219,7 @@ void RunIntenseTraffic(const char* protocol) {
 TEST(DistBenchTestSequencer, 100k_grpc) {
   RunIntenseTraffic("grpc");
 }
+
 TEST(DistBenchTestSequencer, 100k_grpc_async_callback) {
   RunIntenseTraffic("grpc_async_callback");
 }
@@ -258,8 +259,9 @@ TEST(DistBenchTestSequencer, clique_test) {
 
   TestSequenceResults results;
   grpc::ClientContext context;
+  // 10 seconds test time + 5 seconds grpc hiccup time + 5 seconds overhead.
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(15);
+    std::chrono::system_clock::now() + std::chrono::seconds(20);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
