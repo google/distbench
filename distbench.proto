@@ -61,6 +61,30 @@ message PeerPerformanceLog {
   map<int32, RpcPerformanceLog> rpc_logs = 1;
 }
 
+message RUsage {
+  optional double user_cpu_time = 1;
+  optional double system_cpu_time = 2;
+  optional int64 max_resident_set_size = 3;
+  optional int64 integral_shared_memory_size = 4;
+  optional int64 integral_unshared_data_size = 5;
+  optional int64 integral_unshared_stack_size = 6;
+  optional int64 page_reclaims_soft_page_faults = 7;
+  optional int64 page_faults_hard_page_faults = 8;
+  optional int64 swaps = 9;
+  optional int64 block_input_operations = 10;
+  optional int64 block_output_operations = 11;
+  optional int64 ipc_messages_sent = 12;
+  optional int64 ipc_messages_received = 13;
+  optional int64 signals_received = 14;
+  optional int64 voluntary_context_switches = 15;
+  optional int64 involuntary_context_switches = 16;
+}
+
+message RUsageStats {
+  optional RUsage rusage_start = 1;
+  optional RUsage rusage_diff = 2;
+}
+
 // Logs for an individual instance of a service:
 message ServicePerformanceLog {
   // The key is the server service instance name
@@ -73,12 +97,23 @@ message ServiceLogs {
   map<string, ServicePerformanceLog> instance_logs = 1;
 }
 
+message RessourceUsageLogs {
+  optional RUsageStats test_sequencer_usage = 1;
+  map<string, RUsageStats> node_usages = 2;
+}
+
 // Logs for all services in a test config:
 message TestResult {
   optional DistributedSystemDescription traffic_config = 1;
   optional ServiceEndpointMap placement = 2;
   optional ServiceLogs service_logs = 3;
-  repeated string log_summary = 4;
+  optional RessourceUsageLogs ressource_usage_logs = 5;
+  repeated string log_summary = 100;
+}
+
+message RunTrafficResponse {
+  optional ServiceLogs service_logs = 1;
+  map<string, RUsageStats> node_usages = 2;
 }
 
 // Logs for all a test configs in a test sequence:
@@ -141,7 +176,7 @@ service DistBenchNodeManager {
   rpc IntroducePeers(ServiceEndpointMap) returns (IntroducePeersResult) {}
 
   // Runs traffic and monitors performance logs:
-  rpc RunTraffic(RunTrafficRequest) returns (ServiceLogs) {}
+  rpc RunTraffic(RunTrafficRequest) returns (RunTrafficResponse) {}
 
   // Cancels a currently running traffic pattern immediately:
   rpc CancelTraffic(CancelTrafficRequest) returns (CancelTrafficResult) {}

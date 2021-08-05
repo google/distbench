@@ -136,20 +136,28 @@ grpc::Status NodeManager::IntroducePeers(grpc::ServerContext* context,
 
 grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
                                      const RunTrafficRequest* request,
-                                     ServiceLogs* response) {
+                                     RunTrafficResponse* response) {
   absl::ReaderMutexLock m (&mutex_);
+
+  struct rusage rusage_start_test = DoGetRusage();
+
   for (const auto& service_engine : service_engines_) {
     auto ret = service_engine.second->RunTraffic(request);
     if (!ret.ok())
       return grpc::Status(grpc::StatusCode::UNKNOWN, "RunTraffic failure");
   }
+
   for (const auto& service_engine : service_engines_) {
     auto log = service_engine.second->FinishTrafficAndGetLogs();
     if (!log.peer_logs().empty()) {
-      (*response->mutable_instance_logs())[service_engine.first] =
-        std::move(log);
+      (*response->mutable_service_logs()
+       ->mutable_instance_logs())[service_engine.first] = std::move(log);
     }
   }
+
+  (*response->mutable_node_usages())[config_.node_alias()] =
+      GetRUsageStatsFromStructs(rusage_start_test, DoGetRusage());
+
   return grpc::Status::OK;
 }
 
@@ -231,14 +239,14 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   reg.set_hostname(Hostname());
   reg.set_control_ip(IpAddressForDevice(""));
   reg.set_control_port(*opts_.port);
-  NodeConfig config;
+
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
     std::chrono::system_clock::now() + std::chrono::seconds(60);
   context.set_deadline(deadline);
   context.set_wait_for_ready(true);
   grpc::Status status =
-    test_sequencer_stub->RegisterNode(&context, reg, &config);
+    test_sequencer_stub->RegisterNode(&context, reg, &config_);
   if (!status.ok()) {
     status = Annotate(status, absl::StrCat(
           "While registering node to test sequencer(",
@@ -248,7 +256,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
     return absl::InvalidArgumentError(status.error_message());
   }
 
-  LOG(INFO) << "NodeConfig: " << config.ShortDebugString();
+  LOG(INFO) << "NodeConfig: " << config_.ShortDebugString();
+
   return absl::OkStatus();
 }
 

@@ -14,6 +14,8 @@
 
 #include "distbench_utils.h"
 
+#include <sys/resource.h>
+
 #include <cerrno>
 #include <fstream>
 #include <streambuf>
@@ -217,6 +219,82 @@ void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
     LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]"
               << " not setting found (str or int)!";
   }
+}
+
+// RUsage functions
+namespace {
+double TimevalToDouble(const struct timeval &t){
+  return (double)t.tv_usec / 1000000.0 + t.tv_sec;
+}
+};  // Anonymous namespace
+
+RUsage StructRUsageToMessage(const struct rusage &s_rusage) {
+  RUsage rusage;
+
+  rusage.set_user_cpu_time(TimevalToDouble(s_rusage.ru_utime));
+  rusage.set_system_cpu_time(TimevalToDouble(s_rusage.ru_stime));
+  rusage.set_max_resident_set_size(s_rusage.ru_maxrss);
+  rusage.set_integral_shared_memory_size(s_rusage.ru_ixrss);
+  rusage.set_integral_unshared_data_size(s_rusage.ru_idrss);
+  rusage.set_integral_unshared_stack_size(s_rusage.ru_isrss);
+  rusage.set_page_reclaims_soft_page_faults(s_rusage.ru_minflt);
+  rusage.set_page_faults_hard_page_faults(s_rusage.ru_majflt);
+  rusage.set_swaps(s_rusage.ru_nswap);
+  rusage.set_block_input_operations(s_rusage.ru_inblock);
+  rusage.set_block_output_operations(s_rusage.ru_oublock);
+  rusage.set_ipc_messages_sent(s_rusage.ru_msgsnd);
+  rusage.set_ipc_messages_received(s_rusage.ru_msgrcv);
+  rusage.set_signals_received(s_rusage.ru_nsignals);
+  rusage.set_voluntary_context_switches(s_rusage.ru_nvcsw);
+  rusage.set_involuntary_context_switches(s_rusage.ru_nivcsw);
+
+  return rusage;
+}
+
+RUsage DiffStructRUsageToMessage(const struct rusage &start,
+                                 const struct rusage &end) {
+  RUsage rusage;
+
+  rusage.set_user_cpu_time(TimevalToDouble(end.ru_utime) -
+                           TimevalToDouble(start.ru_utime));
+  rusage.set_system_cpu_time(TimevalToDouble(end.ru_stime) -
+                             TimevalToDouble(start.ru_stime));
+  rusage.set_max_resident_set_size(end.ru_maxrss - start.ru_maxrss);
+  rusage.set_integral_shared_memory_size(end.ru_ixrss - start.ru_ixrss);
+  rusage.set_integral_unshared_data_size(end.ru_idrss - start.ru_idrss);
+  rusage.set_integral_unshared_stack_size(end.ru_isrss - start.ru_isrss);
+  rusage.set_page_reclaims_soft_page_faults(end.ru_minflt - start.ru_minflt);
+  rusage.set_page_faults_hard_page_faults(end.ru_majflt - start.ru_majflt);
+  rusage.set_swaps(end.ru_nswap - start.ru_nswap);
+  rusage.set_block_input_operations(end.ru_inblock - start.ru_inblock);
+  rusage.set_block_output_operations(end.ru_oublock - start.ru_oublock);
+  rusage.set_ipc_messages_sent(end.ru_msgsnd - start.ru_msgsnd);
+  rusage.set_ipc_messages_received(end.ru_msgrcv - start.ru_msgrcv);
+  rusage.set_signals_received(end.ru_nsignals - start.ru_nsignals);
+  rusage.set_voluntary_context_switches(end.ru_nvcsw - start.ru_nvcsw);
+  rusage.set_involuntary_context_switches(end.ru_nivcsw - start.ru_nivcsw);
+
+  return rusage;
+}
+
+RUsageStats GetRUsageStatsFromStructs(const struct rusage &start,
+                                      const struct rusage &end) {
+  RUsage *rusage_start = new RUsage();
+  RUsage *rusage_diff = new RUsage();
+  *rusage_start = StructRUsageToMessage(start);
+  *rusage_diff = DiffStructRUsageToMessage(start, end);
+  RUsageStats rusage_stats;
+  rusage_stats.set_allocated_rusage_start(rusage_start);
+  rusage_stats.set_allocated_rusage_diff(rusage_diff);
+  return rusage_stats;
+}
+
+struct rusage DoGetRusage() {
+  struct rusage rusage;
+  int ret = getrusage(RUSAGE_SELF, &rusage);
+  if (ret != 0)
+    LOG(WARNING) << "getrusage failed !";
+  return rusage;
 }
 
 }  // namespace distbench

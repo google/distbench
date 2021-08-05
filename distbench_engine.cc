@@ -524,7 +524,9 @@ ServicePerformanceLog DistBenchEngine::FinishTrafficAndGetLogs() {
     LOG(INFO) << "Finished running Main for "
               << service_name_ << "/" << service_instance_;
   }
+
   ServicePerformanceLog log;
+
   for (size_t i = 0; i < peers_.size(); ++i) {
     for (size_t j = 0; j < peers_[i].size(); ++j) {
       absl::MutexLock m(&peers_[i][j].mutex);
