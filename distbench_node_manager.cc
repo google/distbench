@@ -155,10 +155,8 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
     }
   }
 
-  RUsageStats rusage_stats = GetRUsageStatsFromStructs(rusage_start_test,
-                                                       DoGetRusage());
   (*response->mutable_node_usages())[config_.node_alias()] =
-      std::move(rusage_stats);
+      GetRUsageStatsFromStructs(rusage_start_test, DoGetRusage());
 
   return grpc::Status::OK;
 }
