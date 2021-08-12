@@ -25,15 +25,19 @@ namespace {
 
 std::string LatencySummary(std::vector<int64_t> latencies) {
   std::string ret;
-  CHECK(!latencies.empty());
+  
   size_t N =  latencies.size();
   absl::StrAppendFormat(&ret, "N: %ld", N);
-  absl::StrAppendFormat(&ret, " min: %ldns", *latencies.begin());
-  absl::StrAppendFormat(&ret, " median: %ldns", latencies[N * 0.5]);
-  absl::StrAppendFormat(&ret, " 90%%: %ldns", latencies[N * 0.9]);
-  absl::StrAppendFormat(&ret, " 99%%: %ldns", latencies[N * 0.99]);
-  absl::StrAppendFormat(&ret, " 99.9%%: %ldns", latencies[N * 0.999]);
-  absl::StrAppendFormat(&ret, " max: %ldns", *latencies.rbegin());
+  
+  if (N > 0) {
+    absl::StrAppendFormat(&ret, " min: %ldns", *latencies.begin());
+    absl::StrAppendFormat(&ret, " median: %ldns", latencies[N * 0.5]);
+    absl::StrAppendFormat(&ret, " 90%%: %ldns", latencies[N * 0.9]);
+    absl::StrAppendFormat(&ret, " 99%%: %ldns", latencies[N * 0.99]);
+    absl::StrAppendFormat(&ret, " 99.9%%: %ldns", latencies[N * 0.999]);
+    absl::StrAppendFormat(&ret, " max: %ldns", *latencies.rbegin());
+  }
+  
   return ret;
 }
 
