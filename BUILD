@@ -17,6 +17,16 @@ config_setting(
     flag_values = {":with-mercury": 'True'}
 )
 
+bool_flag(
+    name = "with-thrift",
+    build_setting_default = False
+)
+
+config_setting(
+    name = "with_thrift",
+    flag_values = {":with-thrift": 'True'}
+)
+
 cc_library(
     name = "distbench_netutils",
     srcs = [
@@ -115,9 +125,18 @@ cc_library(
     + select({
         "with_mercury": [":protocol_driver_mercury", ],
         "//conditions:default": []
-    }),
+    })
+    + select({
+        "with_thrift": [":protocol_driver_thrift"],
+        "//conditions:default": []
+        }
+    ),
     copts = select({
-        ":with_mercury":["-DWITH_MERCURY"],
+        ":with_thrift": ["-DWITH_THRIFT"],
+        "//conditions:default": []
+    })
+    + select({
+        ":with_mercury": ["-DWITH_MERCURY"],
         "//conditions:default": []
     })
 )
@@ -186,6 +205,10 @@ cc_test(
     ],
     copts = select({
         ":with_mercury":["-DWITH_MERCURY"],
+        "//conditions:default": []
+    })
+    + select({
+        ":with_thrift":["-DWITH_THRIFT"],
         "//conditions:default": []
     })
 )
@@ -263,6 +286,10 @@ cc_test(
     copts = select({
         ":with_mercury":["-DWITH_MERCURY"],
         "//conditions:default": []
+    })
+    + select({
+        ":with_thrift":["-DWITH_THRIFT"],
+        "//conditions:default": []
     }),
 )
 
@@ -317,6 +344,21 @@ cc_test(
         ":distbench_threadpool_lib",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "distbench_thrift_lib",
+    srcs = ["gen-cpp/Distbench.cpp",
+            # "gen-cpp/distbench_types.cpp"
+           ],
+    hdrs = ["gen-cpp/Distbench.h", "gen-cpp/distbench_types.h"],
+    strip_include_prefix = "gen-cpp/",
+    deps = [
+        "@apache_thrift//:thrift",
+    ],
+    tags = [
+        "manual"
     ],
 )
 
@@ -400,4 +442,21 @@ cc_test(
     ],
 )
 
-
+cc_library(
+    name = "protocol_driver_thrift",
+    srcs = [
+        "protocol_driver_thrift.cc",
+    ],
+    hdrs = [
+        "protocol_driver_thrift.h",
+    ],
+    deps = [
+        ":distbench_utils",
+        ":protocol_driver_api",
+        ":distbench_thrift_lib",
+        "@apache_thrift//:thrift",
+    ],
+    tags = [
+        "manual"
+    ],
+)

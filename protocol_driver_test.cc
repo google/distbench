@@ -286,6 +286,12 @@ ProtocolDriverOptions MercuryOptions() {
   return ret;
 }
 
+ProtocolDriverOptions ThriftOptions() {
+  ProtocolDriverOptions ret;
+  ret.set_protocol_name("thrift");
+  return ret;
+}
+
 void BM_GrpcEcho(benchmark::State& state) { Echo(state, GrpcOptions()); }
 
 void BM_GrpcCallbackEcho(benchmark::State& state) {
@@ -302,6 +308,9 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                                          GrpcPollingClientHandoffServer(),
                                          GrpcPollingClientPollingServer(),
                                          GrpcCallbackClientInlineServer(),
+#ifdef WITH_THRIFT
+                                         ThriftOptions(),
+#endif
 #ifdef WITH_MERCURY
                                          MercuryOptions(),
 #endif
