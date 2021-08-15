@@ -18,6 +18,23 @@
 
 namespace distbench {
 
+class RealClock : public SimpleClock {
+ public:
+  ~RealClock() override {}
+  absl::Time Now() override { return absl::Now(); }
+
+  bool MutexLockWhenWithDeadline(
+      absl::Mutex* mu, const absl::Condition& condition, absl::Time deadline)
+    ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) override {
+    return mu->LockWhenWithDeadline(condition, deadline);
+  }
+};
+
+SimpleClock& ProtocolDriver::GetClock() {
+  static RealClock real_clock;
+  return real_clock;
+}
+
 absl::StatusOr<std::string> ProtocolDriver::Preconnect() {
   return "";
 }

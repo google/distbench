@@ -36,7 +36,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   void Wait();
   const std::string& service_address() { return service_address_; }
 
-  explicit NodeManager(SimpleClock* clock);
+  NodeManager();
 
   grpc::Status ConfigureNode(grpc::ServerContext* context,
                              const NodeServiceConfig* request,
@@ -84,7 +84,6 @@ class NodeManager final : public DistBenchNodeManager::Service {
   std::map<std::string, std::unique_ptr<DistBenchEngine>> service_engines_
     ABSL_GUARDED_BY(mutex_);
 
-  SimpleClock* clock_ = nullptr;
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;
   NodeManagerOpts opts_;

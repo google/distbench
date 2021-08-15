@@ -223,14 +223,12 @@ int MainTestSequencer(std::vector<char*> &arguments) {
   int num_nodes = absl::GetFlag(FLAGS_local_nodes);
   std::vector<std::unique_ptr<distbench::NodeManager>> nodes;
   nodes.reserve(num_nodes);
-  distbench::RealClock clock;
-  distbench::NodeManager node_manager(&clock);
   for (int i = 0; i < num_nodes; ++i) {
     int new_port = 0;
     distbench::NodeManagerOpts opts = {};
     opts.port = & new_port;
     opts.test_sequencer_service_address = test_sequencer.service_address();
-    nodes.push_back(std::make_unique<distbench::NodeManager>(&clock));
+    nodes.push_back(std::make_unique<distbench::NodeManager>());
     absl::Status status = nodes.back()->Initialize(opts);
     if (!status.ok()) {
       std::cerr << "Initializing one of the node managers failed: "
@@ -254,8 +252,7 @@ int MainNodeManager(std::vector<char*> &arguments) {
       absl::GetFlag(FLAGS_default_data_plane_device);
   int port = absl::GetFlag(FLAGS_port);
   opts.port = &port;
-  distbench::RealClock clock;
-  distbench::NodeManager node_manager(&clock);
+  distbench::NodeManager node_manager;
   absl::Status status = node_manager.Initialize(opts);
   if (!status.ok()) {
     std::cerr << "Initializing the node manager failed: "

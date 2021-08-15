@@ -24,31 +24,9 @@
 
 namespace distbench {
 
-class SimpleClock {
- public:
-  virtual ~SimpleClock() = default;
-  virtual absl::Time Now() = 0;
-  virtual bool MutexLockWhenWithDeadline(
-      absl::Mutex* mu, const absl::Condition& condition, absl::Time deadline)
-    ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) = 0;
-};
-
-class RealClock : public SimpleClock {
- public:
-  ~RealClock() override {}
-  absl::Time Now() override { return absl::Now(); }
-
-  bool MutexLockWhenWithDeadline(
-      absl::Mutex* mu, const absl::Condition& condition, absl::Time deadline)
-    ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) override {
-    return mu->LockWhenWithDeadline(condition, deadline);
-  }
-};
-
 class DistBenchEngine : public ConnectionSetup::Service {
  public:
-  explicit DistBenchEngine(
-      std::unique_ptr<ProtocolDriver> pd, SimpleClock* clock);
+  explicit DistBenchEngine(std::unique_ptr<ProtocolDriver> pd);
   ~DistBenchEngine() override;
 
   absl::Status Initialize(

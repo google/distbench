@@ -30,15 +30,13 @@ ProtocolDriverOptions common_pd_opts() {
 }
 
 TEST(DistBenchEngineTest, ctor) {
-  RealClock clock;
-  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
+  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()));
 }
 
 TEST(DistBenchEngineTest, init) {
   DistributedSystemDescription desc;
   desc.add_services()->set_name("test_service");
-  RealClock clock;
-  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()), &clock);
+  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()));
   int port = 0;
   ASSERT_OK(dbe.Initialize(desc, "test_service", 0, &port));
 }
