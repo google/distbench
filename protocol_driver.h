@@ -46,6 +46,15 @@ struct TransportStat {
 
 using RpcId = int64_t;
 
+class SimpleClock {
+ public:
+  virtual ~SimpleClock() = default;
+  virtual absl::Time Now() = 0;
+  virtual bool MutexLockWhenWithDeadline(
+      absl::Mutex* mu, const absl::Condition& condition, absl::Time deadline)
+    ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) = 0;
+};
+
 class ProtocolDriver {
  public:
   virtual ~ProtocolDriver() {}
@@ -84,6 +93,8 @@ class ProtocolDriver {
   virtual void ChurnConnection(int peer) = 0;
   virtual void ShutdownServer() = 0;
   virtual void ShutdownClient() = 0;
+
+  virtual SimpleClock& GetClock();
 };
 
 }  // namespace distbench

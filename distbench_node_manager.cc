@@ -21,9 +21,7 @@
 
 namespace distbench {
 
-NodeManager::NodeManager(SimpleClock* clock) {
-  clock_ = clock;
-}
+NodeManager::NodeManager() {}
 
 grpc::Status NodeManager::ConfigureNode(
     grpc::ServerContext* context,
@@ -111,7 +109,7 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   int port = 0;
   absl::Status ret = pd->Initialize(*pd_opts, &port);
   if (!ret.ok()) return ret;
-  auto engine = std::make_unique<DistBenchEngine>(std::move(pd), clock_);
+  auto engine = std::make_unique<DistBenchEngine>(std::move(pd));
   ret = engine->Initialize(
         traffic_config_, service_opts.service_type,
         service_opts.service_instance, service_opts.port);

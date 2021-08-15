@@ -35,10 +35,9 @@ grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
   }
 }
 
-DistBenchEngine::DistBenchEngine(
-    std::unique_ptr<ProtocolDriver> pd, SimpleClock* clock)
+DistBenchEngine::DistBenchEngine(std::unique_ptr<ProtocolDriver> pd)
   : pd_(std::move(pd)) {
-  clock_ = clock;
+  clock_ = &pd_->GetClock();
 }
 
 DistBenchEngine::~DistBenchEngine() {
