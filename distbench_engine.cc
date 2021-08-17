@@ -891,16 +891,19 @@ void DistBenchEngine::RunRpcActionIteration(
   const auto& servers = peers_[state->rpc_service_index];
   for (size_t i = 0; i < current_targets.size(); ++i) {
     int peer_instance = current_targets[i];
-    absl::MutexLock m(&peers_[state->rpc_service_index][peer_instance].mutex);
-    ClientRpcState* rpc_state = &iteration_state->rpc_states[i];
-    rpc_state->request = common_request;
-    if (!common_request.trace_context().engine_ids().empty()) {
-      rpc_state->request.mutable_trace_context()->add_engine_ids(
-          peers_[state->rpc_service_index][peer_instance].trace_id);
-      rpc_state->request.mutable_trace_context()->add_iterations(i);
-    }
-    CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
-             rpc_state->request.trace_context().iterations().size());
+    ClientRpcState* rpc_state;
+    {
+      absl::MutexLock m(&peers_[state->rpc_service_index][peer_instance].mutex);
+      rpc_state = &iteration_state->rpc_states[i];
+      rpc_state->request = common_request;
+      if (!common_request.trace_context().engine_ids().empty()) {
+        rpc_state->request.mutable_trace_context()->add_engine_ids(
+            peers_[state->rpc_service_index][peer_instance].trace_id);
+        rpc_state->request.mutable_trace_context()->add_iterations(i);
+      }
+      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+               rpc_state->request.trace_context().iterations().size());
+    }  // End of MutexLock m
     rpc_state->prior_start_time = rpc_state->start_time;
     rpc_state->start_time = clock_->Now();
     pd_->InitiateRpc(servers[peer_instance].pd_id, rpc_state,
