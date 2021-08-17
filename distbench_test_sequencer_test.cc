@@ -262,9 +262,8 @@ TEST(DistBenchTestSequencer, clique_test) {
 
   TestSequenceResults results;
   grpc::ClientContext context;
-  // 10 seconds test time + 5 seconds grpc hiccup time + 5 seconds overhead.
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(20);
+    std::chrono::system_clock::now() + std::chrono::seconds(75);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -349,7 +348,7 @@ tests {
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(15);
+    std::chrono::system_clock::now() + std::chrono::seconds(75);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
