@@ -692,9 +692,9 @@ void DistBenchEngine::ActionListState::RecordLatency(
     const ClientRpcState* state) {
   absl::MutexLock m(&action_mu);
   CHECK_LT(service_type, peer_logs.size());
-  auto& service_log = peer_logs.at(service_type);
+  auto& service_log = peer_logs[service_type];
   CHECK_LT(instance, service_log.size());
-  auto& peer_log = service_log.at(instance);
+  auto& peer_log = service_log[instance];
   auto& rpc_log = (*peer_log.mutable_rpc_logs())[rpc_index];
   auto* sample = state->success ? rpc_log.add_successful_rpc_samples()
                                 : rpc_log.add_failed_rpc_samples();
