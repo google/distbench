@@ -317,12 +317,12 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
     *ret.mutable_traffic_config() = test;
     *ret.mutable_placement() = service_map;
     *ret.mutable_service_logs() = maybe_logs.value().service_logs();
-    *ret.mutable_ressource_usage_logs()->mutable_node_usages() =
+    *ret.mutable_resource_usage_logs()->mutable_node_usages() =
         maybe_logs.value().node_usages();
 
     RUsageStats rusage_stats = GetRUsageStatsFromStructs(rusage_start_test,
                                                          DoGetRusage());
-    *ret.mutable_ressource_usage_logs()->mutable_test_sequencer_usage() =
+    *ret.mutable_resource_usage_logs()->mutable_test_sequencer_usage() =
         std::move(rusage_stats);
 
     return ret;
