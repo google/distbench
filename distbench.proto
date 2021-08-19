@@ -97,7 +97,7 @@ message ServiceLogs {
   map<string, ServicePerformanceLog> instance_logs = 1;
 }
 
-message RessourceUsageLogs {
+message ResourceUsageLogs {
   optional RUsageStats test_sequencer_usage = 1;
   map<string, RUsageStats> node_usages = 2;
 }
@@ -107,7 +107,7 @@ message TestResult {
   optional DistributedSystemDescription traffic_config = 1;
   optional ServiceEndpointMap placement = 2;
   optional ServiceLogs service_logs = 3;
-  optional RessourceUsageLogs ressource_usage_logs = 5;
+  optional ResourceUsageLogs resource_usage_logs = 5;
   repeated string log_summary = 100;
 }
 
