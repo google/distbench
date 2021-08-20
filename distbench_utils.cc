@@ -231,8 +231,8 @@ double TimevalToDouble(const struct timeval &t){
 RUsage StructRUsageToMessage(const struct rusage &s_rusage) {
   RUsage rusage;
 
-  rusage.set_user_cpu_time(TimevalToDouble(s_rusage.ru_utime));
-  rusage.set_system_cpu_time(TimevalToDouble(s_rusage.ru_stime));
+  rusage.set_user_cpu_time_seconds(TimevalToDouble(s_rusage.ru_utime));
+  rusage.set_system_cpu_time_seconds(TimevalToDouble(s_rusage.ru_stime));
   rusage.set_max_resident_set_size(s_rusage.ru_maxrss);
   rusage.set_integral_shared_memory_size(s_rusage.ru_ixrss);
   rusage.set_integral_unshared_data_size(s_rusage.ru_idrss);
@@ -255,9 +255,9 @@ RUsage DiffStructRUsageToMessage(const struct rusage &start,
                                  const struct rusage &end) {
   RUsage rusage;
 
-  rusage.set_user_cpu_time(TimevalToDouble(end.ru_utime) -
+  rusage.set_user_cpu_time_seconds(TimevalToDouble(end.ru_utime) -
                            TimevalToDouble(start.ru_utime));
-  rusage.set_system_cpu_time(TimevalToDouble(end.ru_stime) -
+  rusage.set_system_cpu_time_seconds(TimevalToDouble(end.ru_stime) -
                              TimevalToDouble(start.ru_stime));
   rusage.set_max_resident_set_size(end.ru_maxrss - start.ru_maxrss);
   rusage.set_integral_shared_memory_size(end.ru_ixrss - start.ru_ixrss);
