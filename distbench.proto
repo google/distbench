@@ -62,8 +62,8 @@ message PeerPerformanceLog {
 }
 
 message RUsage {
-  optional double user_cpu_time = 1;
-  optional double system_cpu_time = 2;
+  optional double user_cpu_time_seconds = 1;
+  optional double system_cpu_time_seconds = 2;
   optional int64 max_resident_set_size = 3;
   optional int64 integral_shared_memory_size = 4;
   optional int64 integral_unshared_data_size = 5;
