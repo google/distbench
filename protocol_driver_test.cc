@@ -26,11 +26,11 @@ class ProtocolDriverTest
 };
 
 TEST_P(ProtocolDriverTest, ctor) {
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
+  auto pd = AllocateProtocolDriver(GetParam()).value();
 }
 
 TEST_P(ProtocolDriverTest, initialize) {
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
+  auto pd = AllocateProtocolDriver(GetParam()).value();
   pd->SetNumPeers(1);
   int port = 0;
   ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
@@ -40,7 +40,7 @@ TEST_P(ProtocolDriverTest, initialize) {
 }
 
 TEST_P(ProtocolDriverTest, get_addr) {
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
+  auto pd = AllocateProtocolDriver(GetParam()).value();
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   int port = 0;
@@ -51,7 +51,7 @@ TEST_P(ProtocolDriverTest, get_addr) {
 }
 
 TEST_P(ProtocolDriverTest, get_set_addr) {
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
+  auto pd = AllocateProtocolDriver(GetParam()).value();
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   int port = 0;
@@ -63,7 +63,7 @@ TEST_P(ProtocolDriverTest, get_set_addr) {
 }
 
 TEST_P(ProtocolDriverTest, invoke) {
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
+  auto pd = AllocateProtocolDriver(GetParam()).value();
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   int port = 0;
@@ -86,7 +86,7 @@ TEST_P(ProtocolDriverTest, invoke) {
 }
 
 TEST_P(ProtocolDriverTest, self_echo) {
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(GetParam());
+  auto pd = AllocateProtocolDriver(GetParam()).value();
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   int port = 0;
@@ -113,8 +113,8 @@ TEST_P(ProtocolDriverTest, self_echo) {
 }
 
 TEST_P(ProtocolDriverTest, echo) {
-  std::unique_ptr<ProtocolDriver> pd1 = AllocateProtocolDriver(GetParam());
-  std::unique_ptr<ProtocolDriver> pd2 = AllocateProtocolDriver(GetParam());
+  auto pd1 = AllocateProtocolDriver(GetParam()).value();
+  auto pd2 = AllocateProtocolDriver(GetParam()).value();
   std::atomic<int> server_rpc_count = 0;
   int port1 = 0;
   ASSERT_OK(pd2->Initialize(ProtocolDriverOptions(), &port1));
@@ -149,8 +149,8 @@ TEST_P(ProtocolDriverTest, echo) {
 }
 
 void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
-  std::unique_ptr<ProtocolDriver> pd1 = AllocateProtocolDriver(opts);
-  std::unique_ptr<ProtocolDriver> pd2 = AllocateProtocolDriver(opts);
+  auto pd1 = AllocateProtocolDriver(opts).value();
+  auto pd2 = AllocateProtocolDriver(opts).value();
   std::atomic<int> server_rpc_count = 0;
   int port1 = 0;
   ASSERT_OK(pd2->Initialize(ProtocolDriverOptions(), &port1));

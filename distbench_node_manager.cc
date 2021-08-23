@@ -105,7 +105,11 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   absl::StatusOr<ProtocolDriverOptions> pd_opts =
       GetProtocolDriverOptionsFor(service_opts);
   if (!pd_opts.ok()) return pd_opts.status();
-  std::unique_ptr<ProtocolDriver> pd = AllocateProtocolDriver(*pd_opts);
+  auto maybe_pd = AllocateProtocolDriver(*pd_opts);
+  if (!maybe_pd.ok()) {
+    return maybe_pd.status();
+  }
+  std::unique_ptr<ProtocolDriver> pd(std::move(maybe_pd.value()));
   int port = 0;
   absl::Status ret = pd->Initialize(*pd_opts, &port);
   if (!ret.ok()) return ret;
