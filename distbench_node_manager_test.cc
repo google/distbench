@@ -14,31 +14,22 @@
 
 #include "distbench_node_manager.h"
 
-#include "base/logging.h"
 #include "distbench_utils.h"
 #include "protocol_driver_allocator.h"
-#include "testing/base/public/benchmark.h"
-#include "testing/base/public/gmock.h"
-#include "testing/base/public/gunit.h"
+#include "gtest/gtest.h"
+#include "gtest_utils.h"
 
 namespace distbench {
 
-ProtocolDriverOptions common_pd_opts() {
-  auto opts = ProtocolDriverOptions();
-  opts.set_protocol_name("grpc");
-  return opts;
+TEST(DistBenchNodeManager, ctor) {
+  NodeManager nm();
 }
 
-TEST(DistBenchEngineTest, ctor) {
-  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()));
-}
-
-TEST(DistBenchEngineTest, init) {
-  DistributedSystemDescription desc;
-  desc.add_services()->set_name("test_service");
-  DistBenchEngine dbe(AllocateProtocolDriver(common_pd_opts()));
-  int port = 0;
-  ASSERT_OK(dbe.Initialize(desc, "test_service", 0, &port));
+TEST(DistBenchNodeManager, FailNoTestSequencer) {
+  NodeManager nm;
+  NodeManagerOpts node_manager_opts;
+  absl::Status result = nm.Initialize(node_manager_opts);
+  ASSERT_FALSE(result.ok());
 }
 
 }  // namespace distbench

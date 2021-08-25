@@ -265,6 +265,19 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "distbench_node_manager_test",
+    size = "medium",
+    srcs = ["distbench_node_manager_test.cc", "gtest_utils.h"],
+    deps = [
+        ":distbench_node_manager_lib",
+        ":distbench_utils",
+        ":protocol_driver_allocator",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_binary(
     name = "distbench",
     srcs = ["distbench_busybox.cc"],
