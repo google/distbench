@@ -297,8 +297,6 @@ TEST(DistBenchTestSequencer, stochastic_test) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
 
-  TestSequence test_sequence;
-
   const std::string proto = R"(
 tests {
   services {
@@ -340,6 +338,8 @@ tests {
     name: "client_server_rpc"
   }
 })";
+
+  TestSequence test_sequence;
   bool parse_result = google::protobuf::TextFormat::ParseFromString(
       proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
@@ -431,8 +431,6 @@ TEST(DistBenchTestSequencer, FanoutRoundRobinTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(5));
 
-  TestSequence test_sequence;
-
   const std::string proto = R"(
 tests {
   services {
@@ -469,6 +467,7 @@ tests {
     netdev_name: "lo"
   }
 })";
+  TestSequence test_sequence;
   bool parse_result = google::protobuf::TextFormat::ParseFromString(
       proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
@@ -485,13 +484,14 @@ tests {
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 
-  auto serv_log_it = test_results.service_logs().instance_logs().find(std::string("client/0"));
+  auto serv_log_it = test_results.service_logs().instance_logs().find(
+      "client/0");
   for(int i=0; i<4; i++) {
-    auto peer_log_it = serv_log_it->second.peer_logs().find(absl::StrCat("server/", i));
+    auto peer_log_it = serv_log_it->second.peer_logs().find(
+        absl::StrCat("server/", i));
     auto rpc_log_it = peer_log_it->second.rpc_logs().find(0);
     ASSERT_EQ(rpc_log_it->second.successful_rpc_samples_size(), 256);
   }
 }
-
 
 }  // namespace distbench
