@@ -342,6 +342,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     grpc::Status status;
     NodeServiceConfig request;
     ServiceEndpointMap response;
+    std::string node_name;
   };
   grpc::Status status;
   ServiceEndpointMap ret;
@@ -350,6 +351,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
+    rpc_state.node_name = node_services.first;
     *rpc_state.request.mutable_traffic_config() = test;
     for (const auto& service : node_services.second) {
       rpc_state.request.add_services(service);
@@ -371,7 +373,8 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
       LOG(INFO) << "Finished AsyncConfigureNode status:" <<
                 grpcStatusToAbslStatus(finished_rpc->status);
       if (!finished_rpc->status.ok()) {
-        status = finished_rpc->status;
+        status = Annotate(finished_rpc->status, absl::StrCat(
+              "AsyncConfigureNode to ", finished_rpc->node_name, " failed: "));
       }
       ret.MergeFrom(finished_rpc->response);
     }
@@ -395,6 +398,7 @@ absl::Status TestSequencer::IntroducePeers(
     grpc::Status status;
     ServiceEndpointMap request;
     IntroducePeersResult response;
+    std::string node_name;
   };
   grpc::Status status;
   std::vector<PendingRpc> pending_rpcs(node_service_map.size());
@@ -402,6 +406,7 @@ absl::Status TestSequencer::IntroducePeers(
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
+    rpc_state.node_name = node_services.first;
     rpc_state.request = service_map;
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
@@ -417,7 +422,8 @@ absl::Status TestSequencer::IntroducePeers(
       --rpc_count;
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
-        status = finished_rpc->status;
+        status = Annotate(finished_rpc->status, absl::StrCat(
+              "AsyncIntroducePeers to ", finished_rpc->node_name, " failed: "));
       }
     }
   }
@@ -436,6 +442,7 @@ absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
     RunTrafficRequest request;
     RunTrafficResponse response;
     RegisteredNode* node;
+    std::string node_name;
   };
   grpc::Status status;
   RunTrafficResponse ret;
@@ -444,6 +451,7 @@ absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
+    rpc_state.node_name = node_services.first;
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
     rpc_state.node = &registered_nodes_[it->second];
@@ -460,7 +468,8 @@ absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
       --rpc_count;
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
-        status = finished_rpc->status;
+        status = Annotate(finished_rpc->status, absl::StrCat(
+              "AsyncRunTraffic to ", finished_rpc->node_name, " failed: "));
       }
       ret.MergeFrom(finished_rpc->response);
       finished_rpc->node->idle = true;
