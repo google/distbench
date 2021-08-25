@@ -475,6 +475,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       --rpc_count;
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
+        pd_->HandleConnectFailure(finished_rpc->request.initiator_info());
         status = finished_rpc->status;
         LOG(ERROR) << "ConnectToPeers error:"
                    << finished_rpc->status.error_code()
