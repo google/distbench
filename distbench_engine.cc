@@ -487,11 +487,13 @@ absl::Status DistBenchEngine::ConnectToPeers() {
     }
   }
   for (size_t i = 0; i < pending_rpcs.size(); ++i) {
-    absl::Status final_status = pd_->HandleConnect(
-        pending_rpcs[i].response.responder_info(), i);
-    if (!final_status.ok()) {
-      LOG(INFO) << "weird, a connect failed after rpc succeeded.";
-      status = abslStatusToGrpcStatus(final_status);
+    if (pending_rpcs[i].status.ok()) {
+      absl::Status final_status = pd_->HandleConnect(
+          pending_rpcs[i].response.responder_info(), i);
+      if (!final_status.ok()) {
+        LOG(INFO) << "weird, a connect failed after rpc succeeded.";
+        status = abslStatusToGrpcStatus(final_status);
+      }
     }
   }
   return grpcStatusToAbslStatus(status);
