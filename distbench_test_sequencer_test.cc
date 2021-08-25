@@ -127,7 +127,7 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
   ASSERT_OK(status);
-    LOG(INFO) << "TestSequenceResults: " << results.DebugString();
+
   ASSERT_EQ(results.test_results().size(), 1);
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
@@ -268,7 +268,6 @@ TEST(DistBenchTestSequencer, clique_test) {
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
   ASSERT_OK(status);
-  LOG(INFO) << "TestSequenceResults: " << results.DebugString();
 
   ASSERT_EQ(results.test_results().size(), 1);
   auto& test_results = results.test_results(0);
@@ -297,8 +296,6 @@ TEST(DistBenchTestSequencer, clique_test) {
 TEST(DistBenchTestSequencer, stochastic_test) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
-
-  TestSequence test_sequence;
 
   const std::string proto = R"(
 tests {
@@ -341,6 +338,8 @@ tests {
     name: "client_server_rpc"
   }
 })";
+
+  TestSequence test_sequence;
   bool parse_result = google::protobuf::TextFormat::ParseFromString(
       proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
@@ -426,10 +425,73 @@ tests {
 
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+}
 
-  std::string str_result;
-  google::protobuf::TextFormat::PrintToString(results, &str_result);
-  std::cerr << str_result << "\n";
+TEST(DistBenchTestSequencer, FanoutRoundRobinTest) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(5));
+
+  const std::string proto = R"(
+tests {
+  services {
+    name: "client"
+    count: 1
+  }
+  services {
+    name: "server"
+    count: 4
+    protocol_driver_options_name: "loopback_pd"
+  }
+  rpc_descriptions {
+    name: "client_server_rpc"
+    client: "client"
+    server: "server"
+    fanout_filter: "round_robin"
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_queries"
+  }
+  actions {
+    name: "run_queries"
+    rpc_name: "client_server_rpc"
+    iterations {
+      max_iteration_count: 1024
+    }
+  }
+  action_lists {
+    name: "client_server_rpc"
+  }
+  protocol_driver_options {
+    name: "loopback_pd"
+    netdev_name: "lo"
+  }
+})";
+  TestSequence test_sequence;
+  bool parse_result = google::protobuf::TextFormat::ParseFromString(
+      proto, &test_sequence);
+  ASSERT_EQ(parse_result, true);
+
+  TestSequenceResults results;
+  grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(15);
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  ASSERT_OK(status);
+
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+
+  auto serv_log_it = test_results.service_logs().instance_logs().find(
+      "client/0");
+  for(int i=0; i<4; i++) {
+    auto peer_log_it = serv_log_it->second.peer_logs().find(
+        absl::StrCat("server/", i));
+    auto rpc_log_it = peer_log_it->second.rpc_logs().find(0);
+    ASSERT_EQ(rpc_log_it->second.successful_rpc_samples_size(), 256);
+  }
 }
 
 }  // namespace distbench
