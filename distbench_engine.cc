@@ -27,12 +27,11 @@ grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
                                               const ConnectRequest* request,
                                               ConnectResponse* response) {
   auto maybe_info = pd_->HandlePreConnect(request->initiator_info(), 0);
-  if (maybe_info.ok()) {
-    response->set_responder_info(maybe_info.value());
-    return grpc::Status::OK;
-  } else {
+  if (!maybe_info.ok()) {
     return abslStatusToGrpcStatus(maybe_info.status());
   }
+  response->set_responder_info(maybe_info.value());
+  return grpc::Status::OK;
 }
 
 DistBenchEngine::DistBenchEngine(std::unique_ptr<ProtocolDriver> pd)
@@ -70,7 +69,7 @@ absl::Status DistBenchEngine::InitializePayloadsMap() {
 
 int DistBenchEngine::get_payload_size(const std::string& payload_name) {
   const auto& payload = payload_map_[payload_name];
-  int size = -1;
+  int size = -1; // Not found value
 
   if (payload.has_size()) {
     size = payload.size();
@@ -509,6 +508,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
           "EngineMain", [this, i]() {RunActionList(i, nullptr);});
     }
   }
+
   return absl::OkStatus();
 }
 
@@ -547,8 +547,7 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
 
   // Perform action list
   int handler_action_index = simulated_server_rpc.handler_action_list_index;
-  if (handler_action_index == -1) {
-  } else {
+  if (handler_action_index != -1) {
     RunActionList(handler_action_index, state);
   }
 
@@ -693,9 +692,9 @@ void DistBenchEngine::ActionListState::RecordLatency(
     const ClientRpcState* state) {
   absl::MutexLock m(&action_mu);
   CHECK_LT(service_type, peer_logs.size());
-  auto& service_log = peer_logs.at(service_type);
+  auto& service_log = peer_logs[service_type];
   CHECK_LT(instance, service_log.size());
-  auto& peer_log = service_log.at(instance);
+  auto& peer_log = service_log[instance];
   auto& rpc_log = (*peer_log.mutable_rpc_logs())[rpc_index];
   auto* sample = state->success ? rpc_log.add_successful_rpc_samples()
                                 : rpc_log.add_failed_rpc_samples();
@@ -947,14 +946,6 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     }
     if (nb_targets > num_servers)
       nb_targets = num_servers;
-
-// Potential optimization
-//    if (nb_targets == 1) {
-//      int target = random() % num_servers;
-//      CHECK_NE(target, -1);
-//      targets.push_back(target);
-//      return targets;
-//    }
 
     // Generate a vector to pick random targets from (only done once)
     partial_rand_vects.try_emplace(num_servers, std::vector<int>());

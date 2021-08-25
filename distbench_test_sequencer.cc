@@ -312,23 +312,20 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   if (!ipret.ok())
     return ipret;
   auto maybe_logs = RunTraffic(node_service_map);
-  if (maybe_logs.ok()) {
-    TestResult ret;
-    *ret.mutable_traffic_config() = test;
-    *ret.mutable_placement() = service_map;
-    *ret.mutable_service_logs() = maybe_logs.value().service_logs();
-    *ret.mutable_resource_usage_logs()->mutable_node_usages() =
-        maybe_logs.value().node_usages();
-
-    RUsageStats rusage_stats = GetRUsageStatsFromStructs(rusage_start_test,
-                                                         DoGetRusage());
-    *ret.mutable_resource_usage_logs()->mutable_test_sequencer_usage() =
-        std::move(rusage_stats);
-
-    return ret;
-  } else {
+  if (!maybe_logs.ok())
     return maybe_logs.status();
-  }
+
+  TestResult ret;
+  *ret.mutable_traffic_config() = test;
+  *ret.mutable_placement() = service_map;
+  *ret.mutable_service_logs() = maybe_logs.value().service_logs();
+  *ret.mutable_resource_usage_logs()->mutable_node_usages() =
+      maybe_logs.value().node_usages();
+  RUsageStats rusage_stats = GetRUsageStatsFromStructs(rusage_start_test,
+                                                       DoGetRusage());
+  *ret.mutable_resource_usage_logs()->mutable_test_sequencer_usage() =
+      std::move(rusage_stats);
+  return ret;
 }
 
 absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
@@ -379,11 +376,10 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
       ret.MergeFrom(finished_rpc->response);
     }
   }
-  if (status.ok()) {
-    return ret;
-  } else {
+  if (!status.ok()) {
     return grpcStatusToAbslStatus(status);
   }
+  return ret;
 }
 
 absl::Status TestSequencer::IntroducePeers(
@@ -475,11 +471,10 @@ absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
       finished_rpc->node->idle = true;
     }
   }
-  if (status.ok()) {
-    return ret;
-  } else {
+  if (!status.ok()) {
     return grpcStatusToAbslStatus(status);
   }
+  return ret;
 }
 
 void TestSequencer::Shutdown() {

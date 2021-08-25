@@ -252,8 +252,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (!status.ok()) {
     status = Annotate(status, absl::StrCat(
           "While registering node to test sequencer(",
-          opts_.test_sequencer_service_address,
-          "): "));
+          opts_.test_sequencer_service_address, "): "));
     grpc_server_->Shutdown();
     return absl::InvalidArgumentError(status.error_message());
   }
