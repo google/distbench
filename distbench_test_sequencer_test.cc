@@ -127,7 +127,7 @@ TEST(DistBenchTestSequencer, nonempty_group) {
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
   ASSERT_OK(status);
-    LOG(INFO) << "TestSequenceResults: " << results.DebugString();
+
   ASSERT_EQ(results.test_results().size(), 1);
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
@@ -268,7 +268,6 @@ TEST(DistBenchTestSequencer, clique_test) {
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
   ASSERT_OK(status);
-  LOG(INFO) << "TestSequenceResults: " << results.DebugString();
 
   ASSERT_EQ(results.test_results().size(), 1);
   auto& test_results = results.test_results(0);
@@ -427,9 +426,6 @@ tests {
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 
-  std::string str_result;
-  google::protobuf::TextFormat::PrintToString(results, &str_result);
-  std::cerr << str_result << "\n";
 }
 
 }  // namespace distbench
