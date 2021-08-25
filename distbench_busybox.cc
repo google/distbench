@@ -183,7 +183,14 @@ int MainRunTests(std::vector<char*> &arguments) {
   grpc::Status status = stub->RunTestSequence(&context, test_sequence,
                                               &test_results);
   if (!status.ok()) {
-    std::cerr << "Failed! " << status << "\n";
+    std::cerr << "The RunTestSequence RPC Failed with status: "
+              << status << "\n";
+    if (status.error_message() == "failed to connect to all addresses") {
+      std::cerr << "There may be a problem with the test sequencer running on '"
+                << absl::GetFlag(FLAGS_test_sequencer)
+                << "' the specified host or port may be wrong, or the host it is "
+                   "running on may not be reachable from here.\n";
+    }
     return 1;
   }
 
