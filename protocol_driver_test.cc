@@ -31,9 +31,9 @@ TEST_P(ProtocolDriverTest, ctor) {
 
 TEST_P(ProtocolDriverTest, initialize) {
   auto pd = AllocateProtocolDriver(GetParam()).value();
-  pd->SetNumPeers(1);
   int port = 0;
   ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  pd->SetNumPeers(1);
   pd->SetHandler([](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
   });
@@ -41,10 +41,10 @@ TEST_P(ProtocolDriverTest, initialize) {
 
 TEST_P(ProtocolDriverTest, get_addr) {
   auto pd = AllocateProtocolDriver(GetParam()).value();
-  pd->SetNumPeers(1);
-  std::atomic<int> server_rpc_count = 0;
   int port = 0;
   ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  pd->SetNumPeers(1);
+  std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_EQ(server_rpc_count, 0);
@@ -52,10 +52,10 @@ TEST_P(ProtocolDriverTest, get_addr) {
 
 TEST_P(ProtocolDriverTest, get_set_addr) {
   auto pd = AllocateProtocolDriver(GetParam()).value();
-  pd->SetNumPeers(1);
-  std::atomic<int> server_rpc_count = 0;
   int port = 0;
   ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  pd->SetNumPeers(1);
+  std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -64,10 +64,10 @@ TEST_P(ProtocolDriverTest, get_set_addr) {
 
 TEST_P(ProtocolDriverTest, invoke) {
   auto pd = AllocateProtocolDriver(GetParam()).value();
-  pd->SetNumPeers(1);
-  std::atomic<int> server_rpc_count = 0;
   int port = 0;
   ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  pd->SetNumPeers(1);
+  std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->send_response();
@@ -87,10 +87,10 @@ TEST_P(ProtocolDriverTest, invoke) {
 
 TEST_P(ProtocolDriverTest, self_echo) {
   auto pd = AllocateProtocolDriver(GetParam()).value();
-  pd->SetNumPeers(1);
-  std::atomic<int> server_rpc_count = 0;
   int port = 0;
   ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  pd->SetNumPeers(1);
+  std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
