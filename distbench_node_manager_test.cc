@@ -22,7 +22,7 @@
 namespace distbench {
 
 TEST(DistBenchNodeManager, ctor) {
-  NodeManager nm();
+  NodeManager nm;
 }
 
 TEST(DistBenchNodeManager, FailNoTestSequencer) {
