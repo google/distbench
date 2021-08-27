@@ -28,10 +28,11 @@
 #include <linux/if_link.h>
 #include <string.h>
 
-#include "glog/logging.h"
-
 #include <string>
 #include <vector>
+
+#include "glog/logging.h"
+#include "absl/strings/match.h"
 
 namespace distbench {
 
@@ -95,6 +96,9 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   DeviceIpAddress best_match;
   for (const auto& address: all_addresses) {
     int cur_score = 0;
+    // Skip link-local addresses:
+    if (absl::StartsWith(address.ToString(), "fe80:"))
+      continue;
     if (address.isIPv4() == prefer_ipv4)
       cur_score += 2048;
     if (address.netdevice() != "lo")
