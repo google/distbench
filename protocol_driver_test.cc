@@ -78,7 +78,10 @@ TEST_P(ProtocolDriverTest, invoke) {
   std::atomic<int> client_rpc_count = 0;
   ClientRpcState rpc_state[10];
   for (int i = 0; i < 10; ++i) {
-    pd->InitiateRpc(0, &rpc_state[i], [&]() { ++client_rpc_count; });
+    pd->InitiateRpc(0, &rpc_state[i],
+        [&, i]() {
+          if (rpc_state[i].success) ++client_rpc_count;
+        });
   }
   pd->ShutdownClient();
   EXPECT_EQ(server_rpc_count, 10);
