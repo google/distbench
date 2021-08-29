@@ -69,6 +69,10 @@ message Action {
 message ActionList {
   optional string name = 1;
   repeated string action_names = 2;
+  // If more than max_rpc_samples rpcs are performed then distbench will
+  // choose the samples to retain via reservoir sampling.
+  // Setting this to zero will retain all samples, but may hurt performance.
+  optional int64 max_rpc_samples = 3 [default = 1048576];
 }
 
 message NamedSetting {
@@ -85,6 +89,7 @@ message ProtocolDriverOptions {
 }
 
 message DistributedSystemDescription {
+  optional string name = 9;
   repeated ServiceSpec services = 1;
   map<string, ServiceBundle> node_service_bundles = 2;
   repeated PayloadSpec payload_descriptions = 3;

@@ -146,6 +146,20 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::map<int, std::vector<int>> partially_randomized_vectors;
   };
 
+  struct PackedLatencySample {
+    bool operator<(const PackedLatencySample& other) const {
+      return (sample.start_timestamp_ns() + sample.latency_ns()) <
+             (other.sample.start_timestamp_ns() + other.sample.latency_ns());
+    }
+
+    size_t rpc_index;
+    size_t service_type;
+    size_t instance;
+    bool success;
+    RpcSample sample;
+  };
+
+
   struct ActionListState {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
@@ -153,7 +167,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
         size_t rpc_index,
         size_t service_type,
         size_t instance,
-        const ClientRpcState* state);
+        ClientRpcState* state);
+    void UnpackLatencySamples();
 
     const ServerRpcState* incoming_rpc_state = nullptr;  // may be nullptr
     std::unique_ptr<ActionState[]> state_table;
@@ -162,6 +177,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::vector<int> finished_action_indices;
 
     std::vector<std::vector<PeerPerformanceLog>> peer_logs ABSL_GUARDED_BY(action_mu);
+    std::vector<PackedLatencySample> packed_samples_;
+    std::atomic<size_t> packed_sample_index_ = 0;
   };
 
   absl::Status InitializeTables();
