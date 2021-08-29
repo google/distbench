@@ -50,7 +50,7 @@ show_help() {
   echo
 }
 
-while getopts "h?vs:n:p:o:" opt; do
+while getopts "h?vs:n:p:o:t:" opt; do
     case "$opt" in
     h|\?)
         show_help
