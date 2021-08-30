@@ -706,7 +706,14 @@ void DistBenchEngine::ActionListState::UnpackLatencySamples() {
     auto& rpc_log = (*peer_log.mutable_rpc_logs())[packed_sample.rpc_index];
     auto* sample = packed_sample.success ? rpc_log.add_successful_rpc_samples()
                                          : rpc_log.add_failed_rpc_samples();
-    *sample = std::move(packed_sample.sample);
+    sample->set_request_size(packed_sample.request_size);
+    sample->set_response_size(packed_sample.response_size);
+    sample->set_start_timestamp_ns(packed_sample.start_timestamp_ns);
+    sample->set_latency_ns(packed_sample.latency_ns);
+    sample->set_latency_weight(packed_sample.latency_weight);
+    if (packed_sample.trace_context) {
+      *sample->mutable_trace_context() = *packed_sample.trace_context;
+    }
   }
 }
 
@@ -725,28 +732,36 @@ void DistBenchEngine::ActionListState::RecordLatency(
       absl::BitGen bitgen;
       index = absl::Uniform(absl::IntervalClosedClosed, bitgen, 0UL, index);
       if (index >= packed_samples_.size()) {
+        // Histogram per [rpc_index, service] would be ideal here:
+        // Also client rpc state could point to the destination stats instead
+        // of requiring us to look them up below.
+        // dropped_rpc_count_ += 1;
+        // dropped_rpc_total_latency_ += latency
+        // dropped_rpc_request_size_ += state->request.payload().size();
+        // dropped_rpc_response_size_ += state->response.payload().size();
         return;
       }
     }
 
     PackedLatencySample& packed_sample = packed_samples_[index];
+    packed_sample.trace_context = nullptr;
     packed_sample.rpc_index = rpc_index;
     packed_sample.service_type = service_type;
     packed_sample.instance = instance;
     packed_sample.success = state->success;
-    RpcSample& sample = packed_sample.sample;
     auto latency = state->end_time - state->start_time;
-    sample.set_start_timestamp_ns(absl::ToUnixNanos(state->start_time));
-    sample.set_latency_ns(absl::ToInt64Nanoseconds(latency));
+    packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
+    packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
     if (state->prior_start_time  != absl::InfinitePast()) {
-      sample.set_latency_weight(absl::ToInt64Nanoseconds(
-            state->start_time - state->prior_start_time));
+      packed_sample.latency_weight = absl::ToInt64Nanoseconds(
+            state->start_time - state->prior_start_time);
     }
-    sample.set_request_size(state->request.payload().size());
-    sample.set_response_size(state->response.payload().size());
+    packed_sample.request_size = state->request.payload().size();
+    packed_sample.response_size = state->response.payload().size();
     if (!state->request.trace_context().engine_ids().empty()) {
-      *sample.mutable_trace_context() =
-        std::move(state->request.trace_context());
+      packed_sample.trace_context =
+        google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
+      *packed_sample.trace_context = state->request.trace_context();
     }
     return;
   }

@@ -148,17 +148,23 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   struct PackedLatencySample {
     bool operator<(const PackedLatencySample& other) const {
-      return (sample.start_timestamp_ns() + sample.latency_ns()) <
-             (other.sample.start_timestamp_ns() + other.sample.latency_ns());
+      return (start_timestamp_ns + latency_ns) <
+             (other.start_timestamp_ns + other.latency_ns);
     }
 
+    // Not using any in-class initializers so that these are trivially
+    // destructible:
     size_t rpc_index;
     size_t service_type;
     size_t instance;
     bool success;
-    RpcSample sample;
+    int64_t request_size;
+    int64_t response_size;
+    int64_t start_timestamp_ns;
+    int64_t latency_ns;
+    int64_t latency_weight;
+    TraceContext* trace_context;
   };
-
 
   struct ActionListState {
     void FinishAction(int action_index);
@@ -179,6 +185,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::vector<std::vector<PeerPerformanceLog>> peer_logs ABSL_GUARDED_BY(action_mu);
     std::vector<PackedLatencySample> packed_samples_;
     std::atomic<size_t> packed_sample_index_ = 0;
+
+    // This area is used to allocate TraceContext objects for packed samples:
+    google::protobuf::Arena sample_arena_;
   };
 
   absl::Status InitializeTables();

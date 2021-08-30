@@ -16,6 +16,8 @@ syntax = "proto2";
 
 package distbench;
 
+option cc_enable_arenas = true;
+
 import "traffic_config.proto";
 
 message TestsSetting {
