@@ -20,6 +20,7 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 #include "glog/logging.h"
+#include <type_traits>
 
 namespace distbench {
 

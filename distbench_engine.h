@@ -166,6 +166,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
     TraceContext* trace_context;
   };
 
+  static_assert(std::is_trivially_destructible<PackedLatencySample>::value);
+  static_assert(std::is_trivially_constructible<PackedLatencySample>::value);
+
   struct ActionListState {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
