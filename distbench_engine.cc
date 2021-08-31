@@ -732,7 +732,8 @@ void DistBenchEngine::ActionListState::RecordLatency(
         &packed_sample_number_, 1, std::memory_order_relaxed);
     size_t index = sample_number;
     if (index < packed_samples_.size()) {
-      RecordPackedLatency(sample_number, index, rpc_index, service_type, instance, state);
+      RecordPackedLatency(
+          sample_number, index, rpc_index, service_type, instance, state);
       atomic_fetch_sub_explicit(
           &remaining_initial_samples_, 1, std::memory_order_release);
       return;
@@ -752,16 +753,15 @@ void DistBenchEngine::ActionListState::RecordLatency(
     }
     // Wait until all initial samples are done:
     while (atomic_load_explicit(
-          &remaining_initial_samples_, std::memory_order_acquire)) {
-      ;
-    }
+          &remaining_initial_samples_, std::memory_order_acquire)) {}
     // Reservoir samples are serialized.
     absl::MutexLock m(&reservoir_sample_lock_);
     PackedLatencySample& packed_sample = packed_samples_[index];
     if (packed_sample.sample_number < sample_number) {
       // Without arena allocation, via sample_arena_ we would need to do:
       // delete packed_sample.trace_context;
-      RecordPackedLatency(sample_number, index, rpc_index, service_type, instance, state);
+      RecordPackedLatency(
+          sample_number, index, rpc_index, service_type, instance, state);
     }
     return;
   }
