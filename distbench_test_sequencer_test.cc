@@ -171,7 +171,6 @@ void RunIntenseTraffic(const char* protocol) {
   auto a1 = test->add_actions();
   a1->set_name("s1/ping");
   a1->set_rpc_name("echo");
-  a1->mutable_iterations()->set_max_iteration_count(10);
 
   auto* iterations = a1->mutable_iterations();
   iterations->set_max_duration_us(200000);
@@ -212,6 +211,65 @@ void RunIntenseTraffic(const char* protocol) {
       &context3, test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
+}
+
+TEST(DistBenchTestSequencer, TestReservoirSampling) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  test->set_default_protocol("grpc");
+  auto* s1 = test->add_services();
+  s1->set_name("s1");
+  s1->set_count(1);
+  auto* s2 = test->add_services();
+  s2->set_name("s2");
+  s2->set_count(1);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("s1");
+  l1->add_action_names("s1/ping");
+  l1->set_max_rpc_samples(1000);
+
+  auto a1 = test->add_actions();
+  a1->set_name("s1/ping");
+  a1->set_rpc_name("echo");
+  a1->mutable_iterations()->set_max_iteration_count(10);
+
+  auto* iterations = a1->mutable_iterations();
+  iterations->set_max_parallel_iterations(100);
+  iterations->set_max_iteration_count(2000);
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("echo");
+  r1->set_client("s1");
+  r1->set_server("s2");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("echo");
+
+  TestSequenceResults results;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(200);
+  grpc::ClientContext context;
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+  ASSERT_EQ(results.test_results_size(), 1);
+  ASSERT_EQ(results.test_results(0).service_logs().instance_logs_size(), 1);
+  auto it = results.test_results(0).service_logs().instance_logs().begin();
+  EXPECT_EQ(it->first, "s1/0");
+  ASSERT_EQ(it->second.peer_logs_size(), 1);
+  auto it2 = it->second.peer_logs().begin();
+  EXPECT_EQ(it2->first, "s2/0");
+  ASSERT_EQ(it2->second.rpc_logs_size(), 1);
+  auto it3 = it2->second.rpc_logs().begin();
+  EXPECT_EQ(it3->first, 0);
+  EXPECT_EQ(it3->second.successful_rpc_samples_size(), 1000);
+  EXPECT_EQ(it3->second.failed_rpc_samples_size(), 0);
 }
 
 TEST(DistBenchTestSequencer, 100k_grpc) {
@@ -486,7 +544,7 @@ tests {
 
   auto serv_log_it = test_results.service_logs().instance_logs().find(
       "client/0");
-  for(int i=0; i<4; i++) {
+  for (int i = 0; i < 4; i++) {
     auto peer_log_it = serv_log_it->second.peer_logs().find(
         absl::StrCat("server/", i));
     auto rpc_log_it = peer_log_it->second.rpc_logs().find(0);

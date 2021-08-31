@@ -178,6 +178,13 @@ class DistBenchEngine : public ConnectionSetup::Service {
         size_t service_type,
         size_t instance,
         ClientRpcState* state);
+    void RecordPackedLatency(
+        size_t sample_number,
+        size_t index,
+        size_t rpc_index,
+        size_t service_type,
+        size_t instance,
+        ClientRpcState* state);
     void UnpackLatencySamples();
 
     const ServerRpcState* incoming_rpc_state = nullptr;  // may be nullptr
@@ -186,7 +193,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     absl::Mutex action_mu;
     std::vector<int> finished_action_indices;
 
-    std::vector<std::vector<PeerPerformanceLog>> peer_logs ABSL_GUARDED_BY(action_mu);
+    std::vector<std::vector<PeerPerformanceLog>> peer_logs_
+      ABSL_GUARDED_BY(action_mu);
     std::vector<PackedLatencySample> packed_samples_;
     std::atomic<size_t> packed_sample_number_ = 0;
     std::atomic<size_t> remaining_initial_samples_;
