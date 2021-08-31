@@ -711,7 +711,9 @@ void DistBenchEngine::ActionListState::UnpackLatencySamples() {
     sample->set_response_size(packed_sample.response_size);
     sample->set_start_timestamp_ns(packed_sample.start_timestamp_ns);
     sample->set_latency_ns(packed_sample.latency_ns);
-    sample->set_latency_weight(packed_sample.latency_weight);
+    if (packed_sample.latency_weight) {
+      sample->set_latency_weight(packed_sample.latency_weight);
+    }
     if (packed_sample.trace_context) {
       *sample->mutable_trace_context() = *packed_sample.trace_context;
     }
@@ -729,77 +731,38 @@ void DistBenchEngine::ActionListState::RecordLatency(
     const size_t sample_number = atomic_fetch_add_explicit(
         &packed_sample_number_, 1, std::memory_order_relaxed);
     size_t index = sample_number;
+    if (index < packed_samples_.size()) {
+      RecordPackedLatency(sample_number, index, rpc_index, service_type, instance, state);
+      atomic_fetch_sub_explicit(
+          &remaining_initial_samples_, 1, std::memory_order_release);
+      return;
+    }
+    // Simple Reservoir Sampling:
+    absl::BitGen bitgen;
+    index = absl::Uniform(absl::IntervalClosedClosed, bitgen, 0UL, index);
     if (index >= packed_samples_.size()) {
-      // Simple Reservoir Sampling:
-      absl::BitGen bitgen;
-      index = absl::Uniform(absl::IntervalClosedClosed, bitgen, 0UL, index);
-      if (index >= packed_samples_.size()) {
-        // Histogram per [rpc_index, service] would be ideal here:
-        // Also client rpc state could point to the destination stats instead
-        // of requiring us to look them up below.
-        // dropped_rpc_count_ += 1;
-        // dropped_rpc_total_latency_ += latency
-        // dropped_rpc_request_size_ += state->request.payload().size();
-        // dropped_rpc_response_size_ += state->response.payload().size();
-        return;
-      }
-      // Wait until all initial samples are done:
-      while (atomic_load_explicit(
-            &remaining_initial_samples_, std::memory_order_acquire)) {
-        ;
-      }
-      // Reservoir samples are serialized.
-      absl::MutexLock m(&reservoir_sample_lock_);
-      PackedLatencySample& packed_sample = packed_samples_[index];
-      if (packed_sample.sample_number < sample_number) {
-        packed_sample.sample_number = sample_number;
-        // Without arena allocation, via sample_arena_ we would need to do:
-        // delete packed_sample.trace_context;
-        packed_sample.trace_context = nullptr;
-        packed_sample.rpc_index = rpc_index;
-        packed_sample.service_type = service_type;
-        packed_sample.instance = instance;
-        packed_sample.success = state->success;
-        auto latency = state->end_time - state->start_time;
-        packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
-        packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
-        if (state->prior_start_time  != absl::InfinitePast()) {
-          packed_sample.latency_weight = absl::ToInt64Nanoseconds(
-                state->start_time - state->prior_start_time);
-        }
-        packed_sample.request_size = state->request.payload().size();
-        packed_sample.response_size = state->response.payload().size();
-        if (!state->request.trace_context().engine_ids().empty()) {
-          packed_sample.trace_context =
-            google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
-          *packed_sample.trace_context = state->request.trace_context();
-        }
-      }
+      // Histogram per [rpc_index, service] would be ideal here:
+      // Also client rpc state could point to the destination stats instead
+      // of requiring us to look them up below.
+      // dropped_rpc_count_ += 1;
+      // dropped_rpc_total_latency_ += latency
+      // dropped_rpc_request_size_ += state->request.payload().size();
+      // dropped_rpc_response_size_ += state->response.payload().size();
+      return;
     }
-
+    // Wait until all initial samples are done:
+    while (atomic_load_explicit(
+          &remaining_initial_samples_, std::memory_order_acquire)) {
+      ;
+    }
+    // Reservoir samples are serialized.
+    absl::MutexLock m(&reservoir_sample_lock_);
     PackedLatencySample& packed_sample = packed_samples_[index];
-    packed_sample.sample_number = sample_number;
-    packed_sample.trace_context = nullptr;
-    packed_sample.rpc_index = rpc_index;
-    packed_sample.service_type = service_type;
-    packed_sample.instance = instance;
-    packed_sample.success = state->success;
-    auto latency = state->end_time - state->start_time;
-    packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
-    packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
-    if (state->prior_start_time  != absl::InfinitePast()) {
-      packed_sample.latency_weight = absl::ToInt64Nanoseconds(
-          state->start_time - state->prior_start_time);
+    if (packed_sample.sample_number < sample_number) {
+      // Without arena allocation, via sample_arena_ we would need to do:
+      // delete packed_sample.trace_context;
+      RecordPackedLatency(sample_number, index, rpc_index, service_type, instance, state);
     }
-    packed_sample.request_size = state->request.payload().size();
-    packed_sample.response_size = state->response.payload().size();
-    if (!state->request.trace_context().engine_ids().empty()) {
-      packed_sample.trace_context =
-        google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
-      *packed_sample.trace_context = state->request.trace_context();
-    }
-    atomic_fetch_sub_explicit(
-        &remaining_initial_samples_, 1, std::memory_order_release);
     return;
   }
 
@@ -827,6 +790,37 @@ void DistBenchEngine::ActionListState::RecordLatency(
     *sample->mutable_trace_context() =
       std::move(state->request.trace_context());
   }
+}
+
+void DistBenchEngine::ActionListState::RecordPackedLatency(
+    size_t sample_number,
+    size_t index,
+    size_t rpc_index,
+    size_t service_type,
+    size_t instance,
+    ClientRpcState* state) {
+    PackedLatencySample& packed_sample = packed_samples_[index];
+    packed_sample.sample_number = sample_number;
+    packed_sample.trace_context = nullptr;
+    packed_sample.rpc_index = rpc_index;
+    packed_sample.service_type = service_type;
+    packed_sample.instance = instance;
+    packed_sample.success = state->success;
+    auto latency = state->end_time - state->start_time;
+    packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
+    packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
+    packed_sample.latency_weight = 0;
+    if (state->prior_start_time  != absl::InfinitePast()) {
+      packed_sample.latency_weight = absl::ToInt64Nanoseconds(
+          state->start_time - state->prior_start_time);
+    }
+    packed_sample.request_size = state->request.payload().size();
+    packed_sample.response_size = state->response.payload().size();
+    if (!state->request.trace_context().engine_ids().empty()) {
+      packed_sample.trace_context =
+        google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
+      *packed_sample.trace_context = state->request.trace_context();
+    }
 }
 
 void DistBenchEngine::RunAction(ActionState* action_state) {

@@ -178,6 +178,13 @@ class DistBenchEngine : public ConnectionSetup::Service {
         size_t service_type,
         size_t instance,
         ClientRpcState* state);
+    void RecordPackedLatency(
+        size_t sample_number,
+        size_t index,
+        size_t rpc_index,
+        size_t service_type,
+        size_t instance,
+        ClientRpcState* state);
     void UnpackLatencySamples();
 
     const ServerRpcState* incoming_rpc_state = nullptr;  // may be nullptr
