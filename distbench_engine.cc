@@ -69,7 +69,7 @@ absl::Status DistBenchEngine::InitializePayloadsMap() {
 
 int DistBenchEngine::get_payload_size(const std::string& payload_name) {
   const auto& payload = payload_map_[payload_name];
-  int size = -1; // Not found value
+  int size = -1;  // Not found value
 
   if (payload.has_size()) {
     size = payload.size();
@@ -572,14 +572,14 @@ void DistBenchEngine::RunActionList(
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
 
-  // Allocate peer_logs for performance gathering, if needed:
+  // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
     s.packed_samples_.resize(s.action_list->proto.max_rpc_samples());
     s.remaining_initial_samples_ = s.action_list->proto.max_rpc_samples();
     absl::MutexLock m(&s.action_mu);
-    s.peer_logs.resize(peers_.size());
+    s.peer_logs_.resize(peers_.size());
     for (size_t i = 0; i < peers_.size(); ++i) {
-      s.peer_logs[i].resize(peers_[i].size());
+      s.peer_logs_[i].resize(peers_[i].size());
     }
   }
 
@@ -654,10 +654,10 @@ void DistBenchEngine::RunActionList(
   if (s.action_list->has_rpcs) {
     s.UnpackLatencySamples();
     absl::MutexLock m(&s.action_mu);
-    for (size_t i = 0; i < s.peer_logs.size(); ++i) {
-      for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
+    for (size_t i = 0; i < s.peer_logs_.size(); ++i) {
+      for (size_t j = 0; j < s.peer_logs_[i].size(); ++j) {
         absl::MutexLock m(&peers_[i][j].mutex);
-        for (const auto& rpc_log : s.peer_logs[i][j].rpc_logs()) {
+        for (const auto& rpc_log : s.peer_logs_[i][j].rpc_logs()) {
           (*peers_[i][j].log.mutable_rpc_logs())[rpc_log.first].MergeFrom(
               rpc_log.second);
         }
@@ -700,8 +700,8 @@ void DistBenchEngine::ActionListState::UnpackLatencySamples() {
     std::sort(packed_samples_.begin(), packed_samples_.end());
   }
   for (const auto& packed_sample : packed_samples_) {
-    CHECK_LT(packed_sample.service_type, peer_logs.size());
-    auto& service_log = peer_logs[packed_sample.service_type];
+    CHECK_LT(packed_sample.service_type, peer_logs_.size());
+    auto& service_log = peer_logs_[packed_sample.service_type];
     CHECK_LT(packed_sample.instance, service_log.size());
     auto& peer_log = service_log[packed_sample.instance];
     auto& rpc_log = (*peer_log.mutable_rpc_logs())[packed_sample.rpc_index];
@@ -770,8 +770,8 @@ void DistBenchEngine::ActionListState::RecordLatency(
   // also have to grab a mutex for each sample, and may have to grow the
   // underlying array while holding the mutex.
   absl::MutexLock m(&action_mu);
-  CHECK_LT(service_type, peer_logs.size());
-  auto& service_log = peer_logs[service_type];
+  CHECK_LT(service_type, peer_logs_.size());
+  auto& service_log = peer_logs_[service_type];
   CHECK_LT(instance, service_log.size());
   auto& peer_log = service_log[instance];
   auto& rpc_log = (*peer_log.mutable_rpc_logs())[rpc_index];
@@ -928,7 +928,8 @@ void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
 void DistBenchEngine::FinishIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   ActionState* state = iteration_state->action_state;
-  bool open_loop = state->action->proto.iterations().has_open_loop_interval_ns();
+  bool open_loop =
+    state->action->proto.iterations().has_open_loop_interval_ns();
   bool start_another_iteration = !open_loop;
   bool done = false;
   state->iteration_mutex.Lock();

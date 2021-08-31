@@ -544,7 +544,7 @@ tests {
 
   auto serv_log_it = test_results.service_logs().instance_logs().find(
       "client/0");
-  for(int i=0; i<4; i++) {
+  for (int i = 0; i < 4; i++) {
     auto peer_log_it = serv_log_it->second.peer_logs().find(
         absl::StrCat("server/", i));
     auto rpc_log_it = peer_log_it->second.rpc_logs().find(0);
