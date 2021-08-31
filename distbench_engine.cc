@@ -576,6 +576,7 @@ void DistBenchEngine::RunActionList(
   // Allocate peer_logs for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
     s.packed_samples_.resize(s.action_list->proto.max_rpc_samples());
+    s.remaining_initial_samples_ = s.action_list->proto.max_rpc_samples();
     absl::MutexLock m(&s.action_mu);
     s.peer_logs.resize(peers_.size());
     for (size_t i = 0; i < peers_.size(); ++i) {
@@ -693,9 +694,9 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
 
 void DistBenchEngine::ActionListState::UnpackLatencySamples() {
   absl::MutexLock m(&action_mu);
-  if (packed_sample_index_ < packed_samples_.size()) {
-    packed_samples_.resize(packed_sample_index_);
-  } else if (packed_sample_index_ > packed_samples_.size()){
+  if (packed_sample_number_ < packed_samples_.size()) {
+    packed_samples_.resize(packed_sample_number_);
+  } else if (packed_sample_number_ > packed_samples_.size()){
     // If we did Reservoir sampling, we should sort the data:
     std::sort(packed_samples_.begin(), packed_samples_.end());
   }
@@ -725,10 +726,13 @@ void DistBenchEngine::ActionListState::RecordLatency(
     ClientRpcState* state) {
   // If we are using packed samples we avoid grabbing a mutex, but are limited
   // in how many samples total we can collect:
+  bool this_is_an_initial_sample = true;
   if (!packed_samples_.empty()) {
-    size_t index = atomic_fetch_add_explicit(
-        &packed_sample_index_, 1, std::memory_order_relaxed);
+    const size_t sample_number = atomic_fetch_add_explicit(
+        &packed_sample_number_, 1, std::memory_order_relaxed);
+    size_t index = sample_number;
     if (index >= packed_samples_.size()) {
+      this_is_an_initial_sample = false;
       // Simple Reservoir Sampling:
       absl::BitGen bitgen;
       index = absl::Uniform(absl::IntervalClosedClosed, bitgen, 0UL, index);
@@ -742,27 +746,46 @@ void DistBenchEngine::ActionListState::RecordLatency(
         // dropped_rpc_response_size_ += state->response.payload().size();
         return;
       }
+      // Wait until all initial samples are done:
+      while (atomic_load_explicit(
+            &remaining_initial_samples_, std::memory_order_acquire)) {
+        ;
+      }
+      // Reservoir samples are serialized.
+      reservoir_sample_lock_.Lock();
     }
 
     PackedLatencySample& packed_sample = packed_samples_[index];
-    packed_sample.trace_context = nullptr;
-    packed_sample.rpc_index = rpc_index;
-    packed_sample.service_type = service_type;
-    packed_sample.instance = instance;
-    packed_sample.success = state->success;
-    auto latency = state->end_time - state->start_time;
-    packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
-    packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
-    if (state->prior_start_time  != absl::InfinitePast()) {
-      packed_sample.latency_weight = absl::ToInt64Nanoseconds(
-            state->start_time - state->prior_start_time);
+    if (this_is_an_initial_sample ||
+        packed_sample.sample_number < sample_number) {
+      packed_sample.sample_number = sample_number;
+      // Without arena allocation, via sample_arena_ we would need to do:
+      // if (!this_is_an_initial_sample) delete packed_sample.trace_context;
+      packed_sample.trace_context = nullptr;
+      packed_sample.rpc_index = rpc_index;
+      packed_sample.service_type = service_type;
+      packed_sample.instance = instance;
+      packed_sample.success = state->success;
+      auto latency = state->end_time - state->start_time;
+      packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
+      packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
+      if (state->prior_start_time  != absl::InfinitePast()) {
+        packed_sample.latency_weight = absl::ToInt64Nanoseconds(
+              state->start_time - state->prior_start_time);
+      }
+      packed_sample.request_size = state->request.payload().size();
+      packed_sample.response_size = state->response.payload().size();
+      if (!state->request.trace_context().engine_ids().empty()) {
+        packed_sample.trace_context =
+          google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
+        *packed_sample.trace_context = state->request.trace_context();
+      }
     }
-    packed_sample.request_size = state->request.payload().size();
-    packed_sample.response_size = state->response.payload().size();
-    if (!state->request.trace_context().engine_ids().empty()) {
-      packed_sample.trace_context =
-        google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
-      *packed_sample.trace_context = state->request.trace_context();
+    if (this_is_an_initial_sample) {
+      atomic_fetch_sub_explicit(
+          &remaining_initial_samples_, 1, std::memory_order_release);
+    } else {
+      reservoir_sample_lock_.Unlock();
     }
     return;
   }

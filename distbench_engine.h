@@ -163,6 +163,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int64_t start_timestamp_ns;
     int64_t latency_ns;
     int64_t latency_weight;
+    size_t sample_number;
     TraceContext* trace_context;
   };
 
@@ -187,7 +188,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     std::vector<std::vector<PeerPerformanceLog>> peer_logs ABSL_GUARDED_BY(action_mu);
     std::vector<PackedLatencySample> packed_samples_;
-    std::atomic<size_t> packed_sample_index_ = 0;
+    std::atomic<size_t> packed_sample_number_ = 0;
+    std::atomic<size_t> remaining_initial_samples_;
+    absl::Mutex reservoir_sample_lock_;
 
     // This area is used to allocate TraceContext objects for packed samples:
     google::protobuf::Arena sample_arena_;
