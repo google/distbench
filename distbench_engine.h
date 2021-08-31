@@ -146,6 +146,30 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::map<int, std::vector<int>> partially_randomized_vectors;
   };
 
+  struct PackedLatencySample {
+    bool operator<(const PackedLatencySample& other) const {
+      return (start_timestamp_ns + latency_ns) <
+             (other.start_timestamp_ns + other.latency_ns);
+    }
+
+    // Not using any in-class initializers so that these are trivially
+    // destructible:
+    size_t rpc_index;
+    size_t service_type;
+    size_t instance;
+    bool success;
+    int64_t request_size;
+    int64_t response_size;
+    int64_t start_timestamp_ns;
+    int64_t latency_ns;
+    int64_t latency_weight;
+    size_t sample_number;
+    TraceContext* trace_context;
+  };
+
+  static_assert(std::is_trivially_destructible<PackedLatencySample>::value);
+  static_assert(std::is_trivially_constructible<PackedLatencySample>::value);
+
   struct ActionListState {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
@@ -153,7 +177,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
         size_t rpc_index,
         size_t service_type,
         size_t instance,
-        const ClientRpcState* state);
+        ClientRpcState* state);
+    void UnpackLatencySamples();
 
     const ServerRpcState* incoming_rpc_state = nullptr;  // may be nullptr
     std::unique_ptr<ActionState[]> state_table;
@@ -162,6 +187,13 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::vector<int> finished_action_indices;
 
     std::vector<std::vector<PeerPerformanceLog>> peer_logs ABSL_GUARDED_BY(action_mu);
+    std::vector<PackedLatencySample> packed_samples_;
+    std::atomic<size_t> packed_sample_number_ = 0;
+    std::atomic<size_t> remaining_initial_samples_;
+    absl::Mutex reservoir_sample_lock_;
+
+    // This area is used to allocate TraceContext objects for packed samples:
+    google::protobuf::Arena sample_arena_;
   };
 
   absl::Status InitializeTables();

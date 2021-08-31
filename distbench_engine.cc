@@ -20,6 +20,7 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 #include "glog/logging.h"
+#include <type_traits>
 
 namespace distbench {
 
@@ -574,6 +575,8 @@ void DistBenchEngine::RunActionList(
 
   // Allocate peer_logs for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
+    s.packed_samples_.resize(s.action_list->proto.max_rpc_samples());
+    s.remaining_initial_samples_ = s.action_list->proto.max_rpc_samples();
     absl::MutexLock m(&s.action_mu);
     s.peer_logs.resize(peers_.size());
     for (size_t i = 0; i < peers_.size(); ++i) {
@@ -650,6 +653,7 @@ void DistBenchEngine::RunActionList(
   }
   // Merge the per-action-list logs into the overall logs:
   if (s.action_list->has_rpcs) {
+    s.UnpackLatencySamples();
     absl::MutexLock m(&s.action_mu);
     for (size_t i = 0; i < s.peer_logs.size(); ++i) {
       for (size_t j = 0; j < s.peer_logs[i].size(); ++j) {
@@ -688,11 +692,107 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
   } while (!done);
 }
 
+void DistBenchEngine::ActionListState::UnpackLatencySamples() {
+  absl::MutexLock m(&action_mu);
+  if (packed_sample_number_ < packed_samples_.size()) {
+    packed_samples_.resize(packed_sample_number_);
+  } else if (packed_sample_number_ > packed_samples_.size()){
+    // If we did Reservoir sampling, we should sort the data:
+    std::sort(packed_samples_.begin(), packed_samples_.end());
+  }
+  for (const auto& packed_sample : packed_samples_) {
+    CHECK_LT(packed_sample.service_type, peer_logs.size());
+    auto& service_log = peer_logs[packed_sample.service_type];
+    CHECK_LT(packed_sample.instance, service_log.size());
+    auto& peer_log = service_log[packed_sample.instance];
+    auto& rpc_log = (*peer_log.mutable_rpc_logs())[packed_sample.rpc_index];
+    auto* sample = packed_sample.success ? rpc_log.add_successful_rpc_samples()
+                                         : rpc_log.add_failed_rpc_samples();
+    sample->set_request_size(packed_sample.request_size);
+    sample->set_response_size(packed_sample.response_size);
+    sample->set_start_timestamp_ns(packed_sample.start_timestamp_ns);
+    sample->set_latency_ns(packed_sample.latency_ns);
+    sample->set_latency_weight(packed_sample.latency_weight);
+    if (packed_sample.trace_context) {
+      *sample->mutable_trace_context() = *packed_sample.trace_context;
+    }
+  }
+}
+
 void DistBenchEngine::ActionListState::RecordLatency(
     size_t rpc_index,
     size_t service_type,
     size_t instance,
-    const ClientRpcState* state) {
+    ClientRpcState* state) {
+  // If we are using packed samples we avoid grabbing a mutex, but are limited
+  // in how many samples total we can collect:
+  bool this_is_an_initial_sample = true;
+  if (!packed_samples_.empty()) {
+    const size_t sample_number = atomic_fetch_add_explicit(
+        &packed_sample_number_, 1, std::memory_order_relaxed);
+    size_t index = sample_number;
+    if (index >= packed_samples_.size()) {
+      this_is_an_initial_sample = false;
+      // Simple Reservoir Sampling:
+      absl::BitGen bitgen;
+      index = absl::Uniform(absl::IntervalClosedClosed, bitgen, 0UL, index);
+      if (index >= packed_samples_.size()) {
+        // Histogram per [rpc_index, service] would be ideal here:
+        // Also client rpc state could point to the destination stats instead
+        // of requiring us to look them up below.
+        // dropped_rpc_count_ += 1;
+        // dropped_rpc_total_latency_ += latency
+        // dropped_rpc_request_size_ += state->request.payload().size();
+        // dropped_rpc_response_size_ += state->response.payload().size();
+        return;
+      }
+      // Wait until all initial samples are done:
+      while (atomic_load_explicit(
+            &remaining_initial_samples_, std::memory_order_acquire)) {
+        ;
+      }
+      // Reservoir samples are serialized.
+      reservoir_sample_lock_.Lock();
+    }
+
+    PackedLatencySample& packed_sample = packed_samples_[index];
+    if (this_is_an_initial_sample ||
+        packed_sample.sample_number < sample_number) {
+      packed_sample.sample_number = sample_number;
+      // Without arena allocation, via sample_arena_ we would need to do:
+      // if (!this_is_an_initial_sample) delete packed_sample.trace_context;
+      packed_sample.trace_context = nullptr;
+      packed_sample.rpc_index = rpc_index;
+      packed_sample.service_type = service_type;
+      packed_sample.instance = instance;
+      packed_sample.success = state->success;
+      auto latency = state->end_time - state->start_time;
+      packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
+      packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
+      if (state->prior_start_time  != absl::InfinitePast()) {
+        packed_sample.latency_weight = absl::ToInt64Nanoseconds(
+              state->start_time - state->prior_start_time);
+      }
+      packed_sample.request_size = state->request.payload().size();
+      packed_sample.response_size = state->response.payload().size();
+      if (!state->request.trace_context().engine_ids().empty()) {
+        packed_sample.trace_context =
+          google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
+        *packed_sample.trace_context = state->request.trace_context();
+      }
+    }
+    if (this_is_an_initial_sample) {
+      atomic_fetch_sub_explicit(
+          &remaining_initial_samples_, 1, std::memory_order_release);
+    } else {
+      reservoir_sample_lock_.Unlock();
+    }
+    return;
+  }
+
+  // Without packed samples we can support any number of samples, but then we
+  // also have to grab a mutex for each sample, and may have to grow the
+  // underlying array while holding the mutex.
   absl::MutexLock m(&action_mu);
   CHECK_LT(service_type, peer_logs.size());
   auto& service_log = peer_logs[service_type];
@@ -711,7 +811,8 @@ void DistBenchEngine::ActionListState::RecordLatency(
   sample->set_request_size(state->request.payload().size());
   sample->set_response_size(state->response.payload().size());
   if (!state->request.trace_context().engine_ids().empty()) {
-    *sample->mutable_trace_context() = state->request.trace_context();
+    *sample->mutable_trace_context() =
+      std::move(state->request.trace_context());
   }
 }
 
