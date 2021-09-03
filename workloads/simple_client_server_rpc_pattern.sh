@@ -27,6 +27,15 @@ CLIENT_COUNT=$DEFAULT_CLIENT_COUNT
 DEFAULT_SERVER_COUNT=1
 SERVER_COUNT=$DEFAULT_SERVER_COUNT
 
+DEFAULT_PROTOCOL_DRIVER=grpc
+PROTOCOL_DRIVER=$DEFAULT_PROTOCOL_DRIVER
+DEFAULT_OUTPUT_FILE=""
+OUTPUT_FILE=$DEFAULT_OUTPUT_FILE
+TIME_SECONDS=${TIME_SECONDS:-30}
+
+DISTBENCH_BIN=distbench
+which $DISTBENCH_BIN || DISTBENCH_BIN=../bazel-bin/distbench
+
 show_help() {
   echo "Usage: $0 [-h] [-v] [-s hostname:port] [-c client_cnt] [-i server_cnt]"
   echo "   Run the client server RPC pattern"
@@ -39,10 +48,15 @@ show_help() {
   echo "   -i server_cnt     Indicate the number of server nodes"
   echo "                      default: $DEFAULT_SERVER_COUNT"
   echo "   Note: you will need server_cnt+client_cnt node managers"
+  echo "   -p protocol_drv  Protocol driver to use"
+  echo "                      default: $DEFAULT_PROTOCOL_DRIVER"
+  echo "   -o output_file   Filename used to output the result protobuf"
+  echo "                      default: $DEFAULT_OUTPUT_FILE"
+  echo "   -t runtime_sec   Specify the test run time (e.g. -t 60 for 60secs)"
   echo
 }
 
-while getopts "h?vs:c:i:" opt; do
+while getopts "h?vs:c:i:p:o:t:" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -55,6 +69,12 @@ while getopts "h?vs:c:i:" opt; do
     c)  CLIENT_COUNT=$OPTARG
         ;;
     i)  SERVER_COUNT=$OPTARG
+        ;;
+    p)  PROTOCOL_DRIVER=$OPTARG
+        ;;
+    o)  OUTPUT_FILE=$OPTARG
+        ;;
+    t)  TIME_SECONDS=$OPTARG
         ;;
     esac
 done
@@ -69,12 +89,16 @@ if [[ "${VERBOSE}" = "1" ]]; then
   echo "  SEQUENCER=$SEQUENCER"
   echo "  CLIENT_COUNT=$CLIENT_COUNT"
   echo "  SERVER_COUNT=$SERVER_COUNT"
+  echo "  PROTOCOL_DRIVER=$PROTOCOL_DRIVER"
+  echo "  OUTPUT_FILE=$OUTPUT_FILE"
+  echo "  TIME_SECONDS=$TIME_SECONDS"
   echo
 fi
 
-../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER \
+$DISTBENCH_BIN run_tests --test_sequencer=$SEQUENCER  --outfile="$OUTPUT_FILE" --binary_output \
 <<EOF
 tests {
+  default_protocol: "$PROTOCOL_DRIVER"
   services {
     name: "client"
     count: $CLIENT_COUNT
@@ -106,7 +130,8 @@ tests {
     name: "run_queries"
     rpc_name: "client_server_rpc"
     iterations {
-      max_iteration_count: 100
+      max_duration_us: ${TIME_SECONDS}000000
+      max_parallel_iterations: 100
     }
   }
   action_lists {
