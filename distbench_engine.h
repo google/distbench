@@ -39,7 +39,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status RunTraffic(const RunTrafficRequest* request);
   void CancelTraffic();
 
-  ServicePerformanceLog FinishTrafficAndGetLogs();
+  void FinishTraffic();
+  ServicePerformanceLog GetLogs();
 
   grpc::Status SetupConnection(grpc::ServerContext* context,
                                const ConnectRequest* request,

@@ -149,6 +149,9 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
       return grpc::Status(grpc::StatusCode::UNKNOWN, "RunTraffic failure");
   }
 
+  for (const auto& service_engine : service_engines_)
+    service_engine.second->FinishTraffic();
+
   return grpc::Status::OK;
 }
 
@@ -159,7 +162,7 @@ grpc::Status NodeManager::GetTrafficResult(
   absl::ReaderMutexLock m (&mutex_);
 
   for (const auto& service_engine : service_engines_) {
-    auto log = service_engine.second->FinishTrafficAndGetLogs();
+    auto log = service_engine.second->GetLogs();
     if (!log.peer_logs().empty()) {
       (*response->mutable_service_logs()
        ->mutable_instance_logs())[service_engine.first] = std::move(log);
