@@ -195,7 +195,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     std::vector<std::vector<PeerPerformanceLog>> peer_logs_
       ABSL_GUARDED_BY(action_mu);
-    std::vector<PackedLatencySample> packed_samples_;
+    std::unique_ptr<PackedLatencySample[]> packed_samples_;
+    size_t packed_samples_size_ = 0;
     std::atomic<size_t> packed_sample_number_ = 0;
     std::atomic<size_t> remaining_initial_samples_;
     absl::Mutex reservoir_sample_lock_;
