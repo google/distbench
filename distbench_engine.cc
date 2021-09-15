@@ -520,13 +520,15 @@ void DistBenchEngine::CancelTraffic() {
   canceled_.Notify();
 }
 
-ServicePerformanceLog DistBenchEngine::FinishTrafficAndGetLogs() {
+void DistBenchEngine::FinishTraffic() {
   if (engine_main_thread_.joinable()) {
     engine_main_thread_.join();
     LOG(INFO) << "Finished running Main for "
               << service_name_ << "/" << service_instance_;
   }
+}
 
+ServicePerformanceLog DistBenchEngine::GetLogs() {
   ServicePerformanceLog log;
 
   for (size_t i = 0; i < peers_.size(); ++i) {
