@@ -891,11 +891,20 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     CHECK_EQ(action_state->next_iteration_time, absl::InfiniteFuture());
     absl::Duration period = absl::Nanoseconds(
         action_state->action->proto.iterations().open_loop_interval_ns());
-    if (action_state->action->proto.iterations()
-        .open_loop_interval_distribution() == "sync_burst") {
+    auto& interval_distribution = action_state->action->proto.iterations()
+        .open_loop_interval_distribution();
+    if (interval_distribution == "sync_burst") {
       absl::Duration start = clock_->Now() - absl::UnixEpoch();
       action_state->next_iteration_time =
         period + absl::UnixEpoch() + absl::Floor(start, period);
+    } else if (interval_distribution == "sync_burst_spread") {
+      absl::Duration start = clock_->Now() - absl::UnixEpoch();
+      double nb_peers = peers_[action_state->rpc_service_index].size();
+      double fraction = service_instance_ / nb_peers;
+      LOG(INFO) << "sync_burst_spread burst delay: " << fraction * period;
+      action_state->next_iteration_time =
+        period + absl::UnixEpoch() + absl::Floor(start, period) +
+        fraction * period;
     } else {
       action_state->next_iteration_time = clock_->Now();
       StartOpenLoopIteration(action_state);
