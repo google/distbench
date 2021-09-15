@@ -50,6 +50,10 @@ class NodeManager final : public DistBenchNodeManager::Service {
                           const RunTrafficRequest* request,
                           RunTrafficResponse* response) override;
 
+  grpc::Status GetTrafficResult(grpc::ServerContext* context,
+                                const GetTrafficResultRequest* request,
+                                GetTrafficResultResponse* response) override;
+
   grpc::Status CancelTraffic(grpc::ServerContext* context,
                              const CancelTrafficRequest* request,
                              CancelTrafficResult* response) override;
@@ -89,6 +93,8 @@ class NodeManager final : public DistBenchNodeManager::Service {
   NodeManagerOpts opts_;
   absl::Notification shutdown_requested_;
   NodeConfig config_;
+
+  struct rusage rusage_start_test_;
 };
 
 }  // namespace distbench

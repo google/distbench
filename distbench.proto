@@ -113,7 +113,7 @@ message TestResult {
   repeated string log_summary = 100;
 }
 
-message RunTrafficResponse {
+message GetTrafficResultResponse {
   optional ServiceLogs service_logs = 1;
   map<string, RUsageStats> node_usages = 2;
 }
@@ -160,15 +160,24 @@ message ServiceEndpointMap {
 
 message IntroducePeersResult {}
 
+
 message RunTrafficRequest {}
+
+message RunTrafficResponse {}
+
+
+message GetTrafficResultRequest {}
+
 
 message CancelTrafficRequest {}
 
 message CancelTrafficResult {}
 
+
 message ShutdownNodeRequest {}
 
 message ShutdownNodeResult {}
+
 
 service DistBenchNodeManager {
   // Sets up services prior to running traffic:
@@ -177,8 +186,11 @@ service DistBenchNodeManager {
   // Introduces NodeEngines to each other.
   rpc IntroducePeers(ServiceEndpointMap) returns (IntroducePeersResult) {}
 
-  // Runs traffic and monitors performance logs:
+  // Runs traffic:
   rpc RunTraffic(RunTrafficRequest) returns (RunTrafficResponse) {}
+
+  // Get the RunTraffic performance logs:
+  rpc GetTrafficResult(GetTrafficResultRequest) returns (GetTrafficResultResponse) {}
 
   // Cancels a currently running traffic pattern immediately:
   rpc CancelTraffic(CancelTrafficRequest) returns (CancelTrafficResult) {}
