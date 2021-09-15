@@ -886,7 +886,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     CHECK_EQ(action_state->next_iteration_time, absl::InfiniteFuture());
     absl::Duration period = absl::Nanoseconds(
         action_state->action->proto.iterations().open_loop_interval_ns());
-    auto interval_distribution = action_state->action->proto.iterations()
+    auto& interval_distribution = action_state->action->proto.iterations()
         .open_loop_interval_distribution();
     if (interval_distribution == "sync_burst") {
       absl::Duration start = clock_->Now() - absl::UnixEpoch();
