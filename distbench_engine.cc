@@ -576,7 +576,8 @@ void DistBenchEngine::RunActionList(
 
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
-    s.packed_samples_.resize(s.action_list->proto.max_rpc_samples());
+    s.packed_samples_size_ = s.action_list->proto.max_rpc_samples();
+    s.packed_samples_.reset(new PackedLatencySample[s.packed_samples_size_]);
     s.remaining_initial_samples_ = s.action_list->proto.max_rpc_samples();
     absl::MutexLock m(&s.action_mu);
     s.peer_logs_.resize(peers_.size());
@@ -695,13 +696,15 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
 
 void DistBenchEngine::ActionListState::UnpackLatencySamples() {
   absl::MutexLock m(&action_mu);
-  if (packed_sample_number_ < packed_samples_.size()) {
-    packed_samples_.resize(packed_sample_number_);
-  } else if (packed_sample_number_ > packed_samples_.size()){
+  if (packed_sample_number_ <= packed_samples_size_) {
+    packed_samples_size_ = packed_sample_number_;
+  } else {
     // If we did Reservoir sampling, we should sort the data:
-    std::sort(packed_samples_.begin(), packed_samples_.end());
+    std::sort(packed_samples_.get(),
+              packed_samples_.get() + packed_samples_size_);
   }
-  for (const auto& packed_sample : packed_samples_) {
+  for (size_t i = 0; i < packed_samples_size_; ++i) {
+    const auto& packed_sample = packed_samples_[i];
     CHECK_LT(packed_sample.service_type, peer_logs_.size());
     auto& service_log = peer_logs_[packed_sample.service_type];
     CHECK_LT(packed_sample.instance, service_log.size());
@@ -729,11 +732,11 @@ void DistBenchEngine::ActionListState::RecordLatency(
     ClientRpcState* state) {
   // If we are using packed samples we avoid grabbing a mutex, but are limited
   // in how many samples total we can collect:
-  if (!packed_samples_.empty()) {
+  if (packed_samples_size_) {
     const size_t sample_number = atomic_fetch_add_explicit(
         &packed_sample_number_, 1, std::memory_order_relaxed);
     size_t index = sample_number;
-    if (index < packed_samples_.size()) {
+    if (index < packed_samples_size_) {
       RecordPackedLatency(
           sample_number, index, rpc_index, service_type, instance, state);
       atomic_fetch_sub_explicit(
@@ -743,7 +746,7 @@ void DistBenchEngine::ActionListState::RecordLatency(
     // Simple Reservoir Sampling:
     absl::BitGen bitgen;
     index = absl::Uniform(absl::IntervalClosedClosed, bitgen, 0UL, index);
-    if (index >= packed_samples_.size()) {
+    if (index >= packed_samples_size_) {
       // Histogram per [rpc_index, service] would be ideal here:
       // Also client rpc state could point to the destination stats instead
       // of requiring us to look them up below.
