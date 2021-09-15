@@ -427,22 +427,20 @@ absl::Status TestSequencer::IntroducePeers(
   return grpcStatusToAbslStatus(status);
 }
 
-absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
+absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     const std::map<std::string, std::set<std::string>>& node_service_map) {
   absl::ReaderMutexLock m(&mutex_);
   grpc::CompletionQueue cq;
-  struct PendingRpc {
+  struct RunTrafficPendingRpc {
     grpc::ClientContext context;
     std::unique_ptr<grpc::ClientAsyncResponseReader<RunTrafficResponse>> rpc;
     grpc::Status status;
     RunTrafficRequest request;
     RunTrafficResponse response;
-    RegisteredNode* node;
     std::string node_name;
   };
   grpc::Status status;
-  RunTrafficResponse ret;
-  std::vector<PendingRpc> pending_rpcs(node_service_map.size());
+  std::vector<RunTrafficPendingRpc> pending_rpcs(node_service_map.size());
   int rpc_count = 0;
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
@@ -450,9 +448,9 @@ absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
     rpc_state.node_name = node_services.first;
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
-    rpc_state.node = &registered_nodes_[it->second];
-    rpc_state.node->idle = false;
-    rpc_state.rpc = rpc_state.node->stub->AsyncRunTraffic(
+    RegisteredNode& node = registered_nodes_[it->second];
+    node.idle = false;
+    rpc_state.rpc = node.stub->AsyncRunTraffic(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
@@ -462,15 +460,57 @@ absl::StatusOr<RunTrafficResponse> TestSequencer::RunTraffic(
     cq.Next(&tag, &ok);
     if (ok) {
       --rpc_count;
-      PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
+      RunTrafficPendingRpc *finished_rpc =
+          static_cast<RunTrafficPendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
         status = Annotate(finished_rpc->status, absl::StrCat(
               "AsyncRunTraffic to ", finished_rpc->node_name, " failed: "));
+      }
+    }
+  }
+
+  LOG(INFO) << "RunTraffic: all done -- collecting results";
+
+  struct GetResultPendingRpc {
+    grpc::ClientContext context;
+    std::unique_ptr<grpc::ClientAsyncResponseReader<GetTrafficResultResponse>>
+        rpc;
+    grpc::Status status;
+    GetTrafficResultRequest request;
+    GetTrafficResultResponse response;
+    RegisteredNode* node;
+    std::string node_name;
+  };
+  std::vector<GetResultPendingRpc> pending_rpcs2(node_service_map.size());
+  for (const auto& node_services : node_service_map) {
+    auto& rpc_state = pending_rpcs2[rpc_count];
+    ++rpc_count;
+    rpc_state.node_name = node_services.first;
+    auto it = node_alias_id_map_.find(node_services.first);
+    CHECK(it != node_alias_id_map_.end());
+    rpc_state.node = &registered_nodes_[it->second];
+    rpc_state.rpc = rpc_state.node->stub->AsyncGetTrafficResult(
+          &rpc_state.context, rpc_state.request, &cq);
+    rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
+  }
+  GetTrafficResultResponse ret;
+  while (rpc_count) {
+    bool ok;
+    void* tag;
+    cq.Next(&tag, &ok);
+    if (ok) {
+      --rpc_count;
+      GetResultPendingRpc *finished_rpc =
+          static_cast<GetResultPendingRpc*>(tag);
+      if (!finished_rpc->status.ok()) {
+        status = Annotate(finished_rpc->status, absl::StrCat(
+            "AsyncGetTrafficResult to ", finished_rpc->node_name, " failed: "));
       }
       ret.MergeFrom(finished_rpc->response);
       finished_rpc->node->idle = true;
     }
   }
+
   if (!status.ok()) {
     return grpcStatusToAbslStatus(status);
   }

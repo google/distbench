@@ -141,13 +141,22 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
                                      RunTrafficResponse* response) {
   absl::ReaderMutexLock m (&mutex_);
 
-  struct rusage rusage_start_test = DoGetRusage();
+  rusage_start_test_ = DoGetRusage();
 
   for (const auto& service_engine : service_engines_) {
     auto ret = service_engine.second->RunTraffic(request);
     if (!ret.ok())
       return grpc::Status(grpc::StatusCode::UNKNOWN, "RunTraffic failure");
   }
+
+  return grpc::Status::OK;
+}
+
+grpc::Status NodeManager::GetTrafficResult(
+    grpc::ServerContext* context,
+    const GetTrafficResultRequest* request,
+    GetTrafficResultResponse* response) {
+  absl::ReaderMutexLock m (&mutex_);
 
   for (const auto& service_engine : service_engines_) {
     auto log = service_engine.second->FinishTrafficAndGetLogs();
@@ -158,7 +167,7 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
   }
 
   (*response->mutable_node_usages())[config_.node_alias()] =
-      GetRUsageStatsFromStructs(rusage_start_test, DoGetRusage());
+      GetRUsageStatsFromStructs(rusage_start_test_, DoGetRusage());
 
   return grpc::Status::OK;
 }
