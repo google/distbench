@@ -87,7 +87,8 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
 
 void ProtocolDriverGrpcAsyncCallback::SetHandler(
     std::function<void(ServerRpcState* state)> handler) {
-  static_cast<TrafficServiceAsync*>(traffic_service_.get())->SetHandler(handler);
+  static_cast<TrafficServiceAsync*>(traffic_service_.get())
+      ->SetHandler(handler);
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
@@ -126,7 +127,8 @@ absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
   return absl::OkStatus();
 }
 
-std::vector<TransportStat> ProtocolDriverGrpcAsyncCallback::GetTransportStats() {
+std::vector<TransportStat>
+ProtocolDriverGrpcAsyncCallback::GetTransportStats() {
   return {};
 }
 
@@ -154,14 +156,15 @@ void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
   new_rpc->state = state;
   new_rpc->request = std::move(state->request);
 
-  auto callback_fct = [this, new_rpc, done_callback](const grpc::Status& status) {
-    if (!status.ok()) {
-      LOG(ERROR) << new_rpc->status;
-      new_rpc->state->success = false;
-    } else {
-      new_rpc->state->success = true;
+  auto callback_fct = [this, new_rpc,
+                       done_callback](const grpc::Status& status) {
+    new_rpc->status = status;
+    new_rpc->state->success = status.ok();
+    if (new_rpc->state->success) {
       new_rpc->state->request = std::move(new_rpc->request);
       new_rpc->state->response = std::move(new_rpc->response);
+    } else {
+      LOG_EVERY_N(ERROR, 1000) << "RPC failed with status: " << status;
     }
     new_rpc->done_callback();
     --pending_rpcs_;
