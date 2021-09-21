@@ -158,13 +158,13 @@ void ProtocolDriverGrpc::RpcCompletionThread() {
     cq_.Next(&tag, &ok);
     if (ok) {
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
-      if (!finished_rpc->status.ok()) {
-        LOG(ERROR) << finished_rpc->status;
-        finished_rpc->state->success = false;
-      } else {
-        finished_rpc->state->success = true;
+      finished_rpc->state->success = finished_rpc->status.ok();
+      if (finished_rpc->state->success) {
         finished_rpc->state->request = std::move(finished_rpc->request);
         finished_rpc->state->response = std::move(finished_rpc->response);
+      } else {
+        LOG_EVERY_N(ERROR, 1000)
+            << "RPC failed with status: " << finished_rpc->status;
       }
       finished_rpc->done_callback();
       --pending_rpcs_;
