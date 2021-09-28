@@ -33,17 +33,20 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
       grpc::CallbackServerContext* context,
       const GenericRequest* request,
       GenericResponse* response) override {
+
+    auto* reactor = context->DefaultReactor();
+
     ServerRpcState rpc_state;
     rpc_state.request = request;
-    rpc_state.send_response = [&]() {
-      *response = std::move(rpc_state.response);
+    rpc_state.send_response = [=](ServerRpcState *rpc_state) {
+      *response = std::move(rpc_state->response);
+      reactor->Finish(grpc::Status::OK);
     };
+    rpc_state.can_block_while_responding = false;
+
     if (handler_)
       handler_(&rpc_state);
 
-    // Return reactor
-    auto* reactor = context->DefaultReactor();
-    reactor->Finish(grpc::Status::OK);
     return reactor;
   }
 

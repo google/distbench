@@ -35,8 +35,8 @@ class TrafficService : public Traffic::Service {
       GenericResponse* response) override {
     ServerRpcState rpc_state;
     rpc_state.request = request;
-    rpc_state.send_response = [&]() {
-      *response = std::move(rpc_state.response);
+    rpc_state.send_response = [&](ServerRpcState *rpc_state) {
+      *response = std::move(rpc_state->response);
     };
     handler_(&rpc_state);
     // Note: this should be an asynchronous server for generality.

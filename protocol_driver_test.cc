@@ -74,7 +74,7 @@ TEST_P(ProtocolDriverTest, invoke) {
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
-    s->send_response();
+    s->send_response(s);
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -102,7 +102,7 @@ TEST_P(ProtocolDriverTest, self_echo) {
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
-    s->send_response();
+    s->send_response(s);
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -131,7 +131,7 @@ TEST_P(ProtocolDriverTest, echo) {
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
-    s->send_response();
+    s->send_response(s);
   });
   int port2 = 0;
   ASSERT_OK(pd1->Initialize(pdo, &port2));
@@ -167,7 +167,7 @@ void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
-    s->send_response();
+    s->send_response(s);
   });
   int port2 = 0;
   ASSERT_OK(pd1->Initialize(opts, &port2));

@@ -212,6 +212,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
       RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
 
+  void SetPayloadAndSend(ServerRpcState* state, const RpcDefinition& rpc_def);
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state);
   void RunAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);

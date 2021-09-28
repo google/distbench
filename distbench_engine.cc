@@ -550,23 +550,37 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
   return log;
 }
 
+void DistBenchEngine::SetPayloadAndSend(ServerRpcState* state,
+                                        const RpcDefinition& rpc_def) {
+  state->response.set_payload(
+      std::string(rpc_def.response_payload_size, 'D'));
+  state->send_response(state);
+}
+
 void DistBenchEngine::RpcHandler(ServerRpcState* state) {
   // LOG(INFO) << state->request->ShortDebugString();
   CHECK(state->request->has_rpc_index());
   const auto& simulated_server_rpc =
       server_rpc_table_[state->request->rpc_index()];
-  const auto& rpc_def = simulated_server_rpc.rpc_definition;
+  const RpcDefinition& rpc_def = simulated_server_rpc.rpc_definition;
 
   // Perform action list
   int handler_action_index = simulated_server_rpc.handler_action_list_index;
-  if (handler_action_index != -1) {
-    RunActionList(handler_action_index, state);
+
+  if (handler_action_index != -1 ) {
+    if (state->can_block_while_responding) {
+      RunActionList(handler_action_index, state);
+    } else {
+      ServerRpcState new_state = std::move(*state);
+      std::thread([=]{
+        ServerRpcState new_state2 = new_state;
+        RunActionList(handler_action_index, &new_state);
+        SetPayloadAndSend(&new_state2, rpc_def);
+      }).detach();
+      return;
+    }
   }
-
-  state->response.set_payload(std::string(rpc_def.response_payload_size, 'D'));
-
-  // Send the response
-  state->send_response();
+  SetPayloadAndSend(state, rpc_def);
 }
 
 void DistBenchEngine::RunActionList(

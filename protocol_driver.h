@@ -36,7 +36,8 @@ struct ClientRpcState {
 struct ServerRpcState {
   const GenericRequest* request;
   GenericResponse response;
-  std::function<void(void)> send_response;
+  std::function<void(ServerRpcState*)> send_response;
+  bool can_block_while_responding = true;
 };
 
 struct TransportStat {
