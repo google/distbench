@@ -28,7 +28,7 @@ build_distbench() {
   # Build Distbench
   #
   echo Attempting to build DistBench...
-  if ! bazel build :distbench -c opt
+  if ! bazel build :distbench -c $COMPILATION_MODE
   then
     echo DistBench did not build successfully.
     exit 2
@@ -42,6 +42,7 @@ VERBOSE=0
 DEBUG=0
 DEFAULT_NODE_MANAGER_COUNT=1
 NODE_MANAGER_COUNT=$DEFAULT_NODE_MANAGER_COUNT
+COMPILATION_MODE=opt
 
 show_help() {
   echo "Usage: $0 [-h] [-v] [-n node_manager_cnt]"
@@ -52,10 +53,11 @@ show_help() {
   echo "   -d               Enable debug mode"
   echo "   -n node_manager_cnt Specify the number of node manager to start"
   echo "                      default: $DEFAULT_NODE_MANAGER_COUNT"
+  echo "   -c compile_opt   Compile option (opt, dbg)"
   echo
 }
 
-while getopts "h?vdn:" opt; do
+while getopts "h?vdn:c:" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -66,6 +68,8 @@ while getopts "h?vdn:" opt; do
     d)  DEBUG=1
         ;;
     n)  NODE_MANAGER_COUNT=$OPTARG
+        ;;
+    c)  COMPILATION_MODE=$OPTARG
         ;;
     esac
 done
@@ -95,39 +99,31 @@ run_gdb_backtrace() {
 }
 
 export GLOG_logtostderr=1
-check_dependencies
+export GLOG_minloglevel=0
 
-# Run a test_sequencer and node_manager instance
-#
-echo DistBench built, starting up an instance on localhost...
+check_dependencies
+build_distbench
+
+echo Starting Distbench test sequencer and $NODE_MANAGER_COUNT node managers
 if [[ "${DEBUG}" = "1" ]]; then
-  echo_and_run bazel build --compilation_mode=dbg :all
   run_gdb_backtrace bazel-bin/distbench test_sequencer --port=10000 &
   sleep 3
-  run_gdb_backtrace
-  for i in $(seq 1 1 $NODE_MANAGER_COUNT)
-  do
-    run_gdb_backtrace bazel-bin/distbench node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) --default_data_plane_device=lo &
+  for i in $(seq 1 1 $NODE_MANAGER_COUNT); do
+    run_gdb_backtrace bazel-bin/distbench \
+      node_manager --test_sequencer=localhost:10000 \
+                   --port=$((9999-$i)) --default_data_plane_device=lo &
   done
-  sleep 5
 else
-  build_distbench
-
-  echo Starting the Distbench test sequencer
-  echo_and_run bazel run :distbench -c opt -- test_sequencer --port=10000 &
-  sleep 3
-
-  echo Starting $NODE_MANAGER_COUNT Distbench node managers
-  for i in $(seq 1 1 $NODE_MANAGER_COUNT)
-  do
-    echo_and_run bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=$((9999-$i)) --default_data_plane_device=lo &
-  done
-  sleep 5
+  echo_and_run bazel run :distbench -c $COMPILATION_MODE -- \
+    test_sequencer --port=10000 --local_nodes=$NODE_MANAGER_COUNT &
 fi
 
+sleep 3
+
 # Verify that Distbench is up and running
-#
-echo | bazel run :distbench -c opt -- run_tests --test_sequencer=localhost:10000
+echo | bazel run :distbench -c $COMPILATION_MODE -- \
+                  run_tests --test_sequencer=localhost:10000
+
 if [ $? -ne 0 ]; then
   echo Error could not connect to the distbench test sequencer.
   echo Something went wrong while starting Distbench...
