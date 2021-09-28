@@ -29,6 +29,8 @@ PROTOCOL_DRIVER=$DEFAULT_PROTOCOL_DRIVER
 DEFAULT_OUTPUT_FILE=""
 OUTPUT_FILE=$DEFAULT_OUTPUT_FILE
 TIME_SECONDS=${TIME_SECONDS:-30}
+DEFAULT_SYNCHRONIZATION_MODE="sync_burst"
+SYNCHRONIZATION_MODE=$DEFAULT_SYNCHRONIZATION_MODE
 
 DISTBENCH_BIN=distbench
 which $DISTBENCH_BIN || DISTBENCH_BIN=../bazel-bin/distbench
@@ -49,10 +51,11 @@ show_help() {
   echo "   -o output_file   Filename used to output the result protobuf"
   echo "                      default: $DEFAULT_OUTPUT_FILE"
   echo "   -t runtime_sec   Specify the test run time (e.g. -t 60 for 60secs)"
+  echo "   -m sync_mode     Synchronization mode from sync_burst, sync_burst_spread, nosync"
   echo
 }
 
-while getopts "h?vs:n:p:o:t:" opt; do
+while getopts "h?vs:n:p:o:t:m:" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -69,6 +72,8 @@ while getopts "h?vs:n:p:o:t:" opt; do
     o)  OUTPUT_FILE=$OPTARG
         ;;
     t)  TIME_SECONDS=$OPTARG
+        ;;
+    m)  SYNCHRONIZATION_MODE=$OPTARG
         ;;
     esac
 done
@@ -91,6 +96,7 @@ if [[ "${VERBOSE}" = "1" ]]; then
   echo "  PROTOCOL_DRIVER=$PROTOCOL_DRIVER"
   echo "  OUTPUT_FILE=$OUTPUT_FILE"
   echo "  TIME_SECONDS=$TIME_SECONDS"
+  echo "  SYNCHRONIZATION_MODE=$SYNCHRONIZATION_MODE"
   echo
 fi
 
@@ -113,7 +119,7 @@ tests {
     iterations {
       max_duration_us: ${TIME_SECONDS}000000
       open_loop_interval_ns: 16000000
-      open_loop_interval_distribution: "sync_burst"
+      open_loop_interval_distribution: "$SYNCHRONIZATION_MODE"
     }
     rpc_name: "clique_query"
   }
