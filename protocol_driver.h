@@ -95,6 +95,11 @@ class ProtocolDriver {
   virtual void ShutdownClient() = 0;
 
   virtual SimpleClock& GetClock();
+
+  static int GetNamedSettingInt(
+      const distbench::ProtocolDriverOptions &opts,
+      absl::string_view name,
+      int default_value);
 };
 
 }  // namespace distbench

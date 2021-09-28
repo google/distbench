@@ -43,4 +43,31 @@ void ProtocolDriver::HandleConnectFailure(
     std::string_view local_connection_info) {
 }
 
+int ProtocolDriver::GetNamedSettingInt(
+    const distbench::ProtocolDriverOptions &opts,
+    absl::string_view setting_name,
+    int default_value) {
+
+  for (const auto &setting : opts.server_settings()) {
+    if (!setting.has_name()) {
+      LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
+      continue;
+    }
+    const auto &name = setting.name();
+    if (name != setting_name)
+      continue;
+    if (setting.has_str_value()) {
+      LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name <<
+                "] should be an int !";
+      continue;
+    }
+    if (setting.has_int_value()) {
+      int value = setting.int_value();
+      return value;
+    }
+  }
+
+  return default_value;
+}
+
 }  // namespace distbench

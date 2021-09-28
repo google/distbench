@@ -30,9 +30,10 @@ TEST_P(ProtocolDriverTest, ctor) {
 }
 
 TEST_P(ProtocolDriverTest, initialize) {
-  auto pd = AllocateProtocolDriver(GetParam()).value();
+  ProtocolDriverOptions pdo = GetParam();
+  auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
-  ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   pd->SetHandler([](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
@@ -40,9 +41,10 @@ TEST_P(ProtocolDriverTest, initialize) {
 }
 
 TEST_P(ProtocolDriverTest, get_addr) {
-  auto pd = AllocateProtocolDriver(GetParam()).value();
+  ProtocolDriverOptions pdo = GetParam();
+  auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
-  ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
@@ -51,9 +53,10 @@ TEST_P(ProtocolDriverTest, get_addr) {
 }
 
 TEST_P(ProtocolDriverTest, get_set_addr) {
-  auto pd = AllocateProtocolDriver(GetParam()).value();
+  ProtocolDriverOptions pdo = GetParam();
+  auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
-  ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
@@ -63,9 +66,10 @@ TEST_P(ProtocolDriverTest, get_set_addr) {
 }
 
 TEST_P(ProtocolDriverTest, invoke) {
-  auto pd = AllocateProtocolDriver(GetParam()).value();
+  ProtocolDriverOptions pdo = GetParam();
+  auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
-  ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) {
@@ -89,9 +93,10 @@ TEST_P(ProtocolDriverTest, invoke) {
 }
 
 TEST_P(ProtocolDriverTest, self_echo) {
-  auto pd = AllocateProtocolDriver(GetParam()).value();
+  ProtocolDriverOptions pdo = GetParam();
+  auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
-  ASSERT_OK(pd->Initialize(ProtocolDriverOptions(), &port));
+  ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) {
@@ -116,11 +121,12 @@ TEST_P(ProtocolDriverTest, self_echo) {
 }
 
 TEST_P(ProtocolDriverTest, echo) {
-  auto pd1 = AllocateProtocolDriver(GetParam()).value();
-  auto pd2 = AllocateProtocolDriver(GetParam()).value();
+  ProtocolDriverOptions pdo = GetParam();
+  auto pd1 = AllocateProtocolDriver(pdo).value();
+  auto pd2 = AllocateProtocolDriver(pdo).value();
   std::atomic<int> server_rpc_count = 0;
   int port1 = 0;
-  ASSERT_OK(pd2->Initialize(ProtocolDriverOptions(), &port1));
+  ASSERT_OK(pd2->Initialize(pdo, &port1));
   pd2->SetNumPeers(1);
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
@@ -128,7 +134,7 @@ TEST_P(ProtocolDriverTest, echo) {
     s->send_response();
   });
   int port2 = 0;
-  ASSERT_OK(pd1->Initialize(ProtocolDriverOptions(), &port2));
+  ASSERT_OK(pd1->Initialize(pdo, &port2));
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
@@ -156,7 +162,7 @@ void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
   auto pd2 = AllocateProtocolDriver(opts).value();
   std::atomic<int> server_rpc_count = 0;
   int port1 = 0;
-  ASSERT_OK(pd2->Initialize(ProtocolDriverOptions(), &port1));
+  ASSERT_OK(pd2->Initialize(opts, &port1));
   pd2->SetNumPeers(1);
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
@@ -164,7 +170,7 @@ void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
     s->send_response();
   });
   int port2 = 0;
-  ASSERT_OK(pd1->Initialize(ProtocolDriverOptions(), &port2));
+  ASSERT_OK(pd1->Initialize(opts, &port2));
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
@@ -210,8 +216,7 @@ void BM_GrpcCallbackEcho(benchmark::State &state) {
 BENCHMARK(BM_GrpcEcho);
 BENCHMARK(BM_GrpcCallbackEcho);
 
-INSTANTIATE_TEST_SUITE_P(
-    ProtocolDriverTests, ProtocolDriverTest,
-    testing::Values(GrpcOptions(), GrpcCallbackOptions()));
+INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
+                         testing::Values(GrpcOptions(), GrpcCallbackOptions()));
 
 }  // namespace distbench
