@@ -308,7 +308,14 @@ absl::Status DistBenchEngine::InitializeTables() {
     if (it == action_list_index_map.end()) {
       return absl::NotFoundError(rpc.name());
     }
-    server_rpc_table_[i].handler_action_list_index = it->second;
+
+    int action_list_index = it->second;
+    server_rpc_table_[i].handler_action_list_index = action_list_index;
+
+    // Optimize by setting handler to -1 if the action list is empty
+    if (action_lists_[action_list_index].proto.action_names().empty())
+      server_rpc_table_[i].handler_action_list_index = action_list_index = -1;
+
     server_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
 
     auto it1 = service_index_map.find(server_service_name);
@@ -566,10 +573,7 @@ void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
-  // Optimize the "NOP" case:
-  if (action_lists_[list_index].proto.action_names().empty()) {
-    return;
-  }
+
   ActionListState s;
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
