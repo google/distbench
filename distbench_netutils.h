@@ -27,7 +27,7 @@ class DeviceIpAddress {
   int net_family_;
 
  public:
-  DeviceIpAddress() {};
+  DeviceIpAddress() {}
   DeviceIpAddress(const char *host, const char *devname, int family) {
     ip_ = std::string(host);
     device_ = std::string(devname);
