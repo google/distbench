@@ -107,7 +107,7 @@ void AddInstanceSummaryTo(std::vector<std::string> &ret,
 
   ret.push_back("Instance summary:");
   constexpr int64_t MiB = 1024 * 1024;
-  for (auto& instance_sum: instance_summary_map) {
+  for (auto& instance_sum : instance_summary_map) {
     instance_summary inst_summary = instance_sum.second;
     std::string str{};
     absl::StrAppendFormat(&str, "  %s: Tx: %3.1f MiB/s, Rx:%3.1f MiB/s",

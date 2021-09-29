@@ -70,7 +70,7 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
   std::string pd_options_name = "";
 
   // ProtocolDriverOptions specified in Service ?
-  for (const auto& service: traffic_config_.services() ) {
+  for (const auto& service : traffic_config_.services() ) {
     if (service.name() == service_opts.service_type) {
       if (service.has_protocol_driver_options_name()) {
         pd_options_name = service.protocol_driver_options_name();
@@ -83,7 +83,7 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
   }
 
   // ProtocolDriverOptions found in config ?
-  for (const auto& pd_opts_enum: traffic_config_.protocol_driver_options() ) {
+  for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options() ) {
     if (pd_opts_enum.name() == pd_options_name) {
       pd_opts = pd_opts_enum;
     }
@@ -243,7 +243,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
-  service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
+  // Update the service_address_ with the obtained port
+  service_address_ = absl::StrCat("[::]:", *opts_.port);
   if (!grpc_server_) {
     return absl::UnknownError("NodeManager service failed to start");
   }

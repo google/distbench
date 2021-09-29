@@ -59,7 +59,7 @@ std::vector<DeviceIpAddress> GetAllAddresses() {
                     (family == AF_INET) ? sizeof(struct sockaddr_in) :
                                           sizeof(struct sockaddr_in6),
                     host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-    if (s == 0) { // Success
+    if (s == 0) {  // Success
       DeviceIpAddress ip_address(host, ifa->ifa_name, family);
       result.emplace_back(ip_address);
     }
@@ -73,14 +73,14 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   auto all_addresses = GetAllAddresses();
 
   // Exact match
-  for (const auto& address: all_addresses) {
+  for (const auto& address : all_addresses) {
     if (address.isIPv4() == prefer_ipv4 &&
         address.netdevice() == netdev)
       return address;
   }
 
   // Match the device with any IP type
-  for (const auto& address: all_addresses) {
+  for (const auto& address : all_addresses) {
     if (address.netdevice() == netdev) {
       LOG(WARNING) << "Using " << address.ToString()
                    << " which is not of the favorite ip type (v4/v6).";
@@ -94,7 +94,7 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
 
   int score = 0;
   DeviceIpAddress best_match;
-  for (const auto& address: all_addresses) {
+  for (const auto& address : all_addresses) {
     int cur_score = 0;
     // Skip link-local addresses:
     if (absl::StartsWith(address.ToString(), "fe80:"))
@@ -131,6 +131,6 @@ std::string DeviceIpAddress::ToString() const {
   else
     ret += "(ipv6)";
   return ret;
-};
+}
 
 };  // namespace distbench

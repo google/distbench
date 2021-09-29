@@ -163,7 +163,7 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     if (maybe_result.ok()) {
       auto &result = maybe_result.value();
       auto summary = SummarizeTestResult(result);
-      for (const auto& s: summary) {
+      for (const auto& s : summary) {
         maybe_result->add_log_summary(s);
         LOG(INFO) << s;
       }
@@ -586,7 +586,8 @@ void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
-  service_address_ = absl::StrCat("[::]:", *opts_.port);  // port may have changed
+  // Update service_address_ with the newly obtained port
+  service_address_ = absl::StrCat("[::]:", *opts_.port);
   LOG(INFO) << "Server listening on " << service_address_;
 }
 
