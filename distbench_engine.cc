@@ -572,10 +572,9 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
       RunActionList(handler_action_index, state);
     } else {
       ServerRpcState new_state = std::move(*state);
-      std::thread([=]{
-        ServerRpcState new_state2 = new_state;
+      std::thread([=]() mutable {
         RunActionList(handler_action_index, &new_state);
-        SetPayloadAndSend(&new_state2, rpc_def);
+        SetPayloadAndSend(&new_state, rpc_def);
       }).detach();
       return;
     }
