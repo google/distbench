@@ -37,6 +37,8 @@ struct ServerRpcState {
   const GenericRequest* request;
   GenericResponse response;
   std::function<void(void)> send_response;
+  std::function<void(void)> free_state;
+  bool have_dedicated_thread = false;
 };
 
 struct TransportStat {

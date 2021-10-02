@@ -40,12 +40,16 @@ DistBenchEngine::DistBenchEngine(std::unique_ptr<ProtocolDriver> pd)
 }
 
 DistBenchEngine::~DistBenchEngine() {
+  FinishTraffic();
   if (server_) {
     server_->Shutdown();
     server_->Wait();
   }
   if (pd_) {
     pd_->ShutdownServer();
+    while (detached_actionlist_threads_) {
+      sched_yield();
+    }
     pd_->ShutdownClient();
   }
 }
@@ -559,24 +563,35 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
   const auto& simulated_server_rpc =
       server_rpc_table_[state->request->rpc_index()];
   const auto& rpc_def = simulated_server_rpc.rpc_definition;
-
-  // Perform action list
+  state->response.set_payload(std::string(rpc_def.response_payload_size, 'D'));
   int handler_action_index = simulated_server_rpc.handler_action_list_index;
-  if (handler_action_index != -1) {
-    RunActionList(handler_action_index, state);
+
+  if (handler_action_index == -1) {
+    state->send_response();
+    if (state->free_state) {
+      state->free_state();
+    }
+    return;
   }
 
-  state->response.set_payload(std::string(rpc_def.response_payload_size, 'D'));
+  if (state->have_dedicated_thread) {
+    RunActionList(handler_action_index, state);
+    return;
+  }
 
-  // Send the response
-  state->send_response();
+  ++detached_actionlist_threads_;
+  RunRegisteredThread(
+      "DedicatedActionListThread",
+      [=]() {
+        RunActionList(handler_action_index, state);
+        --detached_actionlist_threads_;
+    }).detach();
 }
 
 void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
-
   ActionListState s;
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
@@ -658,6 +673,12 @@ void DistBenchEngine::RunActionList(
       LOG(INFO) << "cancelled an action list";
       s.WaitForAllPendingActions();
       break;
+    }
+  }
+  if (incoming_rpc_state) {
+    incoming_rpc_state->send_response();
+    if (incoming_rpc_state->free_state) {
+      incoming_rpc_state->free_state();
     }
   }
   // Merge the per-action-list logs into the overall logs:

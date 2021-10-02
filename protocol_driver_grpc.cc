@@ -34,6 +34,7 @@ class TrafficService : public Traffic::Service {
       const GenericRequest* request,
       GenericResponse* response) override {
     ServerRpcState rpc_state;
+    rpc_state.have_dedicated_thread = true;
     rpc_state.request = request;
     rpc_state.send_response = [&]() {
       *response = std::move(rpc_state.response);
