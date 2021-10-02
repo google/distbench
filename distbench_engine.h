@@ -254,6 +254,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   // Random
   absl::BitGen random_generator;
+
+  std::atomic<int64_t> detached_actionlist_threads_ = 0;
 };
 
 }  // namespace distbench
