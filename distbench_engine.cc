@@ -595,6 +595,7 @@ void DistBenchEngine::RunActionList(
   ActionListState s;
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
+  bool sent_response_early = false;
 
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
@@ -633,7 +634,17 @@ void DistBenchEngine::RunActionList(
       }
       s.state_table[i].started = true;
       s.state_table[i].action = &s.action_list->list_actions[i];
-      s.state_table[i].all_done_callback = [&s, i]() {s.FinishAction(i);};
+      if ((!sent_response_early && incoming_rpc_state) &&
+          ((size == 1) ||
+           s.state_table[i].action->proto.send_response_when_done())) {
+        sent_response_early = true;
+        s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state]() {
+          incoming_rpc_state->send_response();
+          s.FinishAction(i);
+        };
+      } else {
+        s.state_table[i].all_done_callback = [&s, i]() {s.FinishAction(i);};
+      }
       s.state_table[i].s = &s;
       RunAction(&s.state_table[i]);
     }
@@ -676,7 +687,9 @@ void DistBenchEngine::RunActionList(
     }
   }
   if (incoming_rpc_state) {
-    incoming_rpc_state->send_response();
+    if (!sent_response_early) {
+      incoming_rpc_state->send_response();
+    }
     if (incoming_rpc_state->free_state) {
       incoming_rpc_state->free_state();
     }

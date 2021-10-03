@@ -64,6 +64,7 @@ message Action {
     string rpc_name = 4;
     string action_list_name = 5;
   }
+  optional bool send_response_when_done = 10;
 }
 
 message ActionList {
