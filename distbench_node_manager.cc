@@ -52,9 +52,14 @@ grpc::Status NodeManager::ConfigureNode(
       return grpc::Status(grpc::StatusCode::UNKNOWN,
           absl::StrCat("AllocService failure: ", ret.ToString()));
     }
+    auto maybe_address =
+      SocketAddressForDevice(opts_.default_data_plane_device, port);
+    if (!maybe_address.ok())
+      return grpc::Status(grpc::StatusCode::UNKNOWN, absl::StrCat(
+            "SocketAddressForDevice failure: ",
+            maybe_address.status().ToString()));
     auto& service_entry = service_map[service_name];
-    service_entry.set_endpoint_address(
-        SocketAddressForDevice(opts_.default_data_plane_device, port));
+    service_entry.set_endpoint_address(maybe_address.value());
     service_entry.set_hostname(Hostname());
   }
   return grpc::Status::OK;
@@ -252,7 +257,9 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
 
   NodeRegistration reg;
   reg.set_hostname(Hostname());
-  reg.set_control_ip(IpAddressForDevice(""));
+  auto maybe_ip = IpAddressForDevice("");
+  if (!maybe_ip.ok()) return maybe_ip.status();
+  reg.set_control_ip(maybe_ip.value().ip());
   reg.set_control_port(*opts_.port);
 
   grpc::ClientContext context;

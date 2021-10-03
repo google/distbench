@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/statusor.h"
+
 namespace distbench {
 
 class DeviceIpAddress {
@@ -45,7 +47,8 @@ class DeviceIpAddress {
 };
 
 std::vector<DeviceIpAddress> GetAllAddresses();
-DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev);
+absl::StatusOr<DeviceIpAddress> GetBestAddress(
+    bool prefer_ipv4, std::string_view netdev);
 
 };  // namespace distbench
 

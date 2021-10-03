@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "distbench.pb.h"
+#include "distbench_netutils.h"
 #include "traffic_config.pb.h"
 #include "absl/status/statusor.h"
 #include "google/protobuf/stubs/status_macros.h"
@@ -37,8 +38,10 @@ void set_use_ipv4_first(bool _use_ipv4_first);
 grpc::ChannelArguments DistbenchCustomChannelArguments();
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
-std::string IpAddressForDevice(std::string_view netdev);
-std::string SocketAddressForDevice(std::string_view netdev, int port);
+absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev);
+std::string SocketAddressForIp(DeviceIpAddress ip, int port);
+absl::StatusOr<std::string> SocketAddressForDevice(
+    std::string_view netdev, int port);
 std::thread RunRegisteredThread(const std::string& thread_name,
                                 std::function<void()> f);
 
@@ -51,8 +54,8 @@ std::map<std::string, int> EnumerateServiceTypes(
     const DistributedSystemDescription& config);
 std::map<std::string, int> EnumerateRpcs(
     const DistributedSystemDescription& config);
-ServiceSpec GetServiceSpec(std::string_view name,
-                           const DistributedSystemDescription& config);
+absl::StatusOr<ServiceSpec> GetServiceSpec(
+    std::string_view name, const DistributedSystemDescription& config);
 
 void InitLibs(const char* argv0);
 

@@ -83,17 +83,21 @@ void InitLibs(const char* argv0) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
-std::string IpAddressForDevice(std::string_view netdev) {
-  DeviceIpAddress address = GetBestAddress(use_ipv4_first, netdev);
-  return address.ip();
+absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev) {
+  return GetBestAddress(use_ipv4_first, netdev);
 }
 
-std::string SocketAddressForDevice(std::string_view netdev, int port) {
-  DeviceIpAddress address = GetBestAddress(use_ipv4_first, netdev);
-  if (address.isIPv4())
-    return absl::StrCat(address.ip(), ":", port);
+absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev, int port) {
+  auto maybe_address = GetBestAddress(use_ipv4_first, netdev);
+  if (!maybe_address.ok()) return maybe_address.status();
+  return SocketAddressForIp(maybe_address.value(), port);
+}
 
-  return absl::StrCat("[", address.ip(), "]:", port);
+std::string SocketAddressForIp(DeviceIpAddress ip, int port) {
+  if (ip.isIPv4())
+    return absl::StrCat(ip.ip(), ":", port);
+
+  return absl::StrCat("[", ip.ip(), "]:", port);
 }
 
 std::string ServiceInstanceName(std::string_view service_type, int instance) {
@@ -144,14 +148,14 @@ std::map<std::string, int> EnumerateServiceInstanceIds(
   return ret;
 }
 
-ServiceSpec GetServiceSpec(std::string_view name,
-                           const DistributedSystemDescription& config) {
+absl::StatusOr<ServiceSpec> GetServiceSpec(
+    std::string_view name, const DistributedSystemDescription& config) {
   for (const auto& service : config.services()) {
     if (service.name() == name) {
       return service;
     }
   }
-  LOG(FATAL) << "Service not found: " << name;
+  return absl::NotFoundError(absl::StrCat("Service '", name, "' not found"));
 }
 
 grpc::Status Annotate(const grpc::Status& status, std::string_view context) {
