@@ -56,20 +56,23 @@ ProtocolDriverGrpc::ProtocolDriverGrpc() {
 absl::Status ProtocolDriverGrpc::Initialize(
     const ProtocolDriverOptions &pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
+  auto maybe_ip = IpAddressForDevice(netdev_name);
+  if (!maybe_ip.ok()) return maybe_ip.status();
+  server_ip_address_ = maybe_ip.value();
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
   traffic_service_ = absl::make_unique<TrafficService>();
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
-  builder.AddListeningPort("[::]:0", server_creds, port);
+  builder.AddListeningPort(server_socket_address_, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
   server_ = builder.BuildAndStart();
 
-  server_ip_address_ = IpAddressForDevice(netdev_name);
   server_port_ = *port;
-  server_socket_address_ = SocketAddressForDevice(netdev_name, *port);
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
   if (!server_) {
     return absl::UnknownError("Grpc Traffic service failed to start");
   }
@@ -96,7 +99,7 @@ ProtocolDriverGrpc::~ProtocolDriverGrpc() {
 absl::StatusOr<std::string> ProtocolDriverGrpc::HandlePreConnect(
       std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
-  addr.set_ip_address(server_ip_address_);
+  addr.set_ip_address(server_ip_address_.ip());
   addr.set_port(server_port_);
   addr.set_socket_address(server_socket_address_);
   std::string ret;

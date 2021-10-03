@@ -59,8 +59,10 @@ ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     const ProtocolDriverOptions &pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
-  server_ip_address_ = IpAddressForDevice(netdev_name);
-  server_socket_address_ = SocketAddressForDevice(netdev_name, *port);
+  auto maybe_ip = IpAddressForDevice(netdev_name);
+  if (!maybe_ip.ok()) return maybe_ip.status();
+  server_ip_address_ = maybe_ip.value();
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
   traffic_service_ = absl::make_unique<TrafficServiceAsync>();
 
   grpc::ServerBuilder builder;
@@ -74,7 +76,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   server_ = builder.BuildAndStart();
 
   server_port_ = *port;
-  server_socket_address_ = SocketAddressForDevice(netdev_name, *port);
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
   if (!server_) {
     return absl::UnknownError(
         "Grpc Async Callback Traffic service failed to start");
@@ -103,7 +105,7 @@ ProtocolDriverGrpcAsyncCallback::~ProtocolDriverGrpcAsyncCallback() {
 absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
       std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
-  addr.set_ip_address(server_ip_address_);
+  addr.set_ip_address(server_ip_address_.ip());
   addr.set_port(server_port_);
   addr.set_socket_address(server_socket_address_);
   std::string ret;

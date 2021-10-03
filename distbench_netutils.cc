@@ -69,7 +69,8 @@ std::vector<DeviceIpAddress> GetAllAddresses() {
   return result;
 }
 
-DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
+absl::StatusOr<DeviceIpAddress> GetBestAddress(
+    bool prefer_ipv4, std::string_view netdev) {
   auto all_addresses = GetAllAddresses();
 
   // Exact match
@@ -89,8 +90,9 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   }
 
   if (!netdev.empty())
-    LOG(FATAL) << "No address found for netdev=" << netdev
-               << " prefer_ipv4=" << prefer_ipv4;
+    return absl::NotFoundError(absl::StrCat(
+          "No address found for netdev '", netdev,
+          "' (prefer_ipv4=", prefer_ipv4, ")"));
 
   int score = 0;
   DeviceIpAddress best_match;
@@ -110,7 +112,8 @@ DeviceIpAddress GetBestAddress(bool prefer_ipv4, std::string_view netdev) {
   }
 
   if (score == 0)
-    LOG(FATAL) << "No interface available to use";
+    return absl::NotFoundError(absl::StrCat(
+          "No address found for any netdev (prefer_ipv4=", prefer_ipv4, ")"));
 
   LOG(WARNING) << "Using " << best_match.ToString()
                << " for netdev " << netdev

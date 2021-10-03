@@ -342,7 +342,9 @@ absl::Status DistBenchEngine::Initialize(
   traffic_config_ = global_description;
   CHECK(!service_name.empty());
   service_name_ = service_name;
-  service_spec_ = GetServiceSpec(service_name, global_description);
+  auto maybe_service_spec = GetServiceSpec(service_name, global_description);
+  if (!maybe_service_spec.ok()) return maybe_service_spec.status();
+  service_spec_ = maybe_service_spec.value();
   service_instance_ = service_instance;
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;

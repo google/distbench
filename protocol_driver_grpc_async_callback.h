@@ -55,7 +55,7 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
   int server_port_ = 0;
 
-  std::string server_ip_address_;
+  DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
 };
 
