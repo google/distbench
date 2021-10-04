@@ -509,6 +509,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
                 << "/" << service_instance_;
       engine_main_thread_ = RunRegisteredThread(
           "EngineMain", [this, i]() {RunActionList(i, nullptr);});
+      break;
     }
   }
 

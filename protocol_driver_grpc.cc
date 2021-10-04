@@ -58,6 +58,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
   std::string netdev_name = pd_opts.netdev_name();
   traffic_service_ = absl::make_unique<TrafficService>();
   grpc::ServerBuilder builder;
+  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
     MakeServerCredentials();
   builder.AddListeningPort("[::]:0", server_creds, port);
