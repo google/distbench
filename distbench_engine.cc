@@ -775,13 +775,13 @@ void DistBenchEngine::ActionListState::RecordLatency(
   // in how many samples total we can collect:
   if (packed_samples_size_) {
     const size_t sample_number = atomic_fetch_add_explicit(
-        &packed_sample_number_, 1, std::memory_order_relaxed);
+        &packed_sample_number_, static_cast<long unsigned int> (1), std::memory_order_relaxed);
     size_t index = sample_number;
     if (index < packed_samples_size_) {
       RecordPackedLatency(
           sample_number, index, rpc_index, service_type, instance, state);
       atomic_fetch_sub_explicit(
-          &remaining_initial_samples_, 1, std::memory_order_release);
+          &remaining_initial_samples_, static_cast<long unsigned int> (1), std::memory_order_release);
       return;
     }
     // Simple Reservoir Sampling:
