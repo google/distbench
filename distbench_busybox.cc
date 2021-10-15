@@ -45,6 +45,8 @@ ABSL_FLAG(int, local_nodes, 0,
     "(primarily for debugging locally)");
 ABSL_FLAG(std::string, default_data_plane_device, "",
           "Default netdevice to use for the data plane (protocol driver)");
+ABSL_FLAG(absl::Duration, max_test_duration,  absl::Hours(1),
+                              "Maximum time to wait for a test result");
 
 int main(int argc, char** argv, char** envp) {
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
@@ -179,6 +181,11 @@ int MainRunTests(std::vector<char*> &arguments) {
   }
 
   grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+      std::chrono::system_clock::now() +
+      std::chrono::seconds(ToInt64Seconds(
+          absl::GetFlag(FLAGS_max_test_duration)));
+  context.set_deadline(deadline);
   distbench::TestSequenceResults test_results;
   grpc::Status status = stub->RunTestSequence(&context, test_sequence,
                                               &test_results);
