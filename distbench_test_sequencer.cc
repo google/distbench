@@ -15,6 +15,7 @@
 #include "distbench_test_sequencer.h"
 
 #include "absl/strings/match.h"
+#include "absl/strings/str_join.h"
 #include "distbench_summary.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
@@ -122,7 +123,6 @@ void TestSequencer::CancelTraffic() {
   int rpc_count = 0;
   for (auto& node_it : registered_nodes_) {
     if (node_it.idle) {
-      LOG(INFO) << "node " << node_it.node_alias << " was already idle";
       continue;
     }
     LOG(INFO) << "node " << node_it.node_alias << " was busy";
@@ -165,7 +165,6 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
       auto summary = SummarizeTestResult(result);
       for (const auto& s : summary) {
         maybe_result->add_log_summary(s);
-        LOG(INFO) << s;
       }
       if (!request->tests_setting().keep_instance_log())
         result.mutable_service_logs()->clear_instance_logs();
@@ -252,15 +251,13 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
     std::string failures;
     for (size_t i = 0; i < remaining_services.size(); ++i) {
       if (i >= remaining_nodes.size()) {
-        LOG(INFO) << "couldn't place service " << remaining_services[i];
+        LOG(INFO) << "Couldn't place service " << remaining_services[i];
         if (!failures.empty()) {
           absl::StrAppend(&failures, ", ");
         }
         absl::StrAppend(&failures, remaining_services[i]);
       } else {
         node_service_map[remaining_nodes[i]].insert(remaining_services[i]);
-        LOG(INFO) << "Placed service '" << remaining_services[i]
-                  << "' on node " << remaining_nodes[i];
       }
     }
 
@@ -277,10 +274,10 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
 
   LOG(INFO) << "Service Placement:";
   for (const auto& node : node_service_map) {
-    LOG(INFO) << node.first << ":";
-    for (const auto& service : node.second) {
-      LOG(INFO) << "  " << service;
-    }
+    if (node.second.size() == 0)
+      continue;
+
+    LOG(INFO) << node.first << ": " << absl::StrJoin(node.second, ",");
   }
   return node_service_map;
 }
@@ -367,9 +364,9 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     if (ok) {
       --rpc_count;
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
-      LOG(INFO) << "Finished AsyncConfigureNode status:" <<
-                grpcStatusToAbslStatus(finished_rpc->status);
       if (!finished_rpc->status.ok()) {
+        LOG(ERROR) << "Finished AsyncConfigureNode failed with status:" <<
+                  grpcStatusToAbslStatus(finished_rpc->status);
         status = Annotate(finished_rpc->status, absl::StrCat(
               "AsyncConfigureNode to ", finished_rpc->node_name, " failed: "));
       }
@@ -377,8 +374,11 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     }
   }
   if (!status.ok()) {
+    LOG(ERROR) << "Some AsyncConfigureNode failed ! Final status:" << status;
     return grpcStatusToAbslStatus(status);
   }
+
+  LOG(INFO) << "All AsyncConfigureNode finished successfully";
   return ret;
 }
 
