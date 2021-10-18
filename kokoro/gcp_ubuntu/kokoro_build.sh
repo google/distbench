@@ -57,8 +57,8 @@ function update_gcc() {
   echo Installing gcc version 9
   echo
   sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  sudo apt-get update
-  sudo apt-get install -y gcc-9 g++-9
+  sudo apt-get update -q
+  sudo apt-get install -q -o Dpkg::Use-Pty=0 -y gcc-9 g++-9
 }
 
 time {
@@ -77,13 +77,19 @@ $CC --version
 bazel --version
 
 echo
-echo Running Bazel build and test
+echo Running Bazel fetch
 echo
-
 cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
 run_with_retries bazel fetch :all
 
+echo
+echo Running Bazel build
+echo
 bazel build --cxxopt='-std=c++17' :all
+
+echo
+echo Running Bazel test
+echo
 bazel test --cxxopt='-std=c++17' :all
 bazel shutdown
 
