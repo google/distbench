@@ -40,7 +40,7 @@ function bazel_install {
   mkdir ~/bazel_install
   cd ~/bazel_install
 
-  run_with_retries wget https://github.com/bazelbuild/bazel/releases/download/"${BAZEL_VERSION}"/bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
+  run_with_retries wget --no-verbose https://github.com/bazelbuild/bazel/releases/download/"${BAZEL_VERSION}"/bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
 
   chmod +x bazel-*.sh
   ./bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh --user
