@@ -18,6 +18,10 @@ set -e
 
 export BAZEL_VERSION=4.2.1
 
+function wget_with_retries {
+  wget $1 || sleep 5 || wget $1 || sleep 20 || wget $1
+}
+
 function bazel_install {
   echo
   echo Downloading and installing Bazel version $BAZEL_VERSION
@@ -27,7 +31,7 @@ function bazel_install {
   mkdir ~/bazel_install
   cd ~/bazel_install
 
-  wget https://github.com/bazelbuild/bazel/releases/download/"${BAZEL_VERSION}"/bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
+  wget_with_retries https://github.com/bazelbuild/bazel/releases/download/"${BAZEL_VERSION}"/bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
 
   chmod +x bazel-*.sh
   ./bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh --user
