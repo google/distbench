@@ -18,8 +18,17 @@ set -e
 
 export BAZEL_VERSION=4.2.1
 
-function wget_with_retries {
-  wget $1 || sleep 5 || wget $1 || sleep 20 || wget $1
+function run_with_retries {
+  MAX_TRIES=3
+  DELAY=5
+  for i in $(seq 1 $MAX_TRIES); do
+    echo "\$ $*"
+    "$@" && break
+
+    echo Command failed with errcode $? - try $i / $MAX_TRIES - sleeping $DELAY before retrying...
+    sleep $DELAY
+    DELAY=$(( DELAY * 2 ))
+  done
 }
 
 function bazel_install {
@@ -31,7 +40,7 @@ function bazel_install {
   mkdir ~/bazel_install
   cd ~/bazel_install
 
-  wget_with_retries https://github.com/bazelbuild/bazel/releases/download/"${BAZEL_VERSION}"/bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
+  run_with_retries wget https://github.com/bazelbuild/bazel/releases/download/"${BAZEL_VERSION}"/bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
 
   chmod +x bazel-*.sh
   ./bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh --user
@@ -53,7 +62,7 @@ function update_gcc() {
 }
 
 time {
-  update_gcc || sleep 10 || update_gcc || sleep 20 || update_gcc
+  run_with_retries update_gcc
 }
 export CXX=g++-9
 export CC=gcc-9
@@ -67,12 +76,13 @@ echo
 $CC --version
 bazel --version
 
-
 echo
 echo Running Bazel build and test
 echo
 
 cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
+run_with_retries bazel fetch :all
+
 bazel build --cxxopt='-std=c++17' :all
 bazel test --cxxopt='-std=c++17' :all
 bazel shutdown
