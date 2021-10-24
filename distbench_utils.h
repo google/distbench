@@ -80,6 +80,16 @@ RUsageStats GetRUsageStatsFromStructs(const struct rusage &start,
                                       const struct rusage &end);
 struct rusage DoGetRusage();
 
+std::string GetNamedSettingString(
+    const distbench::ProtocolDriverOptions &opts,
+    absl::string_view name,
+    std::string default_value);
+
+int64_t GetNamedSettingInt64(
+    const distbench::ProtocolDriverOptions &opts,
+    absl::string_view name,
+    int64_t default_value);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
