@@ -74,23 +74,39 @@ TEST_P(ProtocolDriverTest, invoke) {
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
-    s->send_response();
-    if (s->free_state) s->free_state();
+    if (s->have_dedicated_thread) {
+      std::string str;
+      s->request->SerializeToString(&str);
+      s->send_response();
+      if (s->free_state) s->free_state();
+    } else {
+      RunRegisteredThread(
+        "FakeServerThread",
+        [=]() {
+          sleep(1);
+          std::string str;
+          s->request->SerializeToString(&str);
+          s->send_response();
+          if (s->free_state) s->free_state();
+        }).detach();
+    }
+
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
 
   std::atomic<int> client_rpc_count = 0;
-  ClientRpcState rpc_state[10];
-  for (int i = 0; i < 10; ++i) {
+  const int kNumIterations=1000;
+  ClientRpcState rpc_state[kNumIterations];
+  for (int i = 0; i < kNumIterations; ++i) {
     pd->InitiateRpc(0, &rpc_state[i],
         [&, i]() {
           if (rpc_state[i].success) ++client_rpc_count;
         });
   }
   pd->ShutdownClient();
-  EXPECT_EQ(server_rpc_count, 10);
-  EXPECT_EQ(client_rpc_count, 10);
+  EXPECT_EQ(server_rpc_count, kNumIterations);
+  EXPECT_EQ(client_rpc_count, kNumIterations);
 }
 
 TEST_P(ProtocolDriverTest, self_echo) {
