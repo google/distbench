@@ -207,16 +207,16 @@ void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
       continue;
     }
     const auto &name = setting.name();
-    if (setting.has_str_value()) {
+    if (setting.has_string_value()) {
       LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]="
-                << setting.str_value();
-      builder->AddChannelArgument(name, setting.str_value());
+                << setting.string_value();
+      builder->AddChannelArgument(name, setting.string_value());
       continue;
     }
-    if (setting.has_int_value()) {
+    if (setting.has_int64_value()) {
       LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]="
-                << setting.int_value();
-      builder->AddChannelArgument(name, setting.int_value());
+                << setting.int64_value();
+      builder->AddChannelArgument(name, setting.int64_value());
       continue;
     }
 
@@ -299,6 +299,56 @@ struct rusage DoGetRusage() {
   if (ret != 0)
     LOG(WARNING) << "getrusage failed !";
   return rusage;
+}
+
+std::string GetNamedSettingString(
+    const distbench::ProtocolDriverOptions &opts,
+    absl::string_view setting_name,
+    std::string default_value) {
+  for (const auto &setting : opts.server_settings()) {
+    if (!setting.has_name()) {
+      LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
+      continue;
+    }
+    const auto &name = setting.name();
+    if (name != setting_name)
+      continue;
+    if (setting.has_int64_value()) {
+      LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name <<
+                "] should be a string !";
+      continue;
+    }
+    if (setting.has_string_value()) {
+      return setting.string_value();
+    }
+  }
+
+  return default_value;
+}
+
+int64_t GetNamedSettingInt64(
+    const distbench::ProtocolDriverOptions &opts,
+    absl::string_view setting_name,
+    int64_t default_value) {
+  for (const auto &setting : opts.server_settings()) {
+    if (!setting.has_name()) {
+      LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
+      continue;
+    }
+    const auto &name = setting.name();
+    if (name != setting_name)
+      continue;
+    if (setting.has_string_value()) {
+      LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name <<
+                "] should be an int !";
+      continue;
+    }
+    if (setting.has_int64_value()) {
+      return setting.int64_value();
+    }
+  }
+
+  return default_value;
 }
 
 }  // namespace distbench
