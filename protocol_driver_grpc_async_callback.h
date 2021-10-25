@@ -29,7 +29,9 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
   absl::Status Initialize(
       const ProtocolDriverOptions &pd_opts, int* port) override;
 
-  void SetHandler(std::function<void(ServerRpcState* state)> handler) override;
+  void SetHandler(
+      std::function<std::function<void ()> (ServerRpcState* state)> handler
+      ) override;
   void SetNumPeers(int num_peers) override;
 
   // Connects to the actual GRPC service.

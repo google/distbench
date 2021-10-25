@@ -37,6 +37,7 @@ TEST_P(ProtocolDriverTest, initialize) {
   pd->SetNumPeers(1);
   pd->SetHandler([](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
+    return std::function<void ()>();
   });
 }
 
@@ -47,7 +48,10 @@ TEST_P(ProtocolDriverTest, get_addr) {
   ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
+  pd->SetHandler([&](ServerRpcState *s) {
+    ++server_rpc_count;
+    return std::function<void ()>();
+  });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_EQ(server_rpc_count, 0);
 }
@@ -59,7 +63,10 @@ TEST_P(ProtocolDriverTest, get_set_addr) {
   ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  pd->SetHandler([&](ServerRpcState *s) { ++server_rpc_count; });
+  pd->SetHandler([&](ServerRpcState *s) {
+    ++server_rpc_count;
+    return std::function<void ()>();
+  });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
   ASSERT_EQ(server_rpc_count, 0);
@@ -79,18 +86,17 @@ TEST_P(ProtocolDriverTest, invoke) {
       s->request->SerializeToString(&str);
       s->send_response();
       if (s->free_state) s->free_state();
+      return std::function<void ()>();
     } else {
-      RunRegisteredThread(
-        "FakeServerThread",
-        [=]() {
-          sleep(1);
-          std::string str;
-          s->request->SerializeToString(&str);
-          s->send_response();
-          if (s->free_state) s->free_state();
-        }).detach();
+      std::function<void ()> fct = [=]() {
+        sleep(1);
+        std::string str;
+        s->request->SerializeToString(&str);
+        s->send_response();
+        if (s->free_state) s->free_state();
+      };
+      return fct;
     }
-
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -121,6 +127,7 @@ TEST_P(ProtocolDriverTest, self_echo) {
     s->response.set_payload(s->request->payload());
     s->send_response();
     if (s->free_state) s->free_state();
+    return std::function<void ()>();
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -151,12 +158,14 @@ TEST_P(ProtocolDriverTest, echo) {
     s->response.set_payload(s->request->payload());
     s->send_response();
     if (s->free_state) s->free_state();
+    return std::function<void ()>();
   });
   int port2 = 0;
   ASSERT_OK(pd1->Initialize(pdo, &port2));
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
+    return std::function<void ()>();
   });
   std::string addr1 = pd1->HandlePreConnect("", 0).value();
   std::string addr2 = pd2->HandlePreConnect("", 0).value();
@@ -188,12 +197,14 @@ void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
     s->response.set_payload(s->request->payload());
     s->send_response();
     if (s->free_state) s->free_state();
+    return std::function<void ()>();
   });
   int port2 = 0;
   ASSERT_OK(pd1->Initialize(opts, &port2));
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState *s) {
     ADD_FAILURE() << "should not get here";
+    return std::function<void ()>();
   });
   std::string addr1 = pd1->HandlePreConnect("", 0).value();
   std::string addr2 = pd2->HandlePreConnect("", 0).value();
