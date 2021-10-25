@@ -25,7 +25,9 @@ class TrafficService : public Traffic::Service {
  public:
   ~TrafficService() override {}
 
-  void SetHandler (std::function<void(ServerRpcState* state)> handler) {
+  void SetHandler (
+      std::function<std::function<void ()> (ServerRpcState* state)> handler
+      ) {
     handler_ = handler;
   }
 
@@ -45,7 +47,7 @@ class TrafficService : public Traffic::Service {
   }
 
  private:
-  std::function<void(ServerRpcState* state)> handler_;
+  std::function<std::function<void ()> (ServerRpcState* state)> handler_;
 };
 
 }  // anonymous namespace
@@ -84,7 +86,8 @@ absl::Status ProtocolDriverGrpc::Initialize(
 }
 
 void ProtocolDriverGrpc::SetHandler(
-    std::function<void(ServerRpcState* state)> handler) {
+    std::function<std::function<void ()> (ServerRpcState* state)> handler
+    ) {
   static_cast<TrafficService*>(traffic_service_.get())->SetHandler(handler);
 }
 

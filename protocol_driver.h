@@ -64,7 +64,8 @@ class ProtocolDriver {
       const ProtocolDriverOptions &pd_opts, int* port) = 0;
 
   virtual void SetHandler(
-      std::function<void(ServerRpcState* state)> handler) = 0;
+      std::function<std::function<void ()> (ServerRpcState* state)> handler)
+      = 0;
   virtual void SetNumPeers(int num_peers) = 0;
 
   // Allocate local resources that are needed to establish a connection

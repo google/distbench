@@ -25,7 +25,8 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
  public:
   ~TrafficServiceAsync() override {}
 
-  void SetHandler (std::function<void(ServerRpcState* state)> handler) {
+  void SetHandler (
+      std::function<std::function<void ()> (ServerRpcState* state)> handler) {
     handler_ = handler;
   }
 
@@ -43,12 +44,17 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
     rpc_state->free_state = [=]() {
       delete rpc_state;
     };
-    handler_(rpc_state);
+    auto fct_action_list_thread = handler_(rpc_state);
+    if (fct_action_list_thread)
+      RunRegisteredThread(
+        "DedicatedActionListThread",
+        fct_action_list_thread
+      ).detach();
     return reactor;
   }
 
  private:
-  std::function<void(ServerRpcState* state)> handler_;
+  std::function<std::function<void ()> (ServerRpcState* state)> handler_;
 };
 
 }  // anonymous namespace
@@ -88,7 +94,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetHandler(
-    std::function<void(ServerRpcState* state)> handler) {
+    std::function<std::function<void ()> (ServerRpcState* state)> handler) {
   static_cast<TrafficServiceAsync*>(traffic_service_.get())
       ->SetHandler(handler);
 }

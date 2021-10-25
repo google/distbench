@@ -227,7 +227,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<ActionListTableEntry> action_lists_;
 
   absl::Status ConnectToPeers();
-  void RpcHandler(ServerRpcState* state);
+  std::function<void ()> RpcHandler(ServerRpcState* state);
 
   int get_payload_size(const std::string& name);
 

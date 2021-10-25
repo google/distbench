@@ -392,7 +392,10 @@ absl::Status DistBenchEngine::Initialize(
 
 absl::Status DistBenchEngine::ConfigurePeers(
     const ServiceEndpointMap& peers) {
-  pd_->SetHandler([this](ServerRpcState* state) { RpcHandler(state);});
+  pd_->SetHandler([this](ServerRpcState* state) {
+    RpcHandler(state);
+    return std::function<void ()>();
+  });
   service_map_ = peers;
   if (service_map_.service_endpoints_size() < 2) {
     return absl::NotFoundError("No peers configured.");
@@ -557,7 +560,13 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
   return log;
 }
 
-void DistBenchEngine::RpcHandler(ServerRpcState* state) {
+// Process the incoming RPC;
+// if have_dedicated_thread == true; all the processing is performed inline
+// and the function returned is always empty,
+// if have_dedicated_thread == false, only short RPCs are performed inline,
+// and longer RPCs will return a non-empty function that the protocol driver
+// should process in a seperate thread.
+std::function<void ()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   // LOG(INFO) << state->request->ShortDebugString();
   CHECK(state->request->has_rpc_index());
   const auto& simulated_server_rpc =
@@ -571,21 +580,19 @@ void DistBenchEngine::RpcHandler(ServerRpcState* state) {
     if (state->free_state) {
       state->free_state();
     }
-    return;
+    return std::function<void ()>();
   }
 
   if (state->have_dedicated_thread) {
     RunActionList(handler_action_index, state);
-    return;
+    return std::function<void ()>();
   }
 
   ++detached_actionlist_threads_;
-  RunRegisteredThread(
-      "DedicatedActionListThread",
-      [=]() {
-        RunActionList(handler_action_index, state);
-        --detached_actionlist_threads_;
-    }).detach();
+  return [=]() {
+    RunActionList(handler_action_index, state);
+    --detached_actionlist_threads_;
+  };
 }
 
 void DistBenchEngine::RunActionList(
