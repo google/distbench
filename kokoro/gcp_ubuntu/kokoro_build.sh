@@ -18,6 +18,11 @@ set -e
 
 export BAZEL_VERSION=4.2.1
 
+function print_and_run {
+  echo "\$ $*"
+  "$@"
+}
+
 function run_with_retries {
   MAX_TRIES=3
   DELAY=5
@@ -80,16 +85,24 @@ echo
 echo Running Bazel fetch
 echo
 cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
-run_with_retries bazel fetch :all
+print_and_run run_with_retries bazel fetch :all
 
 echo
 echo Running Bazel build
 echo
-bazel build --cxxopt='-std=c++17' :all
+print_and_run bazel build :all
 
 echo
 echo Running Bazel test
 echo
-bazel test --cxxopt='-std=c++17' :all
-bazel shutdown
+print_and_run bazel test --test_output=errors :all
+
+echo
+echo Running Bazel test - ASAN
+echo
+print_and_run bazel test --config=asan --test_output=errors :all
+
+echo
+echo End of the tests
+print_and_run bazel shutdown
 
