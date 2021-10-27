@@ -551,9 +551,13 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
   for (size_t i = 0; i < peers_.size(); ++i) {
     for (size_t j = 0; j < peers_[i].size(); ++j) {
       absl::MutexLock m(&peers_[i][j].mutex);
-      if (!peers_[i][j].log.rpc_logs().empty()) {
-        (*log.mutable_peer_logs())[peers_[i][j].log_name] =
-          std::move(peers_[i][j].log);
+      for (auto& partial_log : peers_[i][j].partial_logs) {
+        for (auto& map_pair : partial_log.rpc_logs()) {
+          if (!map_pair.second.successful_rpc_samples().empty()) {
+            auto& output_peer_log = (*log.mutable_peer_logs())[peers_[i][j].log_name];
+            (*output_peer_log.mutable_rpc_logs())[map_pair.first].MergeFrom(map_pair.second);
+          }
+        }
       }
     }
   }
@@ -703,11 +707,9 @@ void DistBenchEngine::RunActionList(
     absl::MutexLock m(&s.action_mu);
     for (size_t i = 0; i < s.peer_logs_.size(); ++i) {
       for (size_t j = 0; j < s.peer_logs_[i].size(); ++j) {
+        if (s.peer_logs_[i][j].rpc_logs().empty()) continue;
         absl::MutexLock m(&peers_[i][j].mutex);
-        for (const auto& rpc_log : s.peer_logs_[i][j].rpc_logs()) {
-          (*peers_[i][j].log.mutable_rpc_logs())[rpc_log.first].MergeFrom(
-              rpc_log.second);
-        }
+        peers_[i][j].partial_logs.emplace_back(std::move(s.peer_logs_[i][j]));
       }
     }
   }
