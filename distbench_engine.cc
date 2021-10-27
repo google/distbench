@@ -473,6 +473,9 @@ absl::Status DistBenchEngine::ConnectToPeers() {
 
         ++rpc_count;
         rpc_state.request.set_initiator_info(pd_->Preconnect().value());
+        std::chrono::system_clock::time_point deadline =
+          std::chrono::system_clock::now() + std::chrono::seconds(60);
+        rpc_state.context.set_deadline(deadline);
         rpc_state.rpc = rpc_state.stub->AsyncSetupConnection(
             &rpc_state.context, rpc_state.request, &cq);
         rpc_state.rpc->Finish(
