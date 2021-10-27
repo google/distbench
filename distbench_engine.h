@@ -70,7 +70,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     PeerMetadata(const PeerMetadata& from) {
       from.mutex.Lock();
       log_name = from.log_name;
-      log = from.log;
+      partial_logs = from.partial_logs;
       trace_id = from.trace_id;
       from.mutex.Unlock();
     }
@@ -79,7 +79,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::string endpoint_address;
     int trace_id;
     int pd_id = -1;
-    PeerPerformanceLog log ABSL_GUARDED_BY(mutex);
+    std::list<PeerPerformanceLog> partial_logs ABSL_GUARDED_BY(mutex);
     mutable absl::Mutex mutex;
   };
 
