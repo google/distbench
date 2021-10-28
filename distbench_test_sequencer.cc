@@ -343,6 +343,9 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
   ServiceEndpointMap ret;
   std::vector<PendingRpc> pending_rpcs(node_service_map.size());
   int rpc_count = 0;
+
+  LOG(INFO) << "ConfigureNodes with: \n" << test.DebugString();
+
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
@@ -589,7 +592,8 @@ void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   grpc_server_ = builder.BuildAndStart();
   // Update service_address_ with the newly obtained port
   service_address_ = absl::StrCat("[::]:", *opts_.port);
-  LOG(INFO) << "Server listening on " << service_address_;
+  LOG(INFO) << "TestSequencer server listening on " << service_address_
+            << " for " << Hostname();
 }
 
 }  // namespace distbench
