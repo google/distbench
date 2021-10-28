@@ -17,7 +17,7 @@
 check_dependencies() {
   # Verify that the needed tools are presents
   #
-  if ! which bazel
+  if ! which bazel > /dev/null
   then
     echo DistBench requires Bazel. See README.md.
     exit 1
@@ -28,7 +28,7 @@ build_distbench() {
   # Build Distbench
   #
   echo Attempting to build DistBench...
-  if ! bazel build :distbench -c $COMPILATION_MODE
+  if ! echo_and_run bazel build :distbench $BAZEL_COMPILATION_OPTIONS
   then
     echo DistBench did not build successfully.
     exit 2
@@ -42,7 +42,7 @@ VERBOSE=0
 DEBUG=0
 DEFAULT_NODE_MANAGER_COUNT=1
 NODE_MANAGER_COUNT=$DEFAULT_NODE_MANAGER_COUNT
-COMPILATION_MODE=opt
+BAZEL_COMPILATION_OPTIONS="-c opt" # --config=basicprof
 
 show_help() {
   echo "Usage: $0 [-h] [-v] [-n node_manager_cnt]"
@@ -53,7 +53,7 @@ show_help() {
   echo "   -d               Enable debug mode"
   echo "   -n node_manager_cnt Specify the number of node manager to start"
   echo "                      default: $DEFAULT_NODE_MANAGER_COUNT"
-  echo "   -c compile_opt   Compile option (opt, dbg)"
+  echo "   -c compile_opt   Compile option (\"-c opt\", \"--config=asan\")"
   echo
 }
 
@@ -69,7 +69,7 @@ while getopts "h?vdn:c:" opt; do
         ;;
     n)  NODE_MANAGER_COUNT=$OPTARG
         ;;
-    c)  COMPILATION_MODE=$OPTARG
+    c)  BAZEL_COMPILATION_OPTIONS=$OPTARG
         ;;
     esac
 done
@@ -114,14 +114,14 @@ if [[ "${DEBUG}" = "1" ]]; then
                    --port=$((9999-$i)) --default_data_plane_device=lo &
   done
 else
-  echo_and_run bazel run :distbench -c $COMPILATION_MODE -- \
+  echo_and_run bazel run :distbench $BAZEL_COMPILATION_OPTIONS -- \
     test_sequencer --port=10000 --local_nodes=$NODE_MANAGER_COUNT &
 fi
 
 sleep 3
 
 # Verify that Distbench is up and running
-echo | bazel run :distbench -c $COMPILATION_MODE -- \
+echo | bazel run :distbench $BAZEL_COMPILATION_OPTIONS -- \
                   run_tests --test_sequencer=localhost:10000
 
 if [ $? -ne 0 ]; then

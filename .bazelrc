@@ -18,3 +18,13 @@ build:tsan --linkopt=-fsanitize=thread
 # https://github.com/google/sanitizers/issues/953
 build:tsan --test_env=TSAN_OPTIONS=report_atomic_races=0
 build:tsan --action_env=TSAN_OPTIONS=suppressions=test/core/util/tsan_suppressions.txt:halt_on_error=1:second_deadlock_stack=1
+
+
+build:basicprof --strip=never
+build:basicprof --copt=-DNDEBUG
+build:basicprof --copt=-O2
+build:basicprof --copt=-DGRPC_BASIC_PROFILER
+build:basicprof --copt=-DGRPC_TIMERS_RDTSC
+build:basicprof --copt=-pg
+build:basicprof --linkopt=-pg
+
