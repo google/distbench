@@ -263,7 +263,8 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.actionlist_index = it4->second;
       } else {
-        LOG(FATAL) << "only rpc actions are supported for now";
+        return absl::InvalidArgumentError(
+            "only rpc actions are supported for now");
       }
       action.dependent_action_indices.resize(action.proto.dependencies_size());
       for (int k = 0; k < action.proto.dependencies_size(); ++k) {
@@ -518,7 +519,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   }
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
     if (service_name_ == traffic_config_.action_lists(i).name()) {
-      LOG(INFO) << "running Main for " << service_name_
+      LOG(INFO) << "Running " << service_name_
                 << "/" << service_instance_;
       engine_main_thread_ = RunRegisteredThread(
           "EngineMain", [this, i]() {RunActionList(i, nullptr);});
@@ -530,7 +531,8 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 }
 
 void DistBenchEngine::CancelTraffic() {
-  LOG(INFO) << "did the cancelation now";
+  LOG(INFO) << "Cancelation notify for "
+            << service_name_ << "/" << service_instance_;
   canceled_.Notify();
 }
 
@@ -681,7 +683,8 @@ void DistBenchEngine::RunActionList(
     }
     s.action_mu.Unlock();
     if (canceled_.HasBeenNotified()) {
-      LOG(INFO) << "cancelled an action list";
+      LOG(INFO) << "Cancelled action list " << s.action_list->proto.name()
+                << " on " << service_name_ << "/" << service_instance_;
       s.WaitForAllPendingActions();
       break;
     }

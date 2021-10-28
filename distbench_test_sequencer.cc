@@ -125,7 +125,7 @@ void TestSequencer::CancelTraffic() {
     if (node_it.idle) {
       continue;
     }
-    LOG(INFO) << "node " << node_it.node_alias << " was busy";
+    LOG(INFO) << "Node " << node_it.node_alias << " was busy";
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     rpc_state.node = &node_it;
@@ -141,7 +141,8 @@ void TestSequencer::CancelTraffic() {
       --rpc_count;
       PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
-        LOG(ERROR) << "cancelling traffic " << finished_rpc->status;
+        LOG(ERROR) << "Cancelling traffic " << finished_rpc->status << " on "
+                   << finished_rpc->node->node_alias;
       }
       finished_rpc->node->idle = true;
     }

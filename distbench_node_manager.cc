@@ -183,19 +183,19 @@ grpc::Status NodeManager::GetTrafficResult(
 grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
                                         const CancelTrafficRequest* request,
                                         CancelTrafficResult* response) {
-  LOG(INFO) << "Starting CancelTraffic";
+  LOG(INFO) << "Starting CancelTraffic on " << config_.node_alias();
   absl::ReaderMutexLock m (&mutex_);
   for (const auto& service_engine : service_engines_) {
     service_engine.second->CancelTraffic();
   }
-  LOG(INFO) << "Finished CancelTraffic";
+  LOG(INFO) << "Finished CancelTraffic on " << config_.node_alias();
   return grpc::Status::OK;
 }
 
 grpc::Status NodeManager::ShutdownNode(grpc::ServerContext* context,
                                        const ShutdownNodeRequest* request,
                                        ShutdownNodeResult* response) {
-  LOG(INFO) << "Shutting down...";
+  LOG(INFO) << "Shutting down node " << config_.node_alias();
   shutdown_requested_.Notify();
   return grpc::Status::OK;
 }
@@ -253,7 +253,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (!grpc_server_) {
     return absl::UnknownError("NodeManager service failed to start");
   }
-  LOG(INFO) << "Server listening on " << service_address_;
+  LOG(INFO) << "Server listening on " << service_address_ << " on "
+            << Hostname();
 
   NodeRegistration reg;
   reg.set_hostname(Hostname());
