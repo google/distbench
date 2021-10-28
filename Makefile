@@ -12,6 +12,11 @@ test_asan:
 test_tsan:
 	bazel test --config=tsan --test_output=errors :all
 
+basicprof:
+	bazel build --config=basicprof :all
+	bazel-bin/protocol_driver_test
+	gprof bazel-bin/protocol_driver_test
+
 all:
 	bazel build :all
 
