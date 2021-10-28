@@ -27,7 +27,6 @@ grpc::Status NodeManager::ConfigureNode(
     grpc::ServerContext* context,
     const NodeServiceConfig* request,
     ServiceEndpointMap* response) {
-  LOG(INFO) << request->DebugString();
   absl::MutexLock m (&mutex_);
   traffic_config_ = request->traffic_config();
   ClearServices();
@@ -253,8 +252,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (!grpc_server_) {
     return absl::UnknownError("NodeManager service failed to start");
   }
-  LOG(INFO) << "Server listening on " << service_address_ << " on "
-            << Hostname();
+  LOG(INFO) << "NodeManager server listening on " << service_address_ <<
+            " on " << Hostname();
 
   NodeRegistration reg;
   reg.set_hostname(Hostname());
