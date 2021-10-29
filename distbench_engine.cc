@@ -393,8 +393,7 @@ absl::Status DistBenchEngine::Initialize(
 absl::Status DistBenchEngine::ConfigurePeers(
     const ServiceEndpointMap& peers) {
   pd_->SetHandler([this](ServerRpcState* state) {
-    RpcHandler(state);
-    return std::function<void ()>();
+    return RpcHandler(state);
   });
   service_map_ = peers;
   if (service_map_.service_endpoints_size() < 2) {
