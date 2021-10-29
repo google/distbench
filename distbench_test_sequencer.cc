@@ -277,7 +277,7 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
 
   LOG(INFO) << "Service Placement:";
   for (const auto& node : node_service_map) {
-    if (node.second.size() == 0)
+    if (node.second.empty())
       continue;
 
     LOG(INFO) << node.first << ": " << absl::StrJoin(node.second, ",");
