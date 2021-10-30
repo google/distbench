@@ -35,6 +35,10 @@ SimpleClock& ProtocolDriver::GetClock() {
   return real_clock;
 }
 
+absl::StatusOr<std::string> ProtocolDriverClient::Preconnect() {
+  return "";
+}
+
 absl::StatusOr<std::string> ProtocolDriver::Preconnect() {
   return "";
 }
