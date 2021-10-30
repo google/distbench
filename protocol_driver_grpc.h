@@ -89,6 +89,7 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   std::unique_ptr<Traffic::Service> traffic_service_;
   std::unique_ptr<grpc::Server> server_;
   int server_port_ = 0;
+
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
 };

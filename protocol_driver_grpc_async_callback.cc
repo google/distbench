@@ -59,73 +59,27 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
 
 }  // anonymous namespace
 
-ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
-}
-
-absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
-    const ProtocolDriverOptions &pd_opts, int* port) {
-  std::string netdev_name = pd_opts.netdev_name();
-  auto maybe_ip = IpAddressForDevice(netdev_name);
-  if (!maybe_ip.ok()) return maybe_ip.status();
-  server_ip_address_ = maybe_ip.value();
-  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  traffic_service_ = absl::make_unique<TrafficServiceAsync>();
-
-  grpc::ServerBuilder builder;
-  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
-  std::shared_ptr<grpc::ServerCredentials> server_creds =
-    MakeServerCredentials();
-  builder.AddListeningPort(server_socket_address_, server_creds, port);
-  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
-  ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
-  builder.RegisterService(traffic_service_.get());
-  server_ = builder.BuildAndStart();
-
-  server_port_ = *port;
-  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  if (!server_) {
-    return absl::UnknownError(
-        "Grpc Async Callback Traffic service failed to start");
-  }
-
-  LOG(INFO) << "Grpc Async Callback Traffic server listening on "
-            << server_socket_address_;
-  return absl::OkStatus();
-}
-
-void ProtocolDriverGrpcAsyncCallback::SetHandler(
-    std::function<std::function<void ()> (ServerRpcState* state)> handler) {
-  static_cast<TrafficServiceAsync*>(traffic_service_.get())
-      ->SetHandler(handler);
-}
-
-void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
-  grpc_client_stubs_.resize(num_peers);
-}
-
-ProtocolDriverGrpcAsyncCallback::~ProtocolDriverGrpcAsyncCallback() {
-  ShutdownServer();
+// Client =====================================================================
+ProtocolDriverClientGrpcAsyncCallback::ProtocolDriverClientGrpcAsyncCallback() {}
+ProtocolDriverClientGrpcAsyncCallback::~ProtocolDriverClientGrpcAsyncCallback() {
   ShutdownClient();
 }
 
-absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
-      std::string_view remote_connection_info, int peer) {
-  ServerAddress addr;
-  addr.set_ip_address(server_ip_address_.ip());
-  addr.set_port(server_port_);
-  addr.set_socket_address(server_socket_address_);
-  std::string ret;
-  addr.AppendToString(&ret);
-  return ret;
+absl::Status ProtocolDriverClientGrpcAsyncCallback::Initialize(
+    const ProtocolDriverOptions &pd_opts) {
+  return absl::OkStatus();
 }
 
-absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
+void ProtocolDriverClientGrpcAsyncCallback::SetNumPeers(int num_peers) {
+  grpc_client_stubs_.resize(num_peers);
+}
+
+absl::Status ProtocolDriverClientGrpcAsyncCallback::HandleConnect(
     std::string remote_connection_info, int peer) {
   CHECK_GE(peer, 0);
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
-  LOG(INFO) << addr.DebugString();
   std::shared_ptr<grpc::ChannelCredentials> creds =
     MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel =
@@ -135,8 +89,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
   return absl::OkStatus();
 }
 
-std::vector<TransportStat>
-ProtocolDriverGrpcAsyncCallback::GetTransportStats() {
+std::vector<TransportStat> ProtocolDriverClientGrpcAsyncCallback::GetTransportStats() {
   return {};
 }
 
@@ -152,7 +105,7 @@ struct PendingRpc {
 };
 }  // anonymous namespace
 
-void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
+void ProtocolDriverClientGrpcAsyncCallback::InitiateRpc(
     int peer_index, ClientRpcState* state,
     std::function<void(void)> done_callback) {
   CHECK_GE(peer_index, 0);
@@ -187,12 +140,103 @@ void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
     );
 }
 
-void ProtocolDriverGrpcAsyncCallback::ChurnConnection(int peer) {}
+void ProtocolDriverClientGrpcAsyncCallback::ChurnConnection(int peer) {}
 
-void ProtocolDriverGrpcAsyncCallback::ShutdownClient() {
+void ProtocolDriverClientGrpcAsyncCallback::ShutdownClient() {
   while (pending_rpcs_) {
   }
   grpc_client_stubs_.clear();
+}
+
+// Server =====================================================================
+
+ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
+}
+
+absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
+    const ProtocolDriverOptions &pd_opts, int* port) {
+  // Build the client
+  client_ = new ProtocolDriverClientGrpcAsyncCallback();
+  auto ret = client_->Initialize(pd_opts);
+  if (!ret.ok())
+    return ret;
+
+  std::string netdev_name = pd_opts.netdev_name();
+  auto maybe_ip = IpAddressForDevice(netdev_name);
+  if (!maybe_ip.ok()) return maybe_ip.status();
+  server_ip_address_ = maybe_ip.value();
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
+  traffic_service_ = absl::make_unique<TrafficServiceAsync>();
+  grpc::ServerBuilder builder;
+  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
+  std::shared_ptr<grpc::ServerCredentials> server_creds =
+    MakeServerCredentials();
+  builder.AddListeningPort(server_socket_address_, server_creds, port);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
+  builder.RegisterService(traffic_service_.get());
+  server_ = builder.BuildAndStart();
+
+  server_port_ = *port;
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
+  if (!server_) {
+    return absl::UnknownError(
+        "Grpc Async Callback Traffic service failed to start");
+  }
+
+  LOG(INFO) << "Grpc Async Callback Traffic server listening on "
+            << server_socket_address_;
+  return absl::OkStatus();
+}
+
+void ProtocolDriverGrpcAsyncCallback::SetHandler(
+    std::function<std::function<void ()> (ServerRpcState* state)> handler) {
+  static_cast<TrafficServiceAsync*>(traffic_service_.get())
+      ->SetHandler(handler);
+}
+
+void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
+  client_->SetNumPeers(num_peers);
+}
+
+ProtocolDriverGrpcAsyncCallback::~ProtocolDriverGrpcAsyncCallback() {
+  ShutdownServer();
+  delete client_;
+}
+
+absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
+      std::string_view remote_connection_info, int peer) {
+  ServerAddress addr;
+  addr.set_ip_address(server_ip_address_.ip());
+  addr.set_port(server_port_);
+  addr.set_socket_address(server_socket_address_);
+  std::string ret;
+  addr.AppendToString(&ret);
+  return ret;
+}
+
+absl::Status ProtocolDriverGrpcAsyncCallback::HandleConnect(
+    std::string remote_connection_info, int peer) {
+  return client_->HandleConnect(remote_connection_info, peer);
+}
+
+std::vector<TransportStat> ProtocolDriverGrpcAsyncCallback::GetTransportStats() {
+  return client_->GetTransportStats();
+}
+
+void ProtocolDriverGrpcAsyncCallback::InitiateRpc(
+    int peer_index, ClientRpcState* state,
+    std::function<void(void)> done_callback) {
+  client_->InitiateRpc(peer_index, state, done_callback);
+}
+
+void ProtocolDriverGrpcAsyncCallback::ChurnConnection(int peer) {
+  client_->ChurnConnection(peer);
+}
+
+void ProtocolDriverGrpcAsyncCallback::ShutdownClient() {
+  if (client_ != nullptr)
+    client_->ShutdownClient();
 }
 
 void ProtocolDriverGrpcAsyncCallback::ShutdownServer() {

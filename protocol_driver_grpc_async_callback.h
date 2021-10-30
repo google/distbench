@@ -21,6 +21,37 @@
 
 namespace distbench {
 
+class ProtocolDriverClientGrpcAsyncCallback : public ProtocolDriverClient {
+ public:
+  ProtocolDriverClientGrpcAsyncCallback();
+  ~ProtocolDriverClientGrpcAsyncCallback() override;
+
+  absl::Status Initialize(
+      const ProtocolDriverOptions &pd_opts) override;
+
+  void SetNumPeers(int num_peers) override;
+
+  // Allocate local resources that are needed to establish a connection
+  // E.g. an unconnected RoCE QueuePair. Returns opaque data. If no local
+  // resources are needed, this is a NOP.
+  //absl::StatusOr<std::string> Preconnect() override;
+
+  // Actually establish a conection, given the opaque data from the
+  // the responder. E.g. connect the local and remote RoCE queue pairs.
+  absl::Status HandleConnect(std::string remote_connection_info,
+                                     int peer) override;
+  void InitiateRpc(int peer_index, ClientRpcState* state,
+                           std::function<void(void)> done_callback) override;
+  void ChurnConnection(int peer) override;
+  void ShutdownClient() override;
+
+  virtual std::vector<TransportStat> GetTransportStats() override;
+ private:
+  absl::Notification shutdown_;
+  std::atomic<int> pending_rpcs_ = 0;
+  std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
+};
+
 class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
  public:
   ProtocolDriverGrpcAsyncCallback();
@@ -50,11 +81,10 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  std::atomic<int> pending_rpcs_ = 0;
-  absl::Notification shutdown_;
+  ProtocolDriverClientGrpcAsyncCallback *client_ = nullptr;
+
   std::unique_ptr<Traffic::ExperimentalCallbackService> traffic_service_;
   std::unique_ptr<grpc::Server> server_;
-  std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
   int server_port_ = 0;
 
   DeviceIpAddress server_ip_address_;
