@@ -55,6 +55,31 @@ class ProtocolDriverClientGrpc : public ProtocolDriverClient {
   grpc::CompletionQueue cq_;
 };
 
+class ProtocolDriverServerGrpc : public ProtocolDriverServer {
+ public:
+  ProtocolDriverServerGrpc();
+  ~ProtocolDriverServerGrpc() override;
+
+  absl::Status Initialize(
+      const ProtocolDriverOptions &pd_opts, int* port) override;
+
+  void SetHandler(
+      std::function<std::function<void ()> (ServerRpcState* state)> handler)
+      override;
+  absl::StatusOr<std::string> HandlePreConnect(
+      std::string_view remote_connection_info, int peer) override;
+  void ShutdownServer() override;
+  void HandleConnectFailure(std::string_view local_connection_info) override;
+
+  std::vector<TransportStat> GetTransportStats() override;
+ private:
+  std::unique_ptr<Traffic::Service> traffic_service_;
+  std::unique_ptr<grpc::Server> server_;
+  int server_port_ = 0;
+  DeviceIpAddress server_ip_address_;
+  std::string server_socket_address_;
+};
+
 class ProtocolDriverGrpc : public ProtocolDriver {
  public:
   ProtocolDriverGrpc();
@@ -75,6 +100,7 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   // Returns the address of the GRPC service.
   absl::StatusOr<std::string> HandlePreConnect(
       std::string_view remote_connection_info, int peer) override;
+  void HandleConnectFailure(std::string_view local_connection_info) override;
 
   std::vector<TransportStat> GetTransportStats() override;
   void InitiateRpc(int peer_index, ClientRpcState* state,
@@ -85,13 +111,7 @@ class ProtocolDriverGrpc : public ProtocolDriver {
 
  private:
   ProtocolDriverClientGrpc *client_ = nullptr;
-
-  std::unique_ptr<Traffic::Service> traffic_service_;
-  std::unique_ptr<grpc::Server> server_;
-  int server_port_ = 0;
-
-  DeviceIpAddress server_ip_address_;
-  std::string server_socket_address_;
+  ProtocolDriverServerGrpc *server_ = nullptr;
 };
 
 }  // namespace distbench
