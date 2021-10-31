@@ -84,6 +84,33 @@ class ProtocolDriverClient {
   virtual std::vector<TransportStat> GetTransportStats() = 0;
 };
 
+class ProtocolDriverServer {
+ public:
+  virtual ~ProtocolDriverServer() {}
+  virtual absl::Status Initialize(
+      const ProtocolDriverOptions &pd_opts, int* port) = 0;
+
+  // Server interface =========================================================
+  virtual void SetHandler(
+      std::function<std::function<void ()> (ServerRpcState* state)> handler)
+      = 0;
+  // Return the address of a running server that a client can connect to, or
+  // actually establish a single conection, given the opaque data from the
+  // initiator. E.g. allocate an unconnected RoCE queue pair, and connect it
+  // to the remote queue pair, and return the info about the newly allocated
+  // queue pair so that the initiator can connect the queue pairs on its end.
+  virtual absl::StatusOr<std::string> HandlePreConnect(
+      std::string_view remote_connection_info, int peer) = 0;
+  virtual void ShutdownServer() = 0;
+
+  // Handle the remote side responding with an RPC error by cleaning up
+  // the local resources associated with the opaque data.
+  virtual void HandleConnectFailure(std::string_view local_connection_info);
+
+  // Misc interface ===========================================================
+  virtual std::vector<TransportStat> GetTransportStats() = 0;
+};
+
 class ProtocolDriver {
  public:
   virtual ~ProtocolDriver() {}

@@ -47,4 +47,8 @@ void ProtocolDriver::HandleConnectFailure(
     std::string_view local_connection_info) {
 }
 
+void ProtocolDriverServer::HandleConnectFailure(
+    std::string_view local_connection_info) {
+}
+
 }  // namespace distbench
