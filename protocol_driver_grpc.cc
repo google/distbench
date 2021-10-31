@@ -225,13 +225,15 @@ absl::Status ProtocolDriverGrpc::Initialize(
   absl::Status ret;
 
   // Build the client
-  client_ = new ProtocolDriverClientGrpc();
+  client_ = std::unique_ptr<ProtocolDriverClient>(
+      new ProtocolDriverClientGrpc());
   ret = client_->Initialize(pd_opts);
   if (!ret.ok())
     return ret;
 
   // Build the server
-  server_ = new ProtocolDriverServerGrpc();
+  server_ = std::unique_ptr<ProtocolDriverServer>(
+      new ProtocolDriverServerGrpc());
   ret = server_->Initialize(pd_opts, port);
   if (!ret.ok())
     return ret;
@@ -251,7 +253,6 @@ void ProtocolDriverGrpc::SetNumPeers(int num_peers) {
 
 ProtocolDriverGrpc::~ProtocolDriverGrpc() {
   ShutdownServer();
-  delete client_;
 }
 
 absl::StatusOr<std::string> ProtocolDriverGrpc::HandlePreConnect(
