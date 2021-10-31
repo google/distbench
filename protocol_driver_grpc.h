@@ -110,8 +110,8 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  ProtocolDriverClientGrpc *client_ = nullptr;
-  ProtocolDriverServerGrpc *server_ = nullptr;
+  std::unique_ptr<ProtocolDriverClient> client_;
+  std::unique_ptr<ProtocolDriverServer> server_;
 };
 
 }  // namespace distbench

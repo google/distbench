@@ -156,7 +156,8 @@ ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     const ProtocolDriverOptions &pd_opts, int* port) {
   // Build the client
-  client_ = new ProtocolDriverClientGrpcAsyncCallback();
+  client_ = std::unique_ptr<ProtocolDriverClient>(
+      new ProtocolDriverClientGrpcAsyncCallback());
   auto ret = client_->Initialize(pd_opts);
   if (!ret.ok())
     return ret;
@@ -201,7 +202,6 @@ void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
 
 ProtocolDriverGrpcAsyncCallback::~ProtocolDriverGrpcAsyncCallback() {
   ShutdownServer();
-  delete client_;
 }
 
 absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(

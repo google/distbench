@@ -81,7 +81,7 @@ class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  ProtocolDriverClientGrpcAsyncCallback *client_ = nullptr;
+  std::unique_ptr<ProtocolDriverClient> client_;
 
   std::unique_ptr<Traffic::ExperimentalCallbackService> traffic_service_;
   std::unique_ptr<grpc::Server> server_;
