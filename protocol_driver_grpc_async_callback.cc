@@ -218,9 +218,7 @@ ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     const ProtocolDriverOptions &pd_opts, int* port) {
-  absl::Status ret;
 
-  // AsyncCallback
   std::string client_type = GetNamedSettingString(pd_opts, "client_type",
                                                   "async_callback");
   if (client_type != "async_callback")
@@ -235,21 +233,29 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
         "AsyncCallback is deprecated use the grpc protocol driver to specify"
         " the server type");
 
-  // Build the client
-  client_ = std::unique_ptr<ProtocolDriverClient>(
-      new ProtocolDriverClientGrpcAsyncCallback());
-  ret = client_->InitializeClient(pd_opts);
+  absl::Status ret;
+  ret = InitializeClient(pd_opts);
   if (!ret.ok())
     return ret;
-
-  // Build the server
-  server_ = std::unique_ptr<ProtocolDriverServer>(
-      new ProtocolDriverServerGrpcAsyncCallback());
-  ret = server_->InitializeServer(pd_opts, port);
+  ret = InitializeServer(pd_opts, port);
   if (!ret.ok())
     return ret;
 
   return absl::OkStatus();
+}
+
+absl::Status ProtocolDriverGrpcAsyncCallback::InitializeClient(
+    const ProtocolDriverOptions &pd_opts) {
+  client_ = std::unique_ptr<ProtocolDriverClient>(
+      new ProtocolDriverClientGrpcAsyncCallback());
+  return client_->InitializeClient(pd_opts);
+}
+
+absl::Status ProtocolDriverGrpcAsyncCallback::InitializeServer(
+    const ProtocolDriverOptions &pd_opts, int *port) {
+  server_ = std::unique_ptr<ProtocolDriverServer>(
+      new ProtocolDriverServerGrpcAsyncCallback());
+  return server_->InitializeServer(pd_opts, port);
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetHandler(

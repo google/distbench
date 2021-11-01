@@ -111,49 +111,13 @@ class ProtocolDriverServer {
   virtual std::vector<TransportStat> GetTransportStats() = 0;
 };
 
-class ProtocolDriver {
+class ProtocolDriver: public ProtocolDriverClient, public ProtocolDriverServer {
  public:
   virtual ~ProtocolDriver() {}
   virtual absl::Status Initialize(
       const ProtocolDriverOptions &pd_opts, int* port) = 0;
 
-  // Server interface =========================================================
-  virtual void SetHandler(
-      std::function<std::function<void ()> (ServerRpcState* state)> handler)
-      = 0;
-  // Return the address of a running server that a client can connect to, or
-  // actually establish a single conection, given the opaque data from the
-  // initiator. E.g. allocate an unconnected RoCE queue pair, and connect it
-  // to the remote queue pair, and return the info about the newly allocated
-  // queue pair so that the initiator can connect the queue pairs on its end.
-  virtual absl::StatusOr<std::string> HandlePreConnect(
-      std::string_view remote_connection_info, int peer) = 0;
-  virtual void ShutdownServer() = 0;
-
-  // Handle the remote side responding with an RPC error by cleaning up
-  // the local resources associated with the opaque data.
-  virtual void HandleConnectFailure(std::string_view local_connection_info);
-
-
-  // Client interface =========================================================
-  virtual void SetNumPeers(int num_peers) = 0;
-
-  // Allocate local resources that are needed to establish a connection
-  // E.g. an unconnected RoCE QueuePair. Returns opaque data. If no local
-  // resources are needed, this is a NOP.
-  virtual absl::StatusOr<std::string> Preconnect();
-
-  // Actually establish a conection, given the opaque data from the
-  // the responder. E.g. connect the local and remote RoCE queue pairs.
-  virtual absl::Status HandleConnect(std::string remote_connection_info,
-                                     int peer) = 0;
-  virtual void InitiateRpc(int peer_index, ClientRpcState* state,
-                           std::function<void(void)> done_callback) = 0;
-  virtual void ChurnConnection(int peer) = 0;
-  virtual void ShutdownClient() = 0;
-
   // Misc interface ===========================================================
-  virtual std::vector<TransportStat> GetTransportStats() = 0;
   virtual SimpleClock& GetClock();
 };
 
