@@ -98,7 +98,6 @@ void ProtocolDriverGrpc::SetNumPeers(int num_peers) {
 ProtocolDriverGrpc::~ProtocolDriverGrpc() {
   ShutdownClient();
   ShutdownServer();
-  grpc_client_stubs_.clear();
 }
 
 absl::StatusOr<std::string> ProtocolDriverGrpc::HandlePreConnect(
@@ -194,6 +193,7 @@ void ProtocolDriverGrpc::ShutdownClient() {
       cq_poller_.join();
     }
   }
+  grpc_client_stubs_.clear();
 }
 
 void ProtocolDriverGrpc::ShutdownServer() {
