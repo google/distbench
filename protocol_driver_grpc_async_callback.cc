@@ -106,7 +106,6 @@ void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
 ProtocolDriverGrpcAsyncCallback::~ProtocolDriverGrpcAsyncCallback() {
   ShutdownClient();
   ShutdownServer();
-  grpc_client_stubs_.clear();
 }
 
 absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
@@ -193,6 +192,7 @@ void ProtocolDriverGrpcAsyncCallback::ChurnConnection(int peer) {}
 void ProtocolDriverGrpcAsyncCallback::ShutdownClient() {
   while (pending_rpcs_) {
   }
+  grpc_client_stubs_.clear();
 }
 
 void ProtocolDriverGrpcAsyncCallback::ShutdownServer() {
