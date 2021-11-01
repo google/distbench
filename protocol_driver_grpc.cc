@@ -14,6 +14,7 @@
 
 #include "protocol_driver_grpc.h"
 
+#include "protocol_driver_grpc_async_callback.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
@@ -224,15 +225,31 @@ absl::Status ProtocolDriverGrpc::Initialize(
   absl::Status ret;
 
   // Build the client
-  client_ = std::unique_ptr<ProtocolDriverClient>(
-      new ProtocolDriverClientGrpc());
+  std::string client_type = GetNamedSettingString(pd_opts, "client_type",
+                                                  "completion_queue");
+  if (client_type == "completion_queue")
+    client_ = std::unique_ptr<ProtocolDriverClient>(
+        new ProtocolDriverClientGrpc());
+  else if (client_type == "async_callback")
+    client_ = std::unique_ptr<ProtocolDriverClient>(
+        new ProtocolDriverClientGrpcAsyncCallback());
+  else
+    return absl::InvalidArgumentError("Invalid GRPC client_type");
   ret = client_->Initialize(pd_opts);
   if (!ret.ok())
     return ret;
 
   // Build the server
-  server_ = std::unique_ptr<ProtocolDriverServer>(
-      new ProtocolDriverServerGrpc());
+  std::string server_type = GetNamedSettingString(pd_opts, "server_type",
+                                                  "normal");
+  if (server_type == "normal")
+    server_ = std::unique_ptr<ProtocolDriverServer>(
+        new ProtocolDriverServerGrpc());
+  else if (server_type == "async_callback")
+    server_ = std::unique_ptr<ProtocolDriverServer>(
+        new ProtocolDriverServerGrpcAsyncCallback());
+  else
+    return absl::InvalidArgumentError("Invalid GRPC server_type");
   ret = server_->Initialize(pd_opts, port);
   if (!ret.ok())
     return ret;

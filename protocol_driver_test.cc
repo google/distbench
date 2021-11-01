@@ -224,10 +224,33 @@ void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
   }
 }
 
+void AddServerStringOptionTo(ProtocolDriverOptions &pdo,
+                             std::string option_name, std::string value){
+  auto* ns = pdo.add_server_settings();
+  ns->set_name(option_name);
+  ns->set_string_value(value);
+}
+
 ProtocolDriverOptions GrpcOptions() {
   ProtocolDriverOptions ret;
   ret.set_protocol_name("grpc");
   return ret;
+}
+
+ProtocolDriverOptions GrpcClientCQServerCBOptions() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc");
+  AddServerStringOptionTo(pdo, "ClientType", "completion_queue");
+  AddServerStringOptionTo(pdo, "ServerType", "async_callback");
+  return pdo;
+}
+
+ProtocolDriverOptions GrpcClientCBServerNormalOptions() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc");
+  AddServerStringOptionTo(pdo, "ClientType", "async_callback");
+  AddServerStringOptionTo(pdo, "ServerType", "normal");
+  return pdo;
 }
 
 ProtocolDriverOptions GrpcCallbackOptions() {
@@ -248,6 +271,12 @@ BENCHMARK(BM_GrpcEcho);
 BENCHMARK(BM_GrpcCallbackEcho);
 
 INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
-                         testing::Values(GrpcOptions(), GrpcCallbackOptions()));
+                         testing::Values(
+                             GrpcOptions(),
+                             GrpcCallbackOptions(),
+                             GrpcClientCQServerCBOptions(),
+                             GrpcClientCBServerNormalOptions()
+                             )
+                         );
 
 }  // namespace distbench
