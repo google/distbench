@@ -26,7 +26,7 @@ class ProtocolDriverClientGrpc : public ProtocolDriverClient {
   ProtocolDriverClientGrpc();
   ~ProtocolDriverClientGrpc() override;
 
-  absl::Status Initialize(
+  absl::Status InitializeClient(
       const ProtocolDriverOptions &pd_opts) override;
 
   void SetNumPeers(int num_peers) override;
@@ -60,7 +60,7 @@ class ProtocolDriverServerGrpc : public ProtocolDriverServer {
   ProtocolDriverServerGrpc();
   ~ProtocolDriverServerGrpc() override;
 
-  absl::Status Initialize(
+  absl::Status InitializeServer(
       const ProtocolDriverOptions &pd_opts, int* port) override;
 
   void SetHandler(
