@@ -196,6 +196,8 @@ void ProtocolDriverGrpcAsyncCallback::ShutdownClient() {
 }
 
 void ProtocolDriverGrpcAsyncCallback::ShutdownServer() {
+  if (server_ != nullptr)
+    server_->Shutdown();
 }
 
 }  // namespace distbench
