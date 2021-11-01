@@ -26,7 +26,7 @@ class ProtocolDriverClientGrpcAsyncCallback : public ProtocolDriverClient {
   ProtocolDriverClientGrpcAsyncCallback();
   ~ProtocolDriverClientGrpcAsyncCallback() override;
 
-  absl::Status Initialize(
+  absl::Status InitializeClient(
       const ProtocolDriverOptions &pd_opts) override;
 
   void SetNumPeers(int num_peers) override;
@@ -57,7 +57,7 @@ class ProtocolDriverServerGrpcAsyncCallback : public ProtocolDriverServer {
   ProtocolDriverServerGrpcAsyncCallback();
   ~ProtocolDriverServerGrpcAsyncCallback() override;
 
-  absl::Status Initialize(
+  absl::Status InitializeServer(
       const ProtocolDriverOptions &pd_opts, int* port) override;
 
   void SetHandler(

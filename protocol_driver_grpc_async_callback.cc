@@ -25,7 +25,7 @@ ProtocolDriverClientGrpcAsyncCallback::~ProtocolDriverClientGrpcAsyncCallback() 
   ShutdownClient();
 }
 
-absl::Status ProtocolDriverClientGrpcAsyncCallback::Initialize(
+absl::Status ProtocolDriverClientGrpcAsyncCallback::InitializeClient(
     const ProtocolDriverOptions &pd_opts) {
   return absl::OkStatus();
 }
@@ -152,7 +152,7 @@ ProtocolDriverServerGrpcAsyncCallback::ProtocolDriverServerGrpcAsyncCallback() {
 ProtocolDriverServerGrpcAsyncCallback::~ProtocolDriverServerGrpcAsyncCallback()
 {}
 
-absl::Status ProtocolDriverServerGrpcAsyncCallback::Initialize(
+absl::Status ProtocolDriverServerGrpcAsyncCallback::InitializeServer(
     const ProtocolDriverOptions &pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
@@ -238,14 +238,14 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   // Build the client
   client_ = std::unique_ptr<ProtocolDriverClient>(
       new ProtocolDriverClientGrpcAsyncCallback());
-  ret = client_->Initialize(pd_opts);
+  ret = client_->InitializeClient(pd_opts);
   if (!ret.ok())
     return ret;
 
   // Build the server
   server_ = std::unique_ptr<ProtocolDriverServer>(
       new ProtocolDriverServerGrpcAsyncCallback());
-  ret = server_->Initialize(pd_opts, port);
+  ret = server_->InitializeServer(pd_opts, port);
   if (!ret.ok())
     return ret;
 

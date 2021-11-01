@@ -26,7 +26,7 @@ ProtocolDriverClientGrpc::~ProtocolDriverClientGrpc() {
   ShutdownClient();
 }
 
-absl::Status ProtocolDriverClientGrpc::Initialize(
+absl::Status ProtocolDriverClientGrpc::InitializeClient(
     const ProtocolDriverOptions &pd_opts) {
   cq_poller_ = std::thread(&ProtocolDriverClientGrpc::RpcCompletionThread,
                            this);
@@ -158,7 +158,7 @@ class TrafficService : public Traffic::Service {
 ProtocolDriverServerGrpc::ProtocolDriverServerGrpc() {}
 ProtocolDriverServerGrpc::~ProtocolDriverServerGrpc() {}
 
-absl::Status ProtocolDriverServerGrpc::Initialize(
+absl::Status ProtocolDriverServerGrpc::InitializeServer(
     const ProtocolDriverOptions &pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
@@ -235,7 +235,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
         new ProtocolDriverClientGrpcAsyncCallback());
   else
     return absl::InvalidArgumentError("Invalid GRPC client_type");
-  ret = client_->Initialize(pd_opts);
+  ret = client_->InitializeClient(pd_opts);
   if (!ret.ok())
     return ret;
 
@@ -250,7 +250,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
         new ProtocolDriverServerGrpcAsyncCallback());
   else
     return absl::InvalidArgumentError("Invalid GRPC server_type");
-  ret = server_->Initialize(pd_opts, port);
+  ret = server_->InitializeServer(pd_opts, port);
   if (!ret.ok())
     return ret;
 

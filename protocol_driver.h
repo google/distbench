@@ -60,7 +60,7 @@ class SimpleClock {
 class ProtocolDriverClient {
  public:
   virtual ~ProtocolDriverClient() {}
-  virtual absl::Status Initialize(
+  virtual absl::Status InitializeClient(
       const ProtocolDriverOptions &pd_opts) = 0;
 
   // Client interface =========================================================
@@ -87,7 +87,7 @@ class ProtocolDriverClient {
 class ProtocolDriverServer {
  public:
   virtual ~ProtocolDriverServer() {}
-  virtual absl::Status Initialize(
+  virtual absl::Status InitializeServer(
       const ProtocolDriverOptions &pd_opts, int* port) = 0;
 
   // Server interface =========================================================
