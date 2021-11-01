@@ -19,7 +19,6 @@
 
 namespace distbench {
 
-
 // Client =====================================================================
 ProtocolDriverClientGrpc::ProtocolDriverClientGrpc() {}
 ProtocolDriverClientGrpc::~ProtocolDriverClientGrpc() {
@@ -242,8 +241,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
 }
 
 void ProtocolDriverGrpc::SetHandler(
-    std::function<std::function<void ()> (ServerRpcState* state)> handler
-    ) {
+    std::function<std::function<void ()> (ServerRpcState* state)> handler) {
   server_->SetHandler(handler);
 }
 
