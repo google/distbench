@@ -87,6 +87,10 @@ class ProtocolDriverGrpc : public ProtocolDriver {
 
   absl::Status Initialize(
       const ProtocolDriverOptions &pd_opts, int* port) override;
+  absl::Status InitializeClient(
+      const ProtocolDriverOptions &pd_opts) override;
+  absl::Status InitializeServer(
+      const ProtocolDriverOptions &pd_opts, int *port) override;
 
   void SetHandler(
       std::function<std::function<void ()> (ServerRpcState* state)> handler
@@ -110,8 +114,8 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  std::unique_ptr<ProtocolDriverClient> client_;
-  std::unique_ptr<ProtocolDriverServer> server_;
+  std::unique_ptr<distbench::ProtocolDriverClient> client_;
+  std::unique_ptr<distbench::ProtocolDriverServer> server_;
 };
 
 }  // namespace distbench
