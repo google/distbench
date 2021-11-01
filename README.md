@@ -36,3 +36,8 @@ Use Distbench to:
 For contributors, make sure you also consult the following:
 - [Code of conduct](docs/code-of-conduct.md)
 - [Contributing](docs/contributing.md)
+
+## Contact information
+
+For any question, don't hesitate to contact us at:
+- [distbench-dev@google.com](mailto:distbench-dev@google.com)

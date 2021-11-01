@@ -85,3 +85,7 @@ spatial distribution are provided in the
 - [Distbench Command Line Arguments](command-line.md)
 - [Distbench FAQs](faq.md)
 
+## Contact information
+
+For any question, don't hesitate to contact us at:
+- [distbench-dev@google.com](mailto:distbench-dev@google.com)
