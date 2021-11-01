@@ -115,6 +115,7 @@ cc_library(
         ":distbench_cc_grpc_proto",
         ":distbench_utils",
         ":protocol_driver_api",
+        ":protocol_driver_grpc_async_callback",
         "@com_github_grpc_grpc//:grpc++",
     ],
 )

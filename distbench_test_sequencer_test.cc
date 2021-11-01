@@ -552,4 +552,140 @@ tests {
   }
 }
 
+TEST(DistBenchTestSequencer, protocol_driver_options_grpc_test) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+
+  TestSequence test_sequence;
+
+  const std::string proto = R"(
+tests {
+  services {
+    name: "client"
+    count: 1
+    protocol_driver_options_name: "grpc_client_cb_server_normal"
+  }
+  services {
+    name: "server"
+    count: 1
+    protocol_driver_options_name: "grpc_client_cb_server_normal"
+  }
+  rpc_descriptions {
+    name: "client_server_rpc"
+    client: "client"
+    server: "server"
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_queries"
+  }
+  actions {
+    name: "run_queries"
+    rpc_name: "client_server_rpc"
+    iterations {
+      max_iteration_count: 1000
+    }
+  }
+  action_lists {
+    name: "client_server_rpc"
+  }
+  protocol_driver_options {
+    name: "grpc_client_cb_server_normal"
+    protocol_name: "grpc"
+    netdev_name: "lo"
+    server_settings {
+      name: "server_type"
+      string_value: "normal"
+    }
+    server_settings {
+      name: "client_type"
+      string_value: "async_callback"
+    }
+  }
+})";
+  bool parse_result = google::protobuf::TextFormat::ParseFromString(
+      proto, &test_sequence);
+  ASSERT_EQ(parse_result, true);
+
+  TestSequenceResults results;
+  grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(15);
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  ASSERT_OK(status);
+
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+}
+
+TEST(DistBenchTestSequencer, protocol_driver_options_grpc_test2) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+
+  TestSequence test_sequence;
+
+  const std::string proto = R"(
+tests {
+  services {
+    name: "client"
+    count: 1
+    protocol_driver_options_name: "grpc_client_cq_server_cb"
+  }
+  services {
+    name: "server"
+    count: 1
+    protocol_driver_options_name: "grpc_client_cq_server_cb"
+  }
+  rpc_descriptions {
+    name: "client_server_rpc"
+    client: "client"
+    server: "server"
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_queries"
+  }
+  actions {
+    name: "run_queries"
+    rpc_name: "client_server_rpc"
+    iterations {
+      max_iteration_count: 1000
+    }
+  }
+  action_lists {
+    name: "client_server_rpc"
+  }
+  protocol_driver_options {
+    name: "grpc_client_cq_server_cb"
+    protocol_name: "grpc"
+    netdev_name: "lo"
+    server_settings {
+      name: "server_type"
+      string_value: "async_callback"
+    }
+    server_settings {
+      name: "client_type"
+      string_value: "completion_queue"
+    }
+  }
+})";
+  bool parse_result = google::protobuf::TextFormat::ParseFromString(
+      proto, &test_sequence);
+  ASSERT_EQ(parse_result, true);
+
+  TestSequenceResults results;
+  grpc::ClientContext context;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(15);
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  ASSERT_OK(status);
+
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+}
+
 }  // namespace distbench

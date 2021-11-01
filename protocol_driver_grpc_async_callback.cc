@@ -220,6 +220,21 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     const ProtocolDriverOptions &pd_opts, int* port) {
   absl::Status ret;
 
+  // AsyncCallback
+  std::string client_type = GetNamedSettingString(pd_opts, "client_type",
+                                                  "async_callback");
+  if (client_type != "async_callback")
+    return absl::InvalidArgumentError(
+        "AsyncCallback is deprecated use the grpc protocol driver to specify"
+        " the client type");
+
+  std::string server_type = GetNamedSettingString(pd_opts, "server_type",
+                                                  "async_callback");
+  if (server_type != "async_callback")
+    return absl::InvalidArgumentError(
+        "AsyncCallback is deprecated use the grpc protocol driver to specify"
+        " the server type");
+
   // Build the client
   client_ = std::unique_ptr<ProtocolDriverClient>(
       new ProtocolDriverClientGrpcAsyncCallback());
