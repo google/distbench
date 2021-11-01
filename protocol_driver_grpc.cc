@@ -96,6 +96,7 @@ void ProtocolDriverGrpc::SetNumPeers(int num_peers) {
 }
 
 ProtocolDriverGrpc::~ProtocolDriverGrpc() {
+  ShutdownClient();
   ShutdownServer();
   grpc_client_stubs_.clear();
 }
@@ -186,9 +187,6 @@ void ProtocolDriverGrpc::ChurnConnection(int peer) {}
 void ProtocolDriverGrpc::ShutdownClient() {
   while (pending_rpcs_) {
   }
-}
-
-void ProtocolDriverGrpc::ShutdownServer() {
   if (!shutdown_.HasBeenNotified()) {
     shutdown_.Notify();
     cq_.Shutdown();
@@ -196,6 +194,9 @@ void ProtocolDriverGrpc::ShutdownServer() {
       cq_poller_.join();
     }
   }
+}
+
+void ProtocolDriverGrpc::ShutdownServer() {
 }
 
 }  // namespace distbench
