@@ -105,7 +105,7 @@ echo The test will run for about $TIME_SECONDS seconds
 $DISTBENCH_BIN run_tests --test_sequencer=$SEQUENCER \
                          --outfile="$OUTPUT_FILE" \
                          --binary_output \
-                         --max_test_duration=$(( TIME_SECONDS + 30 ))s \
+                         --max_test_duration=$(( TIME_SECONDS + 100 ))s \
 <<EOF
 tests {
   default_protocol: "$PROTOCOL_DRIVER"
