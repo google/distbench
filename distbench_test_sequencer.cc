@@ -101,6 +101,7 @@ grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
     std::make_shared<absl::Notification>();
   mutex_.Unlock();
   grpc::Status result = DoRunTestSequence(context, request, response);
+  LOG(INFO) << "DoRunTestSequence status: " << result;
   notification->Notify();
   mutex_.Lock();
   running_test_sequence_context_ = nullptr;
@@ -164,6 +165,7 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
       }
     }
     auto maybe_result = DoRunTest(context, test);
+    LOG(INFO) << "DoRunTest status: " << maybe_result.status();
     if (maybe_result.ok()) {
       auto &result = maybe_result.value();
       auto summary = SummarizeTestResult(result);
@@ -310,9 +312,11 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
     return cret.status();
 
   auto ipret = IntroducePeers(node_service_map, service_map);
+  LOG(INFO) << "IntroducePeers status: " << ipret;
   if (!ipret.ok())
     return ipret;
   auto maybe_logs = RunTraffic(node_service_map);
+  LOG(INFO) << "RunTraffic status: " << maybe_logs.status();
   if (!maybe_logs.ok())
     return maybe_logs.status();
 
