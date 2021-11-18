@@ -166,7 +166,9 @@ message RunTrafficRequest {}
 message RunTrafficResponse {}
 
 
-message GetTrafficResultRequest {}
+message GetTrafficResultRequest {
+  optional bool clear_services = 1;
+}
 
 
 message CancelTrafficRequest {}

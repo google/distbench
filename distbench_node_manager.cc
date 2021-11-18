@@ -163,7 +163,7 @@ grpc::Status NodeManager::GetTrafficResult(
     grpc::ServerContext* context,
     const GetTrafficResultRequest* request,
     GetTrafficResultResponse* response) {
-  absl::ReaderMutexLock m (&mutex_);
+  absl::MutexLock m (&mutex_);
 
   for (const auto& service_engine : service_engines_) {
     auto log = service_engine.second->GetLogs();
@@ -173,6 +173,12 @@ grpc::Status NodeManager::GetTrafficResult(
     }
   }
 
+  if (request->clear_services()) {
+    for (const auto& service_engine : service_engines_) {
+      service_engine.second->CancelTraffic();
+    }
+    ClearServices();
+  }
   (*response->mutable_node_usages())[config_.node_alias()] =
       GetRUsageStatsFromStructs(rusage_start_test_, DoGetRusage());
 

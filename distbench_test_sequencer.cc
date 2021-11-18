@@ -512,6 +512,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     std::chrono::system_clock::time_point deadline =
       std::chrono::system_clock::now() + std::chrono::seconds(60);
     rpc_state.context.set_deadline(deadline);
+    rpc_state.request.set_clear_services(true);
     rpc_state.rpc = rpc_state.node->stub->AsyncGetTrafficResult(
           &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
