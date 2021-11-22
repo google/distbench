@@ -87,10 +87,12 @@ message ProtocolDriverOptions {
   optional string protocol_name = 2;
   optional string netdev_name = 3;
   repeated NamedSetting server_settings = 4;
+  repeated NamedSetting client_settings = 5;
 }
 
 message DistributedSystemDescription {
   optional string name = 9;
+  map<string, string> attributes = 10;
   repeated ServiceSpec services = 1;
   map<string, ServiceBundle> node_service_bundles = 2;
   repeated PayloadSpec payload_descriptions = 3;
