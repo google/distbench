@@ -62,3 +62,15 @@ http_archive(
     urls = ["https://github.com/google/glog/archive/v0.6.0.zip"],
 )
 
+new_local_repository(
+    name = "mercury",
+    path = "../opt/mercury-2.0.1",
+    build_file = "mercury.BUILD",
+)
+
+new_local_repository(
+    name = "libfabric",
+    path = "../opt/libfabric",
+    build_file = "libfabric.BUILD",
+)
+
