@@ -16,6 +16,7 @@
 
 #include "protocol_driver_grpc.h"
 #include "protocol_driver_grpc_async_callback.h"
+#include "protocol_driver_mercury.h"
 
 namespace distbench {
 
@@ -25,6 +26,8 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     return std::make_unique<ProtocolDriverGrpc>();
   } else if (opts.protocol_name() == "grpc_async_callback") {
     return std::make_unique<ProtocolDriverGrpcAsyncCallback>();
+  } else if (opts.protocol_name() == "mercury") {
+    return std::make_unique<ProtocolDriverMercury>();
   }
 
   return absl::InvalidArgumentError(

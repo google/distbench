@@ -89,7 +89,8 @@ cc_library(
         ":distbench_cc_proto",
         ":protocol_driver_api",
         ":protocol_driver_grpc",
-        ":protocol_driver_grpc_async_callback"
+        ":protocol_driver_grpc_async_callback",
+        ":protocol_driver_mercury",
     ],
 )
 
@@ -137,6 +138,23 @@ cc_library(
         "@com_github_google_glog//:glog"
     ],
 )
+
+cc_library(
+    name = "protocol_driver_mercury",
+    srcs = [
+        "protocol_driver_mercury.cc",
+    ],
+    hdrs = [
+        "protocol_driver_mercury.h",
+    ],
+    deps = [
+        ":distbench_cc_grpc_proto",
+        ":distbench_utils",
+        ":protocol_driver_api",
+        "@mercury//:mercury",
+    ],
+)
+
 
 cc_test(
     name = "protocol_driver_test",

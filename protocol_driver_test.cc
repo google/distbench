@@ -264,6 +264,12 @@ ProtocolDriverOptions GrpcCallbackOptions() {
   return pdo;
 }
 
+ProtocolDriverOptions MercuryOptions() {
+  ProtocolDriverOptions ret;
+  ret.set_protocol_name("mercury");
+  return ret;
+}
+
 void BM_GrpcEcho(benchmark::State& state) { Echo(state, GrpcOptions()); }
 
 void BM_GrpcCallbackEcho(benchmark::State& state) {
@@ -279,7 +285,8 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                              GrpcOptions(),
                              GrpcCallbackOptions(),
                              GrpcClientCQServerCBOptions(),
-                             GrpcClientCBServerNormalOptions()
+                             GrpcClientCBServerNormalOptions(),
+                             MercuryOptions()
                              )
                          );
 // clang-format on
