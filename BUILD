@@ -100,6 +100,7 @@ cc_library(
         ":protocol_driver_grpc",
         ":protocol_driver_double_barrel",
         ":composable_rpc_counter",
+        ":protocol_driver_mercury",
     ],
 )
 
@@ -129,6 +130,23 @@ cc_library(
         "@com_github_grpc_grpc//:grpc++",
     ],
 )
+
+cc_library(
+    name = "protocol_driver_mercury",
+    srcs = [
+        "protocol_driver_mercury.cc",
+    ],
+    hdrs = [
+        "protocol_driver_mercury.h",
+    ],
+    deps = [
+        ":distbench_cc_grpc_proto",
+        ":distbench_utils",
+        ":protocol_driver_api",
+        "@mercury//:mercury",
+    ],
+)
+
 
 cc_test(
     name = "protocol_driver_test",

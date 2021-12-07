@@ -18,10 +18,13 @@
 #include "glog/logging.h"
 #include "protocol_driver_double_barrel.h"
 #include "protocol_driver_grpc.h"
+#include "protocol_driver_mercury.h"
 
 namespace distbench {
 
 int max_protocol_driver_tree_depth_ = 4;
+
+namespace distbench {
 
 std::function<absl::StatusOr<ProtocolDriverOptions>(const std::string&)>
     alias_resolver_;
@@ -47,6 +50,10 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     pd = std::make_unique<ProtocolDriverDoubleBarrel>(tree_depth);
   } else if (opts.protocol_name() == "composable_rpc_counter") {
     pd = std::make_unique<ComposableRpcCounter>(tree_depth);
+#ifdef WITH_MERCURY
+  } else if (opts.protocol_name() == "mercury") {
+    pd = std::make_unique<ProtocolDriverMercury>();
+#endif
   } else {
     if (alias_resolver_ == nullptr) {
       return absl::InvalidArgumentError(
