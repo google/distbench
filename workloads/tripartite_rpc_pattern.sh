@@ -30,8 +30,11 @@ INDEX_COUNT=$DEFAULT_INDEX_COUNT
 DEFAULT_RESULT_COUNT=1
 RESULT_COUNT=$DEFAULT_RESULT_COUNT
 
+DEFAULT_PROTOCOL_DRIVER=grpc
+PROTOCOL_DRIVER=$DEFAULT_PROTOCOL_DRIVER
+
 show_help() {
-  echo "Usage: $0 [-h] [-v] [-s hostname:port] [-c client_cnt] [-r index_cnt] [-l result_cnt]"
+  echo "Usage: $0 [-h] [-v] [-s hostname:port] [-c client_cnt] [-r index_cnt] [-l result_cnt] [-p protocol_driver]"
   echo "   Run the tripartite RPC pattern"
   echo
   echo "   -h               Display the usage help (this)"
@@ -43,11 +46,13 @@ show_help() {
   echo "                      default: $DEFAULT_INDEX_COUNT"
   echo "   -l result_cnt    Indicate the number of result nodes"
   echo "                      default: $DEFAULT_RESULT_COUNT"
+  echo "   -p protocol_drv  Protocol driver to use"
+  echo "                      default: $DEFAULT_PROTOCOL_DRIVER"
   echo "   Note: you will need index_cnt+result_cnt+client_cnt node managers"
   echo
 }
 
-while getopts "h?vs:c:i:l:" opt; do
+while getopts "h?vs:c:i:l:p:" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -63,6 +68,8 @@ while getopts "h?vs:c:i:l:" opt; do
         ;;
     r)  RESULT_COUNT=$OPTARG
         ;;
+    p)  PROTOCOL_DRIVER=$OPTARG
+        ;;
     esac
 done
 
@@ -77,12 +84,14 @@ if [[ "${VERBOSE}" = "1" ]]; then
   echo "  CLIENT_COUNT=$CLIENT_COUNT"
   echo "  INDEX_COUNT=$INDEX_COUNT"
   echo "  RESULT_COUNT=$RESULT_COUNT"
+  echo "  PROTOCOL_DRIVER=$PROTOCOL_DRIVER"
   echo
 fi
 
 ../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER \
 <<EOF
 tests {
+  default_protocol: "$PROTOCOL_DRIVER"
   services {
     name: "client"
     count: $CLIENT_COUNT
