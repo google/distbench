@@ -21,3 +21,17 @@ socket_utils_common_posix.cc:224] check for SO_REUSEPORT: {...}
 
 There is currently no known workaround.
 
+## Bazel issue (missing for stdint.h...):
+
+If you get a Bazel dependency issue on standard include file (such as stdint.h,
+stdarg.h...):
+```this rule is missing dependency declarations for the following files included
+by 'absl/base/internal/unscaledcycleclock.cc':
+  '/usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h'
+  ...
+```
+
+Try cleaning the cache with:
+```
+bazel clean --expunge
+```
