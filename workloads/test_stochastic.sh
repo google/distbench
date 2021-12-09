@@ -27,8 +27,11 @@ CLIENT_COUNT=$DEFAULT_CLIENT_COUNT
 DEFAULT_SERVER_COUNT=5
 SERVER_COUNT=$DEFAULT_SERVER_COUNT
 
+DEFAULT_PROTOCOL_DRIVER=grpc
+PROTOCOL_DRIVER=$DEFAULT_PROTOCOL_DRIVER
+
 show_help() {
-  echo "Usage: $0 [-h] [-v] [-s hostname:port] [-c client_cnt] [-i server_cnt]"
+  echo "Usage: $0 [-h] [-v] [-s hostname:port] [-c client_cnt] [-i server_cnt] [-p protocol_driver]"
   echo "   Run the stochastic test RPC pattern"
   echo
   echo "   -h               Display the usage help (this)"
@@ -38,11 +41,13 @@ show_help() {
   echo "                      default: $DEFAULT_CLIENT_COUNT"
   echo "   -i server_cnt     Indicate the number of server nodes"
   echo "                      default: $DEFAULT_SERVER_COUNT"
+  echo "   -p protocol_drv  Protocol driver to use"
+  echo "                      default: $DEFAULT_PROTOCOL_DRIVER"
   echo "   Note: you will need server_cnt+client_cnt node managers"
   echo
 }
 
-while getopts "h?vs:c:i:" opt; do
+while getopts "h?vs:c:i:p:" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -55,6 +60,8 @@ while getopts "h?vs:c:i:" opt; do
     c)  CLIENT_COUNT=$OPTARG
         ;;
     i)  SERVER_COUNT=$OPTARG
+        ;;
+    p)  PROTOCOL_DRIVER=$OPTARG
         ;;
     esac
 done
@@ -69,12 +76,14 @@ if [[ "${VERBOSE}" = "1" ]]; then
   echo "  SEQUENCER=$SEQUENCER"
   echo "  CLIENT_COUNT=$CLIENT_COUNT"
   echo "  SERVER_COUNT=$SERVER_COUNT"
+  echo "  PROTOCOL_DRIVER=$PROTOCOL_DRIVER"
   echo
 fi
 
 ../bazel-bin/distbench run_tests --test_sequencer=$SEQUENCER \
 <<EOF
 tests {
+  default_protocol: "$PROTOCOL_DRIVER"
   services {
     name: "client"
     count: $CLIENT_COUNT
