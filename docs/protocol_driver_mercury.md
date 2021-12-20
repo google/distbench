@@ -41,6 +41,6 @@ make -j 20
 make install
 cd ../../distbench
 
-blaze test :all
+bazel test :all --//:with-mercury
 
 ```

@@ -285,8 +285,10 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                              GrpcOptions(),
                              GrpcCallbackOptions(),
                              GrpcClientCQServerCBOptions(),
-                             GrpcClientCBServerNormalOptions(),
-                             MercuryOptions()
+#ifdef WITH_MERCURY
+                             MercuryOptions(),
+#endif
+                             GrpcClientCBServerNormalOptions()
                              )
                          );
 // clang-format on

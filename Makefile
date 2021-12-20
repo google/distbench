@@ -6,6 +6,9 @@ testlog:
 test:
 	bazel test :all
 
+test_with_mercury:
+	bazel test :all --//:with-mercury --test_output=all
+
 test_asan:
 	bazel test --config=asan --test_output=errors :all
 
