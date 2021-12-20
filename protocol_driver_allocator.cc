@@ -18,13 +18,13 @@
 #include "glog/logging.h"
 #include "protocol_driver_double_barrel.h"
 #include "protocol_driver_grpc.h"
+#ifdef WITH_MERCURY
 #include "protocol_driver_mercury.h"
+#endif
 
 namespace distbench {
 
 int max_protocol_driver_tree_depth_ = 4;
-
-namespace distbench {
 
 std::function<absl::StatusOr<ProtocolDriverOptions>(const std::string&)>
     alias_resolver_;

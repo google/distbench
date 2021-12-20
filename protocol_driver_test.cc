@@ -302,8 +302,10 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                                          GrpcPollingClientHandoffServer(),
                                          GrpcPollingClientPollingServer(),
                                          GrpcCallbackClientInlineServer(),
-                                         DoubleBarrelGrpc(),
-                                         MercuryOptions()
+#ifdef WITH_MERCURY
+                                         MercuryOptions(),
+#endif
+                                         DoubleBarrelGrpc()
                                          )
                          );
 // clang-format on
