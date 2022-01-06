@@ -38,6 +38,7 @@ class DeviceIpAddress {
 
   bool isIPv4() const;
   std::string ToString() const;
+  std::string ToStringForURI() const;
   std::string netdevice() const { return device_; }
   std::string ip() const { return ip_; }
 };
