@@ -38,7 +38,11 @@ absl::Status ProtocolDriverMercury::Initialize(
   HG_Set_log_level("warning");
 
   // TODO: Choosen interface does not seem respected
-  std::string info_string = "ofi+tcp://[" + server_ip_address_.ip() + "]:0";
+  std::string info_string = GetNamedSettingString(pd_opts,
+                                                  "hg_init_info_string",
+                                                  "ofi+tcp://__SERVER_IP__");
+  info_string = absl::StringReplace(info_string, "__SERVER_IP__",
+                                    server_socket_address_.ToStringForURI());
   hg_class_ = HG_Init(info_string.c_str(), /*listen=*/NA_TRUE);
   if (hg_class_ == nullptr) {
     return absl::UnknownError("HG_Init: failed");
