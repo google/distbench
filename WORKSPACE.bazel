@@ -17,11 +17,11 @@ rules_proto_toolchains()
 ##### gRPC Rules for Bazel
 http_archive(
     name = "com_github_grpc_grpc",
-    sha256 = "bd2ec83a5ed255950daa00e5c8a557a97b8ae20e530757c6c07ea4d78c846caa",
+    sha256 = "bba65891b8c8eaea9f10b0ccccb4b6173590aee36937f5b52e8665720bcaa4c1",
     urls = [
-        "https://github.com/grpc/grpc/archive/635693ce624f3b3a89e5a764f0664958ef08b2b9.tar.gz",  # Release 1.41.1
+        "https://github.com/grpc/grpc/archive/b0f37a22bbae12a4b225a88be6d18d5e41dce881.tar.gz",  # Release 1.43
     ],
-    strip_prefix = "grpc-635693ce624f3b3a89e5a764f0664958ef08b2b9",
+    strip_prefix = "grpc-b0f37a22bbae12a4b225a88be6d18d5e41dce881",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
