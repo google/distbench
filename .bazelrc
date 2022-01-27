@@ -1,5 +1,9 @@
 build --cxxopt='-std=c++17'
 
+# Statically link libstdc++ and libgcc.
+build --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-lm
+build --action_env=BAZEL_LINKOPTS=-static-libgcc
+
 build:asan --strip=never
 build:asan --copt -fsanitize=address
 build:asan --copt -DADDRESS_SANITIZER
@@ -27,4 +31,3 @@ build:basicprof --copt=-DGRPC_BASIC_PROFILER
 build:basicprof --copt=-DGRPC_TIMERS_RDTSC
 build:basicprof --copt=-pg
 build:basicprof --linkopt=-pg
-
