@@ -315,7 +315,11 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   LOG(INFO) << "IntroducePeers status: " << ipret;
   if (!ipret.ok())
     return ipret;
-  auto maybe_logs = RunTraffic(node_service_map);
+
+  auto maybe_timeout = GetNamedAttributeInt64(test, "test_timeout", 3600);
+  if (!maybe_timeout.ok())
+    return maybe_timeout.status();
+  auto maybe_logs = RunTraffic(node_service_map, *maybe_timeout);
   LOG(INFO) << "RunTraffic status: " << maybe_logs.status();
   if (!maybe_logs.ok())
     return maybe_logs.status();
@@ -445,7 +449,8 @@ absl::Status TestSequencer::IntroducePeers(
 }
 
 absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
-    const std::map<std::string, std::set<std::string>>& node_service_map) {
+    const std::map<std::string, std::set<std::string>>& node_service_map,
+    int64_t timeout_seconds) {
   absl::ReaderMutexLock m(&mutex_);
   grpc::CompletionQueue cq;
   struct RunTrafficPendingRpc {
@@ -459,6 +464,8 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
   grpc::Status status;
   std::vector<RunTrafficPendingRpc> pending_rpcs(node_service_map.size());
   int rpc_count = 0;
+  std::chrono::system_clock::time_point deadline =
+      std::chrono::system_clock::now() + std::chrono::seconds(timeout_seconds);
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
@@ -467,8 +474,6 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     CHECK(it != node_alias_id_map_.end());
     RegisteredNode& node = registered_nodes_[it->second];
     node.idle = false;
-    std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(3600);
     rpc_state.context.set_deadline(deadline);
     rpc_state.rpc = node.stub->AsyncRunTraffic(
           &rpc_state.context, rpc_state.request, &cq);
@@ -489,6 +494,10 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     }
   }
 
+  if (!status.ok()) {
+    LOG(ERROR) << "RunTraffic aborted before collecting results: " << status;
+    return grpcStatusToAbslStatus(status);
+  }
   LOG(INFO) << "RunTraffic: all done -- collecting results";
 
   struct GetResultPendingRpc {

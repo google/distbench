@@ -28,6 +28,8 @@ in this document.
 - `rpc_descriptions`: describe a RPC to perform, including the type of payload
   and fanout involved.
 - `payload_descriptions`: define a payload that can be associated with an RPC.
+- `attributes`:
+  - `test_timeout`: Maximum time to run the test in seconds.
 
 **Note:** by convention, repeated fields in the proto are described by plural
 names. So a `services` block describes a single service, but there may be

@@ -39,18 +39,26 @@ the execution is completed, a summary will be displayed. If a result filename is
 specified, the TestResult will also be saved.
 
 ``` bash
-distbench run_tests [--infile test_sequence.proto_text] [--outfile result.proto] [--test_sequencer=host:port] [--binary_output]
+distbench run_tests [--infile test_sequence.proto_text]
+                    [--outfile result.proto]
+                    [--test_sequencer=host:port]
+                    [--binary_output]
+                    [--max_test_duration=duration]
+                    --test_sequencer=host:port
 ```
 
 Options:
 - `--test_sequencer=h:p`: The host:port of the `test_sequencer` to connect to.
 - `--binary_output`: Save the test result protobuf in binary
 - `--infile test_sequence.proto_text`: The protobuf filename of the test
-  sequence to submit to the test sequencer.
+  sequence to submit to the test sequencer (default to /dev/stdin).
 - `--outfile result.proto`: The protobuf filename that is used to save the test
   result.  Specify `--binary_output` to save in binary mode. An empty filename
   (--outfile "") will suppress the output (only the test summary will be
   displayed).
+- `--max_test_duration=duration`: Set the maximum time for each test
+  specified in the test sequence proto. If unspecified by this flag or in the
+  test sequence proto, it will default to 1 hour.
 
 ## help
 
