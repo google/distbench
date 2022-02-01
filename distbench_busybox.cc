@@ -45,8 +45,9 @@ ABSL_FLAG(int, local_nodes, 0,
     "(primarily for debugging locally)");
 ABSL_FLAG(std::string, default_data_plane_device, "",
           "Default netdevice to use for the data plane (protocol driver)");
-ABSL_FLAG(absl::Duration, max_test_duration,  absl::Hours(1),
-                              "Maximum time to wait for a test result");
+ABSL_FLAG(absl::Duration, max_test_duration,  absl::Hours(0),
+          "Maximum time to wait for each test - will default to 1 hour if "
+          "not specified by this flag or the test's test_timeout attribute");
 
 int main(int argc, char** argv, char** envp) {
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
@@ -154,6 +155,44 @@ absl::Status SaveResultProtoToFileBinary(const std::string &filename,
   return absl::OkStatus();
 }
 
+// Returns the sum of the specified test_timeout for all tests.
+// If even a single test hasn't a test_timeout specified, returns
+// timeout_default
+absl::StatusOr<int64_t> GetTestSequenceTimeout(
+    const distbench::TestSequence &test_sequence, int64_t timeout_default) {
+  int64_t accumulated_timeout = 0;
+  for (const auto& test : test_sequence.tests()) {
+    auto maybe_timeout = GetNamedAttributeInt64(test, "test_timeout",
+        std::numeric_limits<int64_t>::min());
+    if (!maybe_timeout.ok()) {
+      return maybe_timeout;
+    }
+    if (*maybe_timeout == std::numeric_limits<int64_t>::min()) {
+      return timeout_default;
+    }
+    if (*maybe_timeout <= 0) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid test_timeout specified (", *maybe_timeout,
+          "). test_timeout should be a stricly positive integer in seconds."));
+    }
+    accumulated_timeout += *maybe_timeout;
+  }
+
+  if (accumulated_timeout == 0) {
+    return timeout_default;
+  }
+
+  return accumulated_timeout;
+}
+
+void SetAllTestTimeoutAttributesTo(distbench::TestSequence *test_sequence,
+                                   std::string value) {
+  std::string name = "test_timeout";
+  for (auto& test : *test_sequence->mutable_tests()) {
+    (*test.mutable_attributes())[name] = value;
+  }
+}
+
 int MainRunTests(std::vector<char*> &arguments) {
   if (!AreRemainingArgumentsOK(arguments, 0, 0))
     return 1;
@@ -164,6 +203,24 @@ int MainRunTests(std::vector<char*> &arguments) {
                                                              &test_sequence);
   if (!parse_status.ok()) {
     std::cerr << "Error reading test sequence: " << parse_status << "\n";
+    return 1;
+  }
+
+  int64_t flag_timeout_seconds =
+      ToInt64Seconds(absl::GetFlag(FLAGS_max_test_duration));
+  if (flag_timeout_seconds != 0) {
+    // The command line flag will override the test specified timeouts.
+    SetAllTestTimeoutAttributesTo(&test_sequence,
+                                  absl::StrCat(flag_timeout_seconds));
+  } else {
+    // 1 hour default if unspecified.
+    flag_timeout_seconds = 60 * 60;
+  }
+  auto maybe_timeout_seconds = GetTestSequenceTimeout(
+      test_sequence, flag_timeout_seconds);
+  if (!maybe_timeout_seconds.ok()) {
+    std::cerr << "Error in the test sequence: "
+              << maybe_timeout_seconds.status() << "\n";
     return 1;
   }
 
@@ -183,8 +240,7 @@ int MainRunTests(std::vector<char*> &arguments) {
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
       std::chrono::system_clock::now() +
-      std::chrono::seconds(ToInt64Seconds(
-          absl::GetFlag(FLAGS_max_test_duration)));
+      std::chrono::seconds(*maybe_timeout_seconds);
   context.set_deadline(deadline);
   distbench::TestSequenceResults test_results;
   grpc::Status status = stub->RunTestSequence(&context, test_sequence,
@@ -195,8 +251,8 @@ int MainRunTests(std::vector<char*> &arguments) {
     if (status.error_message() == "failed to connect to all addresses") {
       std::cerr << "There may be a problem with the test sequencer running on '"
                 << absl::GetFlag(FLAGS_test_sequencer)
-                << "' the specified host or port may be wrong, or the host it is "
-                   "running on may not be reachable from here.\n";
+                << "' the specified host or port may be wrong, or the host it "
+                << "is running on may not be reachable from here.\n";
     }
     return 1;
   }

@@ -351,4 +351,24 @@ int64_t GetNamedSettingInt64(
   return default_value;
 }
 
+absl::StatusOr<int64_t> GetNamedAttributeInt64(
+    const distbench::DistributedSystemDescription &test,
+    absl::string_view name,
+    int64_t default_value) {
+  auto attributes = test.attributes();
+  auto it = attributes.find(name);
+  if (it == attributes.end()) {
+    return default_value;
+  }
+  int64_t value;
+  bool success = absl::SimpleAtoi(it->second, &value);
+  if (success) {
+    return value;
+  } else {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Cannot convert test attribute ", name, " value (", it->second,
+        ") to int."));
+  }
+}
+
 }  // namespace distbench

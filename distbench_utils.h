@@ -90,6 +90,11 @@ int64_t GetNamedSettingInt64(
     absl::string_view name,
     int64_t default_value);
 
+absl::StatusOr<int64_t> GetNamedAttributeInt64(
+    const distbench::DistributedSystemDescription &test,
+    absl::string_view name, int64_t default_value);
+
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
