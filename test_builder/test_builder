@@ -1,0 +1,1050 @@
+#!/bin/bash
+# A tool for generating and executing parametric distbench test sequences.
+#
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+################################################################################
+# Print help text to stderr and exit.
+# Arguments:
+#   The error code to pass to 'exit'
+# Globals:
+#   $0 (the name of the script)
+# Outputs:
+#   (stderr) Usage for the given function.
+################################################################################
+function print_usage_and_exit() {
+  log_stderr "$(basename $0):
+A comprehensive and easily extensible tool for generating and optionally
+executing parametric distbench test sequences. The output of this tool is
+intended to represent the canonical version of a given traffic pattern.
+
+Usage Summary:
+ $0 \\
+   [-h] [-s sequencer] [-o output_dir] [-t duration] [-c configuration_prefix]\\
+   [parameter_sweep swept_parameter_name start step end] \\
+   configuration1 [configuration2] ... [configurationN]
+
+Flags:
+ -h                      Displays this help text.
+ -s sequencer            Runs tests on the specified test sequencer.
+                         Expects host:port.
+ -o output_dir           Sets directory for storing test configurations/results.
+                         Writes to stdout if set to '-' (the default).
+ -t duration             Sets the individual test duration in seconds.
+                         (Defaults to 30)
+ -c configuration_prefix Common prefix prepended to all test configurations.
+                         (This prefix is not included in the generated test's
+                         'config_label' attribute.)
+ -l label_prefix         Common prefix prepended to each generated test's
+                         name and 'config_label' attribute.
+
+Configuration syntax (used for configuration_prefix and configurationN values):
+ [parameter1=value1][:parameter2=value2]...[:parameterN=valueN]
+
+ The main parmeters are 'traffic_pattern' and 'protocol_driver'
+ Their values determine how the other parameters are used to
+ construct the final test configuration.
+
+ 'traffic_pattern=foo' can be abbreviated 'foo'
+ 'protocol_driver=bar' can be abbreviated 'bar'
+ protocol_driver defaults to grpc if it is not specified.
+
+Modes:
+  By default the generated test sequence proto will be sent to stdout.
+
+  If -o output_dir is specified the test sequence proto will be stored in a file
+  named 'output_dir/test_sequence.config', and each individual test proto will
+  be stored in a separate file named 'output_dir/test_name.config'. In this mode
+  nothing is sent to stdout.
+
+  If -o output_dir and -s sequencer are specified the test protos will be saved,
+  and then each test will be sent individually to the test sequencer for
+  execution, with the results being stored in 'output_dir/test_name.pb.gz'.
+  If a given test has already been run it will be skipped and the output file
+  will not be overwritten. This can be used to adjust the set of tests being run
+  and analyzed while re-using the already-exisiting results.
+
+Specifying test configurations:
+  One or more test configurations can be specified by just listing them on the
+  comand line, E.g.:
+  $0 clique:node_count=5 clique:node_count=10 clique:node_count=15
+
+  The resulting tests would be named 'clique_sync_burst_5x16000-grpc' and
+  'clique_sync_burst_10x16000-grpc', which would be the base of the filenames
+  used for the configuration and results if the -o and -s flags were specified.
+
+  If multiple test configs share one or more common parameters they can be
+  specified separately using the -c flag, e.g.:
+  $0 -c clique node_count=5 node_count=10 node_count=15
+
+Specifying parameter sweeps:
+  Instead of listing each parameter set individually they can also be generated
+  by using the parameter_sweep function. The following example is equivalent to
+  the previous one:
+  $0 parameter_sweep node_count 5 5 15 clique
+
+Specifying multiconfiguration parameter sweeps:
+  Multiple configurations and a parameter sweep can be specified at the same
+  time, resulting in a set of tests that are the cartesian product of the set
+  of swept parameter values, and the individually specified configurations:
+  $0 parameter_sweep node_count 5 5 15 \\
+    clique:rpc_interval_us=4000 clique:rpc_interval_us=8000
+
+  or more compactly:
+  $0 parameter_sweep node_count 5 5 15 \\
+    -c clique rpc_interval_us=4000 rpc_interval_us=8000
+
+Test configuration metadata:
+  Every parameter that is specified in a test configuration argument is
+  converted to a test attribute key-value pair, even if the parameter is not
+  used by the traffic pattern and protocol generator.
+
+  Additional attributes are added for every parameter defined by the chosen
+  traffic pattern and protocol driver, even if they are left at their defaults.
+
+  Attributes are also automatically added for the following:
+    test_timeout
+    protocol_driver (E.g. 'grpc')
+    protocol_alias  (E.g. 'grpc-async')
+    traffic_pattern (E.g. 'clique')
+    traffic_alias   (E.g. 'clique_sync_burst_10x16000')
+    test_name       (E.g. '[LABEL_PREFIX]clique_sync_burst_2x1000-grpc-async')
+    config_label    (E.g. '[LABEL_PREFIX]clique:grpc')
+
+  Note: The test_name attribute is used for the configuration and result file
+  names as well. The config_label attribute includes the configuration argument
+  verbatim. Both can have an optional LABEL_PREFIX applied to them to help
+  organize data for analysis, via the -l flag.
+"
+  # Use reflection to print additional usage for each traffic pattern and
+  # protocol driver function that is defined:
+  log_stderr "Traffic Patterns Options:"
+  log_stderr " Common parameters for all traffic patterns:"
+  log_stderr "  test_duration (default =30)"
+  for setup_function in $(compgen -A function -X '!*traffic_pattern_setup'); do
+    log_stderr
+    local traffic_pattern="${setup_function%_traffic_pattern_setup}"
+    auto_usage "${setup_function}" traffic_pattern "${traffic_pattern}"
+  done
+  log_stderr
+  log_stderr -n "Protocol Driver Options:"
+  for setup_function in $(compgen -A function -X '!*protocol_driver_setup'); do
+    log_stderr
+    local protocol_driver="${setup_function%_protocol_driver_setup}"
+    auto_usage "${setup_function}" protocol_driver "${protocol_driver}"
+  done
+  exit "$1"
+}
+
+################################################################################
+# Echos to stderr.
+# Arguments:
+#   Arguments to pass on to the echo command.
+################################################################################
+function log_stderr() {
+  echo > /dev/stderr "$@"
+}
+
+################################################################################
+# Produce the usage info for a specific traffic pattern or protocol driver setup
+# function.
+# Arguments:
+#   The name of the traffic pattern or protocol driver setup function
+#   The type of the function i.e. "traffic_pattern" or "protocol_driver"
+#   The name of the pattern or protocol
+# Outputs:
+#   (stderr) Usage for the given function.
+################################################################################
+function auto_usage() {
+  local -a usage_params
+  local -A params_dict
+  params_dict[protocol_driver]=""
+  params_dict[protocol_alias]=""
+  params_dict[test_duration]=0
+  "$1"  #invoke the target function to fill in the params_dict and usage_params.
+  log_stderr " Parameters for $2=$3:"
+  local key
+  for key in "${usage_params[@]}"; do
+    log_stderr "  ${key} (default=${params_dict[${key}]})"
+  done
+}
+
+################################################################################
+# Parse/validate explicit flag arguments, and invoke 'process_test_configs' with
+# the remaining arguments that represent the test configurations.
+# Arguments:
+#   Command line flags and positional parameters to parse as test configs.
+# Outputs:
+#   (stdout) A textformat proto of the test sequence, if '-o -' is specified.
+#   (stderr) Usage or status messages as tests are produced and run.
+################################################################################
+function main() {
+  # Catch as many errors as possible:
+  set -ueo pipefail
+  shopt -s inherit_errexit
+
+  # Save the actual invocation for documenting the output proto files:
+  local -r INVOCATION="$(printf '%q ' "$@")"
+
+  # Allow flags to come after other arguments for flexibility:
+  local ALLOWED_OPTS="hs:l:c:t:o:"
+  local parsed_opts
+  parsed_opts="$(getopt -o "${ALLOWED_OPTS}" -- "$@")" || print_usage_and_exit 1
+  eval set -- "${parsed_opts}"
+
+  local DISTBENCH_TEST_SEQUENCER
+  local CONFIG_LABEL_PREFIX=""
+  local CONFIG_PREFIX=""
+  local TEST_DURATION_SECONDS=30
+  local OUTPUT_DIR
+
+  local OPTIND=1
+  local opt
+  while getopts "${ALLOWED_OPTS}" opt "$@"; do
+    case "${opt}" in
+      h) print_usage_and_exit 0 ;;
+      s) DISTBENCH_TEST_SEQUENCER="${OPTARG}" ;;
+      l) CONFIG_LABEL_PREFIX="${OPTARG}" ;;
+      c) if [[ -n "${OPTARG}" ]]; then CONFIG_PREFIX="${OPTARG}:" ; fi ;;
+      t)
+        TEST_DURATION_SECONDS="${OPTARG}"
+        validate_integer 1 TEST_DURATION_SECONDS
+        ;;
+      o)
+        OUTPUT_DIR="${OPTARG}"
+        if [[ "${OUTPUT_DIR}" == "-" ]]; then
+          unset OUTPUT_DIR
+        elif [[ ! -d "${OUTPUT_DIR}" ]]; then
+          log_stderr "Output dir '${OUTPUT_DIR}' does not exist."
+          exit 2
+        fi
+        ;;
+    esac
+  done
+  shift $((OPTIND-1))
+
+  readonly DISTBENCH_TEST_SEQUENCER
+  readonly CONFIG_LABEL_PREFIX
+  readonly CONFIG_PREFIX
+  readonly TEST_DURATION_SECONDS
+  readonly OUTPUT_DIR
+
+  if [[ -v DISTBENCH_TEST_SEQUENCER && ! -v OUTPUT_DIR ]]; then
+    log_stderr "Running tests with '-s sequencer' is incompatible with  '-o -'."
+    exit 3
+  fi
+
+  if [[ "$#" == "0" ]]; then
+    log_stderr "No test configs specified."
+    print_usage_and_exit 4
+  fi
+
+  process_test_configs "$@"
+}
+
+################################################################################
+# Takes a list of variables and verifies their contents are integers that are
+# greater than or equal to a specified minimum, exiting in the case of failure.
+# Arguments:
+#   The minimum value to accept for each variable (typically 0 or 1).
+#   A list of variables to validate.
+# Outputs:
+#   (stderr) Error messages for any invalid variables.
+################################################################################
+function validate_integer() {
+  local minimum="$1"
+  shift
+  local varname
+  for varname in "$@"; do
+    local -n target=${varname}
+    if [[ -z ${target} || -n "$(echo ${target} | tr -d [0-9])" ]]; then
+      log_stderr "Expected a nonnegative integer value for" \
+                 "${varname}='${target}'"
+      exit 5
+    fi
+    if [[ "${target}" -lt "${minimum}" ]]; then
+      log_stderr "Expected a value greater than ${minimum} value for" \
+                 "${varname}='${target}'"
+      exit 6
+    fi
+  done
+}
+
+################################################################################
+# Parses test configs from the command line, optionally saves the config protos
+# and runs the tests, or outputs the test sequence proto on stdout.
+# Arguments:
+#   Positional parameters to parse as test configs.
+# Inherits:
+#   CONFIG_LABEL_PREFIX
+#   CONFIG_PREFIX
+#   DISTBENCH_TEST_SEQUENCER
+#   INVOCATION
+#   OUTPUT_DIR
+#   TEST_DURATION_SECONDS
+# Outputs:
+#   (stdout) A textformat proto of the test sequence, unless OUTPUT_DIR is set.
+################################################################################
+function process_test_configs() {
+  # These arrays hold the final test sequence data, and are inherited by various
+  # subroutines.
+  local -a test_names
+  local -A test_sequence_protos
+
+  build_test_sequence_protos "$@"
+  if [[ -v OUTPUT_DIR ]]; then
+    save_test_protos
+    if [[ -v DISTBENCH_TEST_SEQUENCER ]]; then
+      run_all_tests
+    fi
+  else
+    echo "# produced by $0 ${INVOCATION}"
+    local test_name
+    for test_name in "${test_names[@]}"; do
+      echo "${test_sequence_protos[${test_name}]}"
+    done
+  fi
+}
+
+################################################################################
+# Dispatches the work of building test config protos to helper functions.
+# Arguments:
+#   Positional parameters to parse as test configs or parameter sweeps.
+# Inherits:
+#   CONFIG_LABEL_PREFIX
+#   CONFIG_PREFIX
+#   TEST_DURATION_SECONDS
+# Inherits and mutates:
+#   test_names (array)
+#   test_sequence_protos (associative array)
+################################################################################
+function build_test_sequence_protos() {
+  # This associative array holds a high-level representation of the components
+  # of a single test as it is being processed, and it is inherited by various
+  # subroutines. The key-value representation allows a test and its protocol
+  # driver / traffic pattern to accept any set of parameters without needing
+  # to hard code them into the script.
+  local -A params_dict
+
+  # Any parameters set here will be inherited by all the tests in the sequence,
+  # unless they are explicitly overridden by a specific test config.
+  params_dict[test_duration]="${TEST_DURATION_SECONDS}"
+
+  # Convert the test configurations to test protos:
+  if [[ "$1" == "parameter_sweep" ]]; then
+    build_parameter_sweep_test_protos "$@"
+  else
+    build_config_test_protos "$@"
+  fi
+}
+
+################################################################################
+# Sweeps over an arbitrary integer-valued test parameter, and produces a
+# test proto for each combiniation of swept parameter value and test config.
+# Arguments:
+#   swept paramater name
+#   sweep start value
+#   sweep step value
+#   sweep end value
+#   A set of one or more traffic config strings
+# Inherits:
+#   CONFIG_PREFIX
+# Inherits and mutates:
+#   params_dict (associative array)
+#   test_names (array)
+#   test_sequence_protos (associative array)
+################################################################################
+function build_parameter_sweep_test_protos() {
+  if [[ "$#" -lt "5" ]]; then
+    log_stderr "parameter_sweep missing a required argument"
+    log_stderr "expected 'parameter_sweep param_name start step end'"
+    exit 7
+  fi
+  local paramname="$2"
+  local start="$3"
+  local step="$4"
+  local end="$5"
+  shift 5
+  if [[ "$#" == "0" ]]; then
+    log_stderr "parameter_sweep requires at least one traffic config"
+    exit 8
+  fi
+
+  local sweep_values
+  sweep_values="$(seq ${start} ${step} ${end} 2>&1)" || {
+    log_stderr "parameter_sweep: Encountered an error running" \
+               "'seq ${start} ${step} ${end}'"
+    log_stderr "${sweep_values}"
+    exit 9
+  }
+  if [[ ${#sweep_values} == "0" ]]; then
+    log_stderr "parameter_sweep: 'seq ${start} ${step} ${end}' had no output"
+    exit 10
+  fi
+  local paramval
+  for paramval in ${sweep_values}; do
+    # Any parameters set here will be inherited by all the test protos generated
+    # by build_config_test_protos unless they are explicitly overriden, which is
+    # probably a bad idea.
+    params_dict[${paramname}]="${paramval}"
+    params_dict[swept_parameter]="${paramname}"
+    build_config_test_protos "$@"
+  done
+}
+
+################################################################################
+# Converts each config into a test proto.
+# Arguments:
+#   list of configs
+# Inherits:
+#   CONFIG_LABEL_PREFIX
+#   CONFIG_PREFIX
+#   params_dict (associative array)
+# Inherits and mutates:
+#   test_names (array)
+#   test_sequence_protos (associative array)
+################################################################################
+function build_config_test_protos() {
+  # Processing each config requires mutating params_dict, but in order to
+  # avoid any interference between one config and the next, params_dict must
+  # be reset back to its original value after each config is processed. As a
+  # side-effect this function does not actually mutate params_dict from the
+  # perspective of the caller.
+  # Save the value of params_dict so we can restore it:
+  local -r params_dict_original_value="$(declare -p params_dict | cut -f2- -d=)"
+
+  local config
+  for config in "$@"; do
+    parse_params_dict_from_config_string "${CONFIG_PREFIX}${config}"
+    params_dict[config_label]="${CONFIG_LABEL_PREFIX}${config}"
+    convert_params_dict_to_test_config_proto
+    # Restore the original value of params_dict:
+    eval params_dict="${params_dict_original_value}"
+  done
+}
+
+################################################################################
+# Updates params_dict with key-value pairs parsed from a configuration string.
+# Arguments:
+#   Colon-separated list of key-value pairs representing the test parameters.
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function parse_params_dict_from_config_string() {
+  # Read the config string into an array, with an extra element at the end to
+  # hold the superfluous newline that gets produced by the '<<<' operator:
+  local parts
+  readarray -d ':' -t parts <<< "$1:"
+  # Delete the last array element that holds the newline:
+  unset parts[-1]
+
+  local part
+  for part in "${parts[@]}"; do
+    local -a key_value
+    readarray -d = -t key_value < <(echo -n "${part}")
+    if [[ ${#key_value[@]} == 2 ]]; then
+      params_dict[${key_value[0]}]="${key_value[1]}"
+    else
+      local possible_protocol="${part}_protocol_driver_setup"
+      local possible_pattern="${part}_traffic_pattern_setup"
+      if declare -F "${possible_protocol}" > /dev/null ; then
+        params_dict[protocol_driver]="${part}"
+      elif declare -F "${possible_pattern}" > /dev/null ; then
+        params_dict[traffic_pattern]="${part}"
+      else
+        log_stderr "Unrecognized configuration component: '${part}' in '$1'"
+        exit 11
+      fi
+    fi
+  done
+}
+
+################################################################################
+# Invokes the traffic pattern and protocol driver helper functions to finalize
+# the contents of params_dict, converts params_dict to a test config proto,
+# and adds it to the accumulated test sequence.
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+#   test_names (array)
+#   test_sequence_protos (associative array)
+################################################################################
+function convert_params_dict_to_test_config_proto() {
+  local -r protocol_driver="${params_dict[protocol_driver]:-grpc}"
+  local -r traffic_pattern="${params_dict[traffic_pattern]}"
+  # Invoke the per-traffic-pattern and per-protocol-driver helper functions
+  # to finalize the params_dict:
+  "${protocol_driver}_protocol_driver_setup"
+  "${traffic_pattern}_traffic_pattern_setup"
+
+  # Add the new test config to the set of test configs:
+  local testname="${params_dict[test_name]}"
+  local test_proto="$(format_test_proto)"
+
+  # Check for the same test name being reused with a different definition:
+  if [[ -v test_sequence_protos[${testname}] ]]; then
+    local diff_text
+    diff_text=$(diff -u <(echo "${test_sequence_protos[${testname}]}") \
+                        <(echo "${test_proto}") ) || {
+      log_stderr "Test name '${testname}' was re-used with a new definition."
+      log_stderr "This may be due to a misspelled or mismatched parameter."
+      log_stderr
+      log_stderr "The differences between the definitions are:"
+      log_stderr "${diff_text}"
+      exit 12
+    }
+    log_stderr "Warning: there seems to be multiple copies of the same test" \
+               "with name '${testname}' in this sequence."
+    log_stderr "This may be due to a misspelled or mismatched parameter."
+  fi
+
+  test_names+=("${testname}")
+  test_sequence_protos[${testname}]="${test_proto}"
+}
+
+################################################################################
+# Convert key-value pairs from params_dict into a test config protobuff.
+# Arguments:
+#   None
+# Inherits:
+#   params_dict (associative array)
+# Outputs:
+#   A textformat protocol buffer representing the contents of params_dict.
+################################################################################
+function format_test_proto() {
+  echo "tests {"
+  local keys
+  # Gather the keys in sorted order:
+  readarray -td '' keys < <(printf '%s\0' "${!params_dict[@]}" | /bin/sort -Vz)
+  local key
+  for key in "${keys[@]}"; do
+    # Skip the special cases of proto contents that are copied verbatim:
+    case "${key}" in
+      protocol_driver_options_proto) ;;
+      traffic_pattern_options_proto) ;;
+      *)
+        local quoted_key="$(single_quote_string "${key}")"
+        local quoted_val="$(single_quote_string "${params_dict[${key}]}")"
+        echo "  attributes: { key: ${quoted_key} value: ${quoted_val} }"
+        ;;
+    esac
+  done
+  echo "${params_dict[protocol_driver_options_proto]}"
+  echo "${params_dict[traffic_pattern_options_proto]}"
+  echo "}"
+}
+
+################################################################################
+# Place single quotes around a string, while escaping any single quotes inside
+# the string.
+# Arguments:
+#   The string to quote.
+# Output:
+#   (stdout) The quoted string.
+################################################################################
+function single_quote_string() {
+  echo -n \'
+  echo -n "$1" | sed "s/'/\\\'/g"
+  echo -n \'
+}
+
+################################################################################
+# Save test protos to individual files, and if there is more than one test,
+# then save all tests into a single combined file as well. The single test
+# files can be sorted by creation timestamp to execute them in the same order
+# as the combined test. (When running tests, order often matters!)
+# Arguments:
+#   None
+# Inherits:
+#   CONFIG_LABEL_PREFIX
+#   INVOCATION
+#   OUTPUT_DIR
+#   test_names (array)
+#   test_sequence_protos (associative array)
+# Outputs:
+#   (stderr) The names of the output files.
+################################################################################
+function save_test_protos() {
+  pushd "${OUTPUT_DIR}" > /dev/null
+  local test_name
+  for test_name in "${test_names[@]}"; do
+    local test_file="${CONFIG_LABEL_PREFIX}${test_name}.config"
+    rm -f "${test_file}"
+    echo "# produced by $0 ${INVOCATION}" > "${test_file}"
+    echo "${test_sequence_protos[${test_name}]}" >> "${test_file}"
+    log_stderr "Individual test config saved in ${test_file}"
+    # Allow the files to be sorted by creation time even on systems
+    # with aggressive metadata caching:
+    sync "${test_file}"
+  done
+
+  if [[ ${#test_sequence_protos[@]} -gt 1 ]]; then
+    local test_sequence_file="${CONFIG_LABEL_PREFIX}test_sequence.config"
+    rm -f "${test_sequence_file}"
+    echo "# produced by $0 ${INVOCATION}" > "${test_sequence_file}"
+    for test_name in "${test_names[@]}"; do
+      echo "${test_sequence_protos[${test_name}]}" >> "${test_sequence_file}"
+    done
+    log_stderr "Combined test config saved in ${test_sequence_file}"
+  fi
+  popd > /dev/null
+}
+
+################################################################################
+# Loops over all defined tests and attempts to run any tests that have not
+# already been run. Saves tests results in ${OUTPUT_DIR}.
+# Arguments:
+#   None
+# Inherits:
+#   OUTPUT_DIR
+#   test_names (array)
+#   test_sequence_protos (associative array)
+################################################################################
+function run_all_tests() {
+  local DISTBENCH=distbench
+  local -r RELPATH="../bazel-bin/distbench"
+  which "${DISTBENCH}" > /dev/null ||
+    DISTBENCH="$(dirname "$(which $0)")/${RELPATH}"
+  which "${DISTBENCH}" > /dev/null || {
+    log_stderr "Could not locate the 'distbench' binary needed to run tests."
+    log_stderr "(Tried 'distbench' and '${DISTBENCH}')"
+    log_stderr 'Make sure distbench is in your $PATH, or has been built in-tree'
+    exit 13
+  }
+
+  local test_name
+  for test_name in "${test_names[@]}"; do
+    local OUTPUT_FILE="${OUTPUT_DIR}/${CONFIG_LABEL_PREFIX}${test_name}.pb"
+    local TEST_SEQUENCE_PROTO="${test_sequence_protos[${test_name}]}"
+    maybe_run_test_sequence
+  done
+}
+
+################################################################################
+# Runs a single test if it has not already been run, and compresses the output.
+# Arguments:
+#   None
+# Inherits:
+#   DISTBENCH
+#   DISTBENCH_TEST_SEQUENCER
+#   OUTPUT_FILE
+#   TEST_SEQUENCE_PROTO
+# Outputs:
+#   (stderr) Status about the test being executed and the output file.
+################################################################################
+function maybe_run_test_sequence() {
+  if [[ -e "${OUTPUT_FILE}".gz ]]; then
+    log_stderr "File ${OUTPUT_FILE}.gz already exists; skipping duplicate run."
+    return
+  fi
+  log_stderr "Trying to produce ${OUTPUT_FILE}."
+  log_stderr "Starting at $(date)."
+  "${DISTBENCH}" run_tests \
+                 --test_sequencer="${DISTBENCH_TEST_SEQUENCER}" \
+                 --outfile="${OUTPUT_FILE}" \
+                 --binary_output \
+                 <<< "${TEST_SEQUENCE_PROTO}"
+
+  pigz "${OUTPUT_FILE}"
+}
+
+################################################################################
+# Insert a parameter into params_dict with a default value if it is not already
+# present. Optionally track the set of parameters in order to help generate
+# usage info automatically.
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+#   usage_params (optional array)
+################################################################################
+function set_parameter_default() {
+  if declare -p usage_params &> /dev/null; then
+    # Save the name of the parameter to help automatically generate usage info:
+    usage_params+=("$1")
+  fi
+  if [[ ! -v params_dict[$1] ]]; then
+    params_dict[$1]="$2"
+  fi
+}
+
+################################################################################
+# Setup the test config proto for the grpc protocol driver:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function grpc_protocol_driver_setup() {
+  params_dict[protocol_alias]="grpc"
+  params_dict[protocol_driver]="grpc"
+  params_dict[protocol_driver_options_proto]="  default_protocol: 'grpc'
+  protocol_driver_options {
+    name: 'common_options'
+  }"
+}
+
+################################################################################
+# Setup the test config proto for the clique traffic pattern:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function clique_traffic_pattern_setup() {
+  local -i TEST_DURATION="${params_dict[test_duration]}"
+  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+
+  set_parameter_default rpc_interval_us 16000
+  set_parameter_default node_count 10
+  set_parameter_default synchronization_mode sync_burst
+  local RPC_INTERVAL_US="${params_dict[rpc_interval_us]}"
+  local NODE_COUNT="${params_dict[node_count]}"
+  validate_integer 1 RPC_INTERVAL_US NODE_COUNT
+  local SYNCHRONIZATION_MODE="${params_dict[synchronization_mode]}"
+  local TRAFFIC_ALIAS="clique_"
+  TRAFFIC_ALIAS+="${SYNCHRONIZATION_MODE}_${NODE_COUNT}x${RPC_INTERVAL_US}"
+  local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
+  params_dict[traffic_pattern]="clique"
+  params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
+  params_dict[test_name]="${TEST_NAME}"
+  params_dict[traffic_pattern_options_proto]="\
+  name: '${TEST_NAME}'
+  services {
+    name: 'clique'
+    count: ${NODE_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  action_lists {
+    name: 'clique'
+    action_names: 'clique_queries'
+  }
+  actions {
+    name: 'clique_queries'
+    iterations {
+      max_duration_us: ${TEST_DURATION}000000
+      open_loop_interval_ns: ${RPC_INTERVAL_US}000
+      open_loop_interval_distribution: '${SYNCHRONIZATION_MODE}'
+    }
+    rpc_name: 'clique_query'
+  }
+  payload_descriptions {
+    name: 'request_payload'
+    size: 1024
+  }
+  payload_descriptions {
+    name: 'response_payload'
+    size: 1024
+  }
+  rpc_descriptions {
+    name: 'clique_query'
+    client: 'clique'
+    server: 'clique'
+    fanout_filter: 'all'
+    request_payload_name: 'request_payload'
+    response_payload_name: 'response_payload'
+  }
+  action_lists {
+    name: 'clique_query'
+    # no actions, NOP
+  }"
+}
+
+################################################################################
+# Setup the test config proto for the client_server traffic pattern:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function client_server_traffic_pattern_setup() {
+  local -i TEST_DURATION="${params_dict[test_duration]}"
+  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+
+  set_parameter_default parallel_queries 100
+  set_parameter_default client_count 1
+  set_parameter_default server_count 1
+  local PARALLEL_QUERIES="${params_dict[parallel_queries]}"
+  local CLIENT_COUNT="${params_dict[client_count]}"
+  local SERVER_COUNT="${params_dict[server_count]}"
+  validate_integer 1 PARALLEL_QUERIES CLIENT_COUNT SERVER_COUNT
+  local TRAFFIC_ALIAS="client_server_"
+  TRAFFIC_ALIAS+="${CLIENT_COUNT}x${SERVER_COUNT}x${PARALLEL_QUERIES}"
+  local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
+  params_dict[traffic_pattern]="client_server"
+  params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
+  params_dict[test_name]="${TEST_NAME}"
+  params_dict[traffic_pattern_options_proto]="\
+  name: '${TEST_NAME}'
+  services {
+    name: 'client'
+    count: ${CLIENT_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  services {
+    name: 'server'
+    count: ${SERVER_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  rpc_descriptions {
+    name: 'client_server_rpc'
+    client: 'client'
+    server: 'server'
+    request_payload_name: 'request_payload'
+    response_payload_name: 'response_payload'
+  }
+  payload_descriptions {
+    name: 'request_payload'
+    size: 196
+  }
+  payload_descriptions {
+    name: 'response_payload'
+    size: 262144
+  }
+  action_lists {
+    name: 'client'
+    action_names: 'run_queries'
+  }
+  actions {
+    name: 'run_queries'
+    rpc_name: 'client_server_rpc'
+    iterations {
+      max_duration_us: ${TEST_DURATION}000000
+      max_parallel_iterations: ${PARALLEL_QUERIES}
+    }
+  }
+  action_lists {
+    name: 'client_server_rpc'
+    # No action on the server; just send the response
+  }"
+}
+
+################################################################################
+# Setup the test config proto for the tripartite traffic pattern:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function tripartite_traffic_pattern_setup() {
+  local -i TEST_DURATION="${params_dict[test_duration]}"
+  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+
+  set_parameter_default client_count 1
+  set_parameter_default index_count 1
+  set_parameter_default data_count 10
+  local CLIENT_COUNT="${params_dict[client_count]}"
+  local INDEX_COUNT="${params_dict[index_count]}"
+  local DATA_COUNT="${params_dict[data_count]}"
+  validate_integer 1 CLIENT_COUNT INDEX_COUNT DATA_COUNT
+  local TRAFFIC_ALIAS="tripartite_${CLIENT_COUNT}x${INDEX_COUNT}x${DATA_COUNT}"
+  local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
+  params_dict[traffic_pattern]="tripartite"
+  params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
+  params_dict[test_name]="${TEST_NAME}"
+  params_dict[traffic_pattern_options_proto]="\
+  name: '${TEST_NAME}'
+    services {
+    name: 'client'
+    count: ${CLIENT_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  services {
+    name: 'index'
+    count: ${INDEX_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  services {
+    name: 'data'
+    count: ${DATA_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  rpc_descriptions {
+    name: 'client_index_rpc'
+    client: 'client'
+    server: 'index'
+    request_payload_name: 'index_request_payload'
+    response_payload_name: 'index_response_payload'
+  }
+  rpc_descriptions {
+    name: 'client_data_rpc'
+    client: 'client'
+    server: 'data'
+    request_payload_name: 'data_request_payload'
+    response_payload_name: 'data_response_payload'
+  }
+  payload_descriptions {
+    name: 'index_request_payload'
+    size: 196
+  }
+  payload_descriptions {
+    name: 'index_response_payload'
+    size: 1024
+  }
+  action_lists {
+    name: 'client'
+    action_names: 'client_do_many_queries'
+  }
+  actions {
+    name: 'client_do_many_queries'
+    iterations {
+      max_duration_us: ${TEST_DURATION}000000
+    }
+    action_list_name: 'client_do_one_query'
+  }
+  action_lists {
+    name: 'client_do_one_query'
+    action_names: 'client_queryindex'
+    action_names: 'client_querydata'
+  }
+  actions {
+    name: 'client_queryindex'
+    rpc_name: 'client_index_rpc'
+  }
+  action_lists {
+    name: 'client_index_rpc'
+    # No action on the index server; just send the response
+  }
+  action_lists {
+    name: 'client_data_rpc'
+    # No action on the data server; just send the response
+  }
+  actions {
+    name: 'client_querydata'
+    rpc_name: 'client_data_rpc'
+    dependencies: 'client_queryindex'
+  }
+  payload_descriptions {
+    name: 'data_request_payload'
+    size: 64
+  }
+  payload_descriptions {
+    name: 'data_response_payload'
+    size: 512
+  }"
+}
+
+################################################################################
+# Setup the test config proto for the multi_level_rpc traffic pattern:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function multi_level_rpc_traffic_pattern_setup() {
+  local -i TEST_DURATION="${params_dict[test_duration]}"
+  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+
+  set_parameter_default qps 10000
+  set_parameter_default root_count 4
+  set_parameter_default leaf_count 20
+  local QPS="${params_dict[qps]}"
+  local ROOT_COUNT="${params_dict[root_count]}"
+  local LEAF_COUNT="${params_dict[leaf_count]}"
+  validate_integer 1 QPS ROOT_COUNT LEAF_COUNT
+  local TRAFFIC_ALIAS="multi_level_rpc_${ROOT_COUNT}x${LEAF_COUNT}x${QPS}"
+  local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
+  params_dict[traffic_pattern]="multi_level_rpc"
+  params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
+  params_dict[test_name]="${TEST_NAME}"
+  params_dict[traffic_pattern_options_proto]="\
+  name: '${TEST_NAME}'
+  services {
+    name: 'load_balancer'
+    count: 1
+    protocol_driver_options_name: 'common_options'
+  }
+  services {
+    name: 'root'
+    count: ${ROOT_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  services {
+    name: 'leaf'
+    count: ${LEAF_COUNT}
+    protocol_driver_options_name: 'common_options'
+  }
+  action_lists {
+    name: 'load_balancer'
+    action_names: 'establish_connections'
+    action_names: 'do_closed_loop_root_queries'
+    max_rpc_samples: 10000000
+  }
+  actions {
+    name: 'establish_connections'
+    iterations {
+      max_iteration_count: ${ROOT_COUNT}
+    }
+    rpc_name: 'root_query'
+  }
+  actions {
+    name: 'do_closed_loop_root_queries'
+    iterations {
+      max_duration_us: ${TEST_DURATION}000000
+      open_loop_interval_ns: $(( 1000000000 / QPS ))
+    }
+    rpc_name: 'root_query'
+    dependencies: 'establish_connections'
+  }
+  rpc_descriptions {
+    name: 'root_query'
+    client: 'load_balancer'
+    server: 'root'
+    fanout_filter: 'round_robin'
+    request_payload_name: 'root_request_payload'
+    response_payload_name: 'root_response_payload'
+  }
+  action_lists {
+    name: 'root_query'
+    action_names: 'root_query_fanout'
+    max_rpc_samples: 256
+  }
+  actions {
+    name: 'root_query_fanout'
+    rpc_name: 'leaf_query'
+  }
+  rpc_descriptions {
+    name: 'leaf_query'
+    client: 'root'
+    server: 'leaf'
+    fanout_filter: 'all'
+    request_payload_name: 'leaf_request_payload'
+    response_payload_name: 'leaf_response_payload'
+  }
+  action_lists {
+    name: 'leaf_query'
+    # no actions, NOP
+  }
+  payload_descriptions {
+    name: 'root_request_payload'
+    size: 1024
+  }
+  payload_descriptions {
+    name: 'root_response_payload'
+    size: 1024
+  }
+  payload_descriptions {
+    name: 'leaf_request_payload'
+    size: 1024
+  }
+  payload_descriptions {
+    name: 'leaf_response_payload'
+    size: 1024
+  }"
+}
+
+# Invoke the main routine now that all the helper functions are defined:
+main "$@"
