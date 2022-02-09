@@ -14,11 +14,11 @@ First two services are implemented and named client and server.
 tests {
   services {
     name: "client"
-    count: $CLIENT_COUNT
+    count: ${CLIENT_COUNT}
   }
   services {
     name: "server"
-    count: $SERVER_COUNT
+    count: ${SERVER_COUNT}
   }
 ```
 
@@ -88,61 +88,101 @@ bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --p
 #(On another server node)
 bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=9999 &
 
-#(On the client)
-./client_server_rpc_pattern.sh -s first_server_hostname:10000 -c 1 -i 1
+#(On the client), to inspect the configuration
+../test_builder/test_builder client_server:client_count=1:server_count=1:parallel_queries=100
+#(On the client), to run the test configuration
+../test_builder/test_builder client_server:client_count=1:server_count=1:parallel_queries=100 -s first_server_hostname:10000 -o result_folder
 ```
 
-Alternatively to simply run on localhost:
+Alternatively to simply run on a single development system (localhost):
 ```bash
 ~/distbench$ ./start_distbench_localhost.sh -n 2
 # CTRL-Z
 ~/distbench$ bg
-~/distbench$ cd workloads
-~/distbench/workloads$ ./simple_client_server_rpc_pattern.sh
+~/distbench$ mkdir result_folder
+~/distbench$ ./test_builder/test_builder client_server:client_count=1:server_count=1:parallel_queries=100 -s localhost:10000 -o result_folder
 ```
 The test should take a couple of seconds to run and you will obtain the
-following output:
+following summary output:
 
+```
+Individual test config saved in client_server_1x1x100-grpc.config
+Trying to produce x3/client_server_1x1x100-grpc.pb.
+Starting at Tue Feb  8 06:42:33 PM PST 2022.
+Test summary:
+RPC latency summary:
+  client_server_rpc: N: 141510 min: 5402961ns median: 19215859ns 90%: 30860901ns 99%: 39562988ns 99.9%: 53808005ns max: 78776286ns
+Communication summary:
+  client/0 -> server/0: RPCs: 141510 (4.72 kQPS) Request: 0.9 MiB/s Response: 1178.8 MiB/s
+Instance summary:
+  client/0: Tx: 0.9 MiB/s, Rx:1178.8 MiB/s
+  server/0: Tx: 1178.8 MiB/s, Rx:0.9 MiB/s
+Global summary:
+  Total time: 30.012s
+  Total Tx: 35403 MiB (1179.6 MiB/s), Total Nb RPCs: 141510 (4.72 kQPS)
+```
+
+In the `result_folder/`, you can find the tesst configuration as well as the
+a binary and compressed protobuf of the results. In clear text, the protobuf
+would something like:
 ```yaml
-connecting to localhost:10000
 test_results {
   traffic_config {
+    attributes: { key: 'client_count' value: '1' }
+    attributes: { key: 'config_label' value: 'client_server:client_count=1:server_count=1:parallel_queries=100' }
+    attributes: { key: 'parallel_queries' value: '100' }
+    attributes: { key: 'protocol_alias' value: 'grpc' }
+    attributes: { key: 'protocol_driver' value: 'grpc' }
+    attributes: { key: 'server_count' value: '1' }
+    attributes: { key: 'test_duration' value: '30' }
+    attributes: { key: 'test_name' value: 'client_server_1x1x100-grpc' }
+    attributes: { key: 'test_timeout' value: '90' }
+    attributes: { key: 'traffic_alias' value: 'client_server_1x1x100' }
+    attributes: { key: 'traffic_pattern' value: 'client_server' }
+    default_protocol: 'grpc'
+    protocol_driver_options {
+      name: 'common_options'
+    }
+    name: 'client_server_1x1x100-grpc'
     services {
-      name: "client"
+      name: 'client'
       count: 1
+      protocol_driver_options_name: 'common_options'
     }
     services {
-      name: "server"
+      name: 'server'
       count: 1
+      protocol_driver_options_name: 'common_options'
+    }
+    rpc_descriptions {
+      name: 'client_server_rpc'
+      client: 'client'
+      server: 'server'
+      request_payload_name: 'request_payload'
+      response_payload_name: 'response_payload'
     }
     payload_descriptions {
-      name: "request_payload"
+      name: 'request_payload'
       size: 196
     }
     payload_descriptions {
-      name: "response_payload"
+      name: 'response_payload'
       size: 262144
     }
-    rpc_descriptions {
-      name: "client_server_rpc"
-      client: "client"
-      server: "server"
-      request_payload_name: "request_payload"
-      response_payload_name: "response_payload"
+    action_lists {
+      name: 'client'
+      action_names: 'run_queries'
     }
     actions {
-      name: "run_queries"
+      name: 'run_queries'
+      rpc_name: 'client_server_rpc'
       iterations {
-        max_iteration_count: 100
+        max_duration_us: 30000000
+        max_parallel_iterations: 100
       }
-      rpc_name: "client_server_rpc"
     }
     action_lists {
-      name: "client"
-      action_names: "run_queries"
-    }
-    action_lists {
-      name: "client_server_rpc"
+      name: 'client_server_rpc'
     }
   }
   placement {
@@ -177,7 +217,7 @@ test_results {
                   start_timestamp_ns: 1622744047420305230
                   latency_ns: 721934
                 }
-                # x100
+                # Many, many more RPC traces.
               }
             }
           }
@@ -185,7 +225,18 @@ test_results {
       }
     }
   }
-  log_summary: "RPC latency summary:\nclient_server_rpc: N: 100 min: 66648ns median: 78499ns 90%: 139984ns 99%: 721934ns 99.9%: 721934ns max: 721934ns\n"
+  log_summary: "
+RPC latency summary:
+  client_server_rpc: N: 141510 min: 5402961ns median: 19215859ns 90%: 30860901ns 99%: 39562988ns 99.9%: 53808005ns max: 78776286ns
+Communication summary:
+  client/0 -> server/0: RPCs: 141510 (4.72 kQPS) Request: 0.9 MiB/s Response: 1178.8 MiB/s
+Instance summary:
+  client/0: Tx: 0.9 MiB/s, Rx:1178.8 MiB/s
+  server/0: Tx: 1178.8 MiB/s, Rx:0.9 MiB/s
+Global summary:
+  Total time: 30.012s
+  Total Tx: 35403 MiB (1179.6 MiB/s), Total Nb RPCs: 141510 (4.72 kQPS)
+"
 }
 ```
 
@@ -201,14 +252,8 @@ The results contain 4 sections:
    `successful_rpc_samples` in this section.
 4. `log_summary`: A concise summary of the RPC performance
 
-In our case the summary is as follows:
-```
-  log_summary: "RPC latency summary:
-  client_server_rpc: N: 100 min: 66648ns median: 78499ns 90%: 139984ns 99%: 721934ns 99.9%: 721934ns max: 721934ns
-"
-```
-
-Indicating that 100 rpc was performed (N) with a median latency of 78.5us.
+In this case , the `log_summary` indicates that 141510 rpcs were performed (N)
+with a median latency of 19ms.
 
 ## Multi-level RPC pattern
 
@@ -223,15 +268,17 @@ For this pattern,
 
 ### Implementation
 
-See `multi_level_rpc_pattern.sh` for the details.
+See the `multi_level_rpc_traffic_pattern_setup` function in
+[test\_builder source](../test_builder/test_builder) for the details.
 
 ```yaml
   rpc_descriptions {
-    name: "root_query"
-    client: "load_balancer"
-    server: "root"
-    fanout_filter: "round_robin"
-    tracing_interval: 2
+    name: 'root_query'
+    client: 'load_balancer'
+    server: 'root'
+    fanout_filter: 'round_robin'
+    request_payload_name: 'root_request_payload'
+    response_payload_name: 'root_response_payload'
   }
 ```
 The `load_balancer` will distribute the requests in a `round_robin` fashion.
@@ -243,17 +290,19 @@ queries across all the leaf servers (`fanout_filter: all`):
   action_lists {
     name: "root_query"
     action_names: "root/root_query_fanout"
+    max_rpc_samples: 256
   }
   actions {
     name: "root/root_query_fanout"
     rpc_name: "leaf_query"
   }
   rpc_descriptions {
-    name: "leaf_query"
-    client: "root"
-    server: "leaf"
-    fanout_filter: "all"
-    tracing_interval: 2
+    name: 'leaf_query'
+    client: 'root'
+    server: 'leaf'
+    fanout_filter: 'all'
+    request_payload_name: 'leaf_request_payload'
+    response_payload_name: 'leaf_response_payload'
   }
 ```
 
@@ -261,10 +310,8 @@ queries across all the leaf servers (`fanout_filter: all`):
 
 ```bash
 ~/distbench$ ./start_distbench_localhost.sh -n 6
-# CTRL-Z
-~/distbench$ bg
-~/distbench$ cd workloads
-~/distbench/workloads$ ./multi_level_rpc_pattern.sh
+# CTRL-Z (or switch to a different terminal)
+~/distbench$ ./test_builder/test_builder multi_level_rpc:leaf_count=3:root_count=2:qps=500 -s localhost:10000 -o result_folder/
 ```
 
 ## Clique RPC pattern
@@ -288,19 +335,29 @@ We target around 100 nodes for this benchmark.
 
 ```yaml
   actions {
-    name: "clique_queries"
+    name: 'clique_queries'
     iterations {
       max_duration_us: 10000000
       open_loop_interval_ns: 16000000
-      open_loop_interval_distribution: "sync_burst"
+      open_loop_interval_distribution: 'sync_burst'
     }
-    rpc_name: "clique_query"
+    rpc_name: 'clique_query'
+  }
+  payload_descriptions {
+    name: 'request_payload'
+    size: 1024
+  }
+  payload_descriptions {
+    name: 'response_payload'
+    size: 1024
   }
   rpc_descriptions {
-    name: "clique_query"
-    client: "clique"
-    server: "clique"
-    fanout_filter: "all"
+    name: 'clique_query'
+    client: 'clique'
+    server: 'clique'
+    fanout_filter: 'all'
+    request_payload_name: 'request_payload'
+    response_payload_name: 'response_payload'
   }
 ```
 
@@ -309,26 +366,54 @@ fashion (`sync_burst`). The test will run for 10s (`max_duration_us`).
 
 Each clique service will send the `clique_query` (`fanout_filter: "all"`).
 
+The burst across all nodes are synchronized (`sync\_burst`).
+
 ### Running
 
 ```bash
 ~/distbench$ ./start_distbench_localhost.sh -n 10
 # CTRL-Z
 ~/distbench$ bg
-~/distbench$ cd workloads
-~/distbench/workloads$ ./clique_rpc_pattern.sh -n 10
+~/distbench/workloads$ ./test_builder/test_builder clique -s localhost:10000 -o result_folder/
+
 ```
 
 Expected output:
 ```
-  log_summary: "RPC latency summary:
-    clique_query: N: 56250 min: 209506ns median: 708897ns 90%: 1273052ns 99%: 1626084ns 99.9%: 2297228ns max: 5399917ns
-  "
-}
-Rpc succeeded with OK status
+Individual test config saved in clique_sync_burst_10x16000-grpc.config
+Trying to produce result_folder//clique_sync_burst_10x16000-grpc.pb.
+Starting at Tue Feb  8 07:22:16 PM PST 2022.
+Test summary:
+RPC latency summary:
+  clique_query: N: 168750 min: 107669ns median: 1123240ns 90%: 3337945ns 99%: 369610494ns 99.9%: 747276205ns max: 848928586ns
+Communication summary:
+  clique/0 -> clique/1: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+  clique/0 -> clique/2: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+  clique/0 -> clique/3: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+  clique/0 -> clique/4: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+  ...
+  clique/9 -> clique/5: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+  clique/9 -> clique/6: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+  clique/9 -> clique/7: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+  clique/9 -> clique/8: RPCs: 1875 (0.06 kQPS) Request: 0.1 MiB/s Response: 0.1 MiB/s
+Instance summary:
+  clique/0: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/1: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/2: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/3: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/4: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/5: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/6: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/7: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/8: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+  clique/9: Tx: 1.1 MiB/s, Rx:1.1 MiB/s
+Global summary:
+  Total time: 29.985s
+  Total Tx: 329 MiB (11.0 MiB/s), Total Nb RPCs: 168750 (5.63 kQPS)
+
 ```
 
-We have 56250 RPCs (The test run for 625 cycles -10000/16- and there is 10\*9
+We have 168750 RPCs (The test run for 1875 cycles -30s/16ms- and there is 10\*9
 RPCs per cycle)
 
 ## Tripartite RPC pattern
