@@ -31,6 +31,8 @@ Use Distbench to:
 - [Distbench Traffic Pattern - Format](docs/distbench-test-format.md): Defined
 - [Distbench Command Line Arguments](docs/command-line.md): Overview
   of the Distbench command line arguments.
+- [Distbench Test Builder](test_builder/README.md): Tool to build and execute
+  parametric distbench test sequences.
 - [Distbench FAQs](docs/faq.md)
 
 For contributors, make sure you also consult the following:
