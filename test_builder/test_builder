@@ -689,11 +689,23 @@ function set_parameter_default() {
 #   params_dict (associative array)
 ################################################################################
 function grpc_protocol_driver_setup() {
-  params_dict[protocol_alias]="grpc"
+  set_parameter_default client_type "completion_queue"
+  set_parameter_default server_type "normal"
+  local CLIENT_TYPE="${params_dict[client_type]}"
+  local SERVER_TYPE="${params_dict[server_type]}"
+  params_dict[protocol_alias]="grpc_${CLIENT_TYPE}_${SERVER_TYPE}"
   params_dict[protocol_driver]="grpc"
   params_dict[protocol_driver_options_proto]="  default_protocol: 'grpc'
   protocol_driver_options {
     name: 'common_options'
+    server_settings {
+      name: 'server_type'
+      string_value: '${SERVER_TYPE}'
+    }
+    server_settings {
+      name: 'client_type'
+      string_value: '${CLIENT_TYPE}'
+    }
   }"
 }
 
