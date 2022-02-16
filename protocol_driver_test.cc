@@ -231,6 +231,13 @@ void AddServerStringOptionTo(ProtocolDriverOptions &pdo,
   ns->set_string_value(value);
 }
 
+void AddClientStringOptionTo(ProtocolDriverOptions &pdo,
+                             std::string option_name, std::string value){
+  auto* ns = pdo.add_client_settings();
+  ns->set_name(option_name);
+  ns->set_string_value(value);
+}
+
 ProtocolDriverOptions GrpcOptions() {
   ProtocolDriverOptions ret;
   ret.set_protocol_name("grpc");
@@ -240,7 +247,7 @@ ProtocolDriverOptions GrpcOptions() {
 ProtocolDriverOptions GrpcClientCQServerCBOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
-  AddServerStringOptionTo(pdo, "ClientType", "completion_queue");
+  AddClientStringOptionTo(pdo, "ClientType", "completion_queue");
   AddServerStringOptionTo(pdo, "ServerType", "async_callback");
   return pdo;
 }
@@ -248,7 +255,7 @@ ProtocolDriverOptions GrpcClientCQServerCBOptions() {
 ProtocolDriverOptions GrpcClientCBServerNormalOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
-  AddServerStringOptionTo(pdo, "ClientType", "async_callback");
+  AddClientStringOptionTo(pdo, "ClientType", "async_callback");
   AddServerStringOptionTo(pdo, "ServerType", "normal");
   return pdo;
 }

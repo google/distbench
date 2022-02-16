@@ -302,10 +302,10 @@ struct rusage DoGetRusage() {
 }
 
 std::string GetNamedSettingString(
-    const distbench::ProtocolDriverOptions &opts,
+    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting> &opts,
     absl::string_view setting_name,
     std::string default_value) {
-  for (const auto &setting : opts.server_settings()) {
+  for (const auto &setting : opts) {
     if (!setting.has_name()) {
       LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
       continue;

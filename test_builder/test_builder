@@ -702,7 +702,7 @@ function grpc_protocol_driver_setup() {
       name: 'server_type'
       string_value: '${SERVER_TYPE}'
     }
-    server_settings {
+    client_settings {
       name: 'client_type'
       string_value: '${CLIENT_TYPE}'
     }

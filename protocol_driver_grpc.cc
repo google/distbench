@@ -237,7 +237,8 @@ absl::Status ProtocolDriverGrpc::Initialize(
 absl::Status ProtocolDriverGrpc::InitializeClient(
     const ProtocolDriverOptions &pd_opts) {
   // Build the client
-  std::string client_type = GetNamedSettingString(pd_opts, "client_type",
+  std::string client_type = GetNamedSettingString(pd_opts.client_settings(),
+                                                  "client_type",
                                                   "completion_queue");
   if (client_type == "completion_queue")
     client_ = std::unique_ptr<ProtocolDriverClient>(
@@ -247,13 +248,15 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
         new ProtocolDriverClientGrpcAsyncCallback());
   else
     return absl::InvalidArgumentError("Invalid GRPC client_type");
+  LOG(INFO) << "Grpc Client Type: " << client_type;
   return client_->InitializeClient(pd_opts);
 }
 
 absl::Status ProtocolDriverGrpc::InitializeServer(
     const ProtocolDriverOptions &pd_opts, int *port) {
   // Build the server
-  std::string server_type = GetNamedSettingString(pd_opts, "server_type",
+  std::string server_type = GetNamedSettingString(pd_opts.server_settings(),
+                                                  "server_type",
                                                   "normal");
   if (server_type == "normal")
     server_ = std::unique_ptr<ProtocolDriverServer>(
@@ -263,6 +266,7 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
         new ProtocolDriverServerGrpcAsyncCallback());
   else
     return absl::InvalidArgumentError("Invalid GRPC server_type");
+  LOG(INFO) << "Grpc Server Type: " << server_type;
   return server_->InitializeServer(pd_opts, port);
 }
 
