@@ -138,6 +138,17 @@ Configure the protocol driver options. It can be refered by the service message.
   See [GRPC Options](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html)
   for applicable options.
 
+#### grpc Protocol Driver settings
+The grpc protocol driver has two `server_settings` options to configure the type
+of client/server:
+- `client_type`: `completion_queue` (uses a completion thread) or
+  `async_callback` (grpc performs a callback to notify the completion).
+- `server_type`: `normal` or `async_callback` (create a thread and use a reactor
+  to respond to incoming RPCs).
+
+The `grpc_async_callback` behaves as a grpc with `client_type=async_callback`
+and `server_type=async_callback`.
+
 ### Misc settings
 
 - `default_protocol`: Select the protocol driver to use (by default
