@@ -597,7 +597,7 @@ tests {
       name: "server_type"
       string_value: "normal"
     }
-    server_settings {
+    client_settings {
       name: "client_type"
       string_value: "async_callback"
     }
@@ -665,7 +665,7 @@ tests {
       name: "server_type"
       string_value: "async_callback"
     }
-    server_settings {
+    client_settings {
       name: "client_type"
       string_value: "completion_queue"
     }
