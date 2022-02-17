@@ -247,23 +247,23 @@ ProtocolDriverOptions GrpcOptions() {
 ProtocolDriverOptions GrpcClientCQServerCBOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
-  AddClientStringOptionTo(pdo, "ClientType", "completion_queue");
-  AddServerStringOptionTo(pdo, "ServerType", "async_callback");
+  AddClientStringOptionTo(pdo, "client_type", "polling");
+  AddServerStringOptionTo(pdo, "server_type", "handoff");
   return pdo;
 }
 
 ProtocolDriverOptions GrpcClientCBServerNormalOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
-  AddClientStringOptionTo(pdo, "ClientType", "async_callback");
-  AddServerStringOptionTo(pdo, "ServerType", "normal");
+  AddClientStringOptionTo(pdo, "client_type", "callback");
+  AddServerStringOptionTo(pdo, "server_type", "inline");
   return pdo;
 }
 
 ProtocolDriverOptions GrpcCallbackOptions() {
-  ProtocolDriverOptions ret;
-  ret.set_protocol_name("grpc_async_callback");
-  return ret;
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc_async_callback");
+  return pdo;
 }
 
 void BM_GrpcEcho(benchmark::State &state) {

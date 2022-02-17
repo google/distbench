@@ -239,15 +239,16 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
   // Build the client
   std::string client_type = GetNamedSettingString(pd_opts.client_settings(),
                                                   "client_type",
-                                                  "completion_queue");
-  if (client_type == "completion_queue")
+                                                  "polling");
+  if (client_type == "polling")
     client_ = std::unique_ptr<ProtocolDriverClient>(
         new ProtocolDriverClientGrpc());
-  else if (client_type == "async_callback")
+  else if (client_type == "callback")
     client_ = std::unique_ptr<ProtocolDriverClient>(
         new ProtocolDriverClientGrpcAsyncCallback());
   else
-    return absl::InvalidArgumentError("Invalid GRPC client_type");
+    return absl::InvalidArgumentError(
+                                      absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
   LOG(INFO) << "Grpc Client Type: " << client_type;
   return client_->InitializeClient(pd_opts);
 }
@@ -257,11 +258,11 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
   // Build the server
   std::string server_type = GetNamedSettingString(pd_opts.server_settings(),
                                                   "server_type",
-                                                  "normal");
-  if (server_type == "normal")
+                                                  "inline");
+  if (server_type == "inline")
     server_ = std::unique_ptr<ProtocolDriverServer>(
         new ProtocolDriverServerGrpc());
-  else if (server_type == "async_callback")
+  else if (server_type == "handoff")
     server_ = std::unique_ptr<ProtocolDriverServer>(
         new ProtocolDriverServerGrpcAsyncCallback());
   else

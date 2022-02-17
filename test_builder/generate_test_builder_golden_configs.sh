@@ -10,11 +10,9 @@ test_builder -o . clique:test_duration=45
 
 test_builder -o . clique:grpc
 
-test_builder -o . clique:grpc:client_type=async_callback:\
-server_type=async_callback
-test_builder -o . clique:grpc:client_type=async_callback:server_type=normal
-test_builder -o . clique:grpc:client_type=completion_queue:\
-server_type=async_callback
+test_builder -o . clique:grpc:client_type=callback:server_type=handoff
+test_builder -o . clique:grpc:client_type=callback:server_type=inline
+test_builder -o . clique:grpc:client_type=polling:server_type=handoff
 
 test_builder -o . clique:rpc_interval_us=2000
 test_builder -o . clique:node_count=123

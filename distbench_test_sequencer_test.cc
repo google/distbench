@@ -595,11 +595,11 @@ tests {
     netdev_name: "lo"
     server_settings {
       name: "server_type"
-      string_value: "normal"
+      string_value: "inline"
     }
     client_settings {
       name: "client_type"
-      string_value: "async_callback"
+      string_value: "callback"
     }
   }
 })";
@@ -663,11 +663,11 @@ tests {
     netdev_name: "lo"
     server_settings {
       name: "server_type"
-      string_value: "async_callback"
+      string_value: "handoff"
     }
     client_settings {
       name: "client_type"
-      string_value: "completion_queue"
+      string_value: "polling"
     }
   }
 })";
