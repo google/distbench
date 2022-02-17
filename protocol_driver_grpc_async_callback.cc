@@ -20,8 +20,12 @@
 namespace distbench {
 
 // Client =====================================================================
-ProtocolDriverClientGrpcAsyncCallback::ProtocolDriverClientGrpcAsyncCallback() {}
-ProtocolDriverClientGrpcAsyncCallback::~ProtocolDriverClientGrpcAsyncCallback() {
+ProtocolDriverClientGrpcAsyncCallback::ProtocolDriverClientGrpcAsyncCallback()
+{
+}
+
+ProtocolDriverClientGrpcAsyncCallback::~ProtocolDriverClientGrpcAsyncCallback()
+{
   ShutdownClient();
 }
 
@@ -49,7 +53,8 @@ absl::Status ProtocolDriverClientGrpcAsyncCallback::HandleConnect(
   return absl::OkStatus();
 }
 
-std::vector<TransportStat> ProtocolDriverClientGrpcAsyncCallback::GetTransportStats() {
+std::vector<TransportStat>
+    ProtocolDriverClientGrpcAsyncCallback::GetTransportStats() {
   return {};
 }
 
@@ -188,7 +193,8 @@ void ProtocolDriverServerGrpcAsyncCallback::SetHandler(
       ->SetHandler(handler);
 }
 
-absl::StatusOr<std::string> ProtocolDriverServerGrpcAsyncCallback::HandlePreConnect(
+absl::StatusOr<std::string>
+    ProtocolDriverServerGrpcAsyncCallback::HandlePreConnect(
       std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
   addr.set_ip_address(server_ip_address_.ip());
@@ -208,7 +214,8 @@ void ProtocolDriverServerGrpcAsyncCallback::ShutdownServer() {
     server_->Shutdown();
 }
 
-std::vector<TransportStat> ProtocolDriverServerGrpcAsyncCallback::GetTransportStats() {
+std::vector<TransportStat>
+    ProtocolDriverServerGrpcAsyncCallback::GetTransportStats() {
   return {};
 }
 
@@ -288,7 +295,8 @@ void ProtocolDriverGrpcAsyncCallback::HandleConnectFailure(
   server_->HandleConnectFailure(local_connection_info);
 }
 
-std::vector<TransportStat> ProtocolDriverGrpcAsyncCallback::GetTransportStats() {
+std::vector<TransportStat> ProtocolDriverGrpcAsyncCallback::GetTransportStats()
+{
   std::vector <TransportStat> stats = client_->GetTransportStats();
   std::vector <TransportStat> stats_server = server_->GetTransportStats();
   std::move(stats_server.begin(), stats_server.end(),

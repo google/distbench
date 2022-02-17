@@ -248,7 +248,7 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
         new ProtocolDriverClientGrpcAsyncCallback());
   else
     return absl::InvalidArgumentError(
-                                      absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
+        absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
   LOG(INFO) << "Grpc Client Type: " << client_type;
   return client_->InitializeClient(pd_opts);
 }
