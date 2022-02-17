@@ -102,8 +102,10 @@ void ProtocolDriverClientGrpc::RpcCompletionThread() {
             << "RPC failed with status: " << finished_rpc->status;
       }
       finished_rpc->done_callback();
-      --pending_rpcs_;
+
+      // Free before allowing the shutdown of the client
       delete finished_rpc;
+      --pending_rpcs_;
     }
   }
 }

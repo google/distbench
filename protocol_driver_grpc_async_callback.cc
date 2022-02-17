@@ -93,8 +93,10 @@ void ProtocolDriverClientGrpcAsyncCallback::InitiateRpc(
       LOG_EVERY_N(ERROR, 1000) << "RPC failed with status: " << status;
     }
     new_rpc->done_callback();
-    --pending_rpcs_;
+
+    // Free before allowing the shutdown of the client
     delete new_rpc;
+    --pending_rpcs_;
   };
 
   grpc_client_stubs_[peer_index]->experimental_async()->GenericRpc(
