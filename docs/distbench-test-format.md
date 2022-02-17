@@ -139,15 +139,20 @@ Configure the protocol driver options. It can be refered by the service message.
   for applicable options.
 
 #### grpc Protocol Driver settings
-The grpc protocol driver has two `server_settings` options to configure the type
-of client/server:
-- `client_type`: `completion_queue` (uses a completion thread) or
-  `async_callback` (grpc performs a callback to notify the completion).
-- `server_type`: `normal` or `async_callback` (create a thread and use a reactor
-  to respond to incoming RPCs).
 
-The `grpc_async_callback` behaves as a grpc with `client_type=async_callback`
-and `server_type=async_callback`.
+The grpc protocol driver has a `server_type` `server_settings` option to
+configure the server:
+- `server_type`: `inline` (requests processed inline)  or `handoff`
+  (create a thread and use a reactor to respond to incoming RPCs).
+
+The grpc protocol driver also provides a `client_type` `client_settings` option
+to configure the client:
+- `client_type`: `polling` (uses a completion thread polling the completion
+  queue) or `callback` (grpc performs a callback to notify the completion).
+
+The `grpc_async_callback` behaves as a grpc with `client_type=callback` and
+`server_type=handoff`; the `grpc_async_callback` is deprecated, use the grpc
+protocol driver with the correct `client_type` and `server_type` options.
 
 ### Misc settings
 

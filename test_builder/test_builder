@@ -689,8 +689,8 @@ function set_parameter_default() {
 #   params_dict (associative array)
 ################################################################################
 function grpc_protocol_driver_setup() {
-  set_parameter_default client_type "completion_queue"
-  set_parameter_default server_type "normal"
+  set_parameter_default client_type "polling"
+  set_parameter_default server_type "inline"
   local CLIENT_TYPE="${params_dict[client_type]}"
   local SERVER_TYPE="${params_dict[server_type]}"
   params_dict[protocol_alias]="grpc_${CLIENT_TYPE}_${SERVER_TYPE}"
