@@ -81,9 +81,8 @@ RUsageStats GetRUsageStatsFromStructs(const struct rusage &start,
 struct rusage DoGetRusage();
 
 std::string GetNamedSettingString(
-    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting> &opts,
-    absl::string_view name,
-    std::string default_value);
+    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>
+    &settings, absl::string_view name, std::string default_value);
 
 int64_t GetNamedSettingInt64(
     const distbench::ProtocolDriverOptions &opts,
