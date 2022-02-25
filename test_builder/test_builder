@@ -528,7 +528,7 @@ function format_test_proto() {
   echo "tests {"
   local keys
   # Gather the keys in sorted order:
-  readarray -td '' keys < <(printf '%s\0' "${!params_dict[@]}" | /bin/sort -Vz)
+  readarray -td '' keys < <(printf '%s\0' "${!params_dict[@]}" | sort -Vz)
   local key
   for key in "${keys[@]}"; do
     # Skip the special cases of proto contents that are copied verbatim:
