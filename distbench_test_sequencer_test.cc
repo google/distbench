@@ -286,6 +286,117 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
   EXPECT_LT(warmup_samples, 392);
 }
 
+TEST(DistBenchTestSequencer, TestWarmupSampling) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(3));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  test->set_default_protocol("grpc");
+  auto* s1 = test->add_services();
+  s1->set_name("s1");
+  s1->set_count(1);
+  auto* s2 = test->add_services();
+  s2->set_name("s2");
+  s2->set_count(1);
+  auto* s3 = test->add_services();
+  s3->set_name("s3");
+  s3->set_count(1);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("s1");
+  l1->add_action_names("s1/ping");
+  l1->set_max_rpc_samples(1000);
+  l1->set_warmup_rpc_samples(1000);
+
+  auto a1 = test->add_actions();
+  a1->set_name("s1/ping");
+  a1->set_rpc_name("echo_and_forward");
+  a1->mutable_iterations()->set_max_parallel_iterations(100);
+  a1->mutable_iterations()->set_max_iteration_count(3000);
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("echo_and_forward");
+  r1->set_client("s1");
+  r1->set_server("s2");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("echo_and_forward");
+  l2->add_action_names("s2/async_ping");
+
+  auto a2 = test->add_actions();
+  a2->set_name("s2/async_ping");
+  a2->set_action_list_name("async_echoo");
+
+  auto* l3 = test->add_action_lists();
+  l3->set_name("async_echoo");
+  l3->add_action_names("s2/ping");
+
+  auto a3 = test->add_actions();
+  a3->set_name("s2/ping");
+  a3->set_rpc_name("async_echo");
+
+  auto* r2 = test->add_rpc_descriptions();
+  r2->set_name("async_echo");
+  r2->set_client("s2");
+  r2->set_server("s3");
+
+  auto* l4 = test->add_action_lists();
+  l4->set_name("async_echo");
+
+  TestSequenceResults results;
+  std::chrono::system_clock::time_point deadline =
+    std::chrono::system_clock::now() + std::chrono::seconds(200);
+  grpc::ClientContext context;
+  context.set_deadline(deadline);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      &context, test_sequence, &results);
+  LOG(INFO) << status.error_message();
+  ASSERT_OK(status);
+  ASSERT_EQ(results.test_results_size(), 1);
+  ASSERT_EQ(results.test_results(0).service_logs().instance_logs_size(), 2);
+  auto it = results.test_results(0).service_logs().instance_logs().find("s1/0");
+  ASSERT_NE(it, results.test_results(0).service_logs().instance_logs().end());
+  ASSERT_EQ(it->second.peer_logs_size(), 1);
+  auto it2 = it->second.peer_logs().begin();
+  EXPECT_EQ(it2->first, "s2/0");
+  ASSERT_EQ(it2->second.rpc_logs_size(), 1);
+  auto it3 = it2->second.rpc_logs().begin();
+  EXPECT_EQ(it3->first, 0);
+  EXPECT_EQ(it3->second.successful_rpc_samples_size(), 1000);
+  EXPECT_EQ(it3->second.failed_rpc_samples_size(), 0);
+  int warmup_samples = 0;
+  for (const auto& sample : it3->second.successful_rpc_samples()) {
+    if (sample.warmup()) {
+      warmup_samples++;
+    }
+  }
+  // Hypergeometric distribution total population=3000
+  //                             warmup population=1000
+  //                             samples=1000
+  // => Expected value is 333
+  // => Probability less than 1 in a million this fails:
+  EXPECT_GT(warmup_samples, 275);
+  EXPECT_LT(warmup_samples, 392);
+
+  it = results.test_results(0).service_logs().instance_logs().find("s2/0");
+  ASSERT_NE(it, results.test_results(0).service_logs().instance_logs().end());
+  ASSERT_EQ(it->second.peer_logs_size(), 1);
+  it2 = it->second.peer_logs().begin();
+  EXPECT_EQ(it2->first, "s3/0");
+  ASSERT_EQ(it2->second.rpc_logs_size(), 1);
+  it3 = it2->second.rpc_logs().begin();
+  EXPECT_EQ(it3->first, 1);
+  EXPECT_EQ(it3->second.successful_rpc_samples_size(), 3000);
+  EXPECT_EQ(it3->second.failed_rpc_samples_size(), 0);
+  warmup_samples = 0;
+  for (const auto& sample : it3->second.successful_rpc_samples()) {
+    if (sample.warmup()) {
+      warmup_samples++;
+    }
+  }
+  EXPECT_EQ(warmup_samples, 1000);
+}
 TEST(DistBenchTestSequencer, 100k_grpc) {
   RunIntenseTraffic("grpc");
 }

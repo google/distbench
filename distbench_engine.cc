@@ -526,8 +526,18 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
     if (service_name_ == traffic_config_.action_lists(i).name()) {
       LOG(INFO) << "Running " << service_name_
                 << "/" << service_instance_;
+      const GenericRequest* fake_request = new GenericRequest;
+      ServerRpcState* top_level_state = new ServerRpcState{};
+      top_level_state->request = fake_request;
+      top_level_state->have_dedicated_thread = true;
+      top_level_state->free_state = [=]() {
+        delete fake_request;
+        delete top_level_state;
+      };
       engine_main_thread_ = RunRegisteredThread(
-          "EngineMain", [this, i]() {RunActionList(i, nullptr);});
+          "EngineMain", [this, i, top_level_state]() {
+            RunActionList(i, top_level_state);}
+          );
       break;
     }
   }
@@ -584,7 +594,9 @@ std::function<void ()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   int handler_action_index = simulated_server_rpc.handler_action_list_index;
 
   if (handler_action_index == -1) {
-    state->send_response();
+    if (state->send_response) {
+      state->send_response();
+    }
     if (state->free_state) {
       state->free_state();
     }
@@ -607,7 +619,8 @@ void DistBenchEngine::RunActionList(
     int list_index, const ServerRpcState* incoming_rpc_state) {
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
-  ActionListState s;
+  ActionListState s = {};
+  s.warmup_ = incoming_rpc_state->request->warmup();
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
   bool sent_response_early = false;
@@ -615,8 +628,12 @@ void DistBenchEngine::RunActionList(
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
     s.packed_samples_size_ = s.action_list->proto.max_rpc_samples();
-    if (s.packed_samples_size_ < 0) {
+    if (s.action_list->proto.max_rpc_samples() < 0) {
       s.packed_samples_size_ = 0;
+    }
+    s.remaining_warmup_samples_ = s.action_list->proto.warmup_rpc_samples();
+    if (s.action_list->proto.warmup_rpc_samples() < 0) {
+      s.remaining_warmup_samples_ = 0;
     }
     s.packed_samples_.reset(new PackedLatencySample[s.packed_samples_size_]);
     s.remaining_initial_samples_ = s.packed_samples_size_;
@@ -657,7 +674,9 @@ void DistBenchEngine::RunActionList(
            s.state_table[i].action->proto.send_response_when_done())) {
         sent_response_early = true;
         s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state]() {
-          incoming_rpc_state->send_response();
+          if (incoming_rpc_state->send_response) {
+            incoming_rpc_state->send_response();
+          }
           s.FinishAction(i);
         };
       } else {
@@ -706,7 +725,7 @@ void DistBenchEngine::RunActionList(
     }
   }
   if (incoming_rpc_state) {
-    if (!sent_response_early) {
+    if (!sent_response_early && incoming_rpc_state->send_response) {
       incoming_rpc_state->send_response();
     }
     if (incoming_rpc_state->free_state) {
@@ -852,6 +871,9 @@ void DistBenchEngine::ActionListState::RecordLatency(
   }
   sample->set_request_size(state->request.payload().size());
   sample->set_response_size(state->response.payload().size());
+  if (state->request.warmup()) {
+    sample->set_warmup(true);
+  }
   if (!state->request.trace_context().engine_ids().empty()) {
     *sample->mutable_trace_context() =
       std::move(state->request.trace_context());
@@ -872,8 +894,7 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
     packed_sample.service_type = service_type;
     packed_sample.instance = instance;
     packed_sample.success = state->success;
-    packed_sample.warmup =
-      sample_number < action_list->proto.warmup_rpc_samples();
+    packed_sample.warmup = state->request.warmup();
     auto latency = state->end_time - state->start_time;
     packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
     packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);
@@ -894,21 +915,30 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
 void DistBenchEngine::RunAction(ActionState* action_state) {
   auto& action = *action_state->action;
   if (action.actionlist_index >= 0) {
+    std::shared_ptr<const GenericRequest> copied_request =
+      std::make_shared<GenericRequest>(
+          *action_state->s->incoming_rpc_state->request);
     int action_list_index = action.actionlist_index;
     action_state->iteration_function =
-      [this, action_list_index]
+      [this, action_list_index, copied_request]
       (std::shared_ptr<ActionIterationState>iteration_state) {
+      ServerRpcState *copied_server_rpc_state = new ServerRpcState{};
+      copied_server_rpc_state->request = copied_request.get();
+      copied_server_rpc_state->have_dedicated_thread = true;
+      copied_server_rpc_state->free_state = [=] {
+        delete copied_server_rpc_state;
+      };
       RunRegisteredThread(
           "ActionListThread",
-          [this, action_list_index, iteration_state]() mutable {
-            RunActionList(action_list_index, nullptr);
+          [this, action_list_index, iteration_state, copied_request,
+           copied_server_rpc_state]()
+          mutable {
+            RunActionList(action_list_index, copied_server_rpc_state);
             FinishIteration(iteration_state);
           }).detach();
       };
   } else if (action.rpc_service_index >= 0) {
     CHECK_LT(static_cast<size_t>(action.rpc_service_index), peers_.size());
-    std::shared_ptr<ServerRpcState> server_rpc_state =
-      std::make_shared<ServerRpcState>();
     int rpc_service_index = action.rpc_service_index;
     CHECK_GE(rpc_service_index, 0);
     CHECK_LT(static_cast<size_t>(rpc_service_index), peers_.size());
@@ -1049,6 +1079,9 @@ void DistBenchEngine::StartIteration(
 // This works fine for 1-at-a-time closed-loop iterations:
 void DistBenchEngine::RunRpcActionIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
+  int64_t remaining_warmup_samples = std::atomic_fetch_sub_explicit(
+      &iteration_state->action_state->s->remaining_warmup_samples_, 1,
+      std::memory_order_relaxed);
   ActionState* state = iteration_state->action_state;
   // Pick the subset of the target service instances to fanout to:
   std::vector<int> current_targets = PickRpcFanoutTargets(state);
@@ -1073,6 +1106,8 @@ void DistBenchEngine::RunRpcActionIteration(
         iteration_state->iteration_number);
   }
   common_request.set_rpc_index(state->rpc_index);
+  common_request.set_warmup(iteration_state->action_state->s->warmup_ ||
+                            remaining_warmup_samples > 0);
 
   common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
 
