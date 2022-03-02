@@ -222,6 +222,7 @@ message GenericRequest {
   optional bytes payload = 1;
   optional int32 rpc_index = 2;
   optional TraceContext trace_context = 3;
+  optional bool warmup = 4;
 }
 
 message GenericResponse {

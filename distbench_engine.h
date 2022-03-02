@@ -189,7 +189,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
         ClientRpcState* state);
     void UnpackLatencySamples();
 
-    const ServerRpcState* incoming_rpc_state = nullptr;  // may be nullptr
+    const ServerRpcState* incoming_rpc_state = nullptr;
     std::unique_ptr<ActionState[]> state_table;
     const ActionListTableEntry* action_list;
     absl::Mutex action_mu;
@@ -205,6 +205,17 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     // This area is used to allocate TraceContext objects for packed samples:
     google::protobuf::Arena sample_arena_;
+
+    // If true this entire action list was triggered by a warmup RPC, so all
+    // actions it initiates will propgate the warmup flag:
+    bool warmup_;
+
+    // If warmup_ is false, then this action list was not triggered by a warmup
+    // RPC, but may itself require some warmup actions.
+    // remaining_warmup_samples_ counts how many warmup RPCs this action list
+    // has left to initiate. After this count goes negative the warmup period
+    // is over.
+    std::atomic<int64_t> remaining_warmup_samples_;
   };
 
   absl::Status InitializeTables();
