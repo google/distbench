@@ -231,6 +231,7 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
   l1->set_name("s1");
   l1->add_action_names("s1/ping");
   l1->set_max_rpc_samples(1000);
+  l1->set_warmup_rpc_samples(1000);
 
   auto a1 = test->add_actions();
   a1->set_name("s1/ping");
@@ -239,7 +240,7 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
 
   auto* iterations = a1->mutable_iterations();
   iterations->set_max_parallel_iterations(100);
-  iterations->set_max_iteration_count(2000);
+  iterations->set_max_iteration_count(3000);
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo");
@@ -270,6 +271,19 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
   EXPECT_EQ(it3->first, 0);
   EXPECT_EQ(it3->second.successful_rpc_samples_size(), 1000);
   EXPECT_EQ(it3->second.failed_rpc_samples_size(), 0);
+  int warmup_samples = 0;
+  for (const auto& sample : it3->second.successful_rpc_samples()) {
+    if (sample.warmup()) {
+      warmup_samples++;
+    }
+  }
+  // Hypergeometric distribution total population=3000
+  //                             warmup population=1000
+  //                             samples=1000
+  // => Expected value is 333
+  // => Probability less than 1 in a million this fails:
+  EXPECT_GT(warmup_samples, 275);
+  EXPECT_LT(warmup_samples, 392);
 }
 
 TEST(DistBenchTestSequencer, 100k_grpc) {
