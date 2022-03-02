@@ -751,6 +751,7 @@ function clique_traffic_pattern_setup() {
       max_duration_us: ${TEST_DURATION}000000
       open_loop_interval_ns: ${RPC_INTERVAL_US}000
       open_loop_interval_distribution: '${SYNCHRONIZATION_MODE}'
+      warmup_iterations: $((3000000 / RPC_INTERVAL_US))
     }
     rpc_name: 'clique_query'
   }
@@ -837,6 +838,7 @@ function client_server_traffic_pattern_setup() {
     iterations {
       max_duration_us: ${TEST_DURATION}000000
       max_parallel_iterations: ${PARALLEL_QUERIES}
+      warmup_iterations: 1000
     }
   }
   action_lists {
@@ -915,6 +917,7 @@ function tripartite_traffic_pattern_setup() {
     name: 'client_do_many_queries'
     iterations {
       max_duration_us: ${TEST_DURATION}000000
+      warmup_iterations: 1000
     }
     action_list_name: 'client_do_one_query'
   }
@@ -992,25 +995,17 @@ function multi_level_rpc_traffic_pattern_setup() {
   }
   action_lists {
     name: 'load_balancer'
-    action_names: 'establish_connections'
     action_names: 'do_closed_loop_root_queries'
     max_rpc_samples: 10000000
-  }
-  actions {
-    name: 'establish_connections'
-    iterations {
-      max_iteration_count: ${ROOT_COUNT}
-    }
-    rpc_name: 'root_query'
   }
   actions {
     name: 'do_closed_loop_root_queries'
     iterations {
       max_duration_us: ${TEST_DURATION}000000
       open_loop_interval_ns: $(( 1000000000 / QPS ))
+      warmup_iterations: $((3 * QPS))
     }
     rpc_name: 'root_query'
-    dependencies: 'establish_connections'
   }
   rpc_descriptions {
     name: 'root_query'
