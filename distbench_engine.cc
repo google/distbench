@@ -615,8 +615,11 @@ void DistBenchEngine::RunActionList(
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
     s.packed_samples_size_ = s.action_list->proto.max_rpc_samples();
+    if (s.packed_samples_size_ < 0) {
+      s.packed_samples_size_ = 0;
+    }
     s.packed_samples_.reset(new PackedLatencySample[s.packed_samples_size_]);
-    s.remaining_initial_samples_ = s.action_list->proto.max_rpc_samples();
+    s.remaining_initial_samples_ = s.packed_samples_size_;
     absl::MutexLock m(&s.action_mu);
     s.peer_logs_.resize(peers_.size());
     for (size_t i = 0; i < peers_.size(); ++i) {
@@ -777,6 +780,9 @@ void DistBenchEngine::ActionListState::UnpackLatencySamples() {
     if (packed_sample.trace_context) {
       *sample->mutable_trace_context() = *packed_sample.trace_context;
     }
+    if (packed_sample.warmup) {
+      sample->set_warmup(true);
+    }
   }
 }
 
@@ -866,6 +872,8 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
     packed_sample.service_type = service_type;
     packed_sample.instance = instance;
     packed_sample.success = state->success;
+    packed_sample.warmup =
+      sample_number < action_list->proto.warmup_rpc_samples();
     auto latency = state->end_time - state->start_time;
     packed_sample.start_timestamp_ns = absl::ToUnixNanos(state->start_time);
     packed_sample.latency_ns = absl::ToInt64Nanoseconds(latency);

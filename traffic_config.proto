@@ -74,6 +74,9 @@ message ActionList {
   // choose the samples to retain via reservoir sampling.
   // Setting this to zero will retain all samples, but may hurt performance.
   optional int64 max_rpc_samples = 3 [default = 0];
+  // Marks the first N samples as warmup samples, which can be discarded
+  // by downstream analysis tools.
+  optional int64 warmup_rpc_samples = 4 [default = 0];
 }
 
 message NamedSetting {

@@ -51,6 +51,10 @@ message RpcSample {
   optional int64 latency_ns = 4;
   optional int64 latency_weight = 5 [default = 1];
   optional TraceContext trace_context = 6;
+  // If true this was a warmup RPC, and should probably be ignored
+  // by most analysis tools, except when tuning the warmup period
+  // of a test.
+  optional bool warmup = 7;
 }
 
 message RpcPerformanceLog {

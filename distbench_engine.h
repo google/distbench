@@ -159,6 +159,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     size_t service_type;
     size_t instance;
     bool success;
+    bool warmup;
     int64_t request_size;
     int64_t response_size;
     int64_t start_timestamp_ns;
