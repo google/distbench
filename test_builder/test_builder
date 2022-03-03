@@ -725,7 +725,8 @@ function clique_traffic_pattern_setup() {
   set_parameter_default synchronization_mode sync_burst
   local RPC_INTERVAL_US="${params_dict[rpc_interval_us]}"
   local NODE_COUNT="${params_dict[node_count]}"
-  validate_integer 1 RPC_INTERVAL_US NODE_COUNT
+  validate_integer 100 RPC_INTERVAL_US
+  validate_integer 2 NODE_COUNT
   local SYNCHRONIZATION_MODE="${params_dict[synchronization_mode]}"
   local TRAFFIC_ALIAS="clique_"
   TRAFFIC_ALIAS+="${SYNCHRONIZATION_MODE}_${NODE_COUNT}x${RPC_INTERVAL_US}"
