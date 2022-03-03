@@ -213,8 +213,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // If warmup_ is false, then this action list was not triggered by a warmup
     // RPC, but may itself require some warmup actions.
     // remaining_warmup_samples_ counts how many warmup RPCs this action list
-    // has left to initiate. After this count goes negative the warmup period
-    // is over.
+    // has left to initiate. After this count is no longer positive the warmup
+    // period is over.
     std::atomic<int64_t> remaining_warmup_samples_;
   };
 

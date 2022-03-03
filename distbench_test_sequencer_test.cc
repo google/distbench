@@ -326,10 +326,10 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
 
   auto a2 = test->add_actions();
   a2->set_name("s2/async_ping");
-  a2->set_action_list_name("async_echoo");
+  a2->set_action_list_name("async_echo_action_list");
 
   auto* l3 = test->add_action_lists();
-  l3->set_name("async_echoo");
+  l3->set_name("async_echo_action_list");
   l3->add_action_names("s2/ping");
 
   auto a3 = test->add_actions();
