@@ -145,6 +145,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::function<void(void)> all_done_callback;
 
     std::map<int, std::vector<int>> partially_randomized_vectors;
+    // When this count is no longer positive the warmup period is over.
+    std::atomic<int64_t> remaining_warmup_iterations;
   };
 
   struct PackedLatencySample {
@@ -209,13 +211,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // If true this entire action list was triggered by a warmup RPC, so all
     // actions it initiates will propgate the warmup flag:
     bool warmup_;
-
-    // If warmup_ is false, then this action list was not triggered by a warmup
-    // RPC, but may itself require some warmup actions.
-    // remaining_warmup_samples_ counts how many warmup RPCs this action list
-    // has left to initiate. After this count is no longer positive the warmup
-    // period is over.
-    std::atomic<int64_t> remaining_warmup_samples_;
   };
 
   absl::Status InitializeTables();

@@ -631,10 +631,6 @@ void DistBenchEngine::RunActionList(
     if (s.action_list->proto.max_rpc_samples() < 0) {
       s.packed_samples_size_ = 0;
     }
-    s.remaining_warmup_samples_ = s.action_list->proto.warmup_rpc_samples();
-    if (s.action_list->proto.warmup_rpc_samples() < 0) {
-      s.remaining_warmup_samples_ = 0;
-    }
     s.packed_samples_.reset(new PackedLatencySample[s.packed_samples_size_]);
     s.remaining_initial_samples_ = s.packed_samples_size_;
     absl::MutexLock m(&s.action_mu);
@@ -946,6 +942,8 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     if (peers_[rpc_service_index].empty()) {
       return;
     }
+    action_state->remaining_warmup_iterations =
+      action.proto.iterations().warmup_iterations();
     action_state->rpc_index = action.rpc_index;
     action_state->rpc_service_index = rpc_service_index;
     action_state->iteration_function =
@@ -1079,8 +1077,8 @@ void DistBenchEngine::StartIteration(
 // This works fine for 1-at-a-time closed-loop iterations:
 void DistBenchEngine::RunRpcActionIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
-  int64_t remaining_warmup_samples = std::atomic_fetch_sub_explicit(
-      &iteration_state->action_state->s->remaining_warmup_samples_, 1,
+  const bool warmup = 0 < std::atomic_fetch_sub_explicit(
+      &iteration_state->action_state->remaining_warmup_iterations, 1,
       std::memory_order_relaxed);
   ActionState* state = iteration_state->action_state;
   // Pick the subset of the target service instances to fanout to:
@@ -1107,7 +1105,7 @@ void DistBenchEngine::RunRpcActionIteration(
   }
   common_request.set_rpc_index(state->rpc_index);
   common_request.set_warmup(iteration_state->action_state->s->warmup_ ||
-                            remaining_warmup_samples > 0);
+                            warmup);
 
   common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
 
