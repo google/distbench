@@ -616,11 +616,12 @@ std::function<void ()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
 }
 
 void DistBenchEngine::RunActionList(
-    int list_index, const ServerRpcState* incoming_rpc_state) {
+    int list_index, const ServerRpcState* incoming_rpc_state,
+    bool force_warmup) {
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
   ActionListState s = {};
-  s.warmup_ = incoming_rpc_state->request->warmup();
+  s.warmup_ = force_warmup || incoming_rpc_state->request->warmup();
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
   bool sent_response_early = false;
@@ -929,7 +930,8 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           [this, action_list_index, iteration_state, copied_request,
            copied_server_rpc_state]()
           mutable {
-            RunActionList(action_list_index, copied_server_rpc_state);
+            RunActionList(action_list_index, copied_server_rpc_state,
+                          iteration_state->warmup);
             FinishIteration(iteration_state);
           }).detach();
       };
@@ -942,8 +944,6 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     if (peers_[rpc_service_index].empty()) {
       return;
     }
-    action_state->remaining_warmup_iterations =
-      action.proto.iterations().warmup_iterations();
     action_state->rpc_index = action.rpc_index;
     action_state->rpc_service_index = rpc_service_index;
     action_state->iteration_function =
@@ -1025,7 +1025,7 @@ void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
   if (action_state->next_iteration_time > action_state->time_limit) {
     action_state->next_iteration_time = absl::InfiniteFuture();
   }
-  it_state->iteration_number = ++action_state->next_iteration;
+  it_state->iteration_number = action_state->next_iteration++;
   action_state->iteration_mutex.Unlock();
   StartIteration(it_state);
 }
@@ -1058,7 +1058,7 @@ void DistBenchEngine::FinishIteration(
     }
   }
   if (start_another_iteration) {
-    ++state->next_iteration;
+    iteration_state->iteration_number = state->next_iteration++;
   }
   int pending_iterations = state->next_iteration - state->finished_iterations;
   state->iteration_mutex.Unlock();
@@ -1071,15 +1071,16 @@ void DistBenchEngine::FinishIteration(
 
 void DistBenchEngine::StartIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
+  iteration_state->warmup =
+    iteration_state->action_state->s->warmup_ ||
+    (iteration_state->iteration_number <
+     iteration_state->action_state->action->proto.iterations().warmup_iterations());
   iteration_state->action_state->iteration_function(iteration_state);
 }
 
 // This works fine for 1-at-a-time closed-loop iterations:
 void DistBenchEngine::RunRpcActionIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
-  const bool warmup = 0 < std::atomic_fetch_sub_explicit(
-      &iteration_state->action_state->remaining_warmup_iterations, 1,
-      std::memory_order_relaxed);
   ActionState* state = iteration_state->action_state;
   // Pick the subset of the target service instances to fanout to:
   std::vector<int> current_targets = PickRpcFanoutTargets(state);
@@ -1104,8 +1105,7 @@ void DistBenchEngine::RunRpcActionIteration(
         iteration_state->iteration_number);
   }
   common_request.set_rpc_index(state->rpc_index);
-  common_request.set_warmup(iteration_state->action_state->s->warmup_ ||
-                            warmup);
+  common_request.set_warmup(iteration_state->warmup);
 
   common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
 
