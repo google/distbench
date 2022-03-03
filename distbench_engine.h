@@ -119,6 +119,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionIterationState {
     struct ActionState* action_state = nullptr;
     int iteration_number = 0;
+    bool warmup = false;
     std::vector<ClientRpcState> rpc_states;
     std::atomic<int> remaining_rpcs = 0;
   };
@@ -145,8 +146,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::function<void(void)> all_done_callback;
 
     std::map<int, std::vector<int>> partially_randomized_vectors;
-    // When this count is no longer positive the warmup period is over.
-    std::atomic<int64_t> remaining_warmup_iterations;
   };
 
   struct PackedLatencySample {
@@ -219,7 +218,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
       RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
 
-  void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state);
+  void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state,
+                     bool force_warmup = false);
   void RunAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);
   void StartIteration(std::shared_ptr<ActionIterationState> iteration_state);
