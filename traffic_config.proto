@@ -54,6 +54,9 @@ message Iterations {
   optional int64 max_parallel_iterations = 3 [default = 1];
   optional int64 open_loop_interval_ns = 4;
   optional string open_loop_interval_distribution = 5 [default = "constant"];
+  // Marks RPCs triggered by the first N iterations as warmup RPCs,
+  // which can be discarded by downstream analysis tools.
+  optional int64 warmup_iterations = 6 [default = 0];
 }
 
 message Action {
@@ -74,9 +77,6 @@ message ActionList {
   // choose the samples to retain via reservoir sampling.
   // Setting this to zero will retain all samples, but may hurt performance.
   optional int64 max_rpc_samples = 3 [default = 0];
-  // Marks the first N samples as warmup samples, which can be discarded
-  // by downstream analysis tools.
-  optional int64 warmup_rpc_samples = 4 [default = 0];
 }
 
 message NamedSetting {

@@ -231,16 +231,15 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
   l1->set_name("s1");
   l1->add_action_names("s1/ping");
   l1->set_max_rpc_samples(1000);
-  l1->set_warmup_rpc_samples(1000);
 
   auto a1 = test->add_actions();
   a1->set_name("s1/ping");
   a1->set_rpc_name("echo");
-  a1->mutable_iterations()->set_max_iteration_count(10);
 
   auto* iterations = a1->mutable_iterations();
   iterations->set_max_parallel_iterations(100);
   iterations->set_max_iteration_count(3000);
+  iterations->set_warmup_iterations(1000);
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo");
@@ -307,13 +306,13 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   l1->set_name("s1");
   l1->add_action_names("s1/ping");
   l1->set_max_rpc_samples(1000);
-  l1->set_warmup_rpc_samples(1000);
 
   auto a1 = test->add_actions();
   a1->set_name("s1/ping");
   a1->set_rpc_name("echo_and_forward");
   a1->mutable_iterations()->set_max_parallel_iterations(100);
   a1->mutable_iterations()->set_max_iteration_count(3000);
+  a1->mutable_iterations()->set_warmup_iterations(1000);
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo_and_forward");
