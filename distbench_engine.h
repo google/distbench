@@ -127,7 +127,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionState {
     bool started = false;
     bool finished = false;
-    ActionListState* s;
+    ActionListState* action_list_state;
 
     absl::Mutex iteration_mutex;
     int next_iteration ABSL_GUARDED_BY(iteration_mutex);
