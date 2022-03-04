@@ -1069,45 +1069,48 @@ void DistBenchEngine::StartIteration(
 // This works fine for 1-at-a-time closed-loop iterations:
 void DistBenchEngine::RunRpcActionIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
-  ActionState* state = iteration_state->action_state;
+  ActionState* action_state = iteration_state->action_state;
   // Pick the subset of the target service instances to fanout to:
-  std::vector<int> current_targets = PickRpcFanoutTargets(state);
+  std::vector<int> current_targets = PickRpcFanoutTargets(action_state);
   iteration_state->rpc_states.resize(current_targets.size());
   iteration_state->remaining_rpcs = current_targets.size();
 
   // Setup tracing:
-  const auto& rpc_def = client_rpc_table_[state->rpc_index].rpc_definition;
+  const int rpc_index = action_state->rpc_index;
+  const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
   const auto& rpc_spec = rpc_def.rpc_spec;
   bool do_trace = false;
-  int trace_count = ++client_rpc_table_[state->rpc_index].rpc_tracing_counter;
+  int trace_count = ++client_rpc_table_[rpc_index].rpc_tracing_counter;
   if (rpc_spec.tracing_interval() > 0) {
     do_trace = (trace_count % rpc_spec.tracing_interval()) == 0;
   }
   GenericRequest common_request;
-  if (state->action_list_state->incoming_rpc_state) {
+  const ServerRpcState* const incoming_rpc_state =
+      action_state->action_list_state->incoming_rpc_state;
+  if (incoming_rpc_state) {
     *common_request.mutable_trace_context() =
-      state->action_list_state->incoming_rpc_state->request->trace_context();
+        incoming_rpc_state->request->trace_context();
   } else if (do_trace) {
     common_request.mutable_trace_context()->add_engine_ids(trace_id_);
     common_request.mutable_trace_context()->add_iterations(
         iteration_state->iteration_number);
   }
-  common_request.set_rpc_index(state->rpc_index);
+  common_request.set_rpc_index(rpc_index);
   common_request.set_warmup(iteration_state->warmup);
-
   common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
 
-  const auto& servers = peers_[state->rpc_service_index];
+  const int rpc_service_index = action_state->rpc_service_index;
+  const auto& servers = peers_[rpc_service_index];
   for (size_t i = 0; i < current_targets.size(); ++i) {
     int peer_instance = current_targets[i];
     ClientRpcState* rpc_state;
     {
-      absl::MutexLock m(&peers_[state->rpc_service_index][peer_instance].mutex);
+      absl::MutexLock m(&peers_[rpc_service_index][peer_instance].mutex);
       rpc_state = &iteration_state->rpc_states[i];
       rpc_state->request = common_request;
       if (!common_request.trace_context().engine_ids().empty()) {
         rpc_state->request.mutable_trace_context()->add_engine_ids(
-            peers_[state->rpc_service_index][peer_instance].trace_id);
+            peers_[rpc_service_index][peer_instance].trace_id);
         rpc_state->request.mutable_trace_context()->add_iterations(i);
       }
       CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
@@ -1117,13 +1120,11 @@ void DistBenchEngine::RunRpcActionIteration(
     rpc_state->start_time = clock_->Now();
     pd_->InitiateRpc(servers[peer_instance].pd_id, rpc_state,
         [this, rpc_state, iteration_state, peer_instance]() mutable {
-        ActionState* state = iteration_state->action_state;
+        ActionState* action_state = iteration_state->action_state;
         rpc_state->end_time = clock_->Now();
-        state->action_list_state->RecordLatency(
-            state->rpc_index,
-            state->rpc_service_index,
-            peer_instance,
-            rpc_state);
+        action_state->action_list_state->RecordLatency(
+            action_state->rpc_index, action_state->rpc_service_index,
+            peer_instance, rpc_state);
         if (--iteration_state->remaining_rpcs == 0) {
           FinishIteration(iteration_state);
         }
@@ -1133,16 +1134,18 @@ void DistBenchEngine::RunRpcActionIteration(
 
 // Return a vector of service instances, which have to be translated to
 // protocol_drivers endpoint ids by the caller.
-std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
-  const auto& rpc_def = client_rpc_table_[state->rpc_index].rpc_definition;
+std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
+    ActionState* action_state) {
+  const int rpc_index = action_state->rpc_index;
+  const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
   const auto& rpc_spec = rpc_def.rpc_spec;
   std::vector<int> targets;
-  int num_servers = peers_[state->rpc_service_index].size();
+  int num_servers = peers_[action_state->rpc_service_index].size();
   const std::string& fanout_filter = rpc_spec.fanout_filter();
 
   if (rpc_def.is_stochastic_fanout) {
     std::map<int, std::vector<int>> partial_rand_vects =
-        state->partially_randomized_vectors;
+        action_state->partially_randomized_vectors;
 
     int nb_targets = 0;
     float random_val = absl::Uniform(random_generator, 0, 1.0);
@@ -1177,7 +1180,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     targets.reserve(num_servers);
     for (int i = 0; i < num_servers; ++i) {
       int target = i;
-      if (state->rpc_service_index != service_index_ ||
+      if (action_state->rpc_service_index != service_index_ ||
           target != service_instance_) {
         CHECK_NE(target, -1);
         targets.push_back(target);
@@ -1189,8 +1192,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(ActionState* state) {
     if (fanout_filter == "random") {
       target = random() % num_servers;
     } else if (fanout_filter == "round_robin") {
-      int64_t iteration =
-          client_rpc_table_[state->rpc_index].rpc_tracing_counter;
+      int64_t iteration = client_rpc_table_[rpc_index].rpc_tracing_counter;
       target = iteration % num_servers;
     } else {
       // Default case: return the first instance of the service
