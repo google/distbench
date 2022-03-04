@@ -26,8 +26,7 @@ class ProtocolDriverClientGrpc : public ProtocolDriverClient {
   ProtocolDriverClientGrpc();
   ~ProtocolDriverClientGrpc() override;
 
-  absl::Status InitializeClient(
-      const ProtocolDriverOptions &pd_opts) override;
+  absl::Status InitializeClient(const ProtocolDriverOptions &pd_opts) override;
 
   void SetNumPeers(int num_peers) override;
 
@@ -39,9 +38,9 @@ class ProtocolDriverClientGrpc : public ProtocolDriverClient {
   // Actually establish a conection, given the opaque data from the
   // the responder. E.g. connect the local and remote RoCE queue pairs.
   absl::Status HandleConnect(std::string remote_connection_info,
-                                     int peer) override;
+                             int peer) override;
   void InitiateRpc(int peer_index, ClientRpcState* state,
-                           std::function<void(void)> done_callback) override;
+                   std::function<void(void)> done_callback) override;
   void ChurnConnection(int peer) override;
   void ShutdownClient() override;
 
@@ -87,8 +86,7 @@ class ProtocolDriverGrpc : public ProtocolDriver {
 
   absl::Status Initialize(
       const ProtocolDriverOptions &pd_opts, int* port) override;
-  absl::Status InitializeClient(
-      const ProtocolDriverOptions &pd_opts) override;
+  absl::Status InitializeClient(const ProtocolDriverOptions &pd_opts) override;
   absl::Status InitializeServer(
       const ProtocolDriverOptions &pd_opts, int *port) override;
 
