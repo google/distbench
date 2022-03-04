@@ -531,10 +531,10 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
       ServerRpcState* top_level_state = new ServerRpcState{};
       top_level_state->request = fake_request;
       top_level_state->have_dedicated_thread = true;
-      top_level_state->free_state = [=]() {
+      top_level_state->SetFreeStateFunction([=]() {
         delete fake_request;
         delete top_level_state;
-      };
+      });
       engine_main_thread_ = RunRegisteredThread(
           "EngineMain", [this, i, top_level_state]() {
             RunActionList(i, top_level_state);}
@@ -596,12 +596,8 @@ std::function<void ()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
 
   int handler_action_list_index = server_rpc.handler_action_list_index;
   if (handler_action_list_index == -1) {
-    if (state->send_response) {
-      state->send_response();
-    }
-    if (state->free_state) {
-      state->free_state();
-    }
+    state->SendResponseIfSet();
+    state->FreeStateIfSet();
     return std::function<void ()>();
   }
 
@@ -673,9 +669,7 @@ void DistBenchEngine::RunActionList(
            s.state_table[i].action->proto.send_response_when_done())) {
         sent_response_early = true;
         s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state]() {
-          if (incoming_rpc_state->send_response) {
-            incoming_rpc_state->send_response();
-          }
+          incoming_rpc_state->SendResponseIfSet();
           s.FinishAction(i);
         };
       } else {
@@ -724,12 +718,10 @@ void DistBenchEngine::RunActionList(
     }
   }
   if (incoming_rpc_state) {
-    if (!sent_response_early && incoming_rpc_state->send_response) {
-      incoming_rpc_state->send_response();
+    if (!sent_response_early) {
+      incoming_rpc_state->SendResponseIfSet();
     }
-    if (incoming_rpc_state->free_state) {
-      incoming_rpc_state->free_state();
-    }
+    incoming_rpc_state->FreeStateIfSet();
   }
   // Merge the per-action-list logs into the overall logs:
   if (s.action_list->has_rpcs) {
@@ -918,9 +910,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
         ServerRpcState *copied_server_rpc_state = new ServerRpcState{};
         copied_server_rpc_state->request = copied_request.get();
         copied_server_rpc_state->have_dedicated_thread = true;
-        copied_server_rpc_state->free_state = [=] {
+        copied_server_rpc_state->SetFreeStateFunction([=] {
           delete copied_server_rpc_state;
-        };
+        });
         RunRegisteredThread(
             "ActionListThread",
             [this, action_list_index, iteration_state, copied_request,

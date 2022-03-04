@@ -84,16 +84,16 @@ TEST_P(ProtocolDriverTest, invoke) {
     if (s->have_dedicated_thread) {
       std::string str;
       s->request->SerializeToString(&str);
-      s->send_response();
-      if (s->free_state) s->free_state();
+      s->SendResponseIfSet();
+      s->FreeStateIfSet();
       return std::function<void ()>();
     } else {
       std::function<void ()> fct = [=]() {
         sleep(1);
         std::string str;
         s->request->SerializeToString(&str);
-        s->send_response();
-        if (s->free_state) s->free_state();
+        s->SendResponseIfSet();
+        s->FreeStateIfSet();
       };
       return fct;
     }
@@ -125,8 +125,8 @@ TEST_P(ProtocolDriverTest, self_echo) {
   pd->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
-    s->send_response();
-    if (s->free_state) s->free_state();
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void ()>();
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
@@ -156,8 +156,8 @@ TEST_P(ProtocolDriverTest, echo) {
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
-    s->send_response();
-    if (s->free_state) s->free_state();
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void ()>();
   });
   int port2 = 0;
@@ -195,8 +195,8 @@ void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
   pd2->SetHandler([&](ServerRpcState *s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
-    s->send_response();
-    if (s->free_state) s->free_state();
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void ()>();
   });
   int port2 = 0;

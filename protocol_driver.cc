@@ -18,6 +18,28 @@
 
 namespace distbench {
 
+void ServerRpcState::SetSendResponseFunction(
+    std::function<void(void)> send_response_function) {
+  send_response_function_ = send_response_function;
+}
+
+void ServerRpcState::SendResponseIfSet() const {
+  if (send_response_function_) {
+    send_response_function_();
+  }
+}
+
+void ServerRpcState::SetFreeStateFunction(
+    std::function<void(void)> free_state_function) {
+  free_state_function_ = free_state_function;
+}
+
+void ServerRpcState::FreeStateIfSet() const {
+  if (free_state_function_) {
+    free_state_function_();
+  }
+}
+
 class RealClock : public SimpleClock {
  public:
   ~RealClock() override {}

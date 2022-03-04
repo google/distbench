@@ -133,13 +133,13 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
     auto* reactor = context->DefaultReactor();
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
-    rpc_state->send_response = [=]() {
+    rpc_state->SetSendResponseFunction ([=]() {
       *response = std::move(rpc_state->response);
       reactor->Finish(grpc::Status::OK);
-    };
-    rpc_state->free_state = [=]() {
+    });
+    rpc_state->SetFreeStateFunction([=]() {
       delete rpc_state;
-    };
+    });
     auto fct_action_list_thread = handler_(rpc_state);
     if (fct_action_list_thread)
       RunRegisteredThread(
