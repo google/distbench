@@ -36,9 +36,18 @@ struct ClientRpcState {
 struct ServerRpcState {
   const GenericRequest* request;
   GenericResponse response;
-  std::function<void(void)> send_response;
-  std::function<void(void)> free_state;
   bool have_dedicated_thread = false;
+
+  void SetSendResponseFunction(
+      std::function<void(void)> send_response_function);
+  void SendResponseIfSet() const;
+
+  void SetFreeStateFunction(std::function<void(void)> free_state_function);
+  void FreeStateIfSet() const;
+
+ private:
+  std::function<void(void)> send_response_function_;
+  std::function<void(void)> free_state_function_;
 };
 
 struct TransportStat {

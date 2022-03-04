@@ -144,9 +144,9 @@ class TrafficService : public Traffic::Service {
     ServerRpcState rpc_state;
     rpc_state.have_dedicated_thread = true;
     rpc_state.request = request;
-    rpc_state.send_response = [&]() {
+    rpc_state.SetSendResponseFunction ([&]() {
       *response = std::move(rpc_state.response);
-    };
+    });
     handler_(&rpc_state);
     // Note: this should be an asynchronous server for generality.
     return grpc::Status::OK;
