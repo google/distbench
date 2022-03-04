@@ -679,7 +679,7 @@ void DistBenchEngine::RunActionList(
       } else {
         s.state_table[i].all_done_callback = [&s, i]() {s.FinishAction(i);};
       }
-      s.state_table[i].s = &s;
+      s.state_table[i].action_list_state = &s;
       RunAction(&s.state_table[i]);
     }
     absl::Time next_iteration_time = absl::InfiniteFuture();
@@ -914,7 +914,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
   if (action.actionlist_index >= 0) {
     std::shared_ptr<const GenericRequest> copied_request =
       std::make_shared<GenericRequest>(
-          *action_state->s->incoming_rpc_state->request);
+          *action_state->action_list_state->incoming_rpc_state->request);
     int action_list_index = action.actionlist_index;
     action_state->iteration_function =
       [this, action_list_index, copied_request]
@@ -1072,7 +1072,7 @@ void DistBenchEngine::FinishIteration(
 void DistBenchEngine::StartIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   iteration_state->warmup =
-    iteration_state->action_state->s->warmup_ ||
+    iteration_state->action_state->action_list_state->warmup_ ||
     (iteration_state->iteration_number <
      iteration_state->action_state->action->proto.iterations().warmup_iterations());
   iteration_state->action_state->iteration_function(iteration_state);
@@ -1096,9 +1096,9 @@ void DistBenchEngine::RunRpcActionIteration(
     do_trace = (trace_count % rpc_spec.tracing_interval()) == 0;
   }
   GenericRequest common_request;
-  if (state->s->incoming_rpc_state) {
+  if (state->action_list_state->incoming_rpc_state) {
     *common_request.mutable_trace_context() =
-      state->s->incoming_rpc_state->request->trace_context();
+      state->action_list_state->incoming_rpc_state->request->trace_context();
   } else if (do_trace) {
     common_request.mutable_trace_context()->add_engine_ids(trace_id_);
     common_request.mutable_trace_context()->add_iterations(
@@ -1131,7 +1131,7 @@ void DistBenchEngine::RunRpcActionIteration(
         [this, rpc_state, iteration_state, peer_instance]() mutable {
         ActionState* state = iteration_state->action_state;
         rpc_state->end_time = clock_->Now();
-        state->s->RecordLatency(
+        state->action_list_state->RecordLatency(
             state->rpc_index,
             state->rpc_service_index,
             peer_instance,
