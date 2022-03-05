@@ -25,11 +25,11 @@ class ProtocolDriverTest
   : public testing::TestWithParam<ProtocolDriverOptions> {
 };
 
-TEST_P(ProtocolDriverTest, ctor) {
+TEST_P(ProtocolDriverTest, Constructor) {
   auto pd = AllocateProtocolDriver(GetParam()).value();
 }
 
-TEST_P(ProtocolDriverTest, initialize) {
+TEST_P(ProtocolDriverTest, Initialize) {
   ProtocolDriverOptions pdo = GetParam();
   auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
@@ -41,7 +41,7 @@ TEST_P(ProtocolDriverTest, initialize) {
   });
 }
 
-TEST_P(ProtocolDriverTest, get_addr) {
+TEST_P(ProtocolDriverTest, GetConnectionHandle) {
   ProtocolDriverOptions pdo = GetParam();
   auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
@@ -56,7 +56,7 @@ TEST_P(ProtocolDriverTest, get_addr) {
   ASSERT_EQ(server_rpc_count, 0);
 }
 
-TEST_P(ProtocolDriverTest, get_set_addr) {
+TEST_P(ProtocolDriverTest, HandleConnect) {
   ProtocolDriverOptions pdo = GetParam();
   auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
@@ -72,7 +72,7 @@ TEST_P(ProtocolDriverTest, get_set_addr) {
   ASSERT_EQ(server_rpc_count, 0);
 }
 
-TEST_P(ProtocolDriverTest, invoke) {
+TEST_P(ProtocolDriverTest, Invoke) {
   ProtocolDriverOptions pdo = GetParam();
   auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
@@ -115,7 +115,7 @@ TEST_P(ProtocolDriverTest, invoke) {
   EXPECT_EQ(client_rpc_count, kNumIterations);
 }
 
-TEST_P(ProtocolDriverTest, self_echo) {
+TEST_P(ProtocolDriverTest, SelfEcho) {
   ProtocolDriverOptions pdo = GetParam();
   auto pd = AllocateProtocolDriver(pdo).value();
   int port = 0;
@@ -145,7 +145,7 @@ TEST_P(ProtocolDriverTest, self_echo) {
   EXPECT_EQ(client_rpc_count, 1);
 }
 
-TEST_P(ProtocolDriverTest, echo) {
+TEST_P(ProtocolDriverTest, Echo) {
   ProtocolDriverOptions pdo = GetParam();
   auto pd1 = AllocateProtocolDriver(pdo).value();
   auto pd2 = AllocateProtocolDriver(pdo).value();

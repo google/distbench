@@ -27,11 +27,11 @@ ProtocolDriverOptions grpc_pd_opts() {
   return opts;
 }
 
-TEST(DistBenchEngineTest, ctor) {
+TEST(DistBenchEngineTest, Constructor) {
   DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()).value());
 }
 
-TEST(DistBenchEngineTest, init) {
+TEST(DistBenchEngineTest, Initialization) {
   DistributedSystemDescription desc;
   desc.add_services()->set_name("test_service");
   DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()).value());
