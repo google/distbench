@@ -569,7 +569,8 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
         for (auto& map_pair : partial_log.rpc_logs()) {
           int32_t rpc_index = map_pair.first;
           const RpcPerformanceLog& rpc_perf_log = map_pair.second;
-          if (rpc_perf_log.successful_rpc_samples().empty()) continue;
+          if (rpc_perf_log.successful_rpc_samples().empty() &&
+              rpc_perf_log.failed_rpc_samples().empty()) continue;
           auto& output_peer_log =
               (*log.mutable_peer_logs())[peers_[i][j].log_name];
           auto& output_rpc_logs = *output_peer_log.mutable_rpc_logs();
