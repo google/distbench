@@ -71,11 +71,11 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
   return absl::OkStatus();
 }
 
-TEST(DistBenchTestSequencer, ctor) {
+TEST(DistBenchTestSequencer, Constructor) {
   TestSequencer test_sequencer;
 }
 
-TEST(DistBenchTestSequencer, init) {
+TEST(DistBenchTestSequencer, Initialization) {
   distbench::TestSequencerOpts ts_opts = {};
   int port = 0;
   ts_opts.port = &port;
@@ -84,12 +84,12 @@ TEST(DistBenchTestSequencer, init) {
   test_sequencer.Shutdown();
 }
 
-TEST(DistBenchTestSequencer, empty_group) {
+TEST(DistBenchTestSequencer, EmptyGroup) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(0));
 }
 
-TEST(DistBenchTestSequencer, nonempty_group) {
+TEST(DistBenchTestSequencer, NonEmptyGroup) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(3));
 
@@ -396,15 +396,15 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   }
   EXPECT_EQ(warmup_samples, 1000);
 }
-TEST(DistBenchTestSequencer, 100k_grpc) {
+TEST(DistBenchTestSequencer, 100kGrpc) {
   RunIntenseTraffic("grpc");
 }
 
-TEST(DistBenchTestSequencer, 100k_grpc_async_callback) {
+TEST(DistBenchTestSequencer, 100kGrpcAsyncCallback) {
   RunIntenseTraffic("grpc_async_callback");
 }
 
-TEST(DistBenchTestSequencer, clique_test) {
+TEST(DistBenchTestSequencer, CliqueTest) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
@@ -475,7 +475,7 @@ TEST(DistBenchTestSequencer, clique_test) {
             test_results.service_logs().instance_logs().end());
 }
 
-TEST(DistBenchTestSequencer, stochastic_test) {
+TEST(DistBenchTestSequencer, StochasticTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
 
@@ -551,7 +551,7 @@ tests {
   ASSERT_GE(N, 1500);
 }
 
-TEST(DistBenchTestSequencer, protocol_driver_options_test) {
+TEST(DistBenchTestSequencer, ProtocolDriverOptionsTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
 
@@ -676,7 +676,7 @@ tests {
   }
 }
 
-TEST(DistBenchTestSequencer, protocol_driver_options_grpc_test) {
+TEST(DistBenchTestSequencer, ProtocolDriverOptionsGrpcInlineCallbackTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
 
@@ -744,7 +744,7 @@ tests {
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 }
 
-TEST(DistBenchTestSequencer, protocol_driver_options_grpc_test2) {
+TEST(DistBenchTestSequencer, ProtocolDriverOptionsGrpcHandoffPollingTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
 

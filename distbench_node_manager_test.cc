@@ -21,7 +21,7 @@
 
 namespace distbench {
 
-TEST(DistBenchNodeManager, ctor) {
+TEST(DistBenchNodeManager, Constructor) {
   NodeManager nm;
 }
 
