@@ -123,9 +123,7 @@ void TestSequencer::CancelTraffic() {
   std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
   int rpc_count = 0;
   for (auto& node_it : registered_nodes_) {
-    if (node_it.idle) {
-      continue;
-    }
+    if (node_it.idle) continue;
     LOG(INFO) << "Node " << node_it.node_alias << " was busy";
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
@@ -166,19 +164,19 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     }
     auto maybe_result = DoRunTest(context, test);
     LOG(INFO) << "DoRunTest status: " << maybe_result.status();
-    if (maybe_result.ok()) {
-      auto &result = maybe_result.value();
-      auto summary = SummarizeTestResult(result);
-      for (const auto& s : summary) {
-        maybe_result->add_log_summary(s);
-      }
-      if (!request->tests_setting().keep_instance_log())
-        result.mutable_service_logs()->clear_instance_logs();
-      *response->add_test_results() = result;
-    } else {
+    if (!maybe_result.ok()) {
       return grpc::Status(grpc::StatusCode::ABORTED,
                           std::string(maybe_result.status().message()));
     }
+    auto &result = maybe_result.value();
+    auto summary = SummarizeTestResult(result);
+    for (const auto& s : summary) {
+      maybe_result->add_log_summary(s);
+    }
+    if (!request->tests_setting().keep_instance_log()) {
+      result.mutable_service_logs()->clear_instance_logs();
+    }
+    *response->add_test_results() = result;
   }
   if (request->tests_setting().shutdown_after_tests()) {
     shutdown_requested_.Notify();
@@ -192,10 +190,8 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   std::vector<std::string> all_services;
   std::set<std::string> unplaced_services;
   std::set<std::string> idle_nodes;
-  {
-    for (const auto& node : registered_nodes_) {
-      idle_nodes.insert(node.node_alias);
-    }
+  for (const auto& node : registered_nodes_) {
+    idle_nodes.insert(node.node_alias);
   }
 
   int total_services = 0;
@@ -219,19 +215,17 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
       auto it = unplaced_services.find(service);
       if (it == unplaced_services.end()) {
         return absl::NotFoundError(absl::StrCat(
-              "Service ", service, " was not found or already placed."));
-      } else {
-        node_service_map[service_bundle.first].insert(service);
-        unplaced_services.erase(it);
+            "Service ", service, " was not found or already placed."));
       }
+      node_service_map[service_bundle.first].insert(service);
+      unplaced_services.erase(it);
     }
     auto it = idle_nodes.find(service_bundle.first);
     if (it == idle_nodes.end()) {
       return absl::NotFoundError(absl::StrCat(
-            "Node ", service_bundle.first, " was not found or not idle."));
-    } else {
-      idle_nodes.erase(it);
+          "Node ", service_bundle.first, " was not found or not idle."));
     }
+    idle_nodes.erase(it);
   }
 
   if (unplaced_services.empty()) {
@@ -266,7 +260,6 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
         node_service_map[remaining_nodes[i]].insert(remaining_services[i]);
       }
     }
-
     if (!failures.empty()) {
       return absl::NotFoundError(absl::StrCat(
             "No idle node for placement of services: ", failures));
@@ -298,18 +291,15 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   struct rusage rusage_start_test = DoGetRusage();
 
   auto maybe_map = PlaceServices(test);
-  if (!maybe_map.ok()) {
-    return maybe_map.status();
-  }
+  if (!maybe_map.ok()) return maybe_map.status();
+
   std::map<std::string, std::set<std::string>> node_service_map =
     maybe_map.value();
 
   ServiceEndpointMap service_map;
   auto cret = ConfigureNodes(node_service_map, test);
-  if (cret.ok())
-    service_map = *cret;
-  else
-    return cret.status();
+  if (!cret.ok()) return cret.status();
+  service_map = *cret;
 
   auto ipret = IntroducePeers(node_service_map, service_map);
   LOG(INFO) << "IntroducePeers status: " << ipret;

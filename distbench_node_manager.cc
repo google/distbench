@@ -40,23 +40,26 @@ grpc::Status NodeManager::ConfigureNode(
     CHECK(absl::SimpleAtoi(service_instance[1], &instance));
 
     int port = 0;
-    absl::Status ret = AllocService({
-          service_name,
-          service_instance[0],
-          instance,
-          &port,
-          traffic_config_.default_protocol(),
-          opts_.default_data_plane_device});
+    const ServiceOpts service_options = {
+      .service_name = service_name,
+      .service_type = service_instance[0],
+      .service_instance = instance,
+      .port = &port,
+      .protocol = traffic_config_.default_protocol(),
+      .netdev = opts_.default_data_plane_device
+    };
+    absl::Status ret = AllocService(service_options);
     if (!ret.ok()) {
       return grpc::Status(grpc::StatusCode::UNKNOWN,
           absl::StrCat("AllocService failure: ", ret.ToString()));
     }
     auto maybe_address =
       SocketAddressForDevice(opts_.default_data_plane_device, port);
-    if (!maybe_address.ok())
+    if (!maybe_address.ok()) {
       return grpc::Status(grpc::StatusCode::UNKNOWN, absl::StrCat(
-            "SocketAddressForDevice failure: ",
-            maybe_address.status().ToString()));
+          "SocketAddressForDevice failure: ",
+          maybe_address.status().ToString()));
+    }
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(maybe_address.value());
     service_entry.set_hostname(Hostname());
@@ -75,14 +78,12 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
 
   // ProtocolDriverOptions specified in Service ?
   for (const auto& service : traffic_config_.services() ) {
-    if (service.name() == service_opts.service_type) {
-      if (service.has_protocol_driver_options_name()) {
-        pd_options_name = service.protocol_driver_options_name();
-        if (pd_options_name.empty()) {
-          return absl::InvalidArgumentError(
-              "An empty name cannot be specified");
-        }
-      }
+    if (service.name() != service_opts.service_type) continue;
+    if (!service.has_protocol_driver_options_name()) continue;
+
+    pd_options_name = service.protocol_driver_options_name();
+    if (pd_options_name.empty()) {
+      return absl::InvalidArgumentError("An empty name cannot be specified");
     }
   }
 
@@ -109,14 +110,15 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   absl::StatusOr<ProtocolDriverOptions> pd_opts =
       GetProtocolDriverOptionsFor(service_opts);
   if (!pd_opts.ok()) return pd_opts.status();
+
   auto maybe_pd = AllocateProtocolDriver(*pd_opts);
-  if (!maybe_pd.ok()) {
-    return maybe_pd.status();
-  }
+  if (!maybe_pd.ok()) return maybe_pd.status();
+
   std::unique_ptr<ProtocolDriver> pd(std::move(maybe_pd.value()));
   int port = 0;
   absl::Status ret = pd->Initialize(*pd_opts, &port);
   if (!ret.ok()) return ret;
+
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd));
   ret = engine->Initialize(
         traffic_config_, service_opts.service_type,
@@ -134,8 +136,9 @@ grpc::Status NodeManager::IntroducePeers(grpc::ServerContext* context,
   peers_ = *request;
   for (const auto& service_engine : service_engines_) {
     auto ret = service_engine.second->ConfigurePeers(peers_);
-    if (!ret.ok())
+    if (!ret.ok()) {
       return grpc::Status(grpc::StatusCode::UNKNOWN, "ConfigurePeers failure");
+    }
   }
   return grpc::Status::OK;
 }
@@ -149,8 +152,9 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
 
   for (const auto& service_engine : service_engines_) {
     auto ret = service_engine.second->RunTraffic(request);
-    if (!ret.ok())
+    if (!ret.ok()) {
       return grpc::Status(grpc::StatusCode::UNKNOWN, "RunTraffic failure");
+    }
   }
 
   for (const auto& service_engine : service_engines_)
@@ -165,12 +169,12 @@ grpc::Status NodeManager::GetTrafficResult(
     GetTrafficResultResponse* response) {
   absl::MutexLock m (&mutex_);
 
+  auto& service_logs = *response->mutable_service_logs();
+  auto& instance_logs = *service_logs.mutable_instance_logs();
   for (const auto& service_engine : service_engines_) {
     auto log = service_engine.second->GetLogs();
-    if (!log.peer_logs().empty()) {
-      (*response->mutable_service_logs()
-       ->mutable_instance_logs())[service_engine.first] = std::move(log);
-    }
+    if (log.peer_logs().empty()) continue;
+    instance_logs[service_engine.first] = std::move(log);
   }
 
   if (request->clear_services()) {
@@ -284,7 +288,6 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   }
 
   LOG(INFO) << "NodeConfig: " << config_.ShortDebugString();
-
   return absl::OkStatus();
 }
 

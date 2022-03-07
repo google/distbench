@@ -45,7 +45,7 @@ void set_use_ipv4_first(bool _use_ipv4_first) {
 
 std::string Hostname() {
   char hostname[4096] = {};
-  if (gethostname(hostname, sizeof(hostname))) {
+  if (gethostname(hostname, sizeof(hostname)) != 0) {
     LOG(ERROR) << errno;
   }
   return hostname;
@@ -87,16 +87,17 @@ absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev) {
   return GetBestAddress(use_ipv4_first, netdev);
 }
 
-absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev, int port) {
+absl::StatusOr<std::string> SocketAddressForDevice(
+    std::string_view netdev, int port) {
   auto maybe_address = GetBestAddress(use_ipv4_first, netdev);
   if (!maybe_address.ok()) return maybe_address.status();
   return SocketAddressForIp(maybe_address.value(), port);
 }
 
 std::string SocketAddressForIp(DeviceIpAddress ip, int port) {
-  if (ip.isIPv4())
+  if (ip.isIPv4()) {
     return absl::StrCat(ip.ip(), ":", port);
-
+  }
   return absl::StrCat("[", ip.ip(), "]:", port);
 }
 
@@ -230,7 +231,7 @@ namespace {
 double TimevalToDouble(const struct timeval &t){
   return (double)t.tv_usec / 1000000.0 + t.tv_sec;
 }
-};  // Anonymous namespace
+}  // Anonymous namespace
 
 RUsage StructRUsageToMessage(const struct rusage &s_rusage) {
   RUsage rusage;
@@ -296,8 +297,9 @@ RUsageStats GetRUsageStatsFromStructs(const struct rusage &start,
 struct rusage DoGetRusage() {
   struct rusage rusage;
   int ret = getrusage(RUSAGE_SELF, &rusage);
-  if (ret != 0)
+  if (ret != 0) {
     LOG(WARNING) << "getrusage failed !";
+  }
   return rusage;
 }
 

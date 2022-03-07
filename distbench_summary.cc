@@ -88,8 +88,9 @@ void AddInstanceSummaryTo(std::vector<std::string> &ret,
     total_tx_bytes += perf.request_size + perf.response_size;
 
     auto is = instance_summary_map.find(initiator_name);
-    if (is != instance_summary_map.end())
+    if (is != instance_summary_map.end()) {
       inst_summary = is->second;
+    }
 
     inst_summary.tx_payload_bytes += perf.request_size;
     inst_summary.rx_payload_bytes += perf.response_size;
@@ -97,8 +98,9 @@ void AddInstanceSummaryTo(std::vector<std::string> &ret,
 
     inst_summary = instance_summary{};
     auto ist = instance_summary_map.find(target_name);
-    if (ist != instance_summary_map.end())
+    if (ist != instance_summary_map.end()) {
       inst_summary = ist->second;
+    }
 
     inst_summary.tx_payload_bytes += perf.response_size;
     inst_summary.rx_payload_bytes += perf.request_size;
@@ -165,9 +167,10 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
           latencies.push_back(rpc_latency_ns);
         }
       }
-      if (start_timestamp_ns != std::numeric_limits<int64_t>::max())
+      if (start_timestamp_ns != std::numeric_limits<int64_t>::max()) {
         test_time = std::max(test_time,
                              end_timestamp_ns - start_timestamp_ns);
+      }
       t_string_pair key_traffic_sum =
           std::make_pair(initiator_instance_name, target_instance_name);
       perf_map[key_traffic_sum] = perf_record;
