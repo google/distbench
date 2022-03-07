@@ -141,11 +141,10 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
       delete rpc_state;
     });
     auto fct_action_list_thread = handler_(rpc_state);
-    if (fct_action_list_thread)
+    if (fct_action_list_thread) {
       RunRegisteredThread(
-        "DedicatedActionListThread",
-        fct_action_list_thread
-      ).detach();
+        "DedicatedActionListThread", fct_action_list_thread).detach();
+    }
     return reactor;
   }
 
@@ -212,8 +211,9 @@ void ProtocolDriverServerGrpcAsyncCallback::HandleConnectFailure(
 }
 
 void ProtocolDriverServerGrpcAsyncCallback::ShutdownServer() {
-  if (server_ != nullptr)
+  if (server_ != nullptr) {
     server_->Shutdown();
+  }
 }
 
 std::vector<TransportStat>
@@ -227,27 +227,25 @@ ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
 
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
     const ProtocolDriverOptions &pd_opts, int* port) {
-
   std::string client_type = GetNamedSettingString(pd_opts.client_settings(),
-                                                  "client_type",
-                                                  "callback");
-  if (client_type != "callback")
+                                                  "client_type", "callback");
+  if (client_type != "callback") {
     return absl::InvalidArgumentError(
         "AsyncCallback is deprecated use the grpc protocol driver to specify"
         " the client type");
+  }
 
   std::string server_type = GetNamedSettingString(pd_opts.server_settings(),
-                                                  "server_type",
-                                                  "handoff");
-  if (server_type != "handoff")
+                                                  "server_type", "handoff");
+  if (server_type != "handoff") {
     return absl::InvalidArgumentError(
         "AsyncCallback is deprecated use the grpc protocol driver to specify"
         " the server type");
+  }
 
-  absl::Status ret;
-  ret = InitializeClient(pd_opts);
-  if (!ret.ok())
-    return ret;
+  absl::Status ret = InitializeClient(pd_opts);
+  if (!ret.ok()) return ret;
+
   ret = InitializeServer(pd_opts, port);
   if (!ret.ok())
     return ret;
@@ -317,13 +315,15 @@ void ProtocolDriverGrpcAsyncCallback::ChurnConnection(int peer) {
 }
 
 void ProtocolDriverGrpcAsyncCallback::ShutdownClient() {
-  if (client_ != nullptr)
+  if (client_ != nullptr) {
     client_->ShutdownClient();
+  }
 }
 
 void ProtocolDriverGrpcAsyncCallback::ShutdownServer() {
-  if (server_ != nullptr)
+  if (server_ != nullptr) {
     server_->ShutdownServer();
+  }
 }
 
 }  // namespace distbench

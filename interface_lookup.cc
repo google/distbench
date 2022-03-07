@@ -29,7 +29,7 @@
 
 bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family) {
   struct ifaddrs *ifaddr;
-  int family, s;
+  int family;
   char host[NI_MAXHOST];
 
   if (getifaddrs(&ifaddr) == -1)
@@ -48,13 +48,11 @@ bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family) {
       continue;
 
     if (family == which_family) {
+      int s;
       s = getnameinfo(ifa->ifa_addr,
                       (family == AF_INET) ? sizeof(struct sockaddr_in) :
                       sizeof(struct sockaddr_in6),
-                      host, NI_MAXHOST,
-                      NULL, 0, NI_NUMERICHOST);
-
-
+                      host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
       if (s != 0) {
         freeifaddrs(ifaddr);
         return false;

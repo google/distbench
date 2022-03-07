@@ -660,9 +660,7 @@ void DistBenchEngine::RunActionList(
           break;
         }
       }
-      if (!deps_ready) {
-        continue;
-      }
+      if (!deps_ready) continue;
       s.state_table[i].started = true;
       s.state_table[i].action = &s.action_list->list_actions[i];
       if ((!sent_response_early && incoming_rpc_state) &&
@@ -690,9 +688,7 @@ void DistBenchEngine::RunActionList(
         break;
       }
     }
-    if (done) {
-      break;
-    }
+    if (done) break;
     auto some_actions_finished = [&s]() {
       return !s.finished_action_indices.empty();
     };
@@ -930,9 +926,8 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     CHECK_GE(rpc_service_index, 0);
     CHECK_LT(static_cast<size_t>(rpc_service_index), peers_.size());
 
-    if (peers_[rpc_service_index].empty()) {
-      return;
-    }
+    if (peers_[rpc_service_index].empty()) return;
+
     action_state->rpc_index = action.rpc_index;
     action_state->rpc_service_index = rpc_service_index;
     action_state->iteration_function =
@@ -1158,15 +1153,17 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
         break;
       }
     }
-    if (nb_targets > num_servers)
+    if (nb_targets > num_servers) {
       nb_targets = num_servers;
+    }
 
     // Generate a vector to pick random targets from (only done once)
     partial_rand_vects.try_emplace(num_servers, std::vector<int>());
     std::vector<int>& from_vector = partial_rand_vects[num_servers];
     if (from_vector.empty()) {
-      for (int i = 0; i < num_servers; i++)
+      for (int i = 0; i < num_servers; i++) {
         from_vector.push_back(i);
+      }
     }
 
     // Randomize and pick up to nb_targets

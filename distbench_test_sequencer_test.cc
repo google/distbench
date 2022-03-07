@@ -680,8 +680,6 @@ TEST(DistBenchTestSequencer, ProtocolDriverOptionsGrpcInlineCallbackTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
 
-  TestSequence test_sequence;
-
   const std::string proto = R"(
 tests {
   services {
@@ -727,6 +725,7 @@ tests {
     }
   }
 })";
+  TestSequence test_sequence;
   bool parse_result = google::protobuf::TextFormat::ParseFromString(
       proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
@@ -747,8 +746,6 @@ tests {
 TEST(DistBenchTestSequencer, ProtocolDriverOptionsGrpcHandoffPollingTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
-
-  TestSequence test_sequence;
 
   const std::string proto = R"(
 tests {
@@ -795,6 +792,7 @@ tests {
     }
   }
 })";
+  TestSequence test_sequence;
   bool parse_result = google::protobuf::TextFormat::ParseFromString(
       proto, &test_sequence);
   ASSERT_EQ(parse_result, true);

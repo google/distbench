@@ -38,7 +38,7 @@ namespace distbench {
 
 std::vector<DeviceIpAddress> GetAllAddresses() {
   struct ifaddrs *ifaddr;
-  int family, s;
+  int family;
   char host[NI_MAXHOST];
   std::vector<DeviceIpAddress> result;
 
@@ -55,6 +55,7 @@ std::vector<DeviceIpAddress> GetAllAddresses() {
     if (family == AF_PACKET)
       continue;
 
+    int s;
     s = getnameinfo(ifa->ifa_addr,
                     (family == AF_INET) ? sizeof(struct sockaddr_in) :
                                           sizeof(struct sockaddr_in6),
@@ -76,8 +77,9 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(
   // Exact match
   for (const auto& address : all_addresses) {
     if (address.isIPv4() == prefer_ipv4 &&
-        address.netdevice() == netdev)
+        address.netdevice() == netdev) {
       return address;
+    }
   }
 
   // Match the device with any IP type
@@ -89,31 +91,36 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(
     }
   }
 
-  if (!netdev.empty())
+  if (!netdev.empty()) {
     return absl::NotFoundError(absl::StrCat(
           "No address found for netdev '", netdev,
           "' (prefer_ipv4=", prefer_ipv4, ")"));
+  }
 
   int score = 0;
   DeviceIpAddress best_match;
   for (const auto& address : all_addresses) {
     int cur_score = 0;
     // Skip link-local addresses:
-    if (absl::StartsWith(address.ToString(), "fe80:"))
+    if (absl::StartsWith(address.ToString(), "fe80:")) {
       continue;
-    if (address.isIPv4() == prefer_ipv4)
+    }
+    if (address.isIPv4() == prefer_ipv4) {
       cur_score += 2048;
-    if (address.netdevice() != "lo")
+    }
+    if (address.netdevice() != "lo") {
       cur_score += 1024;
+    }
     if (cur_score > score) {
       score = cur_score;
       best_match = address;
     }
   }
 
-  if (score == 0)
+  if (score == 0) {
     return absl::NotFoundError(absl::StrCat(
           "No address found for any netdev (prefer_ipv4=", prefer_ipv4, ")"));
+  }
 
   LOG(WARNING) << "Using " << best_match.ToString()
                << " for netdev " << netdev
@@ -129,10 +136,11 @@ bool DeviceIpAddress::isIPv4() const {
 
 std::string DeviceIpAddress::ToString() const {
   std::string ret = ip_ + " on " + device_ + " ";
-  if (isIPv4())
+  if (isIPv4()) {
     ret += "(ipv4)";
-  else
+  } else {
     ret += "(ipv6)";
+  }
   return ret;
 }
 

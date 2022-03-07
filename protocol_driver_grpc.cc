@@ -185,7 +185,6 @@ absl::Status ProtocolDriverServerGrpc::InitializeServer(
   }
 
   LOG(INFO) << "Grpc Traffic server listening on " << server_socket_address_;
-
   return absl::OkStatus();
 }
 
@@ -224,11 +223,9 @@ ProtocolDriverGrpc::ProtocolDriverGrpc() {
 
 absl::Status ProtocolDriverGrpc::Initialize(
     const ProtocolDriverOptions &pd_opts, int* port) {
+  absl::Status ret = InitializeClient(pd_opts);
+  if (!ret.ok()) return ret;
 
-  absl::Status ret;
-  ret = InitializeClient(pd_opts);
-  if (!ret.ok())
-    return ret;
   ret = InitializeServer(pd_opts, port);
   if (!ret.ok())
     return ret;
@@ -240,17 +237,17 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
     const ProtocolDriverOptions &pd_opts) {
   // Build the client
   std::string client_type = GetNamedSettingString(pd_opts.client_settings(),
-                                                  "client_type",
-                                                  "polling");
-  if (client_type == "polling")
+                                                  "client_type", "polling");
+  if (client_type == "polling") {
     client_ = std::unique_ptr<ProtocolDriverClient>(
         new ProtocolDriverClientGrpc());
-  else if (client_type == "callback")
+  } else if (client_type == "callback") {
     client_ = std::unique_ptr<ProtocolDriverClient>(
         new ProtocolDriverClientGrpcAsyncCallback());
-  else
+  } else {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
+  }
   LOG(INFO) << "Grpc Client Type: " << client_type;
   return client_->InitializeClient(pd_opts);
 }
@@ -259,16 +256,16 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
     const ProtocolDriverOptions &pd_opts, int *port) {
   // Build the server
   std::string server_type = GetNamedSettingString(pd_opts.server_settings(),
-                                                  "server_type",
-                                                  "inline");
-  if (server_type == "inline")
+                                                  "server_type", "inline");
+  if (server_type == "inline") {
     server_ = std::unique_ptr<ProtocolDriverServer>(
         new ProtocolDriverServerGrpc());
-  else if (server_type == "handoff")
+  } else if (server_type == "handoff") {
     server_ = std::unique_ptr<ProtocolDriverServer>(
         new ProtocolDriverServerGrpcAsyncCallback());
-  else
+  } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
+  }
   LOG(INFO) << "Grpc Server Type: " << server_type;
   return server_->InitializeServer(pd_opts, port);
 }
@@ -320,13 +317,15 @@ void ProtocolDriverGrpc::ChurnConnection(int peer) {
 }
 
 void ProtocolDriverGrpc::ShutdownClient() {
-  if (client_ != nullptr)
+  if (client_ != nullptr) {
     client_->ShutdownClient();
+  }
 }
 
 void ProtocolDriverGrpc::ShutdownServer() {
-  if (server_ != nullptr)
+  if (server_ != nullptr) {
     server_->ShutdownServer();
+  }
 }
 
 }  // namespace distbench

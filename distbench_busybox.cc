@@ -54,9 +54,9 @@ int main(int argc, char** argv, char** envp) {
   distbench::InitLibs(argv[0]);
   distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
 
-  if (!AreRemainingArgumentsOK(remaining_arguments,
-                               2, std::numeric_limits<size_t>::max()))
-    return 1;
+  bool args_ok = AreRemainingArgumentsOK(
+      remaining_arguments, 2, std::numeric_limits<size_t>::max());
+  if (!args_ok) return 1;
 
   char *distbench_module = remaining_arguments[1];
 
@@ -283,21 +283,22 @@ int MainRunTests(std::vector<char*> &arguments) {
 }
 
 int MainTestSequencer(std::vector<char*> &arguments) {
-  if (!AreRemainingArgumentsOK(arguments, 0, 0))
-    return 1;
-  distbench::TestSequencerOpts opts = {};
+  if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
   int port = absl::GetFlag(FLAGS_port);
-  opts.port = &port;
+  distbench::TestSequencerOpts opts = {
+    .port = &port,
+  };
   distbench::TestSequencer test_sequencer;
   test_sequencer.Initialize(opts);
-  int num_nodes = absl::GetFlag(FLAGS_local_nodes);
   std::vector<std::unique_ptr<distbench::NodeManager>> nodes;
+  int num_nodes = absl::GetFlag(FLAGS_local_nodes);
   nodes.reserve(num_nodes);
   for (int i = 0; i < num_nodes; ++i) {
     int new_port = 0;
-    distbench::NodeManagerOpts opts = {};
-    opts.port = & new_port;
-    opts.test_sequencer_service_address = test_sequencer.service_address();
+    const distbench::NodeManagerOpts opts = {
+      .test_sequencer_service_address = test_sequencer.service_address(),
+      .port = &new_port,
+    };
     nodes.push_back(std::make_unique<distbench::NodeManager>());
     absl::Status status = nodes.back()->Initialize(opts);
     if (!status.ok()) {
@@ -314,14 +315,13 @@ int MainTestSequencer(std::vector<char*> &arguments) {
 }
 
 int MainNodeManager(std::vector<char*> &arguments) {
-  if (!AreRemainingArgumentsOK(arguments, 0, 0))
-    return 1;
-  distbench::NodeManagerOpts opts = {};
-  opts.test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer);
-  opts.default_data_plane_device =
-      absl::GetFlag(FLAGS_default_data_plane_device);
+  if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
   int port = absl::GetFlag(FLAGS_port);
-  opts.port = &port;
+  const distbench::NodeManagerOpts opts = {
+    .test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer),
+    .default_data_plane_device = absl::GetFlag(FLAGS_default_data_plane_device),
+    .port = &port,
+  };
   distbench::NodeManager node_manager;
   absl::Status status = node_manager.Initialize(opts);
   if (!status.ok()) {
