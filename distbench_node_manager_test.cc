@@ -15,15 +15,13 @@
 #include "distbench_node_manager.h"
 
 #include "distbench_utils.h"
-#include "protocol_driver_allocator.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
+#include "protocol_driver_allocator.h"
 
 namespace distbench {
 
-TEST(DistBenchNodeManager, Constructor) {
-  NodeManager nm;
-}
+TEST(DistBenchNodeManager, Constructor) { NodeManager nm; }
 
 TEST(DistBenchNodeManager, FailNoTestSequencer) {
   NodeManager nm;

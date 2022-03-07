@@ -14,9 +14,9 @@
 
 #include "distbench_summary.h"
 
-#include "absl/strings/str_split.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/str_split.h"
 #include "glog/logging.h"
 
 namespace distbench {
@@ -26,7 +26,7 @@ namespace {
 std::string LatencySummary(std::vector<int64_t> latencies) {
   std::string ret;
 
-  size_t N =  latencies.size();
+  size_t N = latencies.size();
   absl::StrAppendFormat(&ret, "N: %ld", N);
 
   if (N > 0) {
@@ -54,8 +54,8 @@ struct instance_summary {
   int64_t rx_payload_bytes = 0;
 };
 
-void AddCommunicationSummaryTo(std::vector<std::string> &ret,
-    double total_time_seconds,
+void AddCommunicationSummaryTo(
+    std::vector<std::string>& ret, double total_time_seconds,
     std::map<t_string_pair, rpc_traffic_summary> perf_map) {
   ret.push_back("Communication summary:");
   constexpr double MiB = 1024 * 1024;
@@ -63,7 +63,8 @@ void AddCommunicationSummaryTo(std::vector<std::string> &ret,
     std::string name = perf_r.first.first + " -> " + perf_r.first.second;
     auto& perf = perf_r.second;
     std::string str{};
-    absl::StrAppendFormat(&str,
+    absl::StrAppendFormat(
+        &str,
         "  %s: RPCs: %d (%3.2f kQPS) "
         "Request: %3.1f MiB/s Response: %3.1f MiB/s",
         name, perf.nb_rpcs, (double)perf.nb_rpcs / total_time_seconds / 1000.,
@@ -73,8 +74,8 @@ void AddCommunicationSummaryTo(std::vector<std::string> &ret,
   }
 }
 
-void AddInstanceSummaryTo(std::vector<std::string> &ret,
-    double total_time_seconds,
+void AddInstanceSummaryTo(
+    std::vector<std::string>& ret, double total_time_seconds,
     std::map<t_string_pair, rpc_traffic_summary> perf_map) {
   std::map<std::string, instance_summary> instance_summary_map;
   int64_t total_rpcs = 0;
@@ -82,7 +83,7 @@ void AddInstanceSummaryTo(std::vector<std::string> &ret,
   for (auto& perf_r : perf_map) {
     std::string initiator_name = perf_r.first.first;
     std::string target_name = perf_r.first.second;
-    auto &perf = perf_r.second;
+    auto& perf = perf_r.second;
     instance_summary inst_summary{};
     total_rpcs += perf.nb_rpcs;
     total_tx_bytes += perf.request_size + perf.response_size;
@@ -112,8 +113,8 @@ void AddInstanceSummaryTo(std::vector<std::string> &ret,
   for (auto& instance_sum : instance_summary_map) {
     instance_summary inst_summary = instance_sum.second;
     std::string str{};
-    absl::StrAppendFormat(&str, "  %s: Tx: %3.1f MiB/s, Rx:%3.1f MiB/s",
-        instance_sum.first,
+    absl::StrAppendFormat(
+        &str, "  %s: Tx: %3.1f MiB/s, Rx:%3.1f MiB/s", instance_sum.first,
         (double)inst_summary.tx_payload_bytes / MiB / total_time_seconds,
         (double)inst_summary.rx_payload_bytes / MiB / total_time_seconds);
     ret.push_back(str);
@@ -125,11 +126,10 @@ void AddInstanceSummaryTo(std::vector<std::string> &ret,
   ret.push_back(str);
   str = "";
   absl::StrAppendFormat(&str, "  Total Tx: %d MiB (%3.1f MiB/s), ",
-      total_tx_bytes / MiB,
-      (double)total_tx_bytes / MiB / total_time_seconds);
-  absl::StrAppendFormat(&str,
-      "Total Nb RPCs: %d (%3.2f kQPS)",
-      total_rpcs, (double)total_rpcs / 1000 / total_time_seconds);
+                        total_tx_bytes / MiB,
+                        (double)total_tx_bytes / MiB / total_time_seconds);
+  absl::StrAppendFormat(&str, "Total Nb RPCs: %d (%3.2f kQPS)", total_rpcs,
+                        (double)total_rpcs / 1000 / total_time_seconds);
   ret.push_back(str);
 }
 
@@ -148,8 +148,8 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
       int64_t end_timestamp_ns = std::numeric_limits<int64_t>::min();
       rpc_traffic_summary perf_record{};
       for (const auto& rpc_log : peer_log.second.rpc_logs()) {
-        std::string rpc_name  =
-          test_result.traffic_config().rpc_descriptions(rpc_log.first).name();
+        std::string rpc_name =
+            test_result.traffic_config().rpc_descriptions(rpc_log.first).name();
         std::vector<int64_t>& latencies = latency_map[rpc_name];
         perf_record.nb_rpcs += rpc_log.second.successful_rpc_samples().size();
         for (const auto& sample : rpc_log.second.successful_rpc_samples()) {
@@ -158,8 +158,8 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
           int64_t rpc_request_size = sample.request_size();
           int64_t rpc_response_size = sample.response_size();
 
-          start_timestamp_ns = std::min(rpc_start_timestamp_ns,
-                                        start_timestamp_ns);
+          start_timestamp_ns =
+              std::min(rpc_start_timestamp_ns, start_timestamp_ns);
           end_timestamp_ns = std::max(rpc_start_timestamp_ns + rpc_latency_ns,
                                       end_timestamp_ns);
           perf_record.request_size += rpc_request_size;
@@ -168,8 +168,7 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
         }
       }
       if (start_timestamp_ns != std::numeric_limits<int64_t>::max()) {
-        test_time = std::max(test_time,
-                             end_timestamp_ns - start_timestamp_ns);
+        test_time = std::max(test_time, end_timestamp_ns - start_timestamp_ns);
       }
       t_string_pair key_traffic_sum =
           std::make_pair(initiator_instance_name, target_instance_name);
@@ -182,8 +181,8 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
   for (auto& latencies : latency_map) {
     std::string str{};
     std::sort(latencies.second.begin(), latencies.second.end());
-    absl::StrAppendFormat(
-        &str, "  %s: %s", latencies.first, LatencySummary(latencies.second));
+    absl::StrAppendFormat(&str, "  %s: %s", latencies.first,
+                          LatencySummary(latencies.second));
     ret.push_back(str);
   }
 

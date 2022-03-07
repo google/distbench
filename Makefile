@@ -17,6 +17,11 @@ basicprof:
 	bazel-bin/protocol_driver_test
 	gprof bazel-bin/protocol_driver_test
 
+clang-format:
+	for file in *.{cc,h}; do\
+		clang-format -i -style=file $${file};\
+	done
+
 all:
 	bazel build :all
 

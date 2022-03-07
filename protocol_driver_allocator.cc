@@ -17,7 +17,6 @@
 #include "protocol_driver_grpc.h"
 #include "protocol_driver_grpc_async_callback.h"
 
-
 namespace distbench {
 
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(

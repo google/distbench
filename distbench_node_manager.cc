@@ -14,26 +14,25 @@
 
 #include "distbench_node_manager.h"
 
-#include "distbench_utils.h"
-#include "protocol_driver_allocator.h"
 #include "absl/strings/str_split.h"
+#include "distbench_utils.h"
 #include "glog/logging.h"
+#include "protocol_driver_allocator.h"
 
 namespace distbench {
 
 NodeManager::NodeManager() {}
 
-grpc::Status NodeManager::ConfigureNode(
-    grpc::ServerContext* context,
-    const NodeServiceConfig* request,
-    ServiceEndpointMap* response) {
-  absl::MutexLock m (&mutex_);
+grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
+                                        const NodeServiceConfig* request,
+                                        ServiceEndpointMap* response) {
+  absl::MutexLock m(&mutex_);
   traffic_config_ = request->traffic_config();
   ClearServices();
   auto& service_map = *response->mutable_service_endpoints();
   for (const auto& service_name : request->services()) {
     std::vector<std::string> service_instance =
-      absl::StrSplit(service_name, '/');
+        absl::StrSplit(service_name, '/');
     CHECK_EQ(service_instance.size(), 2lu);
 
     int instance;
@@ -41,24 +40,24 @@ grpc::Status NodeManager::ConfigureNode(
 
     int port = 0;
     const ServiceOpts service_options = {
-      .service_name = service_name,
-      .service_type = service_instance[0],
-      .service_instance = instance,
-      .port = &port,
-      .protocol = traffic_config_.default_protocol(),
-      .netdev = opts_.default_data_plane_device
-    };
+        .service_name = service_name,
+        .service_type = service_instance[0],
+        .service_instance = instance,
+        .port = &port,
+        .protocol = traffic_config_.default_protocol(),
+        .netdev = opts_.default_data_plane_device};
     absl::Status ret = AllocService(service_options);
     if (!ret.ok()) {
-      return grpc::Status(grpc::StatusCode::UNKNOWN,
+      return grpc::Status(
+          grpc::StatusCode::UNKNOWN,
           absl::StrCat("AllocService failure: ", ret.ToString()));
     }
     auto maybe_address =
-      SocketAddressForDevice(opts_.default_data_plane_device, port);
+        SocketAddressForDevice(opts_.default_data_plane_device, port);
     if (!maybe_address.ok()) {
-      return grpc::Status(grpc::StatusCode::UNKNOWN, absl::StrCat(
-          "SocketAddressForDevice failure: ",
-          maybe_address.status().ToString()));
+      return grpc::Status(grpc::StatusCode::UNKNOWN,
+                          absl::StrCat("SocketAddressForDevice failure: ",
+                                       maybe_address.status().ToString()));
     }
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(maybe_address.value());
@@ -67,9 +66,7 @@ grpc::Status NodeManager::ConfigureNode(
   return grpc::Status::OK;
 }
 
-void NodeManager::ClearServices() {
-  service_engines_.clear();
-}
+void NodeManager::ClearServices() { service_engines_.clear(); }
 
 absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
     const ServiceOpts& service_opts) {
@@ -77,7 +74,7 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
   std::string pd_options_name = "";
 
   // ProtocolDriverOptions specified in Service ?
-  for (const auto& service : traffic_config_.services() ) {
+  for (const auto& service : traffic_config_.services()) {
     if (service.name() != service_opts.service_type) continue;
     if (!service.has_protocol_driver_options_name()) continue;
 
@@ -88,15 +85,14 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
   }
 
   // ProtocolDriverOptions found in config ?
-  for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options() ) {
+  for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
     if (pd_opts_enum.name() == pd_options_name) {
       pd_opts = pd_opts_enum;
     }
   }
 
   // Use defaults to complete options
-  if (pd_options_name.empty())
-    pd_opts.set_name("generated_default");
+  if (pd_options_name.empty()) pd_opts.set_name("generated_default");
   if (!pd_opts.has_protocol_name())
     pd_opts.set_protocol_name(std::string(service_opts.protocol));
   if (!pd_opts.has_netdev_name())
@@ -120,9 +116,8 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   if (!ret.ok()) return ret;
 
   auto engine = std::make_unique<DistBenchEngine>(std::move(pd));
-  ret = engine->Initialize(
-        traffic_config_, service_opts.service_type,
-        service_opts.service_instance, service_opts.port);
+  ret = engine->Initialize(traffic_config_, service_opts.service_type,
+                           service_opts.service_instance, service_opts.port);
   if (!ret.ok()) return ret;
 
   service_engines_[std::string(service_opts.service_name)] = std::move(engine);
@@ -130,9 +125,9 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
 }
 
 grpc::Status NodeManager::IntroducePeers(grpc::ServerContext* context,
-                                        const ServiceEndpointMap* request,
-                                        IntroducePeersResult* response) {
-  absl::MutexLock m (&mutex_);
+                                         const ServiceEndpointMap* request,
+                                         IntroducePeersResult* response) {
+  absl::MutexLock m(&mutex_);
   peers_ = *request;
   for (const auto& service_engine : service_engines_) {
     auto ret = service_engine.second->ConfigurePeers(peers_);
@@ -146,7 +141,7 @@ grpc::Status NodeManager::IntroducePeers(grpc::ServerContext* context,
 grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
                                      const RunTrafficRequest* request,
                                      RunTrafficResponse* response) {
-  absl::ReaderMutexLock m (&mutex_);
+  absl::ReaderMutexLock m(&mutex_);
 
   rusage_start_test_ = DoGetRusage();
 
@@ -164,10 +159,9 @@ grpc::Status NodeManager::RunTraffic(grpc::ServerContext* context,
 }
 
 grpc::Status NodeManager::GetTrafficResult(
-    grpc::ServerContext* context,
-    const GetTrafficResultRequest* request,
+    grpc::ServerContext* context, const GetTrafficResultRequest* request,
     GetTrafficResultResponse* response) {
-  absl::MutexLock m (&mutex_);
+  absl::MutexLock m(&mutex_);
 
   auto& service_logs = *response->mutable_service_logs();
   auto& instance_logs = *service_logs.mutable_instance_logs();
@@ -193,7 +187,7 @@ grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
                                         const CancelTrafficRequest* request,
                                         CancelTrafficResult* response) {
   LOG(INFO) << "Starting CancelTraffic on " << config_.node_alias();
-  absl::ReaderMutexLock m (&mutex_);
+  absl::ReaderMutexLock m(&mutex_);
   for (const auto& service_engine : service_engines_) {
     service_engine.second->CancelTraffic();
   }
@@ -241,18 +235,18 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
         "node_manager requires the --test_sequencer flag.");
   }
   std::shared_ptr<grpc::ChannelCredentials> client_creds =
-    MakeChannelCredentials();
+      MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
       opts_.test_sequencer_service_address, client_creds,
       DistbenchCustomChannelArguments());
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub =
-    DistBenchTestSequencer::NewStub(channel);
+      DistBenchTestSequencer::NewStub(channel);
 
   service_address_ = absl::StrCat("[::]:", *opts_.port);
   grpc::ServerBuilder builder;
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
-    MakeServerCredentials();
+      MakeServerCredentials();
   builder.AddListeningPort(service_address_, server_creds, opts_.port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
@@ -262,8 +256,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (!grpc_server_) {
     return absl::UnknownError("NodeManager service failed to start");
   }
-  LOG(INFO) << "NodeManager server listening on " << service_address_ <<
-            " on " << Hostname();
+  LOG(INFO) << "NodeManager server listening on " << service_address_ << " on "
+            << Hostname();
 
   NodeRegistration reg;
   reg.set_hostname(Hostname());
@@ -274,15 +268,15 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
 
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(60);
+      std::chrono::system_clock::now() + std::chrono::seconds(60);
   context.set_deadline(deadline);
   context.set_wait_for_ready(true);
   grpc::Status status =
-    test_sequencer_stub->RegisterNode(&context, reg, &config_);
+      test_sequencer_stub->RegisterNode(&context, reg, &config_);
   if (!status.ok()) {
-    status = Annotate(status, absl::StrCat(
-          "While registering node to test sequencer(",
-          opts_.test_sequencer_service_address, "): "));
+    status = Annotate(
+        status, absl::StrCat("While registering node to test sequencer(",
+                             opts_.test_sequencer_service_address, "): "));
     grpc_server_->Shutdown();
     return absl::InvalidArgumentError(status.error_message());
   }

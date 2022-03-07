@@ -12,46 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _GNU_SOURCE     /* Pre-defined on GNU/Linux */
-#define _GNU_SOURCE     /* To get defns of NI_MAXSERV and NI_MAXHOST */
+#ifndef _GNU_SOURCE /* Pre-defined on GNU/Linux */
+#define _GNU_SOURCE /* To get defns of NI_MAXSERV and NI_MAXHOST */
 #endif
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <ifaddrs.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <linux/if_link.h>
-#include <string.h>
 #include "interface_lookup.h"
 
-bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family) {
-  struct ifaddrs *ifaddr;
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <linux/if_link.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+bool GetFirstAddress(net_base::IPAddress& ip_address, int which_family) {
+  struct ifaddrs* ifaddr;
   int family;
   char host[NI_MAXHOST];
 
-  if (getifaddrs(&ifaddr) == -1)
-    return false;
+  if (getifaddrs(&ifaddr) == -1) return false;
 
   /* Walk through linked list, maintaining head pointer so we
      can free list later */
-  for (struct ifaddrs *ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-    if (ifa->ifa_addr == NULL)
-      continue;
+  for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+    if (ifa->ifa_addr == NULL) continue;
 
     family = ifa->ifa_addr->sa_family;
-    if (family == AF_PACKET)
-      continue;
-    if (strcmp(ifa->ifa_name, "lo") == 0)
-      continue;
+    if (family == AF_PACKET) continue;
+    if (strcmp(ifa->ifa_name, "lo") == 0) continue;
 
     if (family == which_family) {
       int s;
       s = getnameinfo(ifa->ifa_addr,
-                      (family == AF_INET) ? sizeof(struct sockaddr_in) :
-                      sizeof(struct sockaddr_in6),
+                      (family == AF_INET) ? sizeof(struct sockaddr_in)
+                                          : sizeof(struct sockaddr_in6),
                       host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
       if (s != 0) {
         freeifaddrs(ifaddr);
@@ -68,11 +65,10 @@ bool GetFirstAddress(net_base::IPAddress &ip_address, int which_family) {
   return false;
 }
 
-bool net_base::InterfaceLookup::MyIPv4Address(IPAddress *addr) {
+bool net_base::InterfaceLookup::MyIPv4Address(IPAddress* addr) {
   return GetFirstAddress(*addr, AF_INET);
 }
 
-bool net_base::InterfaceLookup::MyIPv6Address(IPAddress *addr) {
+bool net_base::InterfaceLookup::MyIPv6Address(IPAddress* addr) {
   return GetFirstAddress(*addr, AF_INET6);
 }
-

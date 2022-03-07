@@ -30,7 +30,7 @@ class DeviceIpAddress {
 
  public:
   DeviceIpAddress() {}
-  DeviceIpAddress(const char *host, const char *devname, int family) {
+  DeviceIpAddress(const char* host, const char* devname, int family) {
     ip_ = std::string(host);
     device_ = std::string(devname);
     net_family_ = family;
@@ -38,17 +38,13 @@ class DeviceIpAddress {
 
   bool isIPv4() const;
   std::string ToString() const;
-  std::string netdevice() const {
-    return device_;
-  }
-  std::string ip() const {
-    return ip_;
-  }
+  std::string netdevice() const { return device_; }
+  std::string ip() const { return ip_; }
 };
 
 std::vector<DeviceIpAddress> GetAllAddresses();
-absl::StatusOr<DeviceIpAddress> GetBestAddress(
-    bool prefer_ipv4, std::string_view netdev);
+absl::StatusOr<DeviceIpAddress> GetBestAddress(bool prefer_ipv4,
+                                               std::string_view netdev);
 
 };  // namespace distbench
 

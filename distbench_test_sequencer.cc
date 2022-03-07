@@ -25,11 +25,10 @@ namespace distbench {
 grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
                                          const NodeRegistration* request,
                                          NodeConfig* response) {
-  if (request->hostname().empty() ||
-      request->control_ip().empty() ||
+  if (request->hostname().empty() || request->control_ip().empty() ||
       request->control_port() <= 0) {
-    return grpc::Status(
-        grpc::StatusCode::INVALID_ARGUMENT, "Invalid Registration");
+    return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                        "Invalid Registration");
   }
 
   absl::MutexLock m(&mutex_);
@@ -49,19 +48,17 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
     node_alias_id_map_[node_alias] = node_id;
   }
 
-  std::shared_ptr<grpc::ChannelCredentials> creds =
-    MakeChannelCredentials();
+  std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
   std::string node_service;
   if (absl::StrContains(request->control_ip(), ":")) {
-    node_service = absl::StrCat(
-        "ipv6:///[", request->control_ip(), "]:", request->control_port());
+    node_service = absl::StrCat("ipv6:///[", request->control_ip(),
+                                "]:", request->control_port());
   } else {
-    node_service = absl::StrCat(
-        "ipv4:///", request->control_ip(), ":", request->control_port());
+    node_service = absl::StrCat("ipv4:///", request->control_ip(), ":",
+                                request->control_port());
   }
-  std::shared_ptr<grpc::Channel> channel =
-    grpc::CreateCustomChannel(node_service, creds,
-                              DistbenchCustomChannelArguments());
+  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+      node_service, creds, DistbenchCustomChannelArguments());
   auto stub = DistBenchNodeManager::NewStub(channel);
   if (stub) {
     response->set_node_id(node_id);
@@ -69,12 +66,12 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
     auto& node = registered_nodes_[node_id];
     node.registration = *request;
     node.stub = std::move(stub);
-    LOG(INFO) << "Connected to " << response->node_alias()
-              << " @ " << node_service;
+    LOG(INFO) << "Connected to " << response->node_alias() << " @ "
+              << node_service;
     return grpc::Status::OK;
   } else {
-    return grpc::Status(
-        grpc::StatusCode::UNKNOWN, "Could not create node stub.");
+    return grpc::Status(grpc::StatusCode::UNKNOWN,
+                        "Could not create node stub.");
   }
 }
 
@@ -98,7 +95,7 @@ grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
 
   running_test_sequence_context_ = context;
   auto notification = running_test_notification_ =
-    std::make_shared<absl::Notification>();
+      std::make_shared<absl::Notification>();
   mutex_.Unlock();
   grpc::Status result = DoRunTestSequence(context, request, response);
   LOG(INFO) << "DoRunTestSequence status: " << result;
@@ -129,10 +126,10 @@ void TestSequencer::CancelTraffic() {
     ++rpc_count;
     rpc_state.node = &node_it;
     std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(60);
+        std::chrono::system_clock::now() + std::chrono::seconds(60);
     rpc_state.context.set_deadline(deadline);
-    rpc_state.rpc = node_it.stub->AsyncCancelTraffic(
-          &rpc_state.context, rpc_state.request, &cq);
+    rpc_state.rpc = node_it.stub->AsyncCancelTraffic(&rpc_state.context,
+                                                     rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
   while (rpc_count) {
@@ -141,7 +138,7 @@ void TestSequencer::CancelTraffic() {
     cq.Next(&tag, &ok);
     if (ok) {
       --rpc_count;
-      PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
+      PendingRpc* finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
         LOG(ERROR) << "Cancelling traffic " << finished_rpc->status << " on "
                    << finished_rpc->node->node_alias;
@@ -158,8 +155,8 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     {
       absl::MutexLock m(&mutex_);
       if (running_test_sequence_context_->IsCancelled()) {
-        return grpc::Status(
-            grpc::StatusCode::ABORTED, "Cancelled by new test sequence.");
+        return grpc::Status(grpc::StatusCode::ABORTED,
+                            "Cancelled by new test sequence.");
       }
     }
     auto maybe_result = DoRunTest(context, test);
@@ -168,7 +165,7 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
       return grpc::Status(grpc::StatusCode::ABORTED,
                           std::string(maybe_result.status().message()));
     }
-    auto &result = maybe_result.value();
+    auto& result = maybe_result.value();
     auto summary = SummarizeTestResult(result);
     for (const auto& s : summary) {
       maybe_result->add_log_summary(s);
@@ -203,8 +200,7 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   all_services.reserve(total_services);
   for (const auto& service_node : test.services()) {
     for (int i = 0; i < service_node.count(); ++i) {
-      std::string service_instance =
-        absl::StrCat(service_node.name(), "/", i);
+      std::string service_instance = absl::StrCat(service_node.name(), "/", i);
       unplaced_services.insert(service_instance);
       all_services.push_back(service_instance);
     }
@@ -222,8 +218,8 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
     }
     auto it = idle_nodes.find(service_bundle.first);
     if (it == idle_nodes.end()) {
-      return absl::NotFoundError(absl::StrCat(
-          "Node ", service_bundle.first, " was not found or not idle."));
+      return absl::NotFoundError(absl::StrCat("Node ", service_bundle.first,
+                                              " was not found or not idle."));
     }
     idle_nodes.erase(it);
   }
@@ -231,8 +227,8 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   if (unplaced_services.empty()) {
     LOG(INFO) << "All services placed manually";
   } else {
-    LOG(INFO) << "After manually assigned services "
-              << unplaced_services.size() << " still need to be placed";
+    LOG(INFO) << "After manually assigned services " << unplaced_services.size()
+              << " still need to be placed";
 
     std::vector<std::string> remaining_services;
     for (const auto& service : all_services) {
@@ -261,8 +257,8 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
       }
     }
     if (!failures.empty()) {
-      return absl::NotFoundError(absl::StrCat(
-            "No idle node for placement of services: ", failures));
+      return absl::NotFoundError(
+          absl::StrCat("No idle node for placement of services: ", failures));
     }
   }
 
@@ -273,8 +269,7 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
 
   LOG(INFO) << "Service Placement:";
   for (const auto& node : node_service_map) {
-    if (node.second.empty())
-      continue;
+    if (node.second.empty()) continue;
 
     LOG(INFO) << node.first << ": " << absl::StrJoin(node.second, ",");
   }
@@ -282,8 +277,7 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
 }
 
 absl::StatusOr<TestResult> TestSequencer::DoRunTest(
-    grpc::ServerContext* context,
-    const DistributedSystemDescription& test) {
+    grpc::ServerContext* context, const DistributedSystemDescription& test) {
   if (test.services().empty()) {
     return absl::InvalidArgumentError("No services defined.");
   }
@@ -294,7 +288,7 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   if (!maybe_map.ok()) return maybe_map.status();
 
   std::map<std::string, std::set<std::string>> node_service_map =
-    maybe_map.value();
+      maybe_map.value();
 
   ServiceEndpointMap service_map;
   auto cret = ConfigureNodes(node_service_map, test);
@@ -303,16 +297,13 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
 
   auto ipret = IntroducePeers(node_service_map, service_map);
   LOG(INFO) << "IntroducePeers status: " << ipret;
-  if (!ipret.ok())
-    return ipret;
+  if (!ipret.ok()) return ipret;
 
   auto maybe_timeout = GetNamedAttributeInt64(test, "test_timeout", 3600);
-  if (!maybe_timeout.ok())
-    return maybe_timeout.status();
+  if (!maybe_timeout.ok()) return maybe_timeout.status();
   auto maybe_logs = RunTraffic(node_service_map, *maybe_timeout);
   LOG(INFO) << "RunTraffic status: " << maybe_logs.status();
-  if (!maybe_logs.ok())
-    return maybe_logs.status();
+  if (!maybe_logs.ok()) return maybe_logs.status();
 
   TestResult ret;
   *ret.mutable_traffic_config() = test;
@@ -320,16 +311,16 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
   *ret.mutable_service_logs() = maybe_logs.value().service_logs();
   *ret.mutable_resource_usage_logs()->mutable_node_usages() =
       maybe_logs.value().node_usages();
-  RUsageStats rusage_stats = GetRUsageStatsFromStructs(rusage_start_test,
-                                                       DoGetRusage());
+  RUsageStats rusage_stats =
+      GetRUsageStatsFromStructs(rusage_start_test, DoGetRusage());
   *ret.mutable_resource_usage_logs()->mutable_test_sequencer_usage() =
       std::move(rusage_stats);
   return ret;
 }
 
 absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
-      const std::map<std::string, std::set<std::string>>& node_service_map,
-      const DistributedSystemDescription& test) {
+    const std::map<std::string, std::set<std::string>>& node_service_map,
+    const DistributedSystemDescription& test) {
   absl::MutexLock m(&mutex_);
   grpc::CompletionQueue cq;
   struct PendingRpc {
@@ -357,12 +348,12 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     }
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end())
-      << "couldn't find " << node_services.first;
+        << "couldn't find " << node_services.first;
     std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(60);
+        std::chrono::system_clock::now() + std::chrono::seconds(60);
     rpc_state.context.set_deadline(deadline);
     rpc_state.rpc = registered_nodes_[it->second].stub->AsyncConfigureNode(
-          &rpc_state.context, rpc_state.request, &cq);
+        &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
   while (rpc_count) {
@@ -371,12 +362,13 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     cq.Next(&tag, &ok);
     if (ok) {
       --rpc_count;
-      PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
+      PendingRpc* finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
-        LOG(ERROR) << "Finished AsyncConfigureNode failed with status:" <<
-                  grpcStatusToAbslStatus(finished_rpc->status);
-        status = Annotate(finished_rpc->status, absl::StrCat(
-              "AsyncConfigureNode to ", finished_rpc->node_name, " failed: "));
+        LOG(ERROR) << "Finished AsyncConfigureNode failed with status:"
+                   << grpcStatusToAbslStatus(finished_rpc->status);
+        status = Annotate(finished_rpc->status,
+                          absl::StrCat("AsyncConfigureNode to ",
+                                       finished_rpc->node_name, " failed: "));
       }
       ret.MergeFrom(finished_rpc->response);
     }
@@ -415,10 +407,10 @@ absl::Status TestSequencer::IntroducePeers(
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
     std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(60);
+        std::chrono::system_clock::now() + std::chrono::seconds(60);
     rpc_state.context.set_deadline(deadline);
     rpc_state.rpc = registered_nodes_[it->second].stub->AsyncIntroducePeers(
-          &rpc_state.context, rpc_state.request, &cq);
+        &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
   while (rpc_count) {
@@ -427,10 +419,11 @@ absl::Status TestSequencer::IntroducePeers(
     cq.Next(&tag, &ok);
     if (ok) {
       --rpc_count;
-      PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
+      PendingRpc* finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
-        status = Annotate(finished_rpc->status, absl::StrCat(
-              "AsyncIntroducePeers to ", finished_rpc->node_name, " failed: "));
+        status = Annotate(finished_rpc->status,
+                          absl::StrCat("AsyncIntroducePeers to ",
+                                       finished_rpc->node_name, " failed: "));
       }
     }
   }
@@ -465,8 +458,8 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     RegisteredNode& node = registered_nodes_[it->second];
     node.idle = false;
     rpc_state.context.set_deadline(deadline);
-    rpc_state.rpc = node.stub->AsyncRunTraffic(
-          &rpc_state.context, rpc_state.request, &cq);
+    rpc_state.rpc =
+        node.stub->AsyncRunTraffic(&rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
   while (rpc_count) {
@@ -475,11 +468,12 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     cq.Next(&tag, &ok);
     if (ok) {
       --rpc_count;
-      RunTrafficPendingRpc *finished_rpc =
+      RunTrafficPendingRpc* finished_rpc =
           static_cast<RunTrafficPendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
-        status = Annotate(finished_rpc->status, absl::StrCat(
-              "AsyncRunTraffic to ", finished_rpc->node_name, " failed: "));
+        status = Annotate(finished_rpc->status,
+                          absl::StrCat("AsyncRunTraffic to ",
+                                       finished_rpc->node_name, " failed: "));
       }
     }
   }
@@ -509,11 +503,11 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     CHECK(it != node_alias_id_map_.end());
     rpc_state.node = &registered_nodes_[it->second];
     std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(60);
+        std::chrono::system_clock::now() + std::chrono::seconds(60);
     rpc_state.context.set_deadline(deadline);
     rpc_state.request.set_clear_services(true);
     rpc_state.rpc = rpc_state.node->stub->AsyncGetTrafficResult(
-          &rpc_state.context, rpc_state.request, &cq);
+        &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
   GetTrafficResultResponse ret;
@@ -523,11 +517,12 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     cq.Next(&tag, &ok);
     if (ok) {
       --rpc_count;
-      GetResultPendingRpc *finished_rpc =
+      GetResultPendingRpc* finished_rpc =
           static_cast<GetResultPendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
-        status = Annotate(finished_rpc->status, absl::StrCat(
-            "AsyncGetTrafficResult to ", finished_rpc->node_name, " failed: "));
+        status = Annotate(finished_rpc->status,
+                          absl::StrCat("AsyncGetTrafficResult to ",
+                                       finished_rpc->node_name, " failed: "));
       }
       ret.MergeFrom(finished_rpc->response);
       finished_rpc->node->idle = true;
@@ -559,10 +554,10 @@ void TestSequencer::Shutdown() {
     ++rpc_count;
     rpc_state.node = &node;
     std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(60);
+        std::chrono::system_clock::now() + std::chrono::seconds(60);
     rpc_state.context.set_deadline(deadline);
     rpc_state.rpc = rpc_state.node->stub->AsyncShutdownNode(
-          &rpc_state.context, rpc_state.request, &cq);
+        &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
   while (rpc_count) {
@@ -571,7 +566,7 @@ void TestSequencer::Shutdown() {
     cq.Next(&tag, &ok);
     if (ok) {
       --rpc_count;
-      PendingRpc *finished_rpc = static_cast<PendingRpc*>(tag);
+      PendingRpc* finished_rpc = static_cast<PendingRpc*>(tag);
       if (!finished_rpc->status.ok()) {
         status = finished_rpc->status;
       }

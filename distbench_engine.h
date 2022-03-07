@@ -17,10 +17,10 @@
 
 #include <unordered_set>
 
+#include "absl/random/random.h"
 #include "distbench.grpc.pb.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
-#include "absl/random/random.h"
 
 namespace distbench {
 
@@ -31,9 +31,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   absl::Status Initialize(
       const DistributedSystemDescription& global_description,
-      std::string_view service_name,
-      int service_instance,
-      int* port);
+      std::string_view service_name, int service_instance, int* port);
 
   absl::Status ConfigurePeers(const ServiceEndpointMap& peers);
   absl::Status RunTraffic(const RunTrafficRequest* request);
@@ -47,7 +45,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
                                ConnectResponse* response) override;
 
  private:
-  struct StochasticDist{
+  struct StochasticDist {
     float probability;
     int nb_targets;
   };
@@ -142,7 +140,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int rpc_service_index;
 
     std::function<void(std::shared_ptr<ActionIterationState> iteration_state)>
-      iteration_function;
+        iteration_function;
     std::function<void(void)> all_done_callback;
 
     std::map<int, std::vector<int>> partially_randomized_vectors;
@@ -176,18 +174,11 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionListState {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
-    void RecordLatency(
-        size_t rpc_index,
-        size_t service_type,
-        size_t instance,
-        ClientRpcState* state);
-    void RecordPackedLatency(
-        size_t sample_number,
-        size_t index,
-        size_t rpc_index,
-        size_t service_type,
-        size_t instance,
-        ClientRpcState* state);
+    void RecordLatency(size_t rpc_index, size_t service_type, size_t instance,
+                       ClientRpcState* state);
+    void RecordPackedLatency(size_t sample_number, size_t index,
+                             size_t rpc_index, size_t service_type,
+                             size_t instance, ClientRpcState* state);
     void UnpackLatencySamples();
 
     const ServerRpcState* incoming_rpc_state = nullptr;
@@ -197,7 +188,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::vector<int> finished_action_indices;
 
     std::vector<std::vector<PeerPerformanceLog>> peer_logs_
-      ABSL_GUARDED_BY(action_mu);
+        ABSL_GUARDED_BY(action_mu);
     std::unique_ptr<PackedLatencySample[]> packed_samples_;
     size_t packed_samples_size_ = 0;
     std::atomic<size_t> packed_sample_number_ = 0;
@@ -214,8 +205,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   absl::Status InitializeTables();
   absl::Status InitializePayloadsMap();
-  absl::Status InitializeRpcDefinitionStochastic(
-      RpcDefinition& rpc_def);
+  absl::Status InitializeRpcDefinitionStochastic(RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
 
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state,
@@ -234,7 +224,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<ActionListTableEntry> action_lists_;
 
   absl::Status ConnectToPeers();
-  std::function<void ()> RpcHandler(ServerRpcState* state);
+  std::function<void()> RpcHandler(ServerRpcState* state);
 
   int get_payload_size(const std::string& name);
 
