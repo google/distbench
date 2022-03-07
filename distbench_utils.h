@@ -20,15 +20,15 @@
 #include <memory>
 #include <thread>
 
+#include "absl/status/statusor.h"
 #include "distbench.pb.h"
 #include "distbench_netutils.h"
-#include "traffic_config.pb.h"
-#include "absl/status/statusor.h"
 #include "google/protobuf/stubs/status_macros.h"
 #include "grpc_wrapper.h"
+#include "traffic_config.pb.h"
 
-namespace std{
-ostream& operator<< (ostream &out, grpc::Status const& c);
+namespace std {
+ostream& operator<<(ostream& out, grpc::Status const& c);
 };
 
 namespace distbench {
@@ -40,8 +40,8 @@ std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
 absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev);
 std::string SocketAddressForIp(DeviceIpAddress ip, int port);
-absl::StatusOr<std::string> SocketAddressForDevice(
-    std::string_view netdev, int port);
+absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
+                                                   int port);
 std::thread RunRegisteredThread(const std::string& thread_name,
                                 std::function<void()> f);
 
@@ -63,36 +63,34 @@ std::string Hostname();
 
 grpc::Status Annotate(const grpc::Status& status, std::string_view context);
 
-grpc::Status abslStatusToGrpcStatus(const absl::Status &status);
-absl::Status grpcStatusToAbslStatus(const grpc::Status &status);
+grpc::Status abslStatusToGrpcStatus(const absl::Status& status);
+absl::Status grpcStatusToAbslStatus(const grpc::Status& status);
 
-absl::StatusOr<std::string> ReadFileToString(const std::string &filename);
+absl::StatusOr<std::string> ReadFileToString(const std::string& filename);
 
-void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
-      const ProtocolDriverOptions &pd_opts);
+void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder* builder,
+                                      const ProtocolDriverOptions& pd_opts);
 
 // RUsage functions
-RUsage StructRUsageToMessage(const struct rusage &s_rusage);
-RUsage DiffStructRUsageToMessage(const struct rusage &start,
-                                 const struct rusage &end);
+RUsage StructRUsageToMessage(const struct rusage& s_rusage);
+RUsage DiffStructRUsageToMessage(const struct rusage& start,
+                                 const struct rusage& end);
 
-RUsageStats GetRUsageStatsFromStructs(const struct rusage &start,
-                                      const struct rusage &end);
+RUsageStats GetRUsageStatsFromStructs(const struct rusage& start,
+                                      const struct rusage& end);
 struct rusage DoGetRusage();
 
 std::string GetNamedSettingString(
-    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>
-    &settings, absl::string_view name, std::string default_value);
+    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>&
+        settings,
+    absl::string_view name, std::string default_value);
 
-int64_t GetNamedSettingInt64(
-    const distbench::ProtocolDriverOptions &opts,
-    absl::string_view name,
-    int64_t default_value);
+int64_t GetNamedSettingInt64(const distbench::ProtocolDriverOptions& opts,
+                             absl::string_view name, int64_t default_value);
 
 absl::StatusOr<int64_t> GetNamedAttributeInt64(
-    const distbench::DistributedSystemDescription &test,
-    absl::string_view name, int64_t default_value);
-
+    const distbench::DistributedSystemDescription& test, absl::string_view name,
+    int64_t default_value);
 
 }  // namespace distbench
 

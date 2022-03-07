@@ -17,22 +17,22 @@
 
 #include <string>
 
-namespace net_base{
-class IPAddress{
+namespace net_base {
+class IPAddress {
  private:
   std::string address;
 
  public:
-  std::string ToString() const{return this->address;}
-  void from_c_str(const char *s_address) {
+  std::string ToString() const { return this->address; }
+  void from_c_str(const char* s_address) {
     this->address = std::string(s_address);
   }
 };
 
-namespace InterfaceLookup{
+namespace InterfaceLookup {
 
-bool MyIPv4Address(IPAddress *addr);
-bool MyIPv6Address(IPAddress *addr);
+bool MyIPv4Address(IPAddress* addr);
+bool MyIPv6Address(IPAddress* addr);
 
 };  // namespace InterfaceLookup
 };  // namespace net_base

@@ -15,9 +15,9 @@
 #include "distbench_engine.h"
 
 #include "distbench_utils.h"
-#include "protocol_driver_allocator.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
+#include "protocol_driver_allocator.h"
 
 namespace distbench {
 

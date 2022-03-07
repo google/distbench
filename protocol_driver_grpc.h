@@ -26,14 +26,14 @@ class ProtocolDriverClientGrpc : public ProtocolDriverClient {
   ProtocolDriverClientGrpc();
   ~ProtocolDriverClientGrpc() override;
 
-  absl::Status InitializeClient(const ProtocolDriverOptions &pd_opts) override;
+  absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
 
   void SetNumPeers(int num_peers) override;
 
   // Allocate local resources that are needed to establish a connection
   // E.g. an unconnected RoCE QueuePair. Returns opaque data. If no local
   // resources are needed, this is a NOP.
-  //absl::StatusOr<std::string> Preconnect() override;
+  // absl::StatusOr<std::string> Preconnect() override;
 
   // Actually establish a conection, given the opaque data from the
   // the responder. E.g. connect the local and remote RoCE queue pairs.
@@ -45,6 +45,7 @@ class ProtocolDriverClientGrpc : public ProtocolDriverClient {
   void ShutdownClient() override;
 
   virtual std::vector<TransportStat> GetTransportStats() override;
+
  private:
   void RpcCompletionThread();
   absl::Notification shutdown_;
@@ -59,18 +60,18 @@ class ProtocolDriverServerGrpc : public ProtocolDriverServer {
   ProtocolDriverServerGrpc();
   ~ProtocolDriverServerGrpc() override;
 
-  absl::Status InitializeServer(
-      const ProtocolDriverOptions &pd_opts, int* port) override;
+  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
+                                int* port) override;
 
-  void SetHandler(
-      std::function<std::function<void ()> (ServerRpcState* state)> handler)
-      override;
+  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
+                      handler) override;
   absl::StatusOr<std::string> HandlePreConnect(
       std::string_view remote_connection_info, int peer) override;
   void ShutdownServer() override;
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
   std::vector<TransportStat> GetTransportStats() override;
+
  private:
   std::unique_ptr<Traffic::Service> traffic_service_;
   std::unique_ptr<grpc::Server> server_;
@@ -84,20 +85,19 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   ProtocolDriverGrpc();
   ~ProtocolDriverGrpc() override;
 
-  absl::Status Initialize(
-      const ProtocolDriverOptions &pd_opts, int* port) override;
-  absl::Status InitializeClient(const ProtocolDriverOptions &pd_opts) override;
-  absl::Status InitializeServer(
-      const ProtocolDriverOptions &pd_opts, int *port) override;
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                          int* port) override;
+  absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
+  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
+                                int* port) override;
 
-  void SetHandler(
-      std::function<std::function<void ()> (ServerRpcState* state)> handler
-      ) override;
+  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
+                      handler) override;
   void SetNumPeers(int num_peers) override;
 
   // Connects to the actual GRPC service.
-  absl::Status HandleConnect(
-      std::string remote_connection_info, int peer) override;
+  absl::Status HandleConnect(std::string remote_connection_info,
+                             int peer) override;
 
   // Returns the address of the GRPC service.
   absl::StatusOr<std::string> HandlePreConnect(

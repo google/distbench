@@ -16,11 +16,11 @@
 
 #include "distbench_node_manager.h"
 #include "distbench_utils.h"
-#include "protocol_driver_allocator.h"
-#include "gtest/gtest.h"
-#include "gtest_utils.h"
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
+#include "gtest/gtest.h"
+#include "gtest_utils.h"
+#include "protocol_driver_allocator.h"
 
 namespace distbench {
 
@@ -55,25 +55,21 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
     distbench::NodeManagerOpts nm_opts = {};
     int port = 0;
     nm_opts.port = &port;
-    nm_opts.test_sequencer_service_address =
-      test_sequencer->service_address();
+    nm_opts.test_sequencer_service_address = test_sequencer->service_address();
     nodes[i] = std::make_unique<NodeManager>();
     auto ret = nodes[i]->Initialize(nm_opts);
-    if (!ret.ok())
-      return ret;
+    if (!ret.ok()) return ret;
   }
   std::shared_ptr<grpc::ChannelCredentials> client_creds =
-    MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
-      test_sequencer->service_address(), client_creds,
-      DistbenchCustomChannelArguments());
+      MakeChannelCredentials();
+  std::shared_ptr<grpc::Channel> channel =
+      grpc::CreateCustomChannel(test_sequencer->service_address(), client_creds,
+                                DistbenchCustomChannelArguments());
   test_sequencer_stub = DistBenchTestSequencer::NewStub(channel);
   return absl::OkStatus();
 }
 
-TEST(DistBenchTestSequencer, Constructor) {
-  TestSequencer test_sequencer;
-}
+TEST(DistBenchTestSequencer, Constructor) { TestSequencer test_sequencer; }
 
 TEST(DistBenchTestSequencer, Initialization) {
   distbench::TestSequencerOpts ts_opts = {};
@@ -122,7 +118,7 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(70);
+      std::chrono::system_clock::now() + std::chrono::seconds(70);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -132,7 +128,7 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
   const auto& instance_results_it =
-    test_results.service_logs().instance_logs().find("s1/0");
+      test_results.service_logs().instance_logs().find("s1/0");
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
   auto s2_0 = instance_results_it->second.peer_logs().find("s2/0");
@@ -187,7 +183,7 @@ void RunIntenseTraffic(const char* protocol) {
 
   TestSequenceResults results;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(200);
+      std::chrono::system_clock::now() + std::chrono::seconds(200);
   grpc::ClientContext context;
   grpc::ClientContext context2;
   grpc::ClientContext context3;
@@ -200,15 +196,15 @@ void RunIntenseTraffic(const char* protocol) {
   ASSERT_OK(status);
 
   iterations->clear_max_iteration_count();
-  status = tester.test_sequencer_stub->RunTestSequence(
-      &context2, test_sequence, &results);
+  status = tester.test_sequencer_stub->RunTestSequence(&context2, test_sequence,
+                                                       &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
 
   iterations->clear_max_duration_us();
   iterations->set_max_iteration_count(2000);
-  status = tester.test_sequencer_stub->RunTestSequence(
-      &context3, test_sequence, &results);
+  status = tester.test_sequencer_stub->RunTestSequence(&context3, test_sequence,
+                                                       &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
 }
@@ -251,7 +247,7 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
 
   TestSequenceResults results;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(200);
+      std::chrono::system_clock::now() + std::chrono::seconds(200);
   grpc::ClientContext context;
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
@@ -345,7 +341,7 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
 
   TestSequenceResults results;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(200);
+      std::chrono::system_clock::now() + std::chrono::seconds(200);
   grpc::ClientContext context;
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
@@ -396,9 +392,7 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   }
   EXPECT_EQ(warmup_samples, 1000);
 }
-TEST(DistBenchTestSequencer, 100kGrpc) {
-  RunIntenseTraffic("grpc");
-}
+TEST(DistBenchTestSequencer, 100kGrpc) { RunIntenseTraffic("grpc"); }
 
 TEST(DistBenchTestSequencer, 100kGrpcAsyncCallback) {
   RunIntenseTraffic("grpc_async_callback");
@@ -445,7 +439,7 @@ TEST(DistBenchTestSequencer, CliqueTest) {
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(75);
+      std::chrono::system_clock::now() + std::chrono::seconds(75);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -470,7 +464,7 @@ TEST(DistBenchTestSequencer, CliqueTest) {
 
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
   const auto& instance_results_it =
-    test_results.service_logs().instance_logs().find("clique/0");
+      test_results.service_logs().instance_logs().find("clique/0");
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
 }
@@ -522,14 +516,14 @@ tests {
 })";
 
   TestSequence test_sequence;
-  bool parse_result = google::protobuf::TextFormat::ParseFromString(
-      proto, &test_sequence);
+  bool parse_result =
+      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(75);
+      std::chrono::system_clock::now() + std::chrono::seconds(75);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -592,14 +586,14 @@ tests {
     netdev_name: "lo"
   }
 })";
-  bool parse_result = google::protobuf::TextFormat::ParseFromString(
-      proto, &test_sequence);
+  bool parse_result =
+      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(15);
+      std::chrono::system_clock::now() + std::chrono::seconds(15);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -650,14 +644,14 @@ tests {
   }
 })";
   TestSequence test_sequence;
-  bool parse_result = google::protobuf::TextFormat::ParseFromString(
-      proto, &test_sequence);
+  bool parse_result =
+      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(15);
+      std::chrono::system_clock::now() + std::chrono::seconds(15);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -666,11 +660,11 @@ tests {
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 
-  auto serv_log_it = test_results.service_logs().instance_logs().find(
-      "client/0");
+  auto serv_log_it =
+      test_results.service_logs().instance_logs().find("client/0");
   for (int i = 0; i < 4; i++) {
-    auto peer_log_it = serv_log_it->second.peer_logs().find(
-        absl::StrCat("server/", i));
+    auto peer_log_it =
+        serv_log_it->second.peer_logs().find(absl::StrCat("server/", i));
     auto rpc_log_it = peer_log_it->second.rpc_logs().find(0);
     ASSERT_EQ(rpc_log_it->second.successful_rpc_samples_size(), 256);
   }
@@ -726,14 +720,14 @@ tests {
   }
 })";
   TestSequence test_sequence;
-  bool parse_result = google::protobuf::TextFormat::ParseFromString(
-      proto, &test_sequence);
+  bool parse_result =
+      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(15);
+      std::chrono::system_clock::now() + std::chrono::seconds(15);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);
@@ -793,14 +787,14 @@ tests {
   }
 })";
   TestSequence test_sequence;
-  bool parse_result = google::protobuf::TextFormat::ParseFromString(
-      proto, &test_sequence);
+  bool parse_result =
+      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
   grpc::ClientContext context;
   std::chrono::system_clock::time_point deadline =
-    std::chrono::system_clock::now() + std::chrono::seconds(15);
+      std::chrono::system_clock::now() + std::chrono::seconds(15);
   context.set_deadline(deadline);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       &context, test_sequence, &results);

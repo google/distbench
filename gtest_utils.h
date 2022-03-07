@@ -16,12 +16,13 @@
 #define DISTBENCH_GTEST_UTILS_H_
 
 using ::testing::Test;
-#define ASSERT_OK(s) { \
+#define ASSERT_OK(s)     \
+  {                      \
     auto s_ = (s);       \
     if (!s_.ok()) {      \
-          FAIL() << s_;      \
-          return; /* here */ \
-        }                    \
-}
+      FAIL() << s_;      \
+      return; /* here */ \
+    }                    \
+  }
 
 #endif  // DISTBENCH_GTEST_UTILS_H_

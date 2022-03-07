@@ -16,10 +16,11 @@
 #define DISTBENCH_PROTOCOL_DRIVER_H_
 
 #include <string_view>
-#include "distbench.pb.h"
+
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
+#include "distbench.pb.h"
 #include "grpc_wrapper.h"
 
 namespace distbench {
@@ -61,16 +62,17 @@ class SimpleClock {
  public:
   virtual ~SimpleClock() = default;
   virtual absl::Time Now() = 0;
-  virtual bool MutexLockWhenWithDeadline(
-      absl::Mutex* mu, const absl::Condition& condition, absl::Time deadline)
-    ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) = 0;
+  virtual bool MutexLockWhenWithDeadline(absl::Mutex* mu,
+                                         const absl::Condition& condition,
+                                         absl::Time deadline)
+      ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) = 0;
 };
 
 class ProtocolDriverClient {
  public:
   virtual ~ProtocolDriverClient() {}
   virtual absl::Status InitializeClient(
-      const ProtocolDriverOptions &pd_opts) = 0;
+      const ProtocolDriverOptions& pd_opts) = 0;
 
   // Client interface =========================================================
   virtual void SetNumPeers(int num_peers) = 0;
@@ -96,13 +98,12 @@ class ProtocolDriverClient {
 class ProtocolDriverServer {
  public:
   virtual ~ProtocolDriverServer() {}
-  virtual absl::Status InitializeServer(
-      const ProtocolDriverOptions &pd_opts, int* port) = 0;
+  virtual absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
+                                        int* port) = 0;
 
   // Server interface =========================================================
   virtual void SetHandler(
-      std::function<std::function<void ()> (ServerRpcState* state)> handler)
-      = 0;
+      std::function<std::function<void()>(ServerRpcState* state)> handler) = 0;
   // Return the address of a running server that a client can connect to, or
   // actually establish a single conection, given the opaque data from the
   // initiator. E.g. allocate an unconnected RoCE queue pair, and connect it
@@ -120,11 +121,12 @@ class ProtocolDriverServer {
   virtual std::vector<TransportStat> GetTransportStats() = 0;
 };
 
-class ProtocolDriver: public ProtocolDriverClient, public ProtocolDriverServer {
+class ProtocolDriver : public ProtocolDriverClient,
+                       public ProtocolDriverServer {
  public:
   virtual ~ProtocolDriver() {}
-  virtual absl::Status Initialize(
-      const ProtocolDriverOptions &pd_opts, int* port) = 0;
+  virtual absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                                  int* port) = 0;
 
   // Misc interface ===========================================================
   virtual SimpleClock& GetClock();

@@ -17,9 +17,9 @@
 
 #include <set>
 
-#include "distbench.grpc.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
+#include "distbench.grpc.pb.h"
 
 namespace distbench {
 
@@ -57,12 +57,10 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
                                  TestSequenceResults* response);
 
   absl::StatusOr<TestResult> DoRunTest(
-      grpc::ServerContext* context,
-      const DistributedSystemDescription& test);
+      grpc::ServerContext* context, const DistributedSystemDescription& test);
 
   absl::StatusOr<std::map<std::string, std::set<std::string>>> PlaceServices(
       const DistributedSystemDescription& test);
-
 
   absl::StatusOr<ServiceEndpointMap> ConfigureNodes(
       const std::map<std::string, std::set<std::string>>& node_service_map,
@@ -82,10 +80,10 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
   std::vector<RegisteredNode> registered_nodes_ ABSL_GUARDED_BY(mutex_);
   std::map<std::string, int> node_alias_id_map_ ABSL_GUARDED_BY(mutex_);
   std::map<std::string, int> node_registration_id_map_ ABSL_GUARDED_BY(mutex_);
-  grpc::ServerContext* running_test_sequence_context_ ABSL_GUARDED_BY(mutex_)
-    = nullptr;
+  grpc::ServerContext* running_test_sequence_context_ ABSL_GUARDED_BY(mutex_) =
+      nullptr;
   std::shared_ptr<absl::Notification> running_test_notification_
-    ABSL_GUARDED_BY(mutex_);
+      ABSL_GUARDED_BY(mutex_);
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;
   TestSequencerOpts opts_;

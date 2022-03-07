@@ -20,20 +20,18 @@
 #include <fstream>
 #include <streambuf>
 
-#include "interface_lookup.h"
-#include "absl/strings/str_split.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
-#include "glog/logging.h"
-
+#include "absl/strings/str_split.h"
 #include "distbench_netutils.h"
+#include "glog/logging.h"
+#include "interface_lookup.h"
 
 namespace std {
-ostream& operator<< (ostream &out, grpc::Status const& c)
-{
-    return out << "(grpc::status: " << c.error_message() << ")";
+ostream& operator<<(ostream& out, grpc::Status const& c) {
+  return out << "(grpc::status: " << c.error_message() << ")";
 }
-}
+}  // namespace std
 
 namespace distbench {
 
@@ -72,9 +70,7 @@ std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials() {
 
 std::thread RunRegisteredThread(const std::string& thread_name,
                                 std::function<void()> f) {
-  return std::thread([=]() {
-    f();
-  });
+  return std::thread([=]() { f(); });
 }
 
 void InitLibs(const char* argv0) {
@@ -87,8 +83,8 @@ absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev) {
   return GetBestAddress(use_ipv4_first, netdev);
 }
 
-absl::StatusOr<std::string> SocketAddressForDevice(
-    std::string_view netdev, int port) {
+absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
+                                                   int port) {
   auto maybe_address = GetBestAddress(use_ipv4_first, netdev);
   if (!maybe_address.ok()) return maybe_address.status();
   return SocketAddressForIp(maybe_address.value(), port);
@@ -160,13 +156,12 @@ absl::StatusOr<ServiceSpec> GetServiceSpec(
 }
 
 grpc::Status Annotate(const grpc::Status& status, std::string_view context) {
-  return grpc::Status(
-      status.error_code(), absl::StrCat(context, status.error_message()));
+  return grpc::Status(status.error_code(),
+                      absl::StrCat(context, status.error_message()));
 }
 
-grpc::Status abslStatusToGrpcStatus(const absl::Status &status) {
-  if (status.ok())
-    return grpc::Status::OK;
+grpc::Status abslStatusToGrpcStatus(const absl::Status& status) {
+  if (status.ok()) return grpc::Status::OK;
 
   std::string message = std::string(status.message());
   // GRPC and ABSL (currently) share the same error codes
@@ -174,9 +169,8 @@ grpc::Status abslStatusToGrpcStatus(const absl::Status &status) {
   return grpc::Status(code, message);
 }
 
-absl::Status grpcStatusToAbslStatus(const grpc::Status &status) {
-  if (status.ok())
-    return absl::OkStatus();
+absl::Status grpcStatusToAbslStatus(const grpc::Status& status) {
+  if (status.ok()) return absl::OkStatus();
 
   std::string message = status.error_message();
   // GRPC and ABSL (currently) share the same error codes
@@ -184,7 +178,7 @@ absl::Status grpcStatusToAbslStatus(const grpc::Status &status) {
   return absl::Status(code, message);
 }
 
-absl::StatusOr<std::string> ReadFileToString(const std::string &filename) {
+absl::StatusOr<std::string> ReadFileToString(const std::string& filename) {
   std::ifstream in(filename, std::ios::in | std::ios::binary);
   if (!in) {
     std::string error_message{"Error reading input file:" + filename + "; "};
@@ -200,23 +194,23 @@ absl::StatusOr<std::string> ReadFileToString(const std::string &filename) {
   return str;
 }
 
-void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
-    const ProtocolDriverOptions &pd_opts) {
-  for (const auto &setting: pd_opts.server_settings()) {
+void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder* builder,
+                                      const ProtocolDriverOptions& pd_opts) {
+  for (const auto& setting : pd_opts.server_settings()) {
     if (!setting.has_name()) {
       LOG(INFO) << "ProtocolDriverOptions NamedSetting has no name !";
       continue;
     }
-    const auto &name = setting.name();
+    const auto& name = setting.name();
     if (setting.has_string_value()) {
-      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]="
-                << setting.string_value();
+      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name
+                << "]=" << setting.string_value();
       builder->AddChannelArgument(name, setting.string_value());
       continue;
     }
     if (setting.has_int64_value()) {
-      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]="
-                << setting.int64_value();
+      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name
+                << "]=" << setting.int64_value();
       builder->AddChannelArgument(name, setting.int64_value());
       continue;
     }
@@ -228,12 +222,12 @@ void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder *builder,
 
 // RUsage functions
 namespace {
-double TimevalToDouble(const struct timeval &t){
+double TimevalToDouble(const struct timeval& t) {
   return (double)t.tv_usec / 1000000.0 + t.tv_sec;
 }
 }  // Anonymous namespace
 
-RUsage StructRUsageToMessage(const struct rusage &s_rusage) {
+RUsage StructRUsageToMessage(const struct rusage& s_rusage) {
   RUsage rusage;
 
   rusage.set_user_cpu_time_seconds(TimevalToDouble(s_rusage.ru_utime));
@@ -256,14 +250,14 @@ RUsage StructRUsageToMessage(const struct rusage &s_rusage) {
   return rusage;
 }
 
-RUsage DiffStructRUsageToMessage(const struct rusage &start,
-                                 const struct rusage &end) {
+RUsage DiffStructRUsageToMessage(const struct rusage& start,
+                                 const struct rusage& end) {
   RUsage rusage;
 
   rusage.set_user_cpu_time_seconds(TimevalToDouble(end.ru_utime) -
-                           TimevalToDouble(start.ru_utime));
+                                   TimevalToDouble(start.ru_utime));
   rusage.set_system_cpu_time_seconds(TimevalToDouble(end.ru_stime) -
-                             TimevalToDouble(start.ru_stime));
+                                     TimevalToDouble(start.ru_stime));
   rusage.set_max_resident_set_size(end.ru_maxrss - start.ru_maxrss);
   rusage.set_integral_shared_memory_size(end.ru_ixrss - start.ru_ixrss);
   rusage.set_integral_unshared_data_size(end.ru_idrss - start.ru_idrss);
@@ -282,10 +276,10 @@ RUsage DiffStructRUsageToMessage(const struct rusage &start,
   return rusage;
 }
 
-RUsageStats GetRUsageStatsFromStructs(const struct rusage &start,
-                                      const struct rusage &end) {
-  RUsage *rusage_start = new RUsage();
-  RUsage *rusage_diff = new RUsage();
+RUsageStats GetRUsageStatsFromStructs(const struct rusage& start,
+                                      const struct rusage& end) {
+  RUsage* rusage_start = new RUsage();
+  RUsage* rusage_diff = new RUsage();
   *rusage_start = StructRUsageToMessage(start);
   *rusage_diff = DiffStructRUsageToMessage(start, end);
   RUsageStats rusage_stats;
@@ -304,19 +298,19 @@ struct rusage DoGetRusage() {
 }
 
 std::string GetNamedSettingString(
-    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>
-    &settings, absl::string_view setting_name, std::string default_value) {
-  for (const auto &setting : settings) {
+    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>&
+        settings,
+    absl::string_view setting_name, std::string default_value) {
+  for (const auto& setting : settings) {
     if (!setting.has_name()) {
       LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
       continue;
     }
-    const auto &name = setting.name();
-    if (name != setting_name)
-      continue;
+    const auto& name = setting.name();
+    if (name != setting_name) continue;
     if (setting.has_int64_value()) {
-      LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name <<
-                "] should be a string !";
+      LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name
+                 << "] should be a string !";
       continue;
     }
     if (setting.has_string_value()) {
@@ -327,21 +321,19 @@ std::string GetNamedSettingString(
   return default_value;
 }
 
-int64_t GetNamedSettingInt64(
-    const distbench::ProtocolDriverOptions &opts,
-    absl::string_view setting_name,
-    int64_t default_value) {
-  for (const auto &setting : opts.server_settings()) {
+int64_t GetNamedSettingInt64(const distbench::ProtocolDriverOptions& opts,
+                             absl::string_view setting_name,
+                             int64_t default_value) {
+  for (const auto& setting : opts.server_settings()) {
     if (!setting.has_name()) {
       LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
       continue;
     }
-    const auto &name = setting.name();
-    if (name != setting_name)
-      continue;
+    const auto& name = setting.name();
+    if (name != setting_name) continue;
     if (setting.has_string_value()) {
-      LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name <<
-                "] should be an int !";
+      LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name
+                 << "] should be an int !";
       continue;
     }
     if (setting.has_int64_value()) {
@@ -353,8 +345,7 @@ int64_t GetNamedSettingInt64(
 }
 
 absl::StatusOr<int64_t> GetNamedAttributeInt64(
-    const distbench::DistributedSystemDescription &test,
-    absl::string_view name,
+    const distbench::DistributedSystemDescription& test, absl::string_view name,
     int64_t default_value) {
   auto attributes = test.attributes();
   auto it = attributes.find(name);
@@ -366,9 +357,9 @@ absl::StatusOr<int64_t> GetNamedAttributeInt64(
   if (success) {
     return value;
   } else {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Cannot convert test attribute ", name, " value (", it->second,
-        ") to int."));
+    return absl::InvalidArgumentError(
+        absl::StrCat("Cannot convert test attribute ", name, " value (",
+                     it->second, ") to int."));
   }
 }
 

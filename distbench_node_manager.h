@@ -15,9 +15,9 @@
 #ifndef DISTBENCH_DISTBENCH_NODE_MANAGER_H_
 #define DISTBENCH_DISTBENCH_NODE_MANAGER_H_
 
+#include "absl/status/statusor.h"
 #include "distbench.grpc.pb.h"
 #include "distbench_engine.h"
-#include "absl/status/statusor.h"
 
 namespace distbench {
 
@@ -62,7 +62,6 @@ class NodeManager final : public DistBenchNodeManager::Service {
                             const ShutdownNodeRequest* request,
                             ShutdownNodeResult* response) override;
 
-
  private:
   void ClearServices() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
@@ -79,14 +78,14 @@ class NodeManager final : public DistBenchNodeManager::Service {
       const ServiceOpts& service_opts) ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   absl::Status AllocService(const ServiceOpts& service_opts)
-    ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   absl::Mutex mutex_;
   DistributedSystemDescription traffic_config_ ABSL_GUARDED_BY(mutex_);
   ServiceEndpointMap peers_ ABSL_GUARDED_BY(mutex_);
 
   std::map<std::string, std::unique_ptr<DistBenchEngine>> service_engines_
-    ABSL_GUARDED_BY(mutex_);
+      ABSL_GUARDED_BY(mutex_);
 
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;

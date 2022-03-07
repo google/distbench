@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "benchmark/benchmark.h"
 #include "distbench_utils.h"
-#include "protocol_driver_allocator.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
-#include "benchmark/benchmark.h"
-#include "glog/logging.h"
+#include "protocol_driver_allocator.h"
 
 namespace distbench {
 
 class ProtocolDriverTest
-  : public testing::TestWithParam<ProtocolDriverOptions> {
-};
+    : public testing::TestWithParam<ProtocolDriverOptions> {};
 
 TEST_P(ProtocolDriverTest, Constructor) {
   auto pd = AllocateProtocolDriver(GetParam()).value();
@@ -35,9 +34,9 @@ TEST_P(ProtocolDriverTest, Initialize) {
   int port = 0;
   ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
-  pd->SetHandler([](ServerRpcState *s) {
+  pd->SetHandler([](ServerRpcState* s) {
     ADD_FAILURE() << "should not get here";
-    return std::function<void ()>();
+    return std::function<void()>();
   });
 }
 
@@ -48,9 +47,9 @@ TEST_P(ProtocolDriverTest, GetConnectionHandle) {
   ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  pd->SetHandler([&](ServerRpcState *s) {
+  pd->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
-    return std::function<void ()>();
+    return std::function<void()>();
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_EQ(server_rpc_count, 0);
@@ -63,9 +62,9 @@ TEST_P(ProtocolDriverTest, HandleConnect) {
   ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  pd->SetHandler([&](ServerRpcState *s) {
+  pd->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
-    return std::function<void ()>();
+    return std::function<void()>();
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -79,16 +78,16 @@ TEST_P(ProtocolDriverTest, Invoke) {
   ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  pd->SetHandler([&](ServerRpcState *s) {
+  pd->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
     if (s->have_dedicated_thread) {
       std::string str;
       s->request->SerializeToString(&str);
       s->SendResponseIfSet();
       s->FreeStateIfSet();
-      return std::function<void ()>();
+      return std::function<void()>();
     } else {
-      std::function<void ()> fct = [=]() {
+      std::function<void()> fct = [=]() {
         sleep(1);
         std::string str;
         s->request->SerializeToString(&str);
@@ -102,13 +101,12 @@ TEST_P(ProtocolDriverTest, Invoke) {
   ASSERT_OK(pd->HandleConnect(addr, 0));
 
   std::atomic<int> client_rpc_count = 0;
-  const int kNumIterations=1000;
+  const int kNumIterations = 1000;
   ClientRpcState rpc_state[kNumIterations];
   for (int i = 0; i < kNumIterations; ++i) {
-    pd->InitiateRpc(0, &rpc_state[i],
-        [&, i]() {
-          if (rpc_state[i].success) ++client_rpc_count;
-        });
+    pd->InitiateRpc(0, &rpc_state[i], [&, i]() {
+      if (rpc_state[i].success) ++client_rpc_count;
+    });
   }
   pd->ShutdownClient();
   EXPECT_EQ(server_rpc_count, kNumIterations);
@@ -122,12 +120,12 @@ TEST_P(ProtocolDriverTest, SelfEcho) {
   ASSERT_OK(pd->Initialize(pdo, &port));
   pd->SetNumPeers(1);
   std::atomic<int> server_rpc_count = 0;
-  pd->SetHandler([&](ServerRpcState *s) {
+  pd->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
     s->SendResponseIfSet();
     s->FreeStateIfSet();
-    return std::function<void ()>();
+    return std::function<void()>();
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
   ASSERT_OK(pd->HandleConnect(addr, 0));
@@ -153,19 +151,19 @@ TEST_P(ProtocolDriverTest, Echo) {
   int port1 = 0;
   ASSERT_OK(pd2->Initialize(pdo, &port1));
   pd2->SetNumPeers(1);
-  pd2->SetHandler([&](ServerRpcState *s) {
+  pd2->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
     s->SendResponseIfSet();
     s->FreeStateIfSet();
-    return std::function<void ()>();
+    return std::function<void()>();
   });
   int port2 = 0;
   ASSERT_OK(pd1->Initialize(pdo, &port2));
   pd1->SetNumPeers(1);
-  pd1->SetHandler([&](ServerRpcState *s) {
+  pd1->SetHandler([&](ServerRpcState* s) {
     ADD_FAILURE() << "should not get here";
-    return std::function<void ()>();
+    return std::function<void()>();
   });
   std::string addr1 = pd1->HandlePreConnect("", 0).value();
   std::string addr2 = pd2->HandlePreConnect("", 0).value();
@@ -185,26 +183,26 @@ TEST_P(ProtocolDriverTest, Echo) {
   EXPECT_EQ(client_rpc_count, 1);
 }
 
-void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
+void Echo(benchmark::State& state, ProtocolDriverOptions opts) {
   auto pd1 = AllocateProtocolDriver(opts).value();
   auto pd2 = AllocateProtocolDriver(opts).value();
   std::atomic<int> server_rpc_count = 0;
   int port1 = 0;
   ASSERT_OK(pd2->Initialize(opts, &port1));
   pd2->SetNumPeers(1);
-  pd2->SetHandler([&](ServerRpcState *s) {
+  pd2->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
     s->response.set_payload(s->request->payload());
     s->SendResponseIfSet();
     s->FreeStateIfSet();
-    return std::function<void ()>();
+    return std::function<void()>();
   });
   int port2 = 0;
   ASSERT_OK(pd1->Initialize(opts, &port2));
   pd1->SetNumPeers(1);
-  pd1->SetHandler([&](ServerRpcState *s) {
+  pd1->SetHandler([&](ServerRpcState* s) {
     ADD_FAILURE() << "should not get here";
-    return std::function<void ()>();
+    return std::function<void()>();
   });
   std::string addr1 = pd1->HandlePreConnect("", 0).value();
   std::string addr2 = pd2->HandlePreConnect("", 0).value();
@@ -224,15 +222,15 @@ void Echo(benchmark::State &state, ProtocolDriverOptions opts) {
   }
 }
 
-void AddServerStringOptionTo(ProtocolDriverOptions &pdo,
-                             std::string option_name, std::string value){
+void AddServerStringOptionTo(ProtocolDriverOptions& pdo,
+                             std::string option_name, std::string value) {
   auto* ns = pdo.add_server_settings();
   ns->set_name(option_name);
   ns->set_string_value(value);
 }
 
-void AddClientStringOptionTo(ProtocolDriverOptions &pdo,
-                             std::string option_name, std::string value){
+void AddClientStringOptionTo(ProtocolDriverOptions& pdo,
+                             std::string option_name, std::string value) {
   auto* ns = pdo.add_client_settings();
   ns->set_name(option_name);
   ns->set_string_value(value);
@@ -266,17 +264,16 @@ ProtocolDriverOptions GrpcCallbackOptions() {
   return pdo;
 }
 
-void BM_GrpcEcho(benchmark::State &state) {
-  Echo(state, GrpcOptions());
-}
+void BM_GrpcEcho(benchmark::State& state) { Echo(state, GrpcOptions()); }
 
-void BM_GrpcCallbackEcho(benchmark::State &state) {
+void BM_GrpcCallbackEcho(benchmark::State& state) {
   Echo(state, GrpcCallbackOptions());
 }
 
 BENCHMARK(BM_GrpcEcho);
 BENCHMARK(BM_GrpcCallbackEcho);
 
+// clang-format off
 INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                          testing::Values(
                              GrpcOptions(),
@@ -285,5 +282,6 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                              GrpcClientCBServerNormalOptions()
                              )
                          );
+// clang-format on
 
 }  // namespace distbench

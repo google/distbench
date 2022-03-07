@@ -20,17 +20,16 @@
 namespace distbench {
 
 // Client =====================================================================
-ProtocolDriverClientGrpcAsyncCallback::ProtocolDriverClientGrpcAsyncCallback()
-{
+ProtocolDriverClientGrpcAsyncCallback::ProtocolDriverClientGrpcAsyncCallback() {
 }
 
-ProtocolDriverClientGrpcAsyncCallback::~ProtocolDriverClientGrpcAsyncCallback()
-{
+ProtocolDriverClientGrpcAsyncCallback::
+    ~ProtocolDriverClientGrpcAsyncCallback() {
   ShutdownClient();
 }
 
 absl::Status ProtocolDriverClientGrpcAsyncCallback::InitializeClient(
-    const ProtocolDriverOptions &pd_opts) {
+    const ProtocolDriverOptions& pd_opts) {
   return absl::OkStatus();
 }
 
@@ -44,17 +43,15 @@ absl::Status ProtocolDriverClientGrpcAsyncCallback::HandleConnect(
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
-  std::shared_ptr<grpc::ChannelCredentials> creds =
-    MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel =
-    grpc::CreateCustomChannel(addr.socket_address(), creds,
-                              DistbenchCustomChannelArguments());
+  std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
+  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+      addr.socket_address(), creds, DistbenchCustomChannelArguments());
   grpc_client_stubs_[peer] = Traffic::NewStub(channel);
   return absl::OkStatus();
 }
 
 std::vector<TransportStat>
-    ProtocolDriverClientGrpcAsyncCallback::GetTransportStats() {
+ProtocolDriverClientGrpcAsyncCallback::GetTransportStats() {
   return {};
 }
 
@@ -100,11 +97,7 @@ void ProtocolDriverClientGrpcAsyncCallback::InitiateRpc(
   };
 
   grpc_client_stubs_[peer_index]->experimental_async()->GenericRpc(
-      &new_rpc->context,
-      &new_rpc->request,
-      &new_rpc->response,
-      callback_fct
-    );
+      &new_rpc->context, &new_rpc->request, &new_rpc->response, callback_fct);
 }
 
 void ProtocolDriverClientGrpcAsyncCallback::ChurnConnection(int peer) {}
@@ -121,45 +114,42 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
  public:
   ~TrafficServiceAsync() override {}
 
-  void SetHandler (
-      std::function<std::function<void ()> (ServerRpcState* state)> handler) {
+  void SetHandler(
+      std::function<std::function<void()>(ServerRpcState* state)> handler) {
     handler_ = handler;
   }
 
-  grpc::ServerUnaryReactor* GenericRpc(
-      grpc::CallbackServerContext* context,
-      const GenericRequest* request,
-      GenericResponse* response) override {
+  grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context,
+                                       const GenericRequest* request,
+                                       GenericResponse* response) override {
     auto* reactor = context->DefaultReactor();
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
-    rpc_state->SetSendResponseFunction ([=]() {
+    rpc_state->SetSendResponseFunction([=]() {
       *response = std::move(rpc_state->response);
       reactor->Finish(grpc::Status::OK);
     });
-    rpc_state->SetFreeStateFunction([=]() {
-      delete rpc_state;
-    });
+    rpc_state->SetFreeStateFunction([=]() { delete rpc_state; });
     auto fct_action_list_thread = handler_(rpc_state);
     if (fct_action_list_thread) {
-      RunRegisteredThread(
-        "DedicatedActionListThread", fct_action_list_thread).detach();
+      RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread)
+          .detach();
     }
     return reactor;
   }
 
  private:
-  std::function<std::function<void ()> (ServerRpcState* state)> handler_;
+  std::function<std::function<void()>(ServerRpcState* state)> handler_;
 };
 }  // anonymous namespace
 
 ProtocolDriverServerGrpcAsyncCallback::ProtocolDriverServerGrpcAsyncCallback() {
 }
-ProtocolDriverServerGrpcAsyncCallback::~ProtocolDriverServerGrpcAsyncCallback()
-{}
+ProtocolDriverServerGrpcAsyncCallback::
+    ~ProtocolDriverServerGrpcAsyncCallback() {}
 
 absl::Status ProtocolDriverServerGrpcAsyncCallback::InitializeServer(
-    const ProtocolDriverOptions &pd_opts, int* port) {
+    const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
   if (!maybe_ip.ok()) return maybe_ip.status();
@@ -169,7 +159,7 @@ absl::Status ProtocolDriverServerGrpcAsyncCallback::InitializeServer(
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
-    MakeServerCredentials();
+      MakeServerCredentials();
   builder.AddListeningPort(server_socket_address_, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
@@ -189,14 +179,14 @@ absl::Status ProtocolDriverServerGrpcAsyncCallback::InitializeServer(
 }
 
 void ProtocolDriverServerGrpcAsyncCallback::SetHandler(
-    std::function<std::function<void ()> (ServerRpcState* state)> handler) {
+    std::function<std::function<void()>(ServerRpcState* state)> handler) {
   static_cast<TrafficServiceAsync*>(traffic_service_.get())
       ->SetHandler(handler);
 }
 
 absl::StatusOr<std::string>
-    ProtocolDriverServerGrpcAsyncCallback::HandlePreConnect(
-      std::string_view remote_connection_info, int peer) {
+ProtocolDriverServerGrpcAsyncCallback::HandlePreConnect(
+    std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
   addr.set_ip_address(server_ip_address_.ip());
   addr.set_port(server_port_);
@@ -207,8 +197,7 @@ absl::StatusOr<std::string>
 }
 
 void ProtocolDriverServerGrpcAsyncCallback::HandleConnectFailure(
-    std::string_view local_connection_info) {
-}
+    std::string_view local_connection_info) {}
 
 void ProtocolDriverServerGrpcAsyncCallback::ShutdownServer() {
   if (server_ != nullptr) {
@@ -217,16 +206,15 @@ void ProtocolDriverServerGrpcAsyncCallback::ShutdownServer() {
 }
 
 std::vector<TransportStat>
-    ProtocolDriverServerGrpcAsyncCallback::GetTransportStats() {
+ProtocolDriverServerGrpcAsyncCallback::GetTransportStats() {
   return {};
 }
 
 // Client/Server ProtocolDriver ===============================================
-ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {
-}
+ProtocolDriverGrpcAsyncCallback::ProtocolDriverGrpcAsyncCallback() {}
 
 absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
-    const ProtocolDriverOptions &pd_opts, int* port) {
+    const ProtocolDriverOptions& pd_opts, int* port) {
   std::string client_type = GetNamedSettingString(pd_opts.client_settings(),
                                                   "client_type", "callback");
   if (client_type != "callback") {
@@ -247,28 +235,27 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   if (!ret.ok()) return ret;
 
   ret = InitializeServer(pd_opts, port);
-  if (!ret.ok())
-    return ret;
+  if (!ret.ok()) return ret;
 
   return absl::OkStatus();
 }
 
 absl::Status ProtocolDriverGrpcAsyncCallback::InitializeClient(
-    const ProtocolDriverOptions &pd_opts) {
+    const ProtocolDriverOptions& pd_opts) {
   client_ = std::unique_ptr<ProtocolDriverClient>(
       new ProtocolDriverClientGrpcAsyncCallback());
   return client_->InitializeClient(pd_opts);
 }
 
 absl::Status ProtocolDriverGrpcAsyncCallback::InitializeServer(
-    const ProtocolDriverOptions &pd_opts, int *port) {
+    const ProtocolDriverOptions& pd_opts, int* port) {
   server_ = std::unique_ptr<ProtocolDriverServer>(
       new ProtocolDriverServerGrpcAsyncCallback());
   return server_->InitializeServer(pd_opts, port);
 }
 
 void ProtocolDriverGrpcAsyncCallback::SetHandler(
-    std::function<std::function<void ()> (ServerRpcState* state)> handler) {
+    std::function<std::function<void()>(ServerRpcState* state)> handler) {
   server_->SetHandler(handler);
 }
 
@@ -281,7 +268,7 @@ ProtocolDriverGrpcAsyncCallback::~ProtocolDriverGrpcAsyncCallback() {
 }
 
 absl::StatusOr<std::string> ProtocolDriverGrpcAsyncCallback::HandlePreConnect(
-      std::string_view remote_connection_info, int peer) {
+    std::string_view remote_connection_info, int peer) {
   return server_->HandlePreConnect(remote_connection_info, peer);
 }
 
@@ -295,10 +282,10 @@ void ProtocolDriverGrpcAsyncCallback::HandleConnectFailure(
   server_->HandleConnectFailure(local_connection_info);
 }
 
-std::vector<TransportStat> ProtocolDriverGrpcAsyncCallback::GetTransportStats()
-{
-  std::vector <TransportStat> stats = client_->GetTransportStats();
-  std::vector <TransportStat> stats_server = server_->GetTransportStats();
+std::vector<TransportStat>
+ProtocolDriverGrpcAsyncCallback::GetTransportStats() {
+  std::vector<TransportStat> stats = client_->GetTransportStats();
+  std::vector<TransportStat> stats_server = server_->GetTransportStats();
   std::move(stats_server.begin(), stats_server.end(),
             std::back_inserter(stats));
   return stats;

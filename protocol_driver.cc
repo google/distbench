@@ -45,9 +45,10 @@ class RealClock : public SimpleClock {
   ~RealClock() override {}
   absl::Time Now() override { return absl::Now(); }
 
-  bool MutexLockWhenWithDeadline(
-      absl::Mutex* mu, const absl::Condition& condition, absl::Time deadline)
-    ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) override {
+  bool MutexLockWhenWithDeadline(absl::Mutex* mu,
+                                 const absl::Condition& condition,
+                                 absl::Time deadline)
+      ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) override {
     return mu->LockWhenWithDeadline(condition, deadline);
   }
 };
@@ -57,12 +58,9 @@ SimpleClock& ProtocolDriver::GetClock() {
   return real_clock;
 }
 
-absl::StatusOr<std::string> ProtocolDriverClient::Preconnect() {
-  return "";
-}
+absl::StatusOr<std::string> ProtocolDriverClient::Preconnect() { return ""; }
 
 void ProtocolDriverServer::HandleConnectFailure(
-    std::string_view local_connection_info) {
-}
+    std::string_view local_connection_info) {}
 
 }  // namespace distbench
