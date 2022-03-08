@@ -34,6 +34,7 @@ Use Distbench to:
 - [Distbench Test Builder](test_builder/README.md): Tool to build and execute
   parametric distbench test sequences.
 - [Distbench FAQs](docs/faq.md)
+- [Git Hooks](git_hooks/README.md)
 
 For contributors, make sure you also consult the following:
 - [Code of conduct](docs/code-of-conduct.md)
