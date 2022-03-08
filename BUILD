@@ -213,6 +213,7 @@ cc_test(
     name = "distbench_test_sequencer_test",
     size = "medium",
     srcs = ["distbench_test_sequencer_test.cc", "gtest_utils.h"],
+    shard_count = 4,
     deps = [
         ":distbench_node_manager_lib",
         ":distbench_test_sequencer_lib",
