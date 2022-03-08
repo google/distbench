@@ -24,11 +24,9 @@ namespace distbench {
 namespace {
 
 std::string LatencySummary(std::vector<int64_t> latencies) {
-  std::string ret;
-
   size_t N = latencies.size();
+  std::string ret;
   absl::StrAppendFormat(&ret, "N: %ld", N);
-
   if (N > 0) {
     absl::StrAppendFormat(&ret, " min: %ldns", *latencies.begin());
     absl::StrAppendFormat(&ret, " median: %ldns", latencies[N * 0.5]);
@@ -37,7 +35,6 @@ std::string LatencySummary(std::vector<int64_t> latencies) {
     absl::StrAppendFormat(&ret, " 99.9%%: %ldns", latencies[N * 0.999]);
     absl::StrAppendFormat(&ret, " max: %ldns", *latencies.rbegin());
   }
-
   return ret;
 }
 
