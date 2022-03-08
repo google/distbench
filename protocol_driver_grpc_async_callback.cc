@@ -234,10 +234,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
   absl::Status ret = InitializeClient(pd_opts);
   if (!ret.ok()) return ret;
 
-  ret = InitializeServer(pd_opts, port);
-  if (!ret.ok()) return ret;
-
-  return absl::OkStatus();
+  return InitializeServer(pd_opts, port);
 }
 
 absl::Status ProtocolDriverGrpcAsyncCallback::InitializeClient(
