@@ -142,6 +142,7 @@ cc_test(
     size = "medium",
     srcs = ["protocol_driver_test.cc",
         "gtest_utils.h"],
+    shard_count = 8,
     deps = [
         ":distbench_utils",
         ":protocol_driver_allocator",
