@@ -69,6 +69,14 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
   return absl::OkStatus();
 }
 
+std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s) {
+  auto context = std::make_unique<grpc::ClientContext>();
+  std::chrono::system_clock::time_point deadline =
+      std::chrono::system_clock::now() + std::chrono::seconds(max_time_s);
+  context->set_deadline(deadline);
+  return context;
+}
+
 TEST(DistBenchTestSequencer, Constructor) { TestSequencer test_sequencer; }
 
 TEST(DistBenchTestSequencer, Initialization) {
@@ -116,12 +124,9 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   l2->set_name("echo");
 
   TestSequenceResults results;
-  grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(70);
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/70);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
   ASSERT_EQ(results.test_results().size(), 1);
@@ -182,29 +187,24 @@ void RunIntenseTraffic(const char* protocol) {
   l2->set_name("echo");
 
   TestSequenceResults results;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(200);
-  grpc::ClientContext context;
-  grpc::ClientContext context2;
-  grpc::ClientContext context3;
-  context.set_deadline(deadline);
-  context2.set_deadline(deadline);
-  context3.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
+  auto context2 = CreateContextWithDeadline(/*max_time_s=*/200);
+  auto context3 = CreateContextWithDeadline(/*max_time_s=*/200);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
 
   iterations->clear_max_iteration_count();
-  status = tester.test_sequencer_stub->RunTestSequence(&context2, test_sequence,
-                                                       &results);
+  status = tester.test_sequencer_stub->RunTestSequence(context2.get(),
+                                                       test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
 
   iterations->clear_max_duration_us();
   iterations->set_max_iteration_count(2000);
-  status = tester.test_sequencer_stub->RunTestSequence(&context3, test_sequence,
-                                                       &results);
+  status = tester.test_sequencer_stub->RunTestSequence(context3.get(),
+                                                       test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
 }
@@ -246,12 +246,9 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
   l2->set_name("echo");
 
   TestSequenceResults results;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(200);
-  grpc::ClientContext context;
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
   ASSERT_EQ(results.test_results_size(), 1);
@@ -340,12 +337,9 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   l4->set_name("async_echo");
 
   TestSequenceResults results;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(200);
-  grpc::ClientContext context;
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
   ASSERT_EQ(results.test_results_size(), 1);
@@ -437,12 +431,9 @@ TEST(DistBenchTestSequencer, CliqueTest) {
   l2->set_name("clique_query");
 
   TestSequenceResults results;
-  grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(75);
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
   ASSERT_EQ(results.test_results().size(), 1);
@@ -521,12 +512,9 @@ tests {
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
-  grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(75);
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -591,12 +579,9 @@ tests {
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
-  grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(15);
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -649,12 +634,9 @@ tests {
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
-  grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(15);
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -725,12 +707,9 @@ tests {
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
-  grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(15);
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -792,12 +771,9 @@ tests {
   ASSERT_EQ(parse_result, true);
 
   TestSequenceResults results;
-  grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(15);
-  context.set_deadline(deadline);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      &context, test_sequence, &results);
+      context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
