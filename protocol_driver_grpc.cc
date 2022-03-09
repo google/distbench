@@ -263,7 +263,10 @@ void ProtocolDriverGrpc::SetNumPeers(int num_peers) {
   client_->SetNumPeers(num_peers);
 }
 
-ProtocolDriverGrpc::~ProtocolDriverGrpc() { ShutdownServer(); }
+ProtocolDriverGrpc::~ProtocolDriverGrpc() {
+  ShutdownClient();
+  ShutdownServer();
+}
 
 absl::StatusOr<std::string> ProtocolDriverGrpc::HandlePreConnect(
     std::string_view remote_connection_info, int peer) {
