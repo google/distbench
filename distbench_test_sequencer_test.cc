@@ -171,7 +171,7 @@ TestSequence IntenseTrafficTestSequence(const char* protocol) {
   a1->set_rpc_name("echo");
 
   auto* iterations = a1->mutable_iterations();
-  iterations->set_max_duration_us(200000);
+  iterations->set_max_duration_us(200'000);
   iterations->set_max_iteration_count(2000);
   iterations->set_max_parallel_iterations(100);
 
@@ -456,8 +456,8 @@ TEST(DistBenchTestSequencer, CliqueTest) {
 
   auto a1 = test->add_actions();
   a1->set_name("clique_queries");
-  a1->mutable_iterations()->set_max_duration_us(10000000);
-  a1->mutable_iterations()->set_open_loop_interval_ns(16000000);
+  a1->mutable_iterations()->set_max_duration_us(2'000'000);
+  a1->mutable_iterations()->set_open_loop_interval_ns(3'200'000);
   a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
   a1->set_rpc_name("clique_query");
 
