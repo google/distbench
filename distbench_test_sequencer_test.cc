@@ -151,10 +151,7 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
 }
 
-void RunIntenseTraffic(const char* protocol) {
-  DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
-
+TestSequence IntenseTrafficTestSequence(const char* protocol) {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
   test->set_default_protocol(protocol);
@@ -185,26 +182,49 @@ void RunIntenseTraffic(const char* protocol) {
 
   auto* l2 = test->add_action_lists();
   l2->set_name("echo");
+  return test_sequence;
+}
 
+void RunIntenseTrafficMaxDurationMaxIteration(const char* protocol) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(6));
+  TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/200);
-  auto context2 = CreateContextWithDeadline(/*max_time_s=*/200);
-  auto context3 = CreateContextWithDeadline(/*max_time_s=*/200);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       context.get(), test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
+}
 
+void RunIntenseTrafficMaxDuration(const char* protocol) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(6));
+  TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
+  auto* iterations =
+      test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();
   iterations->clear_max_iteration_count();
-  status = tester.test_sequencer_stub->RunTestSequence(context2.get(),
-                                                       test_sequence, &results);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
+}
 
+void RunIntenseTrafficMaxIteration(const char* protocol) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(6));
+  TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
+  auto* iterations =
+      test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();
+  iterations->clear_max_iteration_count();
   iterations->clear_max_duration_us();
   iterations->set_max_iteration_count(2000);
-  status = tester.test_sequencer_stub->RunTestSequence(context3.get(),
-                                                       test_sequence, &results);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
   LOG(INFO) << status.error_message();
   ASSERT_OK(status);
 }
@@ -386,10 +406,30 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   }
   EXPECT_EQ(warmup_samples, 1000);
 }
-TEST(DistBenchTestSequencer, 100kGrpc) { RunIntenseTraffic("grpc"); }
 
-TEST(DistBenchTestSequencer, 100kGrpcAsyncCallback) {
-  RunIntenseTraffic("grpc_async_callback");
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationGrpc) {
+  RunIntenseTrafficMaxDuration("grpc");
+}
+
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationGrpcAsyncCallback) {
+  RunIntenseTrafficMaxDuration("grpc_async_callback");
+}
+
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxIterationGrpc) {
+  RunIntenseTrafficMaxIteration("grpc");
+}
+
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxIterationGrpcAsyncCallback) {
+  RunIntenseTrafficMaxIteration("grpc_async_callback");
+}
+
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationGrpc) {
+  RunIntenseTrafficMaxDurationMaxIteration("grpc");
+}
+
+TEST(DistBenchTestSequencer,
+     RunIntenseTrafficMaxDurationMaxIterationGrpcAsyncCallback) {
+  RunIntenseTrafficMaxDurationMaxIteration("grpc_async_callback");
 }
 
 TEST(DistBenchTestSequencer, CliqueTest) {
