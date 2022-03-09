@@ -261,6 +261,7 @@ void ProtocolDriverGrpcAsyncCallback::SetNumPeers(int num_peers) {
 }
 
 ProtocolDriverGrpcAsyncCallback::~ProtocolDriverGrpcAsyncCallback() {
+  ShutdownClient();
   ShutdownServer();
 }
 
