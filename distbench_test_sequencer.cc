@@ -125,9 +125,7 @@ void TestSequencer::CancelTraffic() {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     rpc_state.node = &node_it;
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::seconds(60);
-    rpc_state.context.set_deadline(deadline);
+    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
     rpc_state.rpc = node_it.stub->AsyncCancelTraffic(&rpc_state.context,
                                                      rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
@@ -349,9 +347,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end())
         << "couldn't find " << node_services.first;
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::seconds(60);
-    rpc_state.context.set_deadline(deadline);
+    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
     rpc_state.rpc = registered_nodes_[it->second].stub->AsyncConfigureNode(
         &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
@@ -406,9 +402,7 @@ absl::Status TestSequencer::IntroducePeers(
     rpc_state.request = service_map;
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::seconds(60);
-    rpc_state.context.set_deadline(deadline);
+    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
     rpc_state.rpc = registered_nodes_[it->second].stub->AsyncIntroducePeers(
         &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
@@ -447,8 +441,6 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
   grpc::Status status;
   std::vector<RunTrafficPendingRpc> pending_rpcs(node_service_map.size());
   int rpc_count = 0;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(timeout_seconds);
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
@@ -457,7 +449,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     CHECK(it != node_alias_id_map_.end());
     RegisteredNode& node = registered_nodes_[it->second];
     node.idle = false;
-    rpc_state.context.set_deadline(deadline);
+    SetGrpcClientContextDeadline(&rpc_state.context, timeout_seconds);
     rpc_state.rpc =
         node.stub->AsyncRunTraffic(&rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
@@ -502,9 +494,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
     rpc_state.node = &registered_nodes_[it->second];
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::seconds(60);
-    rpc_state.context.set_deadline(deadline);
+    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
     rpc_state.request.set_clear_services(true);
     rpc_state.rpc = rpc_state.node->stub->AsyncGetTrafficResult(
         &rpc_state.context, rpc_state.request, &cq);
@@ -553,9 +543,7 @@ void TestSequencer::Shutdown() {
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     rpc_state.node = &node;
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::seconds(60);
-    rpc_state.context.set_deadline(deadline);
+    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
     rpc_state.rpc = rpc_state.node->stub->AsyncShutdownNode(
         &rpc_state.context, rpc_state.request, &cq);
     rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
