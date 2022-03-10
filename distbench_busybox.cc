@@ -33,7 +33,7 @@ int MainNodeManager(std::vector<char*>& arguments);
 void Usage();
 }  // anonymous namespace
 
-ABSL_FLAG(int, port, 10000, "port to listen on");
+ABSL_FLAG(int, port, 10'000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 ABSL_FLAG(bool, use_ipv4_first, false,
           "Prefer IPv4 addresses to IPv6 addresses when both are available");

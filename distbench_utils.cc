@@ -230,7 +230,7 @@ void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder* builder,
 // RUsage functions
 namespace {
 double TimevalToDouble(const struct timeval& t) {
-  return (double)t.tv_usec / 1000000.0 + t.tv_sec;
+  return (double)t.tv_usec / 1'000'000.0 + t.tv_sec;
 }
 }  // Anonymous namespace
 
