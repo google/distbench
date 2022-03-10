@@ -194,7 +194,7 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
     ret.push_back(str);
   }
 
-  double total_time_seconds = (double)test_time / 1000 / 1000 / 1000;
+  double total_time_seconds = (double)test_time / 1'000'000'000;
   AddCommunicationSummaryTo(ret, total_time_seconds, perf_map);
   AddInstanceSummaryTo(ret, total_time_seconds, perf_map, nb_warmup_samples,
                        nb_failed_samples);
