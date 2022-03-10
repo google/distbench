@@ -178,6 +178,13 @@ absl::Status grpcStatusToAbslStatus(const grpc::Status& status) {
   return absl::Status(code, message);
 }
 
+void SetGrpcClientContextDeadline(grpc::ClientContext* context,
+                                  int max_time_s) {
+  std::chrono::system_clock::time_point deadline =
+      std::chrono::system_clock::now() + std::chrono::seconds(max_time_s);
+  context->set_deadline(deadline);
+}
+
 absl::StatusOr<std::string> ReadFileToString(const std::string& filename) {
   std::ifstream in(filename, std::ios::in | std::ios::binary);
   if (!in) {

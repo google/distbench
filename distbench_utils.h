@@ -66,6 +66,8 @@ grpc::Status Annotate(const grpc::Status& status, std::string_view context);
 grpc::Status abslStatusToGrpcStatus(const absl::Status& status);
 absl::Status grpcStatusToAbslStatus(const grpc::Status& status);
 
+void SetGrpcClientContextDeadline(grpc::ClientContext* context, int max_time_s);
+
 absl::StatusOr<std::string> ReadFileToString(const std::string& filename);
 
 void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder* builder,

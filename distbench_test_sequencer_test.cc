@@ -71,9 +71,7 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
 
 std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s) {
   auto context = std::make_unique<grpc::ClientContext>();
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() + std::chrono::seconds(max_time_s);
-  context->set_deadline(deadline);
+  SetGrpcClientContextDeadline(context.get(), max_time_s);
   return context;
 }
 

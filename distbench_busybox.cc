@@ -20,6 +20,7 @@
 #include "absl/flags/parse.h"
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"
+#include "distbench_utils.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 
@@ -232,10 +233,7 @@ int MainRunTests(std::vector<char*>& arguments) {
   }
 
   grpc::ClientContext context;
-  std::chrono::system_clock::time_point deadline =
-      std::chrono::system_clock::now() +
-      std::chrono::seconds(*maybe_timeout_seconds);
-  context.set_deadline(deadline);
+  distbench::SetGrpcClientContextDeadline(&context, *maybe_timeout_seconds);
   distbench::TestSequenceResults test_results;
   grpc::Status status =
       stub->RunTestSequence(&context, test_sequence, &test_results);

@@ -288,6 +288,7 @@ cc_binary(
     deps = [
         ":distbench_node_manager_lib",
         ":distbench_test_sequencer_lib",
+        ":distbench_utils",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
     ],
