@@ -15,13 +15,13 @@
 #ifndef DISTBENCH_PROTOCOL_DRIVER_MERCURY_H_
 #define DISTBENCH_PROTOCOL_DRIVER_MERCURY_H_
 
-#include "distbench_utils.h"
-#include "protocol_driver.h"
-
 #include <mercury.h>
 #include <mercury_bulk.h>
 #include <mercury_macros.h>
 #include <mercury_proc_string.h>
+
+#include "distbench_utils.h"
+#include "protocol_driver.h"
 
 namespace distbench {
 
@@ -34,17 +34,16 @@ class ProtocolDriverMercury : public ProtocolDriver {
   ProtocolDriverMercury();
   ~ProtocolDriverMercury() override;
 
-  absl::Status Initialize(
-      const ProtocolDriverOptions &pd_opts, int* port) override;
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                          int* port) override;
 
-  void SetHandler(
-      std::function<std::function<void ()> (ServerRpcState* state)> handler
-      ) override;
+  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
+                      handler) override;
   void SetNumPeers(int num_peers) override;
 
   // Connects to the actual MERCURY service.
-  absl::Status HandleConnect(
-      std::string remote_connection_info, int peer) override;
+  absl::Status HandleConnect(std::string remote_connection_info,
+                             int peer) override;
 
   // Returns the address of the MERCURY service.
   absl::StatusOr<std::string> HandlePreConnect(
@@ -61,15 +60,15 @@ class ProtocolDriverMercury : public ProtocolDriver {
   void RpcCompletionThread();
   void PrintMercuryVersion();
 
-  hg_return_t RpcClientCallback(const struct hg_cb_info *callback_info);
+  hg_return_t RpcClientCallback(const struct hg_cb_info* callback_info);
   hg_return_t RpcServerCallback(hg_handle_t handle);
 
   static hg_return_t StaticRpcServerCallback(hg_handle_t handle);
   static hg_return_t StaticRpcServerDoneCallback(
-      const struct hg_cb_info *hg_cb_info);
-  static hg_return_t StaticRpcServerSerialize(hg_proc_t proc, void *data);
+      const struct hg_cb_info* hg_cb_info);
+  static hg_return_t StaticRpcServerSerialize(hg_proc_t proc, void* data);
   static hg_return_t StaticClientCallback(
-      const struct hg_cb_info *callback_info);
+      const struct hg_cb_info* callback_info);
 
   std::atomic<int> pending_rpcs_ = 0;
   absl::Notification shutdown_;
@@ -77,13 +76,13 @@ class ProtocolDriverMercury : public ProtocolDriver {
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
 
-  hg_context_t *hg_context_ = nullptr;
-  hg_class_t *hg_class_ = nullptr;
+  hg_context_t* hg_context_ = nullptr;
+  hg_class_t* hg_class_ = nullptr;
 
   hg_id_t mercury_generic_rpc_id_;
   std::vector<hg_addr_t> remote_addresses_;
 
-  std::function<std::function<void ()> (ServerRpcState* state)> handler_;
+  std::function<std::function<void()>(ServerRpcState* state)> handler_;
 };
 
 }  // namespace distbench
