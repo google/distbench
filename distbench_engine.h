@@ -239,6 +239,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::unique_ptr<grpc::Server> server_;
   std::unique_ptr<ProtocolDriver> pd_;
   std::thread engine_main_thread_;
+  std::string engine_name_;
 
   // Payloads definitions
   std::map<std::string, PayloadSpec> payload_map_;

@@ -295,7 +295,7 @@ absl::Status DistBenchEngine::InitializeTables() {
     const std::string server_service_name = rpc.server();
     const std::string client_service_name = rpc.client();
     if (client_service_name.empty()) {
-      LOG(INFO) << rpc.ShortDebugString();
+      LOG(INFO) << engine_name_ << ": " << rpc.ShortDebugString();
       return absl::InvalidArgumentError(
           absl::StrCat("Rpc ", rpc.name(), " must have a client_service_name"));
     }
@@ -357,6 +357,8 @@ absl::Status DistBenchEngine::Initialize(
   if (!maybe_service_spec.ok()) return maybe_service_spec.status();
   service_spec_ = maybe_service_spec.value();
   service_instance_ = service_instance;
+  engine_name_ = absl::StrCat(service_name_, "/", service_instance_);
+
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
 
@@ -372,16 +374,18 @@ absl::Status DistBenchEngine::Initialize(
   server_ = builder.BuildAndStart();
   server_address = absl::StrCat("[::]:", *port);  // port may have changed
   if (!server_) {
-    LOG(ERROR) << "Engine start failed on " << server_address;
+    LOG(ERROR) << engine_name_ << ": Engine start failed on " << server_address;
     return absl::UnknownError("Engine service failed to start");
   }
-  LOG(INFO) << "Engine server listening on " << server_address;
+  LOG(INFO) << engine_name_ << ": Engine server listening on "
+            << server_address;
 
   std::map<std::string, int> services = EnumerateServiceTypes(traffic_config_);
   auto it = services.find(service_name_);
 
   if (it == services.end()) {
-    LOG(ERROR) << "could not find service to run: " << service_name_;
+    LOG(ERROR) << engine_name_
+               << ": could not find service to run: " << service_name_;
     return absl::NotFoundError("Service not found in config.");
   }
 
@@ -489,7 +493,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       if (!finished_rpc->status.ok()) {
         pd_->HandleConnectFailure(finished_rpc->request.initiator_info());
         status = finished_rpc->status;
-        LOG(ERROR) << "ConnectToPeers error:"
+        LOG(ERROR) << engine_name_ << ": ConnectToPeers error:"
                    << finished_rpc->status.error_code() << " "
                    << finished_rpc->status.error_message() << " connecting to "
                    << finished_rpc->server_address;
@@ -501,7 +505,8 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       absl::Status final_status = pd_->HandleConnect(
           pending_rpcs[i].response.responder_info(), /*peer=*/i);
       if (!final_status.ok()) {
-        LOG(INFO) << "weird, a connect failed after rpc succeeded.";
+        LOG(INFO) << engine_name_
+                  << ": Weird, a connect failed after rpc succeeded.";
         status = abslStatusToGrpcStatus(final_status);
       }
     }
@@ -515,7 +520,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   }
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
     if (service_name_ == traffic_config_.action_lists(i).name()) {
-      LOG(INFO) << "Running " << service_name_ << "/" << service_instance_;
+      LOG(INFO) << engine_name_ << ": Running";
       const GenericRequest* fake_request = new GenericRequest;
       ServerRpcState* top_level_state = new ServerRpcState{};
       top_level_state->request = fake_request;
@@ -535,16 +540,14 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 }
 
 void DistBenchEngine::CancelTraffic() {
-  LOG(INFO) << "Cancelation notify for " << service_name_ << "/"
-            << service_instance_;
+  LOG(INFO) << engine_name_ << ": Got CancelTraffic";
   canceled_.Notify();
 }
 
 void DistBenchEngine::FinishTraffic() {
   if (engine_main_thread_.joinable()) {
     engine_main_thread_.join();
-    LOG(INFO) << "Finished running Main for " << service_name_ << "/"
-              << service_instance_;
+    LOG(INFO) << engine_name_ << ": Finished running Main";
   }
 }
 
@@ -578,7 +581,7 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
 // and longer RPCs will return a non-empty function that the protocol driver
 // should process in a seperate thread.
 std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
-  // LOG(INFO) << state->request->ShortDebugString();
+  // LOG(INFO) << engine_name_ << ": " << state->request->ShortDebugString();
   CHECK(state->request->has_rpc_index());
   const auto& server_rpc = server_rpc_table_[state->request->rpc_index()];
   const auto& rpc_def = server_rpc.rpc_definition;
@@ -697,8 +700,8 @@ void DistBenchEngine::RunActionList(int list_index,
     }
     s.action_mu.Unlock();
     if (canceled_.HasBeenNotified()) {
-      LOG(INFO) << "Cancelled action list " << s.action_list->proto.name()
-                << " on " << service_name_ << "/" << service_instance_;
+      LOG(INFO) << engine_name_ << ": Cancelled action list "
+                << s.action_list->proto.name();
       s.WaitForAllPendingActions();
       break;
     }
