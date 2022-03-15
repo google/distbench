@@ -1077,7 +1077,7 @@ void DistBenchEngine::RunRpcActionIteration(
   GenericRequest common_request;
   const ServerRpcState* const incoming_rpc_state =
       action_state->action_list_state->incoming_rpc_state;
-  if (incoming_rpc_state) {
+  if (!incoming_rpc_state->request->trace_context().engine_ids().empty()) {
     *common_request.mutable_trace_context() =
         incoming_rpc_state->request->trace_context();
   } else if (do_trace) {
