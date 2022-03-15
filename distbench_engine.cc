@@ -1070,7 +1070,7 @@ void DistBenchEngine::RunRpcActionIteration(
   const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
   const auto& rpc_spec = rpc_def.rpc_spec;
   bool do_trace = false;
-  int trace_count = ++client_rpc_table_[rpc_index].rpc_tracing_counter;
+  int trace_count = client_rpc_table_[rpc_index].rpc_tracing_counter++;
   if (rpc_spec.tracing_interval() > 0) {
     do_trace = (trace_count % rpc_spec.tracing_interval()) == 0;
   }
