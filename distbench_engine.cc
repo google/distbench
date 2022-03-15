@@ -459,7 +459,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
   for (const auto& service_type : peers_) {
     for (const auto& service_instance : service_type) {
       if (!service_instance.endpoint_address.empty()) {
-        auto& rpc_state = pending_rpcs[rpc_count];
+        auto& rpc_state = pending_rpcs[service_instance.pd_id];
         std::shared_ptr<grpc::ChannelCredentials> creds =
             MakeChannelCredentials();
         std::shared_ptr<grpc::Channel> channel =
@@ -479,6 +479,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       }
     }
   }
+  CHECK(rpc_count == num_targets);
   while (rpc_count) {
     bool ok;
     void* tag;
