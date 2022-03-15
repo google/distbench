@@ -818,4 +818,218 @@ tests {
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 }
 
+TEST(DistBenchTestSequencer, RPCTraceSimple) {
+  const std::string proto = R"(
+tests {
+  name: "rpc_trace_simple"
+  services {
+    name: "load_balancer"
+    count: 1
+  }
+  services {
+    name: "root"
+    count: 1
+  }
+  action_lists {
+    name: "load_balancer"
+    action_names: "load_balancer/do_queries"
+  }
+  actions {
+    name: "load_balancer/do_queries"
+    iterations {
+      max_parallel_iterations: 5
+      max_iteration_count: 25
+    }
+    rpc_name: "root_query"
+  }
+  rpc_descriptions {
+    name: "root_query"
+    client: "load_balancer"
+    server: "root"
+    fanout_filter: "round_robin"
+    request_payload_name: "root_request_payload"
+    response_payload_name: "root_response_payload"
+    tracing_interval: 1
+  }
+  action_lists {
+    name: "root_query"
+    # NOP
+  }
+  payload_descriptions {
+    name: "root_request_payload"
+    size: 128
+  }
+  payload_descriptions {
+    name: "root_response_payload"
+    size: 128
+  }
+})";
+  TestSequence test_sequence;
+  bool parse_result =
+      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
+  ASSERT_EQ(parse_result, true);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+  TestSequenceResults results;
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+
+  // Verify that the samples have the correct trace_context.
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("load_balancer/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+  auto dest = instance_results_it->second.peer_logs().find("root/0");
+  ASSERT_NE(dest, instance_results_it->second.peer_logs().end());
+  auto dest_rpc = dest->second.rpc_logs().find(0);
+  ASSERT_NE(dest_rpc, dest->second.rpc_logs().end());
+  ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
+  ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
+
+  for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
+    // The RPC trace should have two entries (@load_balancer/0, @root/0).
+    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 2);
+    ASSERT_EQ(rpc.trace_context().iterations().size(), 2);
+  }
+}
+
+TEST(DistBenchTestSequencer, RPCTraceTwoLevels) {
+  const std::string proto = R"(
+tests {
+  name: "rpc_trace_two_levels"
+  services {
+    name: "load_balancer"
+    count: 1
+  }
+  services {
+    name: "root"
+    count: 2
+  }
+  services {
+    name: "leaf"
+    count: 3
+  }
+  action_lists {
+    name: "load_balancer"
+    action_names: "load_balancer/do_queries"
+  }
+  actions {
+    name: "load_balancer/do_queries"
+    iterations {
+      max_parallel_iterations: 5
+      max_iteration_count: 50
+      warmup_iterations: 10
+    }
+    rpc_name: "root_query"
+  }
+  rpc_descriptions {
+    name: "root_query"
+    client: "load_balancer"
+    server: "root"
+    fanout_filter: "round_robin"
+    request_payload_name: "root_request_payload"
+    response_payload_name: "root_response_payload"
+    tracing_interval: 2
+  }
+  action_lists {
+    name: "root_query"
+    action_names: "root/root_query_fanout"
+  }
+  actions {
+    name: "root/root_query_fanout"
+    rpc_name: "leaf_query"
+  }
+  rpc_descriptions {
+    name: "leaf_query"
+    client: "root"
+    server: "leaf"
+    fanout_filter: "all"
+    request_payload_name: "leaf_request_payload"
+    response_payload_name: "leaf_response_payload"
+  }
+  action_lists {
+    name: "leaf_query"
+    # no actions, NOP
+  }
+  payload_descriptions {
+    name: "root_request_payload"
+    size: 512
+  }
+  payload_descriptions {
+    name: "root_response_payload"
+    size: 1024
+  }
+  payload_descriptions {
+    name: "leaf_request_payload"
+    size: 16384
+  }
+  payload_descriptions {
+    name: "leaf_response_payload"
+    size: 6907
+  }
+})";
+  TestSequence test_sequence;
+  bool parse_result =
+      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
+  ASSERT_EQ(parse_result, true);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(6));
+  TestSequenceResults results;
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
+
+  // Verify that the samples have the correct trace_context.
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("load_balancer/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+
+  // Due to the round-robin and tracing_interval, root/0 gets all the tracing.
+  auto dest = instance_results_it->second.peer_logs().find("root/0");
+  ASSERT_NE(dest, instance_results_it->second.peer_logs().end());
+  auto dest_rpc = dest->second.rpc_logs().find(0);
+  ASSERT_NE(dest_rpc, dest->second.rpc_logs().end());
+  ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
+  ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
+  for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
+    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 2);
+    ASSERT_EQ(rpc.trace_context().iterations().size(), 2);
+  }
+  // root/1 gets no tracing.
+  dest = instance_results_it->second.peer_logs().find("root/1");
+  ASSERT_NE(dest, instance_results_it->second.peer_logs().end());
+  dest_rpc = dest->second.rpc_logs().find(0);
+  ASSERT_NE(dest_rpc, dest->second.rpc_logs().end());
+  ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
+  ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
+  for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
+    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 0);
+    ASSERT_EQ(rpc.trace_context().iterations().size(), 0);
+  }
+
+  // Verify that the tracing cascades down to the leaf (root/0->leaf/0).
+  const auto& root0_instance_results_it =
+      test_results.service_logs().instance_logs().find("root/0");
+  ASSERT_NE(root0_instance_results_it,
+            test_results.service_logs().instance_logs().end());
+  dest = root0_instance_results_it->second.peer_logs().find("leaf/0");
+  ASSERT_NE(dest, instance_results_it->second.peer_logs().end());
+  dest_rpc = dest->second.rpc_logs().find(1);
+  ASSERT_NE(dest_rpc, dest->second.rpc_logs().end());
+  ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
+  ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
+  for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
+    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 3);
+    ASSERT_EQ(rpc.trace_context().iterations().size(), 3);
+  }
+}
+
 }  // namespace distbench
