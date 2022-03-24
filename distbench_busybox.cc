@@ -114,8 +114,9 @@ absl::Status ParseTestSequenceProtoFromFile(
 
   // Attempt to parse, assuming it is text
   if (google::protobuf::TextFormat::ParseFromString(*proto_string,
-                                                    test_sequence))
+                                                    test_sequence)) {
     return absl::OkStatus();
+  }
 
   return absl::InvalidArgumentError(
       "Error parsing the TestSequence proto file");
