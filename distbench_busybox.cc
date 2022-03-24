@@ -289,6 +289,7 @@ int MainTestSequencer(std::vector<char*>& arguments) {
     int new_port = 0;
     const distbench::NodeManagerOpts opts = {
         .test_sequencer_service_address = test_sequencer.service_address(),
+        .default_data_plane_device = "",
         .port = &new_port,
     };
     nodes.push_back(std::make_unique<distbench::NodeManager>());
