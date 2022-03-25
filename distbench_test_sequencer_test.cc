@@ -17,7 +17,6 @@
 #include "distbench_node_manager.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
-#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "protocol_driver_allocator.h"
@@ -543,16 +542,13 @@ tests {
     name: "client_server_rpc"
   }
 })";
-
-  TestSequence test_sequence;
-  bool parse_result =
-      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
-  ASSERT_EQ(parse_result, true);
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
+      context.get(), *test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -574,8 +570,6 @@ tests {
 TEST(DistBenchTestSequencer, ProtocolDriverOptionsTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
-
-  TestSequence test_sequence;
 
   const std::string proto = R"(
 tests {
@@ -612,14 +606,13 @@ tests {
     netdev_name: "lo"
   }
 })";
-  bool parse_result =
-      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
-  ASSERT_EQ(parse_result, true);
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
+      context.get(), *test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -666,15 +659,13 @@ tests {
     netdev_name: "lo"
   }
 })";
-  TestSequence test_sequence;
-  bool parse_result =
-      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
-  ASSERT_EQ(parse_result, true);
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
+      context.get(), *test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -739,15 +730,13 @@ tests {
     }
   }
 })";
-  TestSequence test_sequence;
-  bool parse_result =
-      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
-  ASSERT_EQ(parse_result, true);
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
+      context.get(), *test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);
@@ -803,15 +792,13 @@ tests {
     }
   }
 })";
-  TestSequence test_sequence;
-  bool parse_result =
-      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
-  ASSERT_EQ(parse_result, true);
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
+      context.get(), *test_sequence, &results);
   ASSERT_OK(status);
 
   auto& test_results = results.test_results(0);

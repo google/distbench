@@ -94,6 +94,18 @@ absl::StatusOr<int64_t> GetNamedAttributeInt64(
     const distbench::DistributedSystemDescription& test, absl::string_view name,
     int64_t default_value);
 
+// Parse/Read TestSequence protos.
+absl::StatusOr<distbench::TestSequence> ParseTestSequenceTextProto(
+    const std::string& text_proto);
+absl::StatusOr<TestSequence> ParseTestSequenceProtoFromFile(
+    const std::string& filename);
+
+// Write TestSequenceResults protos.
+absl::Status SaveResultProtoToFile(
+    const std::string& filename, const distbench::TestSequenceResults& result);
+absl::Status SaveResultProtoToFileBinary(
+    const std::string& filename, const distbench::TestSequenceResults& result);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
