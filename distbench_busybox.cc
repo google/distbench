@@ -103,55 +103,6 @@ bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
   return true;
 }
 
-absl::Status ParseTestSequenceProtoFromFile(
-    const std::string& filename, distbench::TestSequence* test_sequence) {
-  absl::StatusOr<std::string> proto_string =
-      distbench::ReadFileToString(filename);
-  if (!proto_string.ok()) return proto_string.status();
-
-  // Attempt to parse, assuming it is binary
-  if (test_sequence->ParseFromString(*proto_string)) return absl::OkStatus();
-
-  // Attempt to parse, assuming it is text
-  if (google::protobuf::TextFormat::ParseFromString(*proto_string,
-                                                    test_sequence)) {
-    return absl::OkStatus();
-  }
-
-  return absl::InvalidArgumentError(
-      "Error parsing the TestSequence proto file");
-}
-
-absl::Status SaveResultProtoToFile(
-    const std::string& filename, const distbench::TestSequenceResults& result) {
-  int fd_proto = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (fd_proto < 0) {
-    std::string error_message{
-        "Error opening the output result proto file for "
-        "writing: "};
-    return absl::InvalidArgumentError(error_message + filename);
-  }
-
-  google::protobuf::io::FileOutputStream fos_resultproto(fd_proto);
-  if (!google::protobuf::TextFormat::Print(result, &fos_resultproto)) {
-    return absl::InvalidArgumentError("Error writing the result proto file");
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status SaveResultProtoToFileBinary(
-    const std::string& filename, const distbench::TestSequenceResults& result) {
-  std::fstream output(filename,
-                      std::ios::out | std::ios::trunc | std::ios::binary);
-  if (!result.SerializeToOstream(&output)) {
-    return absl::InvalidArgumentError(
-        "Error writing the result proto file in binary mode");
-  }
-
-  return absl::OkStatus();
-}
-
 // Returns the sum of the specified test_timeout for all tests.
 // If even a single test hasn't a test_timeout specified, returns
 // timeout_default
@@ -193,12 +144,11 @@ void SetAllTestTimeoutAttributesTo(distbench::TestSequence* test_sequence,
 int MainRunTests(std::vector<char*>& arguments) {
   if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
 
-  distbench::TestSequence test_sequence;
   const std::string infile = absl::GetFlag(FLAGS_infile);
-  absl::Status parse_status =
-      ParseTestSequenceProtoFromFile(infile, &test_sequence);
-  if (!parse_status.ok()) {
-    std::cerr << "Error reading test sequence: " << parse_status << "\n";
+  auto test_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
+  if (!test_sequence.ok()) {
+    std::cerr << "Error reading test sequence: " << test_sequence.status()
+              << "\n";
     return 1;
   }
 
@@ -206,14 +156,14 @@ int MainRunTests(std::vector<char*>& arguments) {
       ToInt64Seconds(absl::GetFlag(FLAGS_max_test_duration));
   if (flag_timeout_seconds != 0) {
     // The command line flag will override the test specified timeouts.
-    SetAllTestTimeoutAttributesTo(&test_sequence,
+    SetAllTestTimeoutAttributesTo(&*test_sequence,
                                   absl::StrCat(flag_timeout_seconds));
   } else {
     // 1 hour default if unspecified.
     flag_timeout_seconds = 60 * 60;
   }
   auto maybe_timeout_seconds =
-      GetTestSequenceTimeout(test_sequence, flag_timeout_seconds);
+      GetTestSequenceTimeout(*test_sequence, flag_timeout_seconds);
   if (!maybe_timeout_seconds.ok()) {
     std::cerr << "Error in the test sequence: "
               << maybe_timeout_seconds.status() << "\n";
@@ -237,7 +187,7 @@ int MainRunTests(std::vector<char*>& arguments) {
   distbench::SetGrpcClientContextDeadline(&context, *maybe_timeout_seconds);
   distbench::TestSequenceResults test_results;
   grpc::Status status =
-      stub->RunTestSequence(&context, test_sequence, &test_results);
+      stub->RunTestSequence(&context, *test_sequence, &test_results);
   if (!status.ok()) {
     std::cerr << "The RunTestSequence RPC Failed with status: " << status
               << "\n";

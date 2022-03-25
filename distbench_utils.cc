@@ -14,6 +14,7 @@
 
 #include "distbench_utils.h"
 
+#include <fcntl.h>
 #include <sys/resource.h>
 
 #include <cerrno>
@@ -25,6 +26,8 @@
 #include "absl/strings/str_split.h"
 #include "distbench_netutils.h"
 #include "glog/logging.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 #include "interface_lookup.h"
 
 namespace std {
@@ -368,6 +371,65 @@ absl::StatusOr<int64_t> GetNamedAttributeInt64(
         absl::StrCat("Cannot convert test attribute ", name, " value (",
                      it->second, ") to int."));
   }
+}
+
+// Parse/Read TestSequence protos.
+absl::StatusOr<TestSequence> ParseTestSequenceTextProto(
+    const std::string& text_proto) {
+  TestSequence test_sequence;
+  if (google::protobuf::TextFormat::ParseFromString(text_proto,
+                                                    &test_sequence)) {
+    return test_sequence;
+  }
+  return absl::InvalidArgumentError("Error parsing the TestSequence proto");
+}
+
+absl::StatusOr<TestSequence> ParseTestSequenceProtoFromFile(
+    const std::string& filename) {
+  absl::StatusOr<std::string> proto_string = ReadFileToString(filename);
+  if (!proto_string.ok()) return proto_string.status();
+
+  // Attempt to parse, assuming it is binary.
+  TestSequence test_sequence;
+  if (test_sequence.ParseFromString(*proto_string)) return test_sequence;
+
+  // Attempt to parse, assuming it is text.
+  auto result = ParseTestSequenceTextProto(*proto_string);
+  if (result.ok()) return result;
+
+  return absl::InvalidArgumentError(
+      "Error parsing the TestSequence proto file (both in binary and text "
+      "modes");
+}
+
+// Write TestSequenceResults protos.
+absl::Status SaveResultProtoToFile(
+    const std::string& filename, const distbench::TestSequenceResults& result) {
+  int fd_proto = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (fd_proto < 0) {
+    std::string error_message{
+        "Error opening the output result proto file for writing: "};
+    return absl::InvalidArgumentError(error_message + filename);
+  }
+
+  google::protobuf::io::FileOutputStream fos_resultproto(fd_proto);
+  if (!google::protobuf::TextFormat::Print(result, &fos_resultproto)) {
+    return absl::InvalidArgumentError("Error writing the result proto file");
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status SaveResultProtoToFileBinary(
+    const std::string& filename, const distbench::TestSequenceResults& result) {
+  std::fstream output(filename,
+                      std::ios::out | std::ios::trunc | std::ios::binary);
+  if (!result.SerializeToOstream(&output)) {
+    return absl::InvalidArgumentError(
+        "Error writing the result proto file in binary mode");
+  }
+
+  return absl::OkStatus();
 }
 
 }  // namespace distbench
