@@ -851,16 +851,15 @@ tests {
     size: 128
   }
 })";
-  TestSequence test_sequence;
-  bool parse_result =
-      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
-  ASSERT_EQ(parse_result, true);
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
+
   auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
   TestSequenceResults results;
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
+      context.get(), *test_sequence, &results);
   ASSERT_OK(status);
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
@@ -959,16 +958,15 @@ tests {
     size: 6907
   }
 })";
-  TestSequence test_sequence;
-  bool parse_result =
-      google::protobuf::TextFormat::ParseFromString(proto, &test_sequence);
-  ASSERT_EQ(parse_result, true);
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
+
   auto context = CreateContextWithDeadline(/*max_time_s=*/15);
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
   TestSequenceResults results;
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
+      context.get(), *test_sequence, &results);
   ASSERT_OK(status);
   auto& test_results = results.test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
