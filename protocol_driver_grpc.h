@@ -60,6 +60,9 @@ class ProtocolDriverServerGrpc : public ProtocolDriverServer {
   ProtocolDriverServerGrpc();
   ~ProtocolDriverServerGrpc() override;
 
+  void HandleRpcs();
+  std::unique_ptr<std::thread> handle_rpcs_;
+
   absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
                                 int* port) override;
 
@@ -71,9 +74,16 @@ class ProtocolDriverServerGrpc : public ProtocolDriverServer {
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
   std::vector<TransportStat> GetTransportStats() override;
+ 
+  void ProcessGenericRpc(GenericRequest* request, GenericResponse* response);
 
  private:
-  std::unique_ptr<Traffic::Service> traffic_service_;
+  std::unique_ptr<grpc::ServerCompletionQueue> server_cq_;
+  std::unique_ptr<Traffic::AsyncService> traffic_async_service_;
+
+  grpc::ServerContext context;
+  std::function<std::function<void()>(ServerRpcState* state)> handler_;
+
   std::unique_ptr<grpc::Server> server_;
   int server_port_ = 0;
   DeviceIpAddress server_ip_address_;
