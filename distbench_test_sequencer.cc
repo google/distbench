@@ -171,7 +171,7 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     if (!request->tests_setting().keep_instance_log()) {
       result.mutable_service_logs()->clear_instance_logs();
     }
-    *response->add_test_results() = result;
+    *response->add_test_results() = std::move(result);
   }
   if (request->tests_setting().shutdown_after_tests()) {
     shutdown_requested_.Notify();
