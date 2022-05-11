@@ -130,6 +130,7 @@ cc_library(
     ],
     deps = [
         ":distbench_cc_grpc_proto",
+        ":distbench_threadpool_lib",
         ":distbench_utils",
         ":protocol_driver_api",
         "@com_github_grpc_grpc//:grpc++",
@@ -253,6 +254,29 @@ cc_library(
         "@com_google_absl//absl/random",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
+    ],
+)
+
+cc_library(
+    name = "distbench_threadpool_lib",
+    srcs = ["distbench_threadpool.cc"],
+    hdrs = ["distbench_threadpool.h"],
+    deps = [
+        ":distbench_utils",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "distbench_threadpool_test",
+    size = "medium",
+    srcs = ["distbench_threadpool_test.cc", "gtest_utils.h"],
+    deps = [
+        ":distbench_threadpool_lib",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

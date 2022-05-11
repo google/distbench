@@ -14,6 +14,8 @@
 
 #include "protocol_driver_grpc_async_callback.h"
 
+#include "absl/base/internal/sysinfo.h"
+#include "distbench_threadpool.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
@@ -112,6 +114,9 @@ void ProtocolDriverClientGrpcAsyncCallback::ShutdownClient() {
 namespace {
 class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
  public:
+  TrafficServiceAsync()
+      // Create a thread pool, reserving 50% of the cpus to handle responses.
+      : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
   ~TrafficServiceAsync() override {}
 
   void SetHandler(
@@ -132,14 +137,14 @@ class TrafficServiceAsync : public Traffic::ExperimentalCallbackService {
     rpc_state->SetFreeStateFunction([=]() { delete rpc_state; });
     auto fct_action_list_thread = handler_(rpc_state);
     if (fct_action_list_thread) {
-      RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread)
-          .detach();
+      thread_pool_.AddWork(fct_action_list_thread);
     }
     return reactor;
   }
 
  private:
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
+  distbench::DistbenchThreadpool thread_pool_;
 };
 }  // anonymous namespace
 
