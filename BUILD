@@ -1,9 +1,20 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_proto_library")
 load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 
 package(
     default_visibility = ["//visibility:public"],
+)
+
+bool_flag(
+    name = "with-thrift",
+    build_setting_default = False
+)
+
+config_setting(
+    name = "with_thrift",
+    flag_values = {":with-thrift": 'True'}
 )
 
 cc_library(
@@ -89,8 +100,16 @@ cc_library(
         ":distbench_cc_proto",
         ":protocol_driver_api",
         ":protocol_driver_grpc",
-        ":protocol_driver_grpc_async_callback"
-    ],
+        ":protocol_driver_grpc_async_callback",
+    ]
+    + select({
+        "with_thrift": [":protocol_driver_thrift"],
+        "//conditions:default": []
+    }),
+    copts = select({
+        ":with_thrift":["-DWITH_THRIFT"],
+        "//conditions:default": []
+    })
 )
 
 cc_library(
@@ -151,6 +170,10 @@ cc_test(
         "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog"
     ],
+    copts = select({
+        ":with_thrift":["-DWITH_THRIFT"],
+        "//conditions:default": []
+    })
 )
 
 cc_binary(
@@ -223,6 +246,10 @@ cc_test(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_googletest//:gtest_main",
     ],
+    copts = select({
+        ":with_thrift":["-DWITH_THRIFT"],
+        "//conditions:default": []
+    })
 )
 
 cc_library(
@@ -253,6 +280,21 @@ cc_library(
         "@com_google_absl//absl/random",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
+    ],
+)
+
+cc_library(
+    name = "distbench_thrift_lib",
+    srcs = ["gen-cpp/Distbench.cpp",
+            # "gen-cpp/distbench_types.cpp"
+           ],
+    hdrs = ["gen-cpp/Distbench.h", "gen-cpp/distbench_types.h"],
+    strip_include_prefix = "gen-cpp/",
+    deps = [
+        "@apache_thrift//:thrift",
+    ],
+    tags = [
+        "manual"
     ],
 )
 
@@ -294,3 +336,21 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "protocol_driver_thrift",
+    srcs = [
+        "protocol_driver_thrift.cc",
+    ],
+    hdrs = [
+        "protocol_driver_thrift.h",
+    ],
+    deps = [
+        ":distbench_utils",
+        ":protocol_driver_api",
+        ":distbench_thrift_lib",
+        "@apache_thrift//:thrift",
+    ],
+    tags = [
+        "manual"
+    ],
+)

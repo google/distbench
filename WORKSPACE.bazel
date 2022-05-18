@@ -62,3 +62,9 @@ http_archive(
     urls = ["https://github.com/google/glog/archive/v0.6.0.zip"],
 )
 
+new_local_repository(
+    name = "apache_thrift",
+    path = "../opt/thrift",
+    build_file = "thrift.BUILD",
+)
+
