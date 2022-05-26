@@ -88,7 +88,7 @@ TEST_P(ProtocolDriverTest, Invoke) {
       return std::function<void()>();
     } else {
       std::function<void()> fct = [=]() {
-        sleep(0.1);
+        usleep(100'000);
         std::string str;
         s->request->SerializeToString(&str);
         s->SendResponseIfSet();
