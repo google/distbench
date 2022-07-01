@@ -9,8 +9,8 @@ cc_library(
         "-lm",
         "-lpthread",
         "-lrt",
-	"-ldl",
-	"-latomic",
+        "-ldl",
+        "-latomic",
     ],
 )
 
