@@ -162,6 +162,7 @@ cc_library(
         ":distbench_utils",
         ":protocol_driver_api",
         "@mercury//:mercury",
+        "@com_google_absl//absl/strings",
     ],
     tags = [
         "manual"
