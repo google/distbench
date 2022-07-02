@@ -19,6 +19,7 @@
 #include <mercury_macros.h>
 #include <mercury_proc_string.h>
 
+#include "absl/strings/str_replace.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
@@ -37,10 +38,11 @@ absl::Status ProtocolDriverMercury::Initialize(
   HG_Set_log_level("warning");
 
   // TODO: Choosen interface does not seem respected
-  std::string info_string = GetNamedSettingString(
-      pd_opts, "hg_init_info_string", "ofi+tcp://__SERVER_IP__");
-  info_string = absl::StringReplace(info_string, "__SERVER_IP__",
-                                    server_socket_address_.ToStringForURI());
+  std::string info_string =
+      GetNamedSettingString(pd_opts.server_settings(), "hg_init_info_string",
+                            "ofi+tcp://__SERVER_IP__");
+  info_string = absl::StrReplaceAll(
+      info_string, {{"__SERVER_IP__", server_ip_address_.ToStringForURI()}});
   hg_class_ = HG_Init(info_string.c_str(), /*listen=*/NA_TRUE);
   if (hg_class_ == nullptr) {
     return absl::UnknownError("HG_Init: failed");
@@ -299,7 +301,7 @@ hg_return_t ProtocolDriverMercury::RpcServerCallback(hg_handle_t handle) {
   }
 
   rpc_state->request = request;
-  rpc_state->send_response = [rpc_state, handle]() {
+  rpc_state->SetSendResponseFunction([rpc_state, handle]() {
     mercury_generic_rpc_string_t* result = new mercury_generic_rpc_string_t();
     rpc_state->response.SerializeToString(&result->string);
     hg_return_t hg_ret;
@@ -308,11 +310,11 @@ hg_return_t ProtocolDriverMercury::RpcServerCallback(hg_handle_t handle) {
     if (hg_ret != HG_SUCCESS) {
       LOG(ERROR) << "HG_Respond: failed";
     }
-  };
-  rpc_state->free_state = [rpc_state]() {
+  });
+  rpc_state->SetFreeStateFunction([rpc_state]() {
     delete rpc_state->request;
     delete rpc_state;
-  };
+  });
 
   auto fct_action_list_thread = handler_(rpc_state);
   if (fct_action_list_thread) {
@@ -359,6 +361,16 @@ hg_return_t ProtocolDriverMercury::RpcClientCallback(
   delete rpc;
   --pending_rpcs_;
   return HG_SUCCESS;
+}
+
+absl::Status ProtocolDriverMercury::InitializeServer(
+    const ProtocolDriverOptions& pd_opts, int* port) {
+  return absl::UnimplementedError("TODO: Split Initialize");
+}
+
+absl::Status ProtocolDriverMercury::InitializeClient(
+    const ProtocolDriverOptions& pd_opts) {
+  return absl::UnimplementedError("TODO: Split Initialize");
 }
 
 }  // namespace distbench
