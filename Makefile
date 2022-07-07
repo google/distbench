@@ -8,6 +8,8 @@ test:
 
 test_with_mercury:
 	bazel test :all --//:with-mercury --test_output=all
+	bazel test --config=asan :all --//:with-mercury --test_output=all
+	bazel test --config=tsan :all --//:with-mercury --test_output=all
 
 test_asan:
 	bazel test --config=asan --test_output=errors :all
