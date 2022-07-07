@@ -19,9 +19,15 @@
 #include <mercury_macros.h>
 #include <mercury_proc_string.h>
 
+#include "absl/base/const_init.h"
 #include "absl/strings/str_replace.h"
+#include "absl/synchronization/mutex.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
+
+namespace {
+ABSL_CONST_INIT absl::Mutex mercury_init_mutex(absl::kConstInit);
+}  // namespace
 
 namespace distbench {
 
@@ -35,7 +41,10 @@ absl::Status ProtocolDriverMercury::Initialize(
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
 
-  HG_Set_log_level("warning");
+  {
+    absl::MutexLock l(&mercury_init_mutex);
+    HG_Set_log_level("warning");
+  }
 
   // TODO: Choosen interface does not seem respected
   std::string info_string =
@@ -142,6 +151,8 @@ void ProtocolDriverMercury::PrintMercuryVersion() {
   unsigned major;
   unsigned minor;
   unsigned patch;
+  absl::MutexLock l(&mercury_init_mutex);
+
   static bool already_done = false;
   if (already_done) return;
   already_done = true;
