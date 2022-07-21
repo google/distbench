@@ -203,11 +203,6 @@ void ProtocolDriverMercury::InitiateRpc(
   if (hg_ret != HG_SUCCESS) {
     LOG(ERROR) << " HG_Forward: failed";
   }
-
-  hg_ret = HG_Destroy(target_handle);
-  if (hg_ret != HG_SUCCESS) {
-    LOG(ERROR) << " HG_Destroy: failed";
-  }
 }
 
 void ProtocolDriverMercury::ChurnConnection(int peer) {}
@@ -367,6 +362,11 @@ hg_return_t ProtocolDriverMercury::RpcClientCallback(
   hg_ret = HG_Free_output(rpc->hg_handle, &result);
   if (hg_ret != HG_SUCCESS) {
     LOG(ERROR) << "HG_Free_output: failed";
+  }
+
+  hg_ret = HG_Destroy(rpc->hg_handle);
+  if (hg_ret != HG_SUCCESS) {
+    LOG(ERROR) << "HG_Destroy: failed";
   }
 
   delete rpc;
