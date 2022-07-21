@@ -136,4 +136,11 @@ std::string DeviceIpAddress::ToString() const {
   return ret;
 }
 
+std::string DeviceIpAddress::ToStringForURI() const {
+  if (isIPv4())
+    return ip_;
+  else
+    return "[" + ip_ + "]";
+}
+
 };  // namespace distbench

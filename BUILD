@@ -1,9 +1,20 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_proto_library")
 load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 
 package(
     default_visibility = ["//visibility:public"],
+)
+
+bool_flag(
+    name = "with-mercury",
+    build_setting_default = False
+)
+
+config_setting(
+    name = "with_mercury",
+    flag_values = {":with-mercury": 'True'}
 )
 
 cc_library(
@@ -89,8 +100,16 @@ cc_library(
         ":distbench_cc_proto",
         ":protocol_driver_api",
         ":protocol_driver_grpc",
-        ":protocol_driver_grpc_async_callback"
-    ],
+        ":protocol_driver_grpc_async_callback",
+    ]
+    + select({
+        "with_mercury": [":protocol_driver_mercury", ],
+        "//conditions:default": []
+    }),
+    copts = select({
+        ":with_mercury":["-DWITH_MERCURY"],
+        "//conditions:default": []
+    })
 )
 
 cc_library(
@@ -138,6 +157,27 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "protocol_driver_mercury",
+    srcs = [
+        "protocol_driver_mercury.cc",
+    ],
+    hdrs = [
+        "protocol_driver_mercury.h",
+    ],
+    deps = [
+        ":distbench_cc_grpc_proto",
+        ":distbench_utils",
+        ":protocol_driver_api",
+        "@mercury//:mercury",
+        "@com_google_absl//absl/strings",
+    ],
+    tags = [
+        "manual"
+    ],
+)
+
+
 cc_test(
     name = "protocol_driver_test",
     size = "medium",
@@ -152,6 +192,10 @@ cc_test(
         "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog"
     ],
+    copts = select({
+        ":with_mercury":["-DWITH_MERCURY"],
+        "//conditions:default": []
+    })
 )
 
 cc_binary(
@@ -224,6 +268,10 @@ cc_test(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_googletest//:gtest_main",
     ],
+    copts = select({
+        ":with_mercury":["-DWITH_MERCURY"],
+        "//conditions:default": []
+    }),
 )
 
 cc_library(
