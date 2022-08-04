@@ -101,7 +101,7 @@ TEST_P(ProtocolDriverTest, Invoke) {
   ASSERT_OK(pd->HandleConnect(addr, 0));
 
   std::atomic<int> client_rpc_count = 0;
-  const int kNumIterations = 1000;
+  const int kNumIterations = 500;
   ClientRpcState rpc_state[kNumIterations];
   for (int i = 0; i < kNumIterations; ++i) {
     pd->InitiateRpc(0, &rpc_state[i], [&, i]() {

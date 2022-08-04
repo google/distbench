@@ -141,8 +141,10 @@ class CallData {
     rpc_state.request = request;
     rpc_state.SetSendResponseFunction(
         [&]() { *response = std::move(rpc_state.response); });
-    if(*handler_)
-      (*handler_)(&rpc_state);
+    if(*handler_) {
+      auto f = (*handler_)(&rpc_state);
+      if (f) {f();};
+    }
   }
 
   void ProcessRpcFsm() {
