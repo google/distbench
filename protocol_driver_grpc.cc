@@ -17,6 +17,7 @@
 #include "distbench_utils.h"
 #include "glog/logging.h"
 #include "protocol_driver_grpc_async_callback.h"
+#include "absl/base/internal/sysinfo.h"
 
 namespace distbench {
 
@@ -125,10 +126,13 @@ void ProtocolDriverClientGrpc::ShutdownClient() {
 class CallData {
  public:
   CallData(Traffic::AsyncService* service, grpc::ServerCompletionQueue* cq,
-           std::function<std::function<void()>(ServerRpcState* state)>* handler)
+           std::function<std::function<void()>(ServerRpcState* state)>* handler,
+           DistbenchThreadpool* thread_pool)
       : service_(service), cq_(cq),
         handler_(handler), responder_(&ctx_),
         status_(CREATE) {
+    CHECK(thread_pool);
+    thread_pool_ = thread_pool;
     ProcessRpcFsm();
   }
 
@@ -143,7 +147,9 @@ class CallData {
         [&]() { *response = std::move(rpc_state.response); });
     if(*handler_) {
       auto f = (*handler_)(&rpc_state);
-      if (f) {f();};
+      if (f) {
+        thread_pool_->AddWork(f);
+      }
     }
   }
 
@@ -153,7 +159,7 @@ class CallData {
       service_->RequestGenericRpc(&ctx_, &request_, &responder_, cq_, cq_, this);
     } else if (status_ == PROCESS) {
       status_ = FINISH;
-      new CallData(service_, cq_, handler_);
+      new CallData(service_, cq_, handler_, thread_pool_);
       ProcessGenericRpc(&request_, &response_);
       responder_.Finish(response_, Status::OK, this);
     } else {
@@ -172,6 +178,7 @@ class CallData {
   grpc::ServerContext ctx_;
   enum CallStatus { CREATE, PROCESS, FINISH };
   CallStatus status_;
+  DistbenchThreadpool* thread_pool_;
 };
 
 // Server =====================================================================
@@ -203,7 +210,9 @@ class TrafficAsyncService : public Traffic::AsyncService {
 };
 
 }  // anonymous namespace
-ProtocolDriverServerGrpc::ProtocolDriverServerGrpc() {}
+ProtocolDriverServerGrpc::ProtocolDriverServerGrpc()
+  : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
+
 ProtocolDriverServerGrpc::~ProtocolDriverServerGrpc() {}
 
 absl::Status ProtocolDriverServerGrpc::InitializeServer(
@@ -375,7 +384,7 @@ void ProtocolDriverGrpc::ShutdownServer() {
 }
 
 void ProtocolDriverServerGrpc::HandleRpcs() {
-  new CallData(traffic_async_service_.get(), server_cq_.get(), &handler_);
+  new CallData(traffic_async_service_.get(), server_cq_.get(), &handler_, &thread_pool_);
   void* tag;
   bool ok;
   while (server_cq_->Next(&tag, &ok)) {

@@ -18,6 +18,7 @@
 #include "distbench.grpc.pb.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
+#include "distbench_threadpool.h"
 
 namespace distbench {
 
@@ -88,6 +89,7 @@ class ProtocolDriverServerGrpc : public ProtocolDriverServer {
   int server_port_ = 0;
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
+  DistbenchThreadpool thread_pool_;
 };
 
 class ProtocolDriverGrpc : public ProtocolDriver {
