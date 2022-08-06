@@ -379,7 +379,10 @@ void ProtocolDriverServerGrpc::HandleRpcs() {
   void* tag;
   bool ok;
   while (server_cq_->Next(&tag, &ok)) {
-    if(!ok) continue;
+    if(!ok) {
+      delete static_cast<CallData*>(tag);
+      continue;
+    }
     static_cast<CallData*>(tag)->ProcessRpcFsm();
   }
 }
