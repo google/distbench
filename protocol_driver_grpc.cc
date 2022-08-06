@@ -136,17 +136,27 @@ class CallData {
     ProcessRpcFsm();
   }
 
-  void ProcessGenericRpc(
-    GenericRequest* request,
-    GenericResponse* response
-    ) {
-    ServerRpcState rpc_state;
-    rpc_state.have_dedicated_thread = false;
-    rpc_state.request = request;
-    rpc_state.SetSendResponseFunction(
-        [&]() { *response = std::move(rpc_state.response); });
+  void Unref() {
+    mutex_.Lock();
+    auto refcnt = --refcnt_;
+    mutex_.Unlock();
+    if (refcnt == 0) {
+      delete this;
+      LOG(INFO) << "Deleted Calldata";
+    }
+  }
+
+  void ProcessGenericRpc() {
+    rpc_state_.have_dedicated_thread = false;
+    rpc_state_.request = &request_;
+    rpc_state_.SetSendResponseFunction(
+        [&]() {
+          response_ = std::move(rpc_state_.response);
+          responder_.Finish(response_, Status::OK, this);
+        });
+    rpc_state_.SetFreeStateFunction([=]() { Unref();});
     if(*handler_) {
-      auto f = (*handler_)(&rpc_state);
+      auto f = (*handler_)(&rpc_state_);
       if (f) {
         thread_pool_->AddWork(f);
       }
@@ -160,11 +170,10 @@ class CallData {
     } else if (status_ == PROCESS) {
       status_ = FINISH;
       new CallData(service_, cq_, handler_, thread_pool_);
-      ProcessGenericRpc(&request_, &response_);
-      responder_.Finish(response_, Status::OK, this);
+      ProcessGenericRpc();
     } else {
       GPR_ASSERT(status_ == FINISH);
-      delete this;
+      Unref();
     }
   }
 
@@ -179,6 +188,9 @@ class CallData {
   enum CallStatus { CREATE, PROCESS, FINISH };
   CallStatus status_;
   DistbenchThreadpool* thread_pool_;
+  ServerRpcState rpc_state_;
+  absl::Mutex mutex_;
+  int refcnt_ ABSL_GUARDED_BY(mutex_) = 2;
 };
 
 // Server =====================================================================
