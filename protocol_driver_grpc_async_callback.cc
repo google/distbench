@@ -230,7 +230,7 @@ absl::Status ProtocolDriverGrpcAsyncCallback::Initialize(
 
   std::string server_type = GetNamedSettingString(pd_opts.server_settings(),
                                                   "server_type", "handoff");
-  if (server_type != "handoff") {
+  if ((server_type != "handoff") && (server_type !="handoff-cq")) {
     return absl::InvalidArgumentError(
         "AsyncCallback is deprecated use the grpc protocol driver to specify"
         " the server type");
@@ -251,8 +251,15 @@ absl::Status ProtocolDriverGrpcAsyncCallback::InitializeClient(
 
 absl::Status ProtocolDriverGrpcAsyncCallback::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
-  server_ = std::unique_ptr<ProtocolDriverServer>(
-      new ProtocolDriverServerGrpcAsyncCallback());
+  std::string server_type = GetNamedSettingString(pd_opts.server_settings(),
+                                                  "server_type", "handoff");
+  if (server_type == "handoff") 
+    server_ = std::unique_ptr<ProtocolDriverServer>(
+        new ProtocolDriverServerGrpcAsyncCallback());
+  else if (server_type == "handoff-cq") 
+    server_ = std::unique_ptr<ProtocolDriverServer>(
+        new ProtocolDriverServerGrpcAsyncCq());
+
   return server_->InitializeServer(pd_opts, port);
 }
 
@@ -313,6 +320,169 @@ void ProtocolDriverGrpcAsyncCallback::ShutdownClient() {
 void ProtocolDriverGrpcAsyncCallback::ShutdownServer() {
   if (server_ != nullptr) {
     server_->ShutdownServer();
+  }
+}
+
+using grpc::Status;
+
+class CallData {
+ public:
+  CallData(Traffic::AsyncService* service, grpc::ServerCompletionQueue* cq,
+           std::function<std::function<void()>(ServerRpcState* state)>* handler,
+           DistbenchThreadpool* thread_pool)
+      : service_(service), cq_(cq),
+        handler_(handler), responder_(&ctx_),
+        status_(CREATE) {
+    CHECK(thread_pool);
+    thread_pool_ = thread_pool;
+    ProcessRpcFsm();
+  }
+
+  void Unref() {
+    if (--refcnt_ == 0) {
+      delete this;
+    }
+  }
+
+  void ProcessGenericRpc() {
+    rpc_state_.have_dedicated_thread = false;
+    rpc_state_.request = &request_;
+    rpc_state_.SetSendResponseFunction(
+        [&]() {
+          response_ = std::move(rpc_state_.response);
+          responder_.Finish(response_, Status::OK, this);
+        });
+    rpc_state_.SetFreeStateFunction([=]() { Unref();});
+    if(*handler_) {
+      auto f = (*handler_)(&rpc_state_);
+      if (f) {
+        thread_pool_->AddWork(f);
+      }
+    }
+  }
+
+  void ProcessRpcFsm() {
+    if (status_ == CREATE) {
+      status_ = PROCESS;
+      service_->RequestGenericRpc(&ctx_, &request_, &responder_, cq_, cq_, this);
+    } else if (status_ == PROCESS) {
+      status_ = FINISH;
+      new CallData(service_, cq_, handler_, thread_pool_);
+      ProcessGenericRpc();
+    } else {
+      GPR_ASSERT(status_ == FINISH);
+      Unref();
+    }
+  }
+
+  private:
+  GenericRequest request_;
+  GenericResponse response_;
+  Traffic::AsyncService* service_;
+  grpc::ServerCompletionQueue* cq_;
+  std::function<std::function<void()>(ServerRpcState* state)>* handler_;
+  grpc::ServerAsyncResponseWriter<GenericResponse> responder_;
+  grpc::ServerContext ctx_;
+  enum CallStatus { CREATE, PROCESS, FINISH };
+  CallStatus status_;
+  DistbenchThreadpool* thread_pool_;
+  ServerRpcState rpc_state_;
+  std::atomic<int> refcnt_ = 2;
+};
+
+// Server =====================================================================
+namespace {
+class TrafficAsyncService : public Traffic::AsyncService {
+ public:
+  ~TrafficAsyncService() override {}
+
+  void SetHandler(
+      std::function<std::function<void()>(ServerRpcState* state)> handler) {
+    handler_ = handler;
+  }
+
+ private:
+  std::function<std::function<void()>(ServerRpcState* state)> handler_;
+};
+
+}  // anonymous namespace
+ProtocolDriverServerGrpcAsyncCq::ProtocolDriverServerGrpcAsyncCq()
+  : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
+
+ProtocolDriverServerGrpcAsyncCq::~ProtocolDriverServerGrpcAsyncCq() {}
+
+absl::Status ProtocolDriverServerGrpcAsyncCq::InitializeServer(
+    const ProtocolDriverOptions& pd_opts, int* port) {
+  std::string netdev_name = pd_opts.netdev_name();
+  auto maybe_ip = IpAddressForDevice(netdev_name);
+  if (!maybe_ip.ok()) return maybe_ip.status();
+  server_ip_address_ = maybe_ip.value();
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
+  traffic_async_service_ = absl::make_unique<TrafficAsyncService>();
+  grpc::ServerBuilder builder;
+  builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
+  std::shared_ptr<grpc::ServerCredentials> server_creds =
+      MakeServerCredentials();
+  builder.AddListeningPort(server_socket_address_, server_creds, port);
+  builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
+  builder.RegisterService(traffic_async_service_.get());
+  server_cq_ = builder.AddCompletionQueue();
+  server_ = builder.BuildAndStart();
+
+  server_port_ = *port;
+  server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
+  if (!server_) {
+    return absl::UnknownError("Grpc Traffic service failed to start");
+  }
+
+  LOG(INFO) << "Grpc Traffic server listening on " << server_socket_address_;
+  // Proceed to the server's main loop.
+  handle_rpcs_ = absl::make_unique<std::thread>(&ProtocolDriverServerGrpcAsyncCq::HandleRpcs, this);
+  return absl::OkStatus();
+}
+
+void ProtocolDriverServerGrpcAsyncCq::SetHandler(
+    std::function<std::function<void()>(ServerRpcState* state)> handler) {
+  static_cast<TrafficAsyncService*>(traffic_async_service_.get())->SetHandler(handler);
+  handler_ = handler;
+}
+
+absl::StatusOr<std::string> ProtocolDriverServerGrpcAsyncCq::HandlePreConnect(
+    std::string_view remote_connection_info, int peer) {
+  ServerAddress addr;
+  addr.set_ip_address(server_ip_address_.ip());
+  addr.set_port(server_port_);
+  addr.set_socket_address(server_socket_address_);
+  std::string ret;
+  addr.AppendToString(&ret);
+  return ret;
+}
+
+void ProtocolDriverServerGrpcAsyncCq::HandleConnectFailure(
+    std::string_view local_connection_info) {}
+
+void ProtocolDriverServerGrpcAsyncCq::ShutdownServer() {
+  server_->Shutdown();
+  server_cq_->Shutdown();
+  if(handle_rpcs_->joinable()) { handle_rpcs_->join(); }
+}
+
+std::vector<TransportStat>
+ProtocolDriverServerGrpcAsyncCq::GetTransportStats() {
+  return {};
+}
+
+void ProtocolDriverServerGrpcAsyncCq::HandleRpcs() {
+  new CallData(traffic_async_service_.get(), server_cq_.get(), &handler_, &thread_pool_);
+  void* tag;
+  bool ok;
+  while (server_cq_->Next(&tag, &ok)) {
+    if(!ok) {
+      delete static_cast<CallData*>(tag);
+      continue;
+    }
+    static_cast<CallData*>(tag)->ProcessRpcFsm();
   }
 }
 

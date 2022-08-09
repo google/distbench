@@ -250,6 +250,14 @@ ProtocolDriverOptions GrpcClientCQServerCBOptions() {
   return pdo;
 }
 
+ProtocolDriverOptions GrpcClientCQServerSCQOptions() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc");
+  AddClientStringOptionTo(pdo, "client_type", "polling");
+  AddServerStringOptionTo(pdo, "server_type", "handoff-cq");
+  return pdo;
+}
+
 ProtocolDriverOptions GrpcClientCBServerNormalOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
@@ -279,6 +287,7 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                              GrpcOptions(),
                              GrpcCallbackOptions(),
                              GrpcClientCQServerCBOptions(),
+                             GrpcClientCQServerSCQOptions(),
                              GrpcClientCBServerNormalOptions()
                              )
                          );
