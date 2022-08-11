@@ -325,9 +325,9 @@ void ProtocolDriverGrpcAsyncCallback::ShutdownServer() {
 }
 
 namespace {
-class GrpcHandler {
+class PollingRpcHandlerFsm {
  public:
-  GrpcHandler(
+  PollingRpcHandlerFsm(
       Traffic::AsyncService* service, grpc::ServerCompletionQueue* cq,
       std::function<std::function<void()>(ServerRpcState* state)>* handler,
       DistbenchThreadpool* thread_pool)
@@ -338,7 +338,7 @@ class GrpcHandler {
         status_(CREATE) {
     CHECK(thread_pool);
     thread_pool_ = thread_pool;
-    ProcessRpcFsm();
+    RpcHandlerFsm();
   }
 
   void IncRef() {
@@ -346,14 +346,14 @@ class GrpcHandler {
   }
 
   // DecRefAndMaybeDelete() is called from two places,
-  // one of which will delete the GrpcHandler.
+  // one of which will delete the PollingRpcHandlerFsm.
   void DecRefAndMaybeDelete() {
     if (std::atomic_fetch_sub_explicit(&refcnt_, 1, std::memory_order_relaxed) == 1) {
       delete this;
     }
   }
 
-  void ProcessGenericRpc() {
+  void HandleRpc() {
     rpc_state_.have_dedicated_thread = false;
     rpc_state_.request = &request_;
     rpc_state_.SetSendResponseFunction([&]() {
@@ -370,15 +370,15 @@ class GrpcHandler {
     }
   }
 
-  void ProcessRpcFsm() {
+  void RpcHandlerFsm() {
     if (status_ == CREATE) {
       status_ = PROCESS;
       service_->RequestGenericRpc(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
     } else if (status_ == PROCESS) {
       status_ = FINISH;
-      new GrpcHandler(service_, cq_, handler_, thread_pool_);
-      ProcessGenericRpc();
+      new PollingRpcHandlerFsm(service_, cq_, handler_, thread_pool_);
+      HandleRpc();
     } else {
       GPR_ASSERT(status_ == FINISH);
       DecRefAndMaybeDelete();
@@ -489,16 +489,16 @@ ProtocolDriverServerGrpcAsyncCq::GetTransportStats() {
 }
 
 void ProtocolDriverServerGrpcAsyncCq::HandleRpcs() {
-  new GrpcHandler(traffic_async_service_.get(), server_cq_.get(), &handler_,
+  new PollingRpcHandlerFsm(traffic_async_service_.get(), server_cq_.get(), &handler_,
                   &thread_pool_);
   void* tag;
   bool ok;
   while (server_cq_->Next(&tag, &ok)) {
     if (!ok) {
-      static_cast<GrpcHandler*>(tag)->DecRefAndMaybeDelete();
+      static_cast<PollingRpcHandlerFsm*>(tag)->DecRefAndMaybeDelete();
       continue;
     }
-    static_cast<GrpcHandler*>(tag)->ProcessRpcFsm();
+    static_cast<PollingRpcHandlerFsm*>(tag)->RpcHandlerFsm();
   }
 }
 
