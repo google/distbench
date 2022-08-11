@@ -101,7 +101,7 @@ TEST_P(ProtocolDriverTest, Invoke) {
   ASSERT_OK(pd->HandleConnect(addr, 0));
 
   std::atomic<int> client_rpc_count = 0;
-  const int kNumIterations = 500;
+  const int kNumIterations = 1000;
   ClientRpcState rpc_state[kNumIterations];
   for (int i = 0; i < kNumIterations; ++i) {
     pd->InitiateRpc(0, &rpc_state[i], [&, i]() {
@@ -254,7 +254,7 @@ ProtocolDriverOptions GrpcClientCQServerSCQOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
-  AddServerStringOptionTo(pdo, "server_type", "handoff-cq");
+  AddServerStringOptionTo(pdo, "server_type", "polling");
   return pdo;
 }
 

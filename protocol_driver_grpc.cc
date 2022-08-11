@@ -247,7 +247,7 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
   } else if (server_type == "handoff") {
     server_ = std::unique_ptr<ProtocolDriverServer>(
         new ProtocolDriverServerGrpcAsyncCallback());
-  } else if (server_type == "handoff-cq") {
+  } else if (server_type == "polling") {
     server_ = std::unique_ptr<ProtocolDriverServer>(
         new ProtocolDriverServerGrpcAsyncCq());
   } else {
