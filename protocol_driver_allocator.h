@@ -21,7 +21,7 @@
 namespace distbench {
 
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
-    const ProtocolDriverOptions& opts);
+    const ProtocolDriverOptions& opts, int* port);
 
 }  // namespace distbench
 

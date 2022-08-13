@@ -28,15 +28,17 @@ ProtocolDriverOptions grpc_pd_opts() {
 }
 
 TEST(DistBenchEngineTest, Constructor) {
-  DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()).value());
+  int port = 0;
+  DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts(), &port).value());
 }
 
 TEST(DistBenchEngineTest, Initialization) {
   DistributedSystemDescription desc;
   desc.add_services()->set_name("test_service");
-  DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts()).value());
-  int port = 0;
-  ASSERT_OK(dbe.Initialize(desc, "test_service", 0, &port));
+  int driver_port = 0;
+  DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts(), &driver_port).value());
+  int engine_port = 0;
+  ASSERT_OK(dbe.Initialize(desc, "test_service", 0, &engine_port));
 }
 
 }  // namespace distbench

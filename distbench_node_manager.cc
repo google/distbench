@@ -107,17 +107,14 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
       GetProtocolDriverOptionsFor(service_opts);
   if (!pd_opts.ok()) return pd_opts.status();
 
-  auto maybe_pd = AllocateProtocolDriver(*pd_opts);
+  int port = 0;
+  auto maybe_pd = AllocateProtocolDriver(*pd_opts, &port);
   if (!maybe_pd.ok()) return maybe_pd.status();
 
-  std::unique_ptr<ProtocolDriver> pd(std::move(maybe_pd.value()));
-  int port = 0;
-  absl::Status ret = pd->Initialize(*pd_opts, &port);
-  if (!ret.ok()) return ret;
-
-  auto engine = std::make_unique<DistBenchEngine>(std::move(pd));
-  ret = engine->Initialize(traffic_config_, service_opts.service_type,
-                           service_opts.service_instance, service_opts.port);
+  auto engine = std::make_unique<DistBenchEngine>(std::move(maybe_pd.value()));
+  absl::Status ret = engine->Initialize(
+      traffic_config_, service_opts.service_type,
+      service_opts.service_instance, service_opts.port);
   if (!ret.ok()) return ret;
 
   service_engines_[std::string(service_opts.service_name)] = std::move(engine);

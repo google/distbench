@@ -19,15 +19,21 @@
 namespace distbench {
 
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
-    const ProtocolDriverOptions& opts) {
-  if (opts.protocol_name() == "grpc") {
-    return std::make_unique<ProtocolDriverGrpc>();
-  } else if (opts.protocol_name() == "grpc_async_callback") {
-    return std::make_unique<ProtocolDriverGrpc>();
+    const ProtocolDriverOptions& opts, int* port) {
+  std::unique_ptr<ProtocolDriver> pd;
+  if (opts.protocol_name() == "grpc" ||
+      opts.protocol_name() == "grpc_async_callback") {
+    pd = std::make_unique<ProtocolDriverGrpc>();
+  } else {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown protocol_name: ", opts.protocol_name()));
   }
-
-  return absl::InvalidArgumentError(
-      absl::StrCat("Unknown protocol_name: ", opts.protocol_name()));
+  absl::Status ret = pd->Initialize(opts, port);
+  if (!ret.ok()) {
+    return ret;
+  } else {
+    return pd;
+  }
 }
 
 }  // namespace distbench
