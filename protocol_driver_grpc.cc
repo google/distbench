@@ -220,8 +220,10 @@ absl::Status ProtocolDriverGrpc::Initialize(
 absl::Status ProtocolDriverGrpc::InitializeClient(
     const ProtocolDriverOptions& pd_opts) {
   // Build the client
-  std::string client_type = GetNamedSettingString(pd_opts.client_settings(),
-                                                  "client_type", "polling");
+  bool is_async = pd_opts.name() == "grpc_async";
+  std::string default_client_type = is_async ? "callback" : "polling";
+  std::string client_type = GetNamedSettingString(
+      pd_opts.client_settings(), "client_type", default_client_type);
   if (client_type == "polling") {
     client_ =
         std::unique_ptr<ProtocolDriverClient>(new ProtocolDriverClientGrpc());
@@ -239,8 +241,10 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
 absl::Status ProtocolDriverGrpc::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
   // Build the server
-  std::string server_type =
-      GetNamedSettingString(pd_opts.server_settings(), "server_type", "inline");
+  bool is_async = pd_opts.name() == "grpc_async";
+  std::string default_server_type = is_async ? "handoff" : "inline";
+  std::string server_type = GetNamedSettingString(p
+      d_opts.server_settings(), "server_type", default_server_type);
   if (server_type == "inline") {
     server_ =
         std::unique_ptr<ProtocolDriverServer>(new ProtocolDriverServerGrpc());
