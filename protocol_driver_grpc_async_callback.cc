@@ -335,9 +335,9 @@ class PollingRpcHandlerFsm {
         cq_(cq),
         handler_(handler),
         responder_(&ctx_),
-        status_(CREATE) {
-    CHECK(thread_pool);
-    thread_pool_ = thread_pool;
+        thread_pool_(thread_pool),
+        state_(AWAITING_REQUEST) {
+    CHECK(thread_pool_);
     RpcHandlerFsm();
   }
 
@@ -348,7 +348,8 @@ class PollingRpcHandlerFsm {
   // DecRefAndMaybeDelete() is called from two places,
   // one of which will delete the PollingRpcHandlerFsm.
   void DecRefAndMaybeDelete() {
-    if (std::atomic_fetch_sub_explicit(&refcnt_, 1, std::memory_order_relaxed) == 1) {
+    if (std::atomic_fetch_sub_explicit(
+          &refcnt_, 1, std::memory_order_relaxed) == 1) {
       delete this;
     }
   }
@@ -371,23 +372,33 @@ class PollingRpcHandlerFsm {
   }
 
   void RpcHandlerFsm(bool post_new_handler = false) {
-    if (status_ == CREATE) {
-      status_ = PROCESS;
+    CallState next_state = state_;
+    if (state_ == AWAITING_REQUEST) {
+      next_state = PROCESSING_REQUEST;
       service_->RequestGenericRpc(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
-    } else if (status_ == PROCESS) {
-      status_ = FINISH;
+    } else if (state_ == PROCESSING_REQUEST) {
+      next_state = FINISHED_SENDING_RESPONSE;
       if (post_new_handler) {
         new PollingRpcHandlerFsm(service_, cq_, handler_, thread_pool_);
       }
       HandleRpc();
-    } else {
-      GPR_ASSERT(status_ == FINISH);
+    } else if (state_ == FINISHED_SENDING_RESPONSE) {
       DecRefAndMaybeDelete();
+      return;
+    } else {
+      LOG(FATAL) << "Unknown state: " << state_;
     }
+    state_ = next_state;
   }
 
  private:
+  enum CallState {
+    AWAITING_REQUEST,
+    PROCESSING_REQUEST,
+    FINISHED_SENDING_RESPONSE
+  };
+
   GenericRequest request_;
   GenericResponse response_;
   Traffic::AsyncService* service_;
@@ -395,9 +406,8 @@ class PollingRpcHandlerFsm {
   std::function<std::function<void()>(ServerRpcState* state)>* handler_;
   grpc::ServerAsyncResponseWriter<GenericResponse> responder_;
   grpc::ServerContext ctx_;
-  enum CallStatus { CREATE, PROCESS, FINISH };
-  CallStatus status_;
   DistbenchThreadpool* thread_pool_;
+  CallState state_;
   ServerRpcState rpc_state_;
   std::atomic<int> refcnt_ = 1;
 };
