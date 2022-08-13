@@ -22,24 +22,24 @@
 namespace distbench {
 
 // Client =====================================================================
-ProtocolDriverClientGrpcAsyncCallback::ProtocolDriverClientGrpcAsyncCallback() {
+GrpcCallbackClientDriver::GrpcCallbackClientDriver() {
 }
 
-ProtocolDriverClientGrpcAsyncCallback::
-    ~ProtocolDriverClientGrpcAsyncCallback() {
+GrpcCallbackClientDriver::
+    ~GrpcCallbackClientDriver() {
   ShutdownClient();
 }
 
-absl::Status ProtocolDriverClientGrpcAsyncCallback::InitializeClient(
+absl::Status GrpcCallbackClientDriver::InitializeClient(
     const ProtocolDriverOptions& pd_opts) {
   return absl::OkStatus();
 }
 
-void ProtocolDriverClientGrpcAsyncCallback::SetNumPeers(int num_peers) {
+void GrpcCallbackClientDriver::SetNumPeers(int num_peers) {
   grpc_client_stubs_.resize(num_peers);
 }
 
-absl::Status ProtocolDriverClientGrpcAsyncCallback::HandleConnect(
+absl::Status GrpcCallbackClientDriver::HandleConnect(
     std::string remote_connection_info, int peer) {
   CHECK_GE(peer, 0);
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
@@ -53,7 +53,7 @@ absl::Status ProtocolDriverClientGrpcAsyncCallback::HandleConnect(
 }
 
 std::vector<TransportStat>
-ProtocolDriverClientGrpcAsyncCallback::GetTransportStats() {
+GrpcCallbackClientDriver::GetTransportStats() {
   return {};
 }
 
@@ -69,7 +69,7 @@ struct PendingRpc {
 };
 }  // anonymous namespace
 
-void ProtocolDriverClientGrpcAsyncCallback::InitiateRpc(
+void GrpcCallbackClientDriver::InitiateRpc(
     int peer_index, ClientRpcState* state,
     std::function<void(void)> done_callback) {
   CHECK_GE(peer_index, 0);
@@ -102,9 +102,9 @@ void ProtocolDriverClientGrpcAsyncCallback::InitiateRpc(
       &new_rpc->context, &new_rpc->request, &new_rpc->response, callback_fct);
 }
 
-void ProtocolDriverClientGrpcAsyncCallback::ChurnConnection(int peer) {}
+void GrpcCallbackClientDriver::ChurnConnection(int peer) {}
 
-void ProtocolDriverClientGrpcAsyncCallback::ShutdownClient() {
+void GrpcCallbackClientDriver::ShutdownClient() {
   while (pending_rpcs_) {
   }
   grpc_client_stubs_.clear();
