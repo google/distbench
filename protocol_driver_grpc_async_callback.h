@@ -22,10 +22,10 @@
 
 namespace distbench {
 
-class ProtocolDriverClientGrpcAsyncCallback : public ProtocolDriverClient {
+class GrpcCallbackClientDriver : public ProtocolDriverClient {
  public:
-  ProtocolDriverClientGrpcAsyncCallback();
-  ~ProtocolDriverClientGrpcAsyncCallback() override;
+  GrpcCallbackClientDriver();
+  ~GrpcCallbackClientDriver() override;
 
   absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
 
