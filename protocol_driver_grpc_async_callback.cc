@@ -370,14 +370,16 @@ class PollingRpcHandlerFsm {
     }
   }
 
-  void RpcHandlerFsm() {
+  void RpcHandlerFsm(bool post_new_handler = false) {
     if (status_ == CREATE) {
       status_ = PROCESS;
       service_->RequestGenericRpc(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
     } else if (status_ == PROCESS) {
       status_ = FINISH;
-      new PollingRpcHandlerFsm(service_, cq_, handler_, thread_pool_);
+      if (post_new_handler) {
+        new PollingRpcHandlerFsm(service_, cq_, handler_, thread_pool_);
+      }
       HandleRpc();
     } else {
       GPR_ASSERT(status_ == FINISH);
@@ -451,6 +453,7 @@ absl::Status ProtocolDriverServerGrpcAsyncCq::InitializeServer(
   // Proceed to the server's main loop.
   handle_rpcs_ = absl::make_unique<std::thread>(
       &ProtocolDriverServerGrpcAsyncCq::HandleRpcs, this);
+  handle_rpcs_started_.WaitForNotification();
   return absl::OkStatus();
 }
 
@@ -477,6 +480,7 @@ void ProtocolDriverServerGrpcAsyncCq::HandleConnectFailure(
 
 void ProtocolDriverServerGrpcAsyncCq::ShutdownServer() {
   server_->Shutdown();
+  server_shutdown_detected_.WaitForNotification();
   server_cq_->Shutdown();
   if (handle_rpcs_->joinable()) {
     handle_rpcs_->join();
@@ -489,16 +493,24 @@ ProtocolDriverServerGrpcAsyncCq::GetTransportStats() {
 }
 
 void ProtocolDriverServerGrpcAsyncCq::HandleRpcs() {
-  new PollingRpcHandlerFsm(traffic_async_service_.get(), server_cq_.get(), &handler_,
-                  &thread_pool_);
+  new PollingRpcHandlerFsm(
+      traffic_async_service_.get(), server_cq_.get(), &handler_,
+      &thread_pool_);
+  // Make sure the completion queue is nonempty before allowing Initialize
+  // to return:
+  handle_rpcs_started_.Notify();
   void* tag;
   bool ok;
+  bool post_new_handler = true;
   while (server_cq_->Next(&tag, &ok)) {
+    PollingRpcHandlerFsm* rpc_fsm = static_cast<PollingRpcHandlerFsm*>(tag);
     if (!ok) {
-      static_cast<PollingRpcHandlerFsm*>(tag)->DecRefAndMaybeDelete();
+      server_shutdown_detected_.Notify();
+      post_new_handler = false;
+      rpc_fsm->DecRefAndMaybeDelete();
       continue;
     }
-    static_cast<PollingRpcHandlerFsm*>(tag)->RpcHandlerFsm();
+    rpc_fsm->RpcHandlerFsm(post_new_handler);
   }
 }
 
