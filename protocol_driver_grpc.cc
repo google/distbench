@@ -21,21 +21,21 @@
 namespace distbench {
 
 // Client =====================================================================
-ProtocolDriverClientGrpc::ProtocolDriverClientGrpc() {}
-ProtocolDriverClientGrpc::~ProtocolDriverClientGrpc() { ShutdownClient(); }
+GrpcPollingClientDriver::GrpcPollingClientDriver() {}
+GrpcPollingClientDriver::~GrpcPollingClientDriver() { ShutdownClient(); }
 
-absl::Status ProtocolDriverClientGrpc::InitializeClient(
+absl::Status GrpcPollingClientDriver::InitializeClient(
     const ProtocolDriverOptions& pd_opts) {
   cq_poller_ =
-      std::thread(&ProtocolDriverClientGrpc::RpcCompletionThread, this);
+      std::thread(&GrpcPollingClientDriver::RpcCompletionThread, this);
   return absl::OkStatus();
 }
 
-void ProtocolDriverClientGrpc::SetNumPeers(int num_peers) {
+void GrpcPollingClientDriver::SetNumPeers(int num_peers) {
   grpc_client_stubs_.resize(num_peers);
 }
 
-absl::Status ProtocolDriverClientGrpc::HandleConnect(
+absl::Status GrpcPollingClientDriver::HandleConnect(
     std::string remote_connection_info, int peer) {
   CHECK_GE(peer, 0);
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
@@ -48,7 +48,7 @@ absl::Status ProtocolDriverClientGrpc::HandleConnect(
   return absl::OkStatus();
 }
 
-std::vector<TransportStat> ProtocolDriverClientGrpc::GetTransportStats() {
+std::vector<TransportStat> GrpcPollingClientDriver::GetTransportStats() {
   return {};
 }
 
@@ -64,7 +64,7 @@ struct PendingRpc {
 };
 }  // anonymous namespace
 
-void ProtocolDriverClientGrpc::InitiateRpc(
+void GrpcPollingClientDriver::InitiateRpc(
     int peer_index, ClientRpcState* state,
     std::function<void(void)> done_callback) {
   CHECK_GE(peer_index, 0);
@@ -80,7 +80,7 @@ void ProtocolDriverClientGrpc::InitiateRpc(
   new_rpc->rpc->Finish(&new_rpc->response, &new_rpc->status, new_rpc);
 }
 
-void ProtocolDriverClientGrpc::RpcCompletionThread() {
+void GrpcPollingClientDriver::RpcCompletionThread() {
   while (!shutdown_.HasBeenNotified()) {
     bool ok;
     void* tag;
@@ -106,9 +106,9 @@ void ProtocolDriverClientGrpc::RpcCompletionThread() {
   }
 }
 
-void ProtocolDriverClientGrpc::ChurnConnection(int peer) {}
+void GrpcPollingClientDriver::ChurnConnection(int peer) {}
 
-void ProtocolDriverClientGrpc::ShutdownClient() {
+void GrpcPollingClientDriver::ShutdownClient() {
   while (pending_rpcs_) {
   }
   if (!shutdown_.HasBeenNotified()) {
@@ -225,8 +225,8 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
   std::string client_type = GetNamedSettingString(
       pd_opts.client_settings(), "client_type", default_client_type);
   if (client_type == "polling") {
-    client_ =
-        std::unique_ptr<ProtocolDriverClient>(new ProtocolDriverClientGrpc());
+    client_ = std::unique_ptr<ProtocolDriverClient>(
+        new GrpcPollingClientDriver());
   } else if (client_type == "callback") {
     client_ = std::unique_ptr<ProtocolDriverClient>(
         new GrpcCallbackClientDriver());

@@ -21,10 +21,10 @@
 
 namespace distbench {
 
-class ProtocolDriverClientGrpc : public ProtocolDriverClient {
+class GrpcPollingClientDriver : public ProtocolDriverClient {
  public:
-  ProtocolDriverClientGrpc();
-  ~ProtocolDriverClientGrpc() override;
+  GrpcPollingClientDriver();
+  ~GrpcPollingClientDriver() override;
 
   absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
 
