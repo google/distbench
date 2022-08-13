@@ -108,6 +108,8 @@ class ProtocolDriverServerGrpcAsyncCq : public ProtocolDriverServer {
   grpc::ServerContext context;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
   DistbenchThreadpool thread_pool_;
+  absl::Notification server_shutdown_detected_;
+  absl::Notification handle_rpcs_started_;
 };
 
 class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
