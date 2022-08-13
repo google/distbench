@@ -150,10 +150,10 @@ class TrafficService : public Traffic::Service {
 };
 
 }  // anonymous namespace
-ProtocolDriverServerGrpc::ProtocolDriverServerGrpc() {}
-ProtocolDriverServerGrpc::~ProtocolDriverServerGrpc() {}
+GrpcInlineServerDriver::GrpcInlineServerDriver() {}
+GrpcInlineServerDriver::~GrpcInlineServerDriver() {}
 
-absl::Status ProtocolDriverServerGrpc::InitializeServer(
+absl::Status GrpcInlineServerDriver::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
@@ -181,12 +181,12 @@ absl::Status ProtocolDriverServerGrpc::InitializeServer(
   return absl::OkStatus();
 }
 
-void ProtocolDriverServerGrpc::SetHandler(
+void GrpcInlineServerDriver::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   static_cast<TrafficService*>(traffic_service_.get())->SetHandler(handler);
 }
 
-absl::StatusOr<std::string> ProtocolDriverServerGrpc::HandlePreConnect(
+absl::StatusOr<std::string> GrpcInlineServerDriver::HandlePreConnect(
     std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
   addr.set_ip_address(server_ip_address_.ip());
@@ -197,12 +197,12 @@ absl::StatusOr<std::string> ProtocolDriverServerGrpc::HandlePreConnect(
   return ret;
 }
 
-void ProtocolDriverServerGrpc::HandleConnectFailure(
+void GrpcInlineServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
-void ProtocolDriverServerGrpc::ShutdownServer() { server_->Shutdown(); }
+void GrpcInlineServerDriver::ShutdownServer() { server_->Shutdown(); }
 
-std::vector<TransportStat> ProtocolDriverServerGrpc::GetTransportStats() {
+std::vector<TransportStat> GrpcInlineServerDriver::GetTransportStats() {
   return {};
 }
 
@@ -246,8 +246,8 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
   std::string server_type = GetNamedSettingString(
       pd_opts.server_settings(), "server_type", default_server_type);
   if (server_type == "inline") {
-    server_ =
-        std::unique_ptr<ProtocolDriverServer>(new ProtocolDriverServerGrpc());
+    server_ = std::unique_ptr<ProtocolDriverServer>(
+        new GrpcInlineServerDriver());
   } else if (server_type == "handoff") {
     server_ = std::unique_ptr<ProtocolDriverServer>(
         new ProtocolDriverServerGrpcAsyncCallback());

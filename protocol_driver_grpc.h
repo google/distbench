@@ -55,10 +55,10 @@ class GrpcPollingClientDriver : public ProtocolDriverClient {
   grpc::CompletionQueue cq_;
 };
 
-class ProtocolDriverServerGrpc : public ProtocolDriverServer {
+class GrpcInlineServerDriver : public ProtocolDriverServer {
  public:
-  ProtocolDriverServerGrpc();
-  ~ProtocolDriverServerGrpc() override;
+  GrpcInlineServerDriver();
+  ~GrpcInlineServerDriver() override;
 
   absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
                                 int* port) override;
