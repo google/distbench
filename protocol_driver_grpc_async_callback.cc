@@ -149,12 +149,12 @@ class TrafficServiceAsyncCallback
 };
 }  // anonymous namespace
 
-ProtocolDriverServerGrpcAsyncCallback::ProtocolDriverServerGrpcAsyncCallback() {
+GrpcHandoffServerDriver::GrpcHandoffServerDriver() {
 }
-ProtocolDriverServerGrpcAsyncCallback::
-    ~ProtocolDriverServerGrpcAsyncCallback() {}
+GrpcHandoffServerDriver::
+    ~GrpcHandoffServerDriver() {}
 
-absl::Status ProtocolDriverServerGrpcAsyncCallback::InitializeServer(
+absl::Status GrpcHandoffServerDriver::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
@@ -184,14 +184,14 @@ absl::Status ProtocolDriverServerGrpcAsyncCallback::InitializeServer(
   return absl::OkStatus();
 }
 
-void ProtocolDriverServerGrpcAsyncCallback::SetHandler(
+void GrpcHandoffServerDriver::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   static_cast<TrafficServiceAsyncCallback*>(traffic_service_.get())
       ->SetHandler(handler);
 }
 
 absl::StatusOr<std::string>
-ProtocolDriverServerGrpcAsyncCallback::HandlePreConnect(
+GrpcHandoffServerDriver::HandlePreConnect(
     std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
   addr.set_ip_address(server_ip_address_.ip());
@@ -202,17 +202,17 @@ ProtocolDriverServerGrpcAsyncCallback::HandlePreConnect(
   return ret;
 }
 
-void ProtocolDriverServerGrpcAsyncCallback::HandleConnectFailure(
+void GrpcHandoffServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
-void ProtocolDriverServerGrpcAsyncCallback::ShutdownServer() {
+void GrpcHandoffServerDriver::ShutdownServer() {
   if (server_ != nullptr) {
     server_->Shutdown();
   }
 }
 
 std::vector<TransportStat>
-ProtocolDriverServerGrpcAsyncCallback::GetTransportStats() {
+GrpcHandoffServerDriver::GetTransportStats() {
   return {};
 }
 

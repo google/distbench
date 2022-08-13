@@ -53,10 +53,10 @@ class GrpcCallbackClientDriver : public ProtocolDriverClient {
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
 };
 
-class ProtocolDriverServerGrpcAsyncCallback : public ProtocolDriverServer {
+class GrpcHandoffServerDriver : public ProtocolDriverServer {
  public:
-  ProtocolDriverServerGrpcAsyncCallback();
-  ~ProtocolDriverServerGrpcAsyncCallback() override;
+  GrpcHandoffServerDriver();
+  ~GrpcHandoffServerDriver() override;
 
   absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
                                 int* port) override;
