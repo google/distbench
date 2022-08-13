@@ -112,42 +112,6 @@ class ProtocolDriverServerGrpcAsyncCq : public ProtocolDriverServer {
   absl::Notification handle_rpcs_started_;
 };
 
-class ProtocolDriverGrpcAsyncCallback : public ProtocolDriver {
- public:
-  ProtocolDriverGrpcAsyncCallback();
-  ~ProtocolDriverGrpcAsyncCallback() override;
-
-  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
-                          int* port) override;
-  absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
-  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
-                                int* port) override;
-
-  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
-                      handler) override;
-  void SetNumPeers(int num_peers) override;
-
-  // Connects to the actual GRPC service.
-  absl::Status HandleConnect(std::string remote_connection_info,
-                             int peer) override;
-
-  // Returns the address of the GRPC service.
-  absl::StatusOr<std::string> HandlePreConnect(
-      std::string_view remote_connection_info, int peer) override;
-  void HandleConnectFailure(std::string_view local_connection_info) override;
-
-  std::vector<TransportStat> GetTransportStats() override;
-  void InitiateRpc(int peer_index, ClientRpcState* state,
-                   std::function<void(void)> done_callback) override;
-  void ChurnConnection(int peer) override;
-  void ShutdownServer() override;
-  void ShutdownClient() override;
-
- private:
-  std::unique_ptr<distbench::ProtocolDriverClient> client_;
-  std::unique_ptr<distbench::ProtocolDriverServer> server_;
-};
-
 }  // namespace distbench
 
 #endif  // DISTBENCH_PROTOCOL_DRIVER_GRPC_ASYNC_CALLBACK_H_
