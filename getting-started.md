@@ -79,7 +79,7 @@ spatial distribution are provided in later sections.
 
 ### Dependencies
 
-To build Distbench, you need to have Bazel.
+To build Distbench, you need to have Bazel, and gcc/g++ 11.3.
 
 Follow the instructions for your distribution at
 <https://docs.bazel.build/versions/master/install.html> to install Bazel.
