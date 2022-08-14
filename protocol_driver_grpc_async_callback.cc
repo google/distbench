@@ -321,12 +321,12 @@ class TrafficAsyncServiceCq : public Traffic::AsyncService {
 };
 
 }  // anonymous namespace
-ProtocolDriverServerGrpcAsyncCq::ProtocolDriverServerGrpcAsyncCq()
+GrpcPollingServerDriver::GrpcPollingServerDriver()
     : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
 
-ProtocolDriverServerGrpcAsyncCq::~ProtocolDriverServerGrpcAsyncCq() {}
+GrpcPollingServerDriver::~GrpcPollingServerDriver() {}
 
-absl::Status ProtocolDriverServerGrpcAsyncCq::InitializeServer(
+absl::Status GrpcPollingServerDriver::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
@@ -354,19 +354,19 @@ absl::Status ProtocolDriverServerGrpcAsyncCq::InitializeServer(
   LOG(INFO) << "Grpc Traffic server listening on " << server_socket_address_;
   // Proceed to the server's main loop.
   handle_rpcs_ = absl::make_unique<std::thread>(
-      &ProtocolDriverServerGrpcAsyncCq::HandleRpcs, this);
+      &GrpcPollingServerDriver::HandleRpcs, this);
   handle_rpcs_started_.WaitForNotification();
   return absl::OkStatus();
 }
 
-void ProtocolDriverServerGrpcAsyncCq::SetHandler(
+void GrpcPollingServerDriver::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   static_cast<TrafficAsyncServiceCq*>(traffic_async_service_.get())
       ->SetHandler(handler);
   handler_ = handler;
 }
 
-absl::StatusOr<std::string> ProtocolDriverServerGrpcAsyncCq::HandlePreConnect(
+absl::StatusOr<std::string> GrpcPollingServerDriver::HandlePreConnect(
     std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
   addr.set_ip_address(server_ip_address_.ip());
@@ -377,10 +377,10 @@ absl::StatusOr<std::string> ProtocolDriverServerGrpcAsyncCq::HandlePreConnect(
   return ret;
 }
 
-void ProtocolDriverServerGrpcAsyncCq::HandleConnectFailure(
+void GrpcPollingServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
-void ProtocolDriverServerGrpcAsyncCq::ShutdownServer() {
+void GrpcPollingServerDriver::ShutdownServer() {
   server_->Shutdown();
   server_shutdown_detected_.WaitForNotification();
   server_cq_->Shutdown();
@@ -390,11 +390,11 @@ void ProtocolDriverServerGrpcAsyncCq::ShutdownServer() {
 }
 
 std::vector<TransportStat>
-ProtocolDriverServerGrpcAsyncCq::GetTransportStats() {
+GrpcPollingServerDriver::GetTransportStats() {
   return {};
 }
 
-void ProtocolDriverServerGrpcAsyncCq::HandleRpcs() {
+void GrpcPollingServerDriver::HandleRpcs() {
   new PollingRpcHandlerFsm(
       traffic_async_service_.get(), server_cq_.get(), &handler_,
       &thread_pool_);

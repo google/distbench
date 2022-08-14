@@ -78,10 +78,10 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
   std::string server_socket_address_;
 };
 
-class ProtocolDriverServerGrpcAsyncCq : public ProtocolDriverServer {
+class GrpcPollingServerDriver : public ProtocolDriverServer {
  public:
-  ProtocolDriverServerGrpcAsyncCq();
-  ~ProtocolDriverServerGrpcAsyncCq() override;
+  GrpcPollingServerDriver();
+  ~GrpcPollingServerDriver() override;
 
   absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
                                 int* port) override;
