@@ -89,7 +89,6 @@ cc_library(
         ":distbench_cc_proto",
         ":protocol_driver_api",
         ":protocol_driver_grpc",
-        ":protocol_driver_grpc_async_callback"
     ],
 )
 
@@ -113,28 +112,10 @@ cc_library(
     ],
     deps = [
         ":distbench_cc_grpc_proto",
-        ":distbench_utils",
-        ":protocol_driver_api",
-        ":protocol_driver_grpc_async_callback",
-        "@com_github_grpc_grpc//:grpc++",
-    ],
-)
-
-cc_library(
-    name = "protocol_driver_grpc_async_callback",
-    srcs = [
-        "protocol_driver_grpc_async_callback.cc",
-    ],
-    hdrs = [
-        "protocol_driver_grpc_async_callback.h",
-    ],
-    deps = [
-        ":distbench_cc_grpc_proto",
         ":distbench_threadpool_lib",
         ":distbench_utils",
         ":protocol_driver_api",
         "@com_github_grpc_grpc//:grpc++",
-        "@com_github_google_glog//:glog"
     ],
 )
 
