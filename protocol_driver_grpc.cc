@@ -253,7 +253,7 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
         new GrpcHandoffServerDriver());
   } else if (server_type == "polling") {
     server_ = std::unique_ptr<ProtocolDriverServer>(
-        new ProtocolDriverServerGrpcAsyncCq());
+        new GrpcPollingServerDriver());
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
