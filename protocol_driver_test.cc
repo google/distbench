@@ -237,12 +237,18 @@ void AddClientStringOptionTo(ProtocolDriverOptions& pdo,
 }
 
 ProtocolDriverOptions GrpcOptions() {
-  ProtocolDriverOptions ret;
-  ret.set_protocol_name("grpc");
-  return ret;
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc");
+  return pdo;
 }
 
-ProtocolDriverOptions GrpcClientCQServerCBOptions() {
+ProtocolDriverOptions GrpcAsynCallbackOptions() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc_async_callback");
+  return pdo;
+}
+
+ProtocolDriverOptions GrpcPollingClientHandoffServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
@@ -250,7 +256,7 @@ ProtocolDriverOptions GrpcClientCQServerCBOptions() {
   return pdo;
 }
 
-ProtocolDriverOptions GrpcClientCQServerSCQOptions() {
+ProtocolDriverOptions GrpcPollingClientPollingServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
@@ -258,7 +264,7 @@ ProtocolDriverOptions GrpcClientCQServerSCQOptions() {
   return pdo;
 }
 
-ProtocolDriverOptions GrpcClientCBServerNormalOptions() {
+ProtocolDriverOptions GrpcCallbackClientInlineServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "callback");
@@ -266,16 +272,10 @@ ProtocolDriverOptions GrpcClientCBServerNormalOptions() {
   return pdo;
 }
 
-ProtocolDriverOptions GrpcCallbackOptions() {
-  ProtocolDriverOptions pdo;
-  pdo.set_protocol_name("grpc_async_callback");
-  return pdo;
-}
-
 void BM_GrpcEcho(benchmark::State& state) { Echo(state, GrpcOptions()); }
 
 void BM_GrpcCallbackEcho(benchmark::State& state) {
-  Echo(state, GrpcCallbackOptions());
+  Echo(state, GrpcAsynCallbackOptions());
 }
 
 BENCHMARK(BM_GrpcEcho);
@@ -283,13 +283,12 @@ BENCHMARK(BM_GrpcCallbackEcho);
 
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
-                         testing::Values(
-                             GrpcOptions(),
-                             GrpcCallbackOptions(),
-                             GrpcClientCQServerCBOptions(),
-                             GrpcClientCQServerSCQOptions(),
-                             GrpcClientCBServerNormalOptions()
-                             )
+                         testing::Values(GrpcOptions(),
+                                         GrpcAsynCallbackOptions(),
+                                         GrpcPollingClientHandoffServer(),
+                                         GrpcPollingClientPollingServer(),
+                                         GrpcCallbackClientInlineServer()
+                                         )
                          );
 // clang-format on
 
