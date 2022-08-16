@@ -21,16 +21,21 @@
 
 namespace distbench {
 
-NodeManager::NodeManager() {
-  auto func = [&](std::string protocol_name) -> absl::StatusOr<ProtocolDriverOptions>
-  {
-    for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
-      if (pd_opts_enum.name() == protocol_name) {
-        return pd_opts_enum;
-      }
+absl::StatusOr<ProtocolDriverOptions>
+NodeManager::ResolveProtocolDriver(const std::string& protocol_name) {
+  for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
+    if (pd_opts_enum.name() == protocol_name) {
+      return pd_opts_enum;
     }
-    return absl::InvalidArgumentError(
-        absl::StrCat("Could not resolve protocol driver for ", protocol_name, "."));
+  }
+  return absl::NotFoundError(
+      absl::StrCat("Could not resolve protocol driver for ", protocol_name, "."));
+}
+
+NodeManager::NodeManager() {
+  auto func = [=](std::string protocol_name) -> absl::StatusOr<ProtocolDriverOptions>
+  {
+    return ResolveProtocolDriver(protocol_name);
   };
   SetProtocolDriverResolver(func);
 }
@@ -96,6 +101,7 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
     }
   }
 
+  LOG(INFO) << "GetProtocolDriverOptionsFor: " << pd_options_name;
   // ProtocolDriverOptions found in config ?
   for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
     if (pd_opts_enum.name() == pd_options_name) {

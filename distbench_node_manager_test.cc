@@ -18,6 +18,7 @@
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "protocol_driver_allocator.h"
+#include "glog/logging.h"
 
 namespace distbench {
 
@@ -28,6 +29,71 @@ TEST(DistBenchNodeManager, FailNoTestSequencer) {
   NodeManagerOpts node_manager_opts;
   absl::Status result = nm.Initialize(node_manager_opts);
   ASSERT_FALSE(result.ok());
+}
+
+TEST(DistBenchNodeManager, InvalidProtocolName) {
+  NodeManager nm;
+  grpc::ServerContext context;
+  ServiceEndpointMap response;
+
+  NodeServiceConfig request;
+  auto traffic_config = request.mutable_traffic_config();
+  auto service = traffic_config->add_services();
+  service->set_name("root");
+  service->set_count(1);
+  request.add_services("root/0");
+
+  traffic_config->set_default_protocol("invalid_protocol_name");
+  auto ret = nm.ConfigureNode(&context, &request, &response);
+  ASSERT_FALSE(ret.ok());
+  CHECK_EQ(ret.error_message(),
+           "AllocService failure: NOT_FOUND: Could not resolve protocol driver for invalid_protocol_name.");
+}
+
+TEST(DistBenchNodeManager, GrpcAlias) {
+  NodeManager nm;
+  grpc::ServerContext context;
+  ServiceEndpointMap response;
+
+  NodeServiceConfig request;
+  auto traffic_config = request.mutable_traffic_config();
+
+  auto service = traffic_config->add_services();
+  service->set_name("root");
+  service->set_count(1);
+  request.add_services("root/0");
+
+  traffic_config->set_default_protocol("grpc_alias");
+  auto ret = nm.ConfigureNode(&context, &request, &response);
+  ASSERT_FALSE(ret.ok());
+
+  auto pdo = traffic_config->add_protocol_driver_options();
+  pdo->set_name("grpc_alias");
+  pdo->set_protocol_name("grpc");
+  ret = nm.ConfigureNode(&context, &request, &response);
+  ASSERT_TRUE(ret.ok());
+}
+
+TEST(DistBenchNodeManager, AllocateProtocolDriverMaxDepth) {
+  NodeManager nm;
+  grpc::ServerContext context;
+  ServiceEndpointMap response;
+
+  NodeServiceConfig request;
+  auto traffic_config = request.mutable_traffic_config();
+
+  auto service = traffic_config->add_services();
+  service->set_name("root");
+  service->set_count(1);
+  request.add_services("root/0");
+  traffic_config->set_default_protocol("grpc_alias");
+  auto pdo = traffic_config->add_protocol_driver_options();
+  pdo->set_name("grpc_alias");
+  pdo->set_protocol_name("grpc_alias");
+  auto ret = nm.ConfigureNode(&context, &request, &response);
+  ASSERT_FALSE(ret.ok());
+  CHECK_EQ(ret.error_message(),
+           "AllocService failure: FAILED_PRECONDITION: Tree cannot be deeper than max depth of: 4.");
 }
 
 }  // namespace distbench
