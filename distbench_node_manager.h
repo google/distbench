@@ -62,6 +62,8 @@ class NodeManager final : public DistBenchNodeManager::Service {
                             const ShutdownNodeRequest* request,
                             ShutdownNodeResult* response) override;
 
+  absl::StatusOr<ProtocolDriverOptions>
+      ResolveProtocolDriver(const std::string& protocol_name);
  private:
   void ClearServices() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 

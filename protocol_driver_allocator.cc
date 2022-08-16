@@ -18,17 +18,42 @@
 
 namespace distbench {
 
+int max_protocol_driver_tree_depth_ = 4;
+
+std::function<absl::StatusOr<ProtocolDriverOptions>(
+    const std::string& protocol_name)>
+    resolver_;
+
+void SetProtocolDriverResolver(std::function<absl::StatusOr<ProtocolDriverOptions>(
+    const std::string& protocol_name)> resolver) {
+  resolver_ = resolver;
+}
+
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
-    const ProtocolDriverOptions& opts, int* port) {
+    const ProtocolDriverOptions& opts, int* port, int tree_depth) {
+
+  if (tree_depth == max_protocol_driver_tree_depth_) {
+    return absl::InvalidArgumentError(
+      absl::StrCat("Tree cannot be deeper than max depth of: ",
+                   max_protocol_driver_tree_depth_, "."));
+  }
   std::unique_ptr<ProtocolDriver> pd;
+  absl::Status ret;
   if (opts.protocol_name() == "grpc" ||
       opts.protocol_name() == "grpc_async_callback") {
     pd = std::make_unique<ProtocolDriverGrpc>();
+    ret = pd->Initialize(opts, port);
   } else {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown protocol_name: ", opts.protocol_name()));
+    if (resolver_ == nullptr) {
+      return absl::InvalidArgumentError(
+        "Protocol Resolver Function is not set.");
+    }
+    auto maybe_resolved_opts = resolver_(opts.protocol_name());
+    if (!maybe_resolved_opts.ok()) return maybe_resolved_opts.status();
+    auto resolved_opts = maybe_resolved_opts.value();
+    pd = std::make_unique<ProtocolDriverGrpc>(); // For now, because ProtocolDriver has only virtual methods
+    ret = pd->Initialize(resolved_opts, port);
   }
-  absl::Status ret = pd->Initialize(opts, port);
   if (!ret.ok()) {
     return ret;
   } else {

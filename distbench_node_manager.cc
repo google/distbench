@@ -21,7 +21,19 @@
 
 namespace distbench {
 
-NodeManager::NodeManager() {}
+NodeManager::NodeManager() {
+  auto func = [&](std::string protocol_name) -> absl::StatusOr<ProtocolDriverOptions>
+  {
+    for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
+      if (pd_opts_enum.name() == protocol_name) {
+        return pd_opts_enum;
+      }
+    }
+    return absl::InvalidArgumentError(
+        absl::StrCat("Could not resolve protocol driver for ", protocol_name, "."));
+  };
+  SetProtocolDriverResolver(func);
+}
 
 grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
                                         const NodeServiceConfig* request,
