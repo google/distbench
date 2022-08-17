@@ -23,8 +23,8 @@ namespace distbench {
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     ProtocolDriverOptions opts, int* port, int tree_depth = 0);
 
-void SetProtocolDriverResolver(std::function<absl::StatusOr<ProtocolDriverOptions>(
-    const std::string& protocol_name)>);
+void SetProtocolDriverAliasResolver(std::function<absl::StatusOr<ProtocolDriverOptions>(
+    const std::string&)>);
 }  // namespace distbench
 
 #endif  //  DISTBENCH_PROTOCOL_DRIVER_ALLOCATOR_H_

@@ -22,22 +22,22 @@
 namespace distbench {
 
 absl::StatusOr<ProtocolDriverOptions>
-NodeManager::ResolveProtocolDriver(const std::string& protocol_name) {
+NodeManager::ResolveProtocolDriverAlias(const std::string& protocol_name) {
   for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
     if (pd_opts_enum.name() == protocol_name) {
       return pd_opts_enum;
     }
   }
   return absl::NotFoundError(
-      absl::StrCat("Could not resolve protocol driver for ", protocol_name, "."));
+      absl::StrCat("Could not resolve protocol driver alias for ", protocol_name, "."));
 }
 
 NodeManager::NodeManager() {
   auto func = [=](std::string protocol_name) -> absl::StatusOr<ProtocolDriverOptions>
   {
-    return ResolveProtocolDriver(protocol_name);
+    return ResolveProtocolDriverAlias(protocol_name);
   };
-  SetProtocolDriverResolver(func);
+  SetProtocolDriverAliasResolver(func);
 }
 
 grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
@@ -101,7 +101,7 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
     }
   }
 
-  auto maybe_pdo = ResolveProtocolDriver(pd_options_name);
+  auto maybe_pdo = ResolveProtocolDriverAlias(pd_options_name);
   if (maybe_pdo.ok()) pd_opts = maybe_pdo.value();
 
   // Use defaults to complete options
@@ -230,6 +230,9 @@ void NodeManager::Wait() {
 }
 
 NodeManager::~NodeManager() {
+  SetProtocolDriverAliasResolver(
+      std::function<absl::StatusOr<ProtocolDriverOptions>(
+          const std::string&)>());
   Shutdown();
   ClearServices();
   if (grpc_server_) {

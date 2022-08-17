@@ -47,7 +47,7 @@ TEST(DistBenchNodeManager, InvalidProtocolName) {
   auto ret = nm.ConfigureNode(&context, &request, &response);
   ASSERT_FALSE(ret.ok());
   CHECK_EQ(ret.error_message(),
-           "AllocService failure: NOT_FOUND: Could not resolve protocol driver for invalid_protocol_name.");
+           "AllocService failure: NOT_FOUND: Could not resolve protocol driver alias for invalid_protocol_name.");
 }
 
 TEST(DistBenchNodeManager, GrpcAlias) {

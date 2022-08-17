@@ -22,12 +22,12 @@ namespace distbench {
 int max_protocol_driver_tree_depth_ = 4;
 
 std::function<absl::StatusOr<ProtocolDriverOptions>(
-    const std::string& protocol_name)>
-    resolver_;
+    const std::string&)>
+    alias_resolver_;
 
-void SetProtocolDriverResolver(std::function<absl::StatusOr<ProtocolDriverOptions>(
-    const std::string& protocol_name)> resolver) {
-  resolver_ = resolver;
+void SetProtocolDriverAliasResolver(std::function<absl::StatusOr<ProtocolDriverOptions>(
+    const std::string&)> alias_resolver) {
+  alias_resolver_ = alias_resolver;
 }
 
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
@@ -43,11 +43,11 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
       opts.protocol_name() == "grpc_async_callback") {
     pd = std::make_unique<ProtocolDriverGrpc>();
   } else {
-    if (resolver_ == nullptr) {
+    if (alias_resolver_ == nullptr) {
       return absl::InvalidArgumentError(
-        "Protocol Resolver Function is not set.");
+        "Protocol driver alias resolver function is not set.");
     }
-    auto maybe_resolved_opts = resolver_(opts.protocol_name());
+    auto maybe_resolved_opts = alias_resolver_(opts.protocol_name());
     if (!maybe_resolved_opts.ok()) return maybe_resolved_opts.status();
     opts = maybe_resolved_opts.value();
     auto maybe_pd = AllocateProtocolDriver(opts, port, tree_depth+1);
