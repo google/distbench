@@ -101,13 +101,8 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
     }
   }
 
-  LOG(INFO) << "GetProtocolDriverOptionsFor: " << pd_options_name;
-  // ProtocolDriverOptions found in config ?
-  for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
-    if (pd_opts_enum.name() == pd_options_name) {
-      pd_opts = pd_opts_enum;
-    }
-  }
+  auto maybe_pdo = ResolveProtocolDriver(pd_options_name);
+  if (maybe_pdo.ok()) pd_opts = maybe_pdo.value();
 
   // Use defaults to complete options
   if (pd_options_name.empty()) pd_opts.set_name("generated_default");
