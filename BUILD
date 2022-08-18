@@ -89,6 +89,7 @@ cc_library(
         ":distbench_cc_proto",
         ":protocol_driver_api",
         ":protocol_driver_grpc",
+        ":protocol_driver_double_barrel"
     ],
 )
 
@@ -299,3 +300,20 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "protocol_driver_double_barrel",
+    srcs = [
+        "protocol_driver_double_barrel.cc",
+    ],
+    hdrs = [
+        "protocol_driver_double_barrel.h",
+    ],
+    deps = [
+        ":protocol_driver_grpc",
+        ":distbench_cc_grpc_proto",
+        ":distbench_threadpool_lib",
+        ":distbench_utils",
+        ":protocol_driver_api",
+        "@com_github_grpc_grpc//:grpc++",
+    ],
+)
