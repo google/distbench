@@ -45,7 +45,7 @@ class GrpcPollingClientDriver : public ProtocolDriverClient {
   void ChurnConnection(int peer) override;
   void ShutdownClient() override;
 
-  virtual std::vector<TransportStat> GetTransportStatsClient() override;
+  virtual std::vector<TransportStat> GetTransportStats() override;
 
  private:
   void RpcCompletionThread();
@@ -71,7 +71,7 @@ class GrpcInlineServerDriver : public ProtocolDriverServer {
   void ShutdownServer() override;
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
-  std::vector<TransportStat> GetTransportStatsServer() override;
+  std::vector<TransportStat> GetTransportStats() override;
 
  private:
   std::unique_ptr<Traffic::Service> traffic_service_;
@@ -106,8 +106,6 @@ class ProtocolDriverGrpc : public ProtocolDriver {
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
   std::vector<TransportStat> GetTransportStats() override;
-  std::vector<TransportStat> GetTransportStatsServer() override;
-  std::vector<TransportStat> GetTransportStatsClient() override;
   void InitiateRpc(int peer_index, ClientRpcState* state,
                    std::function<void(void)> done_callback) override;
   void ChurnConnection(int peer) override;
@@ -142,7 +140,7 @@ class GrpcCallbackClientDriver : public ProtocolDriverClient {
   void ChurnConnection(int peer) override;
   void ShutdownClient() override;
 
-  virtual std::vector<TransportStat> GetTransportStatsClient() override;
+  virtual std::vector<TransportStat> GetTransportStats() override;
 
  private:
   absl::Notification shutdown_;
@@ -165,7 +163,7 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
   void ShutdownServer() override;
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
-  std::vector<TransportStat> GetTransportStatsServer() override;
+  std::vector<TransportStat> GetTransportStats() override;
 
  private:
   std::unique_ptr<Traffic::ExperimentalCallbackService> traffic_service_;
@@ -190,7 +188,7 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   void ShutdownServer() override;
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
-  std::vector<TransportStat> GetTransportStatsServer() override;
+  std::vector<TransportStat> GetTransportStats() override;
   void ProcessGenericRpc(GenericRequest* request, GenericResponse* response);
   void HandleRpcs();
   std::unique_ptr<std::thread> handle_rpcs_;

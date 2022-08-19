@@ -44,8 +44,6 @@ class ProtocolDriverDoubleBarrel : public ProtocolDriver {
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
   std::vector<TransportStat> GetTransportStats() override;
-  std::vector<TransportStat> GetTransportStatsServer() override;
-  std::vector<TransportStat> GetTransportStatsClient() override;
   void InitiateRpc(int peer_index, ClientRpcState* state,
                    std::function<void(void)> done_callback) override;
   void ChurnConnection(int peer) override;
@@ -53,12 +51,12 @@ class ProtocolDriverDoubleBarrel : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  std::unique_ptr<distbench::ProtocolDriver> barrel_1_;
-  std::unique_ptr<distbench::ProtocolDriver> barrel_2_;
+  std::unique_ptr<distbench::ProtocolDriver> instance_1_;
+  std::unique_ptr<distbench::ProtocolDriver> instance_2_;
   int port_1_ = 0;
   int port_2_ = 0;
   int tree_depth_;
-  std::atomic<int> use_barrel_1_{1};
+  std::atomic<int> use_instance_1_{1};
 };
 
 }  // namespace distbench

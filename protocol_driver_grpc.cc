@@ -48,7 +48,7 @@ absl::Status GrpcPollingClientDriver::HandleConnect(
   return absl::OkStatus();
 }
 
-std::vector<TransportStat> GrpcPollingClientDriver::GetTransportStatsClient() {
+std::vector<TransportStat> GrpcPollingClientDriver::GetTransportStats() {
   return {};
 }
 
@@ -202,7 +202,7 @@ void GrpcInlineServerDriver::HandleConnectFailure(
 
 void GrpcInlineServerDriver::ShutdownServer() { server_->Shutdown(); }
 
-std::vector<TransportStat> GrpcInlineServerDriver::GetTransportStatsServer() {
+std::vector<TransportStat> GrpcInlineServerDriver::GetTransportStats() {
   return {};
 }
 
@@ -290,17 +290,9 @@ void ProtocolDriverGrpc::HandleConnectFailure(
   server_->HandleConnectFailure(local_connection_info);
 }
 
-std::vector<TransportStat> ProtocolDriverGrpc::GetTransportStatsClient() {
-  return client_->GetTransportStatsClient();
-}
-
-std::vector<TransportStat> ProtocolDriverGrpc::GetTransportStatsServer() {
-  return server_->GetTransportStatsServer();
-}
-
 std::vector<TransportStat> ProtocolDriverGrpc::GetTransportStats() {
-  std::vector<TransportStat> stats = GetTransportStatsClient();
-  std::vector<TransportStat> stats_server = GetTransportStatsServer();
+  std::vector<TransportStat> stats = client_->GetTransportStats();
+  std::vector<TransportStat> stats_server = server_->GetTransportStats();
   std::move(stats_server.begin(), stats_server.end(),
             std::back_inserter(stats));
   return stats;
@@ -359,7 +351,7 @@ absl::Status GrpcCallbackClientDriver::HandleConnect(
 }
 
 std::vector<TransportStat>
-GrpcCallbackClientDriver::GetTransportStatsClient() {
+GrpcCallbackClientDriver::GetTransportStats() {
   return {};
 }
 
@@ -506,7 +498,7 @@ void GrpcHandoffServerDriver::ShutdownServer() {
 }
 
 std::vector<TransportStat>
-GrpcHandoffServerDriver::GetTransportStatsServer() {
+GrpcHandoffServerDriver::GetTransportStats() {
   return {};
 }
 
@@ -684,7 +676,7 @@ void GrpcPollingServerDriver::ShutdownServer() {
 }
 
 std::vector<TransportStat>
-GrpcPollingServerDriver::GetTransportStatsServer() {
+GrpcPollingServerDriver::GetTransportStats() {
   return {};
 }
 
