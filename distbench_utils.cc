@@ -331,10 +331,23 @@ std::string GetNamedSettingString(
   return default_value;
 }
 
-int64_t GetNamedSettingInt64(const distbench::ProtocolDriverOptions& opts,
-                             absl::string_view setting_name,
-                             int64_t default_value) {
-  for (const auto& setting : opts.server_settings()) {
+std::string GetNamedServerSettingString(
+    const distbench::ProtocolDriverOptions& opts, absl::string_view name,
+    std::string default_value) {
+  return GetNamedSettingString(opts.server_settings(), name, default_value);
+}
+
+std::string GetNamedClientSettingString(
+    const distbench::ProtocolDriverOptions& opts, absl::string_view name,
+    std::string default_value) {
+  return GetNamedSettingString(opts.client_settings(), name, default_value);
+}
+
+int64_t GetNamedSettingInt64(
+    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>&
+        settings,
+    absl::string_view setting_name, int64_t default_value) {
+  for (const auto& setting : settings) {
     if (!setting.has_name()) {
       LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
       continue;
@@ -352,6 +365,18 @@ int64_t GetNamedSettingInt64(const distbench::ProtocolDriverOptions& opts,
   }
 
   return default_value;
+}
+
+int64_t GetNamedServerSettingInt64(const distbench::ProtocolDriverOptions& opts,
+                                   absl::string_view name,
+                                   int64_t default_value) {
+  return GetNamedSettingInt64(opts.server_settings(), name, default_value);
+}
+
+int64_t GetNamedClientSettingInt64(const distbench::ProtocolDriverOptions& opts,
+                                   absl::string_view name,
+                                   int64_t default_value) {
+  return GetNamedSettingInt64(opts.client_settings(), name, default_value);
 }
 
 absl::StatusOr<int64_t> GetNamedAttributeInt64(

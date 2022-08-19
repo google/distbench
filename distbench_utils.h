@@ -87,8 +87,25 @@ std::string GetNamedSettingString(
         settings,
     absl::string_view name, std::string default_value);
 
-int64_t GetNamedSettingInt64(const distbench::ProtocolDriverOptions& opts,
+std::string GetNamedServerSettingString(
+    const distbench::ProtocolDriverOptions& opts, absl::string_view name,
+    std::string default_value);
+
+std::string GetNamedClientSettingString(
+    const distbench::ProtocolDriverOptions& opts, absl::string_view name,
+    std::string default_value);
+
+int64_t GetNamedSettingInt64(const ::google::protobuf::RepeatedPtrField<
+                                 distbench::NamedSetting>& settings,
                              absl::string_view name, int64_t default_value);
+
+int64_t GetNamedServerSettingInt64(const distbench::ProtocolDriverOptions& opts,
+                                   absl::string_view name,
+                                   int64_t default_value);
+
+int64_t GetNamedClientSettingInt64(const distbench::ProtocolDriverOptions& opts,
+                                   absl::string_view name,
+                                   int64_t default_value);
 
 absl::StatusOr<int64_t> GetNamedAttributeInt64(
     const distbench::DistributedSystemDescription& test, absl::string_view name,
