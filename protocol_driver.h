@@ -92,7 +92,7 @@ class ProtocolDriverClient {
   virtual void ShutdownClient() = 0;
 
   // Misc interface ===========================================================
-  virtual std::vector<TransportStat> GetTransportStats() = 0;
+  virtual std::vector<TransportStat> GetTransportStatsClient() = 0;
 };
 
 class ProtocolDriverServer {
@@ -118,7 +118,7 @@ class ProtocolDriverServer {
   virtual void HandleConnectFailure(std::string_view local_connection_info);
 
   // Misc interface ===========================================================
-  virtual std::vector<TransportStat> GetTransportStats() = 0;
+  virtual std::vector<TransportStat> GetTransportStatsServer() = 0;
 };
 
 class ProtocolDriver : public ProtocolDriverClient,
@@ -127,6 +127,7 @@ class ProtocolDriver : public ProtocolDriverClient,
   virtual ~ProtocolDriver() {}
   virtual absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
                                   int* port) = 0;
+  virtual std::vector<TransportStat> GetTransportStats() = 0;
 
   // Misc interface ===========================================================
   virtual SimpleClock& GetClock();

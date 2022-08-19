@@ -27,21 +27,21 @@ ProtocolDriverDoubleBarrel::ProtocolDriverDoubleBarrel(int tree_depth) {
   tree_depth_ = tree_depth;
 }
 
-typedef google::protobuf::RepeatedPtrField<NamedSetting> ServerSetting;
-
 absl::Status ProtocolDriverDoubleBarrel::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
 
   auto pdo = pd_opts;
   auto server_settings = pdo.mutable_server_settings();
-  ServerSetting::iterator next_protocol_driver_it;
+  google::protobuf::RepeatedPtrField<NamedSetting>::iterator
+      next_protocol_driver_it = server_settings->end();
   for (auto it=server_settings->begin(); it!=server_settings->end(); it++) {
       if (it->name()=="next_protocol_driver") {
         next_protocol_driver_it = it;
         pdo.set_protocol_name(it->string_value());
       }
   }
-  server_settings->erase(next_protocol_driver_it);
+  if (next_protocol_driver_it != server_settings->end())
+    server_settings->erase(next_protocol_driver_it);
 
   auto maybe_barrel_1 = AllocateProtocolDriver(pdo, &port_1_, tree_depth_+1);
   if (!maybe_barrel_1.ok()) return maybe_barrel_1.status();
@@ -91,44 +91,47 @@ absl::Status ProtocolDriverDoubleBarrel::HandleConnect(
   return barrel_2_->HandleConnect(remote_connection_info, peer);
 }
 
-#define APPEND_VECTOR(a, b) \
-    (a.insert(a.end(), b.begin(), b.end()))
-
 void ProtocolDriverDoubleBarrel::HandleConnectFailure(
     std::string_view local_connection_info) {
   barrel_1_->HandleConnectFailure(local_connection_info);
   barrel_2_->HandleConnectFailure(local_connection_info);
 }
 
+std::vector<TransportStat> ProtocolDriverDoubleBarrel::GetTransportStatsClient() {
+  return {};
+}
+
+std::vector<TransportStat> ProtocolDriverDoubleBarrel::GetTransportStatsServer() {
+  return {};
+}
+
+#define APPEND_VECTOR(a, b) \
+    (a.insert(a.end(), b.begin(), b.end()))
+
 std::vector<TransportStat> ProtocolDriverDoubleBarrel::GetTransportStats() {
   std::vector<TransportStat> transport_stats;
 
-  transport_stats.push_back({"barrel_1_server_stats", {0}});
-  auto barrel_1_server_stats = ((ProtocolDriverServer*)
-                                barrel_1_.get())->GetTransportStats();
-  APPEND_VECTOR(transport_stats, barrel_1_server_stats);
+  auto name = "";
+  auto func = [&](TransportStat& ts) {
+    ts.name.insert(0, name);
+  };
 
-  transport_stats.push_back({"barrel_1_client_stats", {0}});
-  auto barrel_1_client_stats = ((ProtocolDriverClient*)
-                                barrel_1_.get())->GetTransportStats();
-  APPEND_VECTOR(transport_stats, barrel_1_client_stats);
+  name = "barrel_1";
+  auto barrel_1_stats = barrel_1_->GetTransportStats();
+  std::for_each(barrel_1_stats.begin(), barrel_1_stats.end(), func);
+  APPEND_VECTOR(transport_stats, barrel_1_stats);
 
-  transport_stats.push_back({"barrel_2_server_stats", {0}});
-  auto barrel_2_server_stats = ((ProtocolDriverServer*)
-                                barrel_2_.get())->GetTransportStats();
-  APPEND_VECTOR(transport_stats, barrel_2_server_stats);
-
-  transport_stats.push_back({"barrel_2_client_stats", {0}});
-  auto barrel_2_client_stats = ((ProtocolDriverClient*)
-                                barrel_2_.get())->GetTransportStats();
-  APPEND_VECTOR(transport_stats, barrel_2_client_stats);
+  name = "barrel_2";
+  auto barrel_2_stats = barrel_2_->GetTransportStats();
+  std::for_each(barrel_2_stats.begin(), barrel_2_stats.end(), func);
+  APPEND_VECTOR(transport_stats, barrel_2_stats);
 
   return transport_stats;
 }
 
 void ProtocolDriverDoubleBarrel::InitiateRpc(int peer_index, ClientRpcState* state,
                                      std::function<void(void)> done_callback) {
-  if (std::atomic_fetch_xor_explicit(&use_barrel_1_, 1, std::memory_order_relaxed)) {
+  if (0x1 & std::atomic_fetch_add_explicit(&use_barrel_1_, 1, std::memory_order_relaxed)) {
     barrel_1_->InitiateRpc(peer_index, state, done_callback);
   } else {
     barrel_2_->InitiateRpc(peer_index, state, done_callback);

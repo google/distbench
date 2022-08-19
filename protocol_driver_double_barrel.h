@@ -44,6 +44,8 @@ class ProtocolDriverDoubleBarrel : public ProtocolDriver {
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
   std::vector<TransportStat> GetTransportStats() override;
+  std::vector<TransportStat> GetTransportStatsServer() override;
+  std::vector<TransportStat> GetTransportStatsClient() override;
   void InitiateRpc(int peer_index, ClientRpcState* state,
                    std::function<void(void)> done_callback) override;
   void ChurnConnection(int peer) override;

@@ -318,7 +318,6 @@ cc_library(
         "protocol_driver_double_barrel.h",
     ],
     deps = [
-        ":protocol_driver_grpc",
         ":protocol_driver_allocator_api",
     ],
 )
