@@ -78,14 +78,23 @@ cc_library(
 )
 
 cc_library(
-    name = "protocol_driver_allocator",
-    srcs = [
-        "protocol_driver_allocator.cc",
-    ],
+    name = "protocol_driver_allocator_api",
     hdrs = [
         "protocol_driver_allocator.h",
     ],
     deps = [
+        ":distbench_cc_proto",
+        ":protocol_driver_api",
+    ],
+)
+
+cc_library(
+    name = "protocol_driver_allocator",
+    srcs = [
+        "protocol_driver_allocator.cc",
+    ],
+    deps = [
+        ":protocol_driver_allocator_api",
         ":distbench_cc_proto",
         ":protocol_driver_api",
         ":protocol_driver_grpc",
@@ -310,10 +319,6 @@ cc_library(
     ],
     deps = [
         ":protocol_driver_grpc",
-        ":distbench_cc_grpc_proto",
-        ":distbench_threadpool_lib",
-        ":distbench_utils",
-        ":protocol_driver_api",
-        "@com_github_grpc_grpc//:grpc++",
+        ":protocol_driver_allocator_api",
     ],
 )

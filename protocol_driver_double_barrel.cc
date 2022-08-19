@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "protocol_driver_double_barrel.h"
-//#include "protocol_driver_allocator.h"
+
+#include "protocol_driver_allocator.h"
 #include "absl/base/internal/sysinfo.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
@@ -21,30 +22,26 @@
 
 namespace distbench {
 
-absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
-    ProtocolDriverOptions opts, int* port, int tree_depth = 0);
-
 // ProtocolDriver ===============================================
 ProtocolDriverDoubleBarrel::ProtocolDriverDoubleBarrel(int tree_depth) {
   tree_depth_ = tree_depth;
 }
 
+typedef google::protobuf::RepeatedPtrField<NamedSetting> ServerSetting;
+
 absl::Status ProtocolDriverDoubleBarrel::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
 
   auto pdo = pd_opts;
-  std::string subordinate_driver_type = "";
-  google::protobuf::internal::RepeatedPtrIterator
-      <distbench::NamedSetting> iter_subordinate;
-  for (auto iter=pdo.server_settings().begin();
-       iter!=pdo.server_settings().end();
-       iter++) {
-    if (iter->name()=="next_protocol_driver") {
-      subordinate_driver_type = iter->string_value();
-      break;
-    }
+  auto server_settings = pdo.mutable_server_settings();
+  ServerSetting::iterator next_protocol_driver_it;
+  for (auto it=server_settings->begin(); it!=server_settings->end(); it++) {
+      if (it->name()=="next_protocol_driver") {
+        next_protocol_driver_it = it;
+        pdo.set_protocol_name(it->string_value());
+      }
   }
-  pdo.set_protocol_name(subordinate_driver_type);
+  server_settings->erase(next_protocol_driver_it);
 
   auto maybe_barrel_1 = AllocateProtocolDriver(pdo, &port_1_, tree_depth_+1);
   if (!maybe_barrel_1.ok()) return maybe_barrel_1.status();
@@ -94,6 +91,9 @@ absl::Status ProtocolDriverDoubleBarrel::HandleConnect(
   return barrel_2_->HandleConnect(remote_connection_info, peer);
 }
 
+#define APPEND_VECTOR(a, b) \
+    (a.insert(a.end(), b.begin(), b.end()))
+
 void ProtocolDriverDoubleBarrel::HandleConnectFailure(
     std::string_view local_connection_info) {
   barrel_1_->HandleConnectFailure(local_connection_info);
@@ -101,21 +101,43 @@ void ProtocolDriverDoubleBarrel::HandleConnectFailure(
 }
 
 std::vector<TransportStat> ProtocolDriverDoubleBarrel::GetTransportStats() {
-  std::vector<TransportStat> stats;
-  return stats;
+  std::vector<TransportStat> transport_stats;
+
+  transport_stats.push_back({"barrel_1_server_stats", {0}});
+  auto barrel_1_server_stats = ((ProtocolDriverServer*)
+                                barrel_1_.get())->GetTransportStats();
+  APPEND_VECTOR(transport_stats, barrel_1_server_stats);
+
+  transport_stats.push_back({"barrel_1_client_stats", {0}});
+  auto barrel_1_client_stats = ((ProtocolDriverClient*)
+                                barrel_1_.get())->GetTransportStats();
+  APPEND_VECTOR(transport_stats, barrel_1_client_stats);
+
+  transport_stats.push_back({"barrel_2_server_stats", {0}});
+  auto barrel_2_server_stats = ((ProtocolDriverServer*)
+                                barrel_2_.get())->GetTransportStats();
+  APPEND_VECTOR(transport_stats, barrel_2_server_stats);
+
+  transport_stats.push_back({"barrel_2_client_stats", {0}});
+  auto barrel_2_client_stats = ((ProtocolDriverClient*)
+                                barrel_2_.get())->GetTransportStats();
+  APPEND_VECTOR(transport_stats, barrel_2_client_stats);
+
+  return transport_stats;
 }
 
 void ProtocolDriverDoubleBarrel::InitiateRpc(int peer_index, ClientRpcState* state,
                                      std::function<void(void)> done_callback) {
-  if (use_barrel_1_) {
+  if (std::atomic_fetch_xor_explicit(&use_barrel_1_, 1, std::memory_order_relaxed)) {
     barrel_1_->InitiateRpc(peer_index, state, done_callback);
   } else {
     barrel_2_->InitiateRpc(peer_index, state, done_callback);
   }
-  use_barrel_1_ = !use_barrel_1_;
 }
 
 void ProtocolDriverDoubleBarrel::ChurnConnection(int peer) {
+  barrel_1_->ChurnConnection(peer);
+  barrel_2_->ChurnConnection(peer);
 }
 
 void ProtocolDriverDoubleBarrel::ShutdownClient() {
@@ -124,6 +146,8 @@ void ProtocolDriverDoubleBarrel::ShutdownClient() {
 }
 
 void ProtocolDriverDoubleBarrel::ShutdownServer() {
+  barrel_1_->ShutdownServer();
+  barrel_2_->ShutdownServer();
 }
 
 }  // namespace distbench

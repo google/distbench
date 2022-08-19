@@ -15,10 +15,7 @@
 #ifndef DISTBENCH_PROTOCOL_DRIVER_DOUBLE_BARREL_H_
 #define DISTBENCH_PROTOCOL_DRIVER_DOUBLE_BARREL_H_
 
-#include "distbench.grpc.pb.h"
-#include "distbench_utils.h"
 #include "protocol_driver.h"
-#include "distbench_threadpool.h"
 
 namespace distbench {
 
@@ -54,9 +51,12 @@ class ProtocolDriverDoubleBarrel : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  std::unique_ptr<distbench::ProtocolDriver> barrel_1_, barrel_2_;
-  int port_1_ = 0, port_2_ = 0, tree_depth_;
-  bool use_barrel_1_ = true;
+  std::unique_ptr<distbench::ProtocolDriver> barrel_1_;
+  std::unique_ptr<distbench::ProtocolDriver> barrel_2_;
+  int port_1_ = 0;
+  int port_2_ = 0;
+  int tree_depth_;
+  std::atomic<int> use_barrel_1_{1};
 };
 
 }  // namespace distbench
