@@ -100,20 +100,20 @@ void ProtocolDriverDoubleBarrel::HandleConnectFailure(
 std::vector<TransportStat> ProtocolDriverDoubleBarrel::GetTransportStats() {
   std::vector<TransportStat> transport_stats;
 
-  auto name = "";
-  auto func = [&](TransportStat& ts) {
-    ts.name.insert(0, name);
+  std::string prefix = "";
+  auto add_prefix = [&](TransportStat& ts) {
+    ts.name.insert(0, prefix);
   };
 
-  name = "instance_1";
+  prefix = "instance_1/";
   auto instance_1_stats = instance_1_->GetTransportStats();
-  std::for_each(instance_1_stats.begin(), instance_1_stats.end(), func);
+  std::for_each(instance_1_stats.begin(), instance_1_stats.end(), add_prefix);
   transport_stats.insert(transport_stats.end(),
                          instance_1_stats.begin(), instance_1_stats.end());
 
-  name = "instance_2";
+  prefix = "instance_2/";
   auto instance_2_stats = instance_2_->GetTransportStats();
-  std::for_each(instance_2_stats.begin(), instance_2_stats.end(), func);
+  std::for_each(instance_2_stats.begin(), instance_2_stats.end(), add_prefix);
   transport_stats.insert(transport_stats.end(),
                          instance_2_stats.begin(), instance_2_stats.end());
 
