@@ -15,6 +15,7 @@
 #include "protocol_driver_allocator.h"
 
 #include "protocol_driver_grpc.h"
+#include "protocol_driver_double_barrel.h"
 #include "glog/logging.h"
 
 namespace distbench {
@@ -42,6 +43,8 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
   if (opts.protocol_name() == "grpc" ||
       opts.protocol_name() == "grpc_async_callback") {
     pd = std::make_unique<ProtocolDriverGrpc>();
+  } else if (opts.protocol_name() == "double_barrel") {
+    pd = std::make_unique<ProtocolDriverDoubleBarrel>(tree_depth);
   } else {
     if (alias_resolver_ == nullptr) {
       return absl::InvalidArgumentError(

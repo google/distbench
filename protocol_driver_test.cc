@@ -258,6 +258,15 @@ ProtocolDriverOptions GrpcAsynCallbackOptions() {
   return pdo;
 }
 
+ProtocolDriverOptions DoubleBarrelGrpc() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("double_barrel");
+  AddClientStringOptionTo(pdo, "client_type", "polling");
+  AddServerStringOptionTo(pdo, "server_type", "inline");
+  AddServerStringOptionTo(pdo, "next_protocol_driver", "grpc");
+  return pdo;
+}
+
 ProtocolDriverOptions GrpcPollingClientHandoffServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
@@ -297,7 +306,8 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                                          GrpcAsynCallbackOptions(),
                                          GrpcPollingClientHandoffServer(),
                                          GrpcPollingClientPollingServer(),
-                                         GrpcCallbackClientInlineServer()
+                                         GrpcCallbackClientInlineServer(),
+                                         DoubleBarrelGrpc()
                                          )
                          );
 // clang-format on

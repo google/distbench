@@ -78,17 +78,27 @@ cc_library(
 )
 
 cc_library(
-    name = "protocol_driver_allocator",
-    srcs = [
-        "protocol_driver_allocator.cc",
-    ],
+    name = "protocol_driver_allocator_api",
     hdrs = [
         "protocol_driver_allocator.h",
     ],
     deps = [
         ":distbench_cc_proto",
         ":protocol_driver_api",
+    ],
+)
+
+cc_library(
+    name = "protocol_driver_allocator",
+    srcs = [
+        "protocol_driver_allocator.cc",
+    ],
+    deps = [
+        ":protocol_driver_allocator_api",
+        ":distbench_cc_proto",
+        ":protocol_driver_api",
         ":protocol_driver_grpc",
+        ":protocol_driver_double_barrel"
     ],
 )
 
@@ -299,3 +309,15 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "protocol_driver_double_barrel",
+    srcs = [
+        "protocol_driver_double_barrel.cc",
+    ],
+    hdrs = [
+        "protocol_driver_double_barrel.h",
+    ],
+    deps = [
+        ":protocol_driver_allocator_api",
+    ],
+)

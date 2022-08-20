@@ -127,6 +127,7 @@ class ProtocolDriver : public ProtocolDriverClient,
   virtual ~ProtocolDriver() {}
   virtual absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
                                   int* port) = 0;
+  virtual std::vector<TransportStat> GetTransportStats() = 0;
 
   // Misc interface ===========================================================
   virtual SimpleClock& GetClock();
