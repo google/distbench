@@ -98,7 +98,8 @@ cc_library(
         ":distbench_cc_proto",
         ":protocol_driver_api",
         ":protocol_driver_grpc",
-        ":protocol_driver_double_barrel"
+        ":protocol_driver_double_barrel",
+        ":composable_rpc_counter",
     ],
 )
 
@@ -316,6 +317,19 @@ cc_library(
     ],
     hdrs = [
         "protocol_driver_double_barrel.h",
+    ],
+    deps = [
+        ":protocol_driver_allocator_api",
+    ],
+)
+
+cc_library(
+    name = "composable_rpc_counter",
+    srcs = [
+        "composable_rpc_counter.cc",
+    ],
+    hdrs = [
+        "composable_rpc_counter.h",
     ],
     deps = [
         ":protocol_driver_allocator_api",
