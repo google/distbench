@@ -16,6 +16,7 @@
 
 #include "protocol_driver_grpc.h"
 #include "protocol_driver_double_barrel.h"
+#include "composable_rpc_counter.h"
 #include "glog/logging.h"
 
 namespace distbench {
@@ -45,6 +46,8 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     pd = std::make_unique<ProtocolDriverGrpc>();
   } else if (opts.protocol_name() == "double_barrel") {
     pd = std::make_unique<ProtocolDriverDoubleBarrel>(tree_depth);
+  } else if (opts.protocol_name() == "test_fixture") {
+    pd = std::make_unique<ComposableRpcCounter>(tree_depth);
   } else {
     if (alias_resolver_ == nullptr) {
       return absl::InvalidArgumentError(
