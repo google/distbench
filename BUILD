@@ -335,3 +335,21 @@ cc_library(
         ":protocol_driver_allocator_api",
     ],
 )
+
+cc_test(
+    name = "composable_protocol_driver_test",
+    size = "medium",
+    srcs = ["composable_protocol_driver_test.cc",
+        "gtest_utils.h"],
+    shard_count = 8,
+    deps = [
+        ":distbench_utils",
+        ":protocol_driver_allocator",
+        "@com_google_googletest//:gtest_main",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_benchmark//:benchmark",
+        "@com_github_google_glog//:glog"
+    ],
+)
+
+

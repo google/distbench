@@ -106,6 +106,12 @@ absl::Status SaveResultProtoToFile(
 absl::Status SaveResultProtoToFileBinary(
     const std::string& filename, const distbench::TestSequenceResults& result);
 
+void AddServerStringOptionTo(ProtocolDriverOptions& pdo,
+                             std::string option_name, std::string value);
+
+void AddClientStringOptionTo(ProtocolDriverOptions& pdo,
+                             std::string option_name, std::string value);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
