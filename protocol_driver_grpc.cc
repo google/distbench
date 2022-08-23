@@ -26,8 +26,7 @@ GrpcPollingClientDriver::~GrpcPollingClientDriver() { ShutdownClient(); }
 
 absl::Status GrpcPollingClientDriver::InitializeClient(
     const ProtocolDriverOptions& pd_opts) {
-  cq_poller_ =
-      std::thread(&GrpcPollingClientDriver::RpcCompletionThread, this);
+  cq_poller_ = std::thread(&GrpcPollingClientDriver::RpcCompletionThread, this);
   return absl::OkStatus();
 }
 
@@ -225,11 +224,11 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
   std::string client_type = GetNamedSettingString(
       pd_opts.client_settings(), "client_type", default_client_type);
   if (client_type == "polling") {
-    client_ = std::unique_ptr<ProtocolDriverClient>(
-        new GrpcPollingClientDriver());
+    client_ =
+        std::unique_ptr<ProtocolDriverClient>(new GrpcPollingClientDriver());
   } else if (client_type == "callback") {
-    client_ = std::unique_ptr<ProtocolDriverClient>(
-        new GrpcCallbackClientDriver());
+    client_ =
+        std::unique_ptr<ProtocolDriverClient>(new GrpcCallbackClientDriver());
   } else {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
@@ -246,14 +245,14 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
   std::string server_type = GetNamedSettingString(
       pd_opts.server_settings(), "server_type", default_server_type);
   if (server_type == "inline") {
-    server_ = std::unique_ptr<ProtocolDriverServer>(
-        new GrpcInlineServerDriver());
+    server_ =
+        std::unique_ptr<ProtocolDriverServer>(new GrpcInlineServerDriver());
   } else if (server_type == "handoff") {
-    server_ = std::unique_ptr<ProtocolDriverServer>(
-        new GrpcHandoffServerDriver());
+    server_ =
+        std::unique_ptr<ProtocolDriverServer>(new GrpcHandoffServerDriver());
   } else if (server_type == "polling") {
-    server_ = std::unique_ptr<ProtocolDriverServer>(
-        new GrpcPollingServerDriver());
+    server_ =
+        std::unique_ptr<ProtocolDriverServer>(new GrpcPollingServerDriver());
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
@@ -320,13 +319,9 @@ void ProtocolDriverGrpc::ShutdownServer() {
 }
 
 // Client =====================================================================
-GrpcCallbackClientDriver::GrpcCallbackClientDriver() {
-}
+GrpcCallbackClientDriver::GrpcCallbackClientDriver() {}
 
-GrpcCallbackClientDriver::
-    ~GrpcCallbackClientDriver() {
-  ShutdownClient();
-}
+GrpcCallbackClientDriver::~GrpcCallbackClientDriver() { ShutdownClient(); }
 
 absl::Status GrpcCallbackClientDriver::InitializeClient(
     const ProtocolDriverOptions& pd_opts) {
@@ -350,8 +345,7 @@ absl::Status GrpcCallbackClientDriver::HandleConnect(
   return absl::OkStatus();
 }
 
-std::vector<TransportStat>
-GrpcCallbackClientDriver::GetTransportStats() {
+std::vector<TransportStat> GrpcCallbackClientDriver::GetTransportStats() {
   return {};
 }
 
@@ -435,10 +429,8 @@ class TrafficServiceAsyncCallback
 };
 }  // anonymous namespace
 
-GrpcHandoffServerDriver::GrpcHandoffServerDriver() {
-}
-GrpcHandoffServerDriver::
-    ~GrpcHandoffServerDriver() {}
+GrpcHandoffServerDriver::GrpcHandoffServerDriver() {}
+GrpcHandoffServerDriver::~GrpcHandoffServerDriver() {}
 
 absl::Status GrpcHandoffServerDriver::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
@@ -476,8 +468,7 @@ void GrpcHandoffServerDriver::SetHandler(
       ->SetHandler(handler);
 }
 
-absl::StatusOr<std::string>
-GrpcHandoffServerDriver::HandlePreConnect(
+absl::StatusOr<std::string> GrpcHandoffServerDriver::HandlePreConnect(
     std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
   addr.set_ip_address(server_ip_address_.ip());
@@ -497,8 +488,7 @@ void GrpcHandoffServerDriver::ShutdownServer() {
   }
 }
 
-std::vector<TransportStat>
-GrpcHandoffServerDriver::GetTransportStats() {
+std::vector<TransportStat> GrpcHandoffServerDriver::GetTransportStats() {
   return {};
 }
 
@@ -526,8 +516,8 @@ class PollingRpcHandlerFsm {
   // DecRefAndMaybeDelete() is called from two places,
   // one of which will delete the PollingRpcHandlerFsm.
   void DecRefAndMaybeDelete() {
-    if (std::atomic_fetch_sub_explicit(
-          &refcnt_, 1, std::memory_order_relaxed) == 1) {
+    if (std::atomic_fetch_sub_explicit(&refcnt_, 1,
+                                       std::memory_order_relaxed) == 1) {
       delete this;
     }
   }
@@ -675,15 +665,13 @@ void GrpcPollingServerDriver::ShutdownServer() {
   }
 }
 
-std::vector<TransportStat>
-GrpcPollingServerDriver::GetTransportStats() {
+std::vector<TransportStat> GrpcPollingServerDriver::GetTransportStats() {
   return {};
 }
 
 void GrpcPollingServerDriver::HandleRpcs() {
-  new PollingRpcHandlerFsm(
-      traffic_async_service_.get(), server_cq_.get(), &handler_,
-      &thread_pool_);
+  new PollingRpcHandlerFsm(traffic_async_service_.get(), server_cq_.get(),
+                           &handler_, &thread_pool_);
   // Make sure the completion queue is nonempty before allowing Initialize
   // to return:
   handle_rpcs_started_.Notify();

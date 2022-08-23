@@ -15,10 +15,10 @@
 #include "distbench_node_manager.h"
 
 #include "distbench_utils.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "protocol_driver_allocator.h"
-#include "glog/logging.h"
 
 namespace distbench {
 
@@ -47,7 +47,8 @@ TEST(DistBenchNodeManager, InvalidProtocolName) {
   auto ret = nm.ConfigureNode(&context, &request, &response);
   ASSERT_FALSE(ret.ok());
   CHECK_EQ(ret.error_message(),
-           "AllocService failure: NOT_FOUND: Could not resolve protocol driver alias for invalid_protocol_name.");
+           "AllocService failure: NOT_FOUND: Could not resolve protocol driver "
+           "alias for invalid_protocol_name.");
 }
 
 TEST(DistBenchNodeManager, GrpcAlias) {
@@ -93,7 +94,8 @@ TEST(DistBenchNodeManager, AllocateProtocolDriverMaxDepth) {
   auto ret = nm.ConfigureNode(&context, &request, &response);
   ASSERT_FALSE(ret.ok());
   CHECK_EQ(ret.error_message(),
-           "AllocService failure: FAILED_PRECONDITION: Tree cannot be deeper than max depth of: 4.");
+           "AllocService failure: FAILED_PRECONDITION: Tree cannot be deeper "
+           "than max depth of: 4.");
 }
 
 }  // namespace distbench

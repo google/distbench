@@ -36,7 +36,8 @@ TEST(DistBenchEngineTest, Initialization) {
   DistributedSystemDescription desc;
   desc.add_services()->set_name("test_service");
   int driver_port = 0;
-  DistBenchEngine dbe(AllocateProtocolDriver(grpc_pd_opts(), &driver_port).value());
+  DistBenchEngine dbe(
+      AllocateProtocolDriver(grpc_pd_opts(), &driver_port).value());
   int engine_port = 0;
   ASSERT_OK(dbe.Initialize(desc, "test_service", 0, &engine_port));
 }

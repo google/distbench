@@ -21,20 +21,20 @@
 
 namespace distbench {
 
-absl::StatusOr<ProtocolDriverOptions>
-NodeManager::ResolveProtocolDriverAlias(const std::string& protocol_name) {
+absl::StatusOr<ProtocolDriverOptions> NodeManager::ResolveProtocolDriverAlias(
+    const std::string& protocol_name) {
   for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
     if (pd_opts_enum.name() == protocol_name) {
       return pd_opts_enum;
     }
   }
-  return absl::NotFoundError(
-      absl::StrCat("Could not resolve protocol driver alias for ", protocol_name, "."));
+  return absl::NotFoundError(absl::StrCat(
+      "Could not resolve protocol driver alias for ", protocol_name, "."));
 }
 
 NodeManager::NodeManager() {
-  auto func = [=](std::string protocol_name) -> absl::StatusOr<ProtocolDriverOptions>
-  {
+  auto func =
+      [=](std::string protocol_name) -> absl::StatusOr<ProtocolDriverOptions> {
     return ResolveProtocolDriverAlias(protocol_name);
   };
   SetProtocolDriverAliasResolver(func);
@@ -125,9 +125,9 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   if (!maybe_pd.ok()) return maybe_pd.status();
 
   auto engine = std::make_unique<DistBenchEngine>(std::move(maybe_pd.value()));
-  absl::Status ret = engine->Initialize(
-      traffic_config_, service_opts.service_type,
-      service_opts.service_instance, service_opts.port);
+  absl::Status ret =
+      engine->Initialize(traffic_config_, service_opts.service_type,
+                         service_opts.service_instance, service_opts.port);
   if (!ret.ok()) return ret;
 
   service_engines_[std::string(service_opts.service_name)] = std::move(engine);

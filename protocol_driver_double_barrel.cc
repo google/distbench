@@ -14,11 +14,11 @@
 
 #include "protocol_driver_double_barrel.h"
 
-#include "protocol_driver_allocator.h"
 #include "absl/base/internal/sysinfo.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 #include "google/protobuf/repeated_field.h"
+#include "protocol_driver_allocator.h"
 
 namespace distbench {
 
@@ -29,25 +29,26 @@ ProtocolDriverDoubleBarrel::ProtocolDriverDoubleBarrel(int tree_depth) {
 
 absl::Status ProtocolDriverDoubleBarrel::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
-
   auto pdo = pd_opts;
   auto server_settings = pdo.mutable_server_settings();
   google::protobuf::RepeatedPtrField<NamedSetting>::iterator
       next_protocol_driver_it = server_settings->end();
-  for (auto it=server_settings->begin(); it!=server_settings->end(); it++) {
-      if (it->name()=="next_protocol_driver") {
-        next_protocol_driver_it = it;
-        pdo.set_protocol_name(it->string_value());
-      }
+  for (auto it = server_settings->begin(); it != server_settings->end(); it++) {
+    if (it->name() == "next_protocol_driver") {
+      next_protocol_driver_it = it;
+      pdo.set_protocol_name(it->string_value());
+    }
   }
   if (next_protocol_driver_it != server_settings->end())
     server_settings->erase(next_protocol_driver_it);
 
-  auto maybe_instance_1 = AllocateProtocolDriver(pdo, &port_1_, tree_depth_+1);
+  auto maybe_instance_1 =
+      AllocateProtocolDriver(pdo, &port_1_, tree_depth_ + 1);
   if (!maybe_instance_1.ok()) return maybe_instance_1.status();
   instance_1_ = std::move(maybe_instance_1.value());
 
-  auto maybe_instance_2 = AllocateProtocolDriver(pdo, &port_2_, tree_depth_+1);
+  auto maybe_instance_2 =
+      AllocateProtocolDriver(pdo, &port_2_, tree_depth_ + 1);
   if (!maybe_instance_2.ok()) return maybe_instance_2.status();
   instance_2_ = std::move(maybe_instance_2.value());
 
@@ -56,12 +57,14 @@ absl::Status ProtocolDriverDoubleBarrel::Initialize(
 
 absl::Status ProtocolDriverDoubleBarrel::InitializeClient(
     const ProtocolDriverOptions& pd_opts) {
-  return absl::UnimplementedError("InitializeClient is not implemented for double_barrel.");
+  return absl::UnimplementedError(
+      "InitializeClient is not implemented for double_barrel.");
 }
 
 absl::Status ProtocolDriverDoubleBarrel::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
-  return absl::UnimplementedError("InitializeServer is not implemented for double_barrel.");
+  return absl::UnimplementedError(
+      "InitializeServer is not implemented for double_barrel.");
 }
 
 void ProtocolDriverDoubleBarrel::SetHandler(
@@ -75,8 +78,7 @@ void ProtocolDriverDoubleBarrel::SetNumPeers(int num_peers) {
   instance_2_->SetNumPeers(num_peers);
 }
 
-ProtocolDriverDoubleBarrel::~ProtocolDriverDoubleBarrel() {
-}
+ProtocolDriverDoubleBarrel::~ProtocolDriverDoubleBarrel() {}
 
 absl::StatusOr<std::string> ProtocolDriverDoubleBarrel::HandlePreConnect(
     std::string_view remote_connection_info, int peer) {
@@ -101,28 +103,28 @@ std::vector<TransportStat> ProtocolDriverDoubleBarrel::GetTransportStats() {
   std::vector<TransportStat> transport_stats;
 
   std::string prefix = "";
-  auto add_prefix = [&](TransportStat& ts) {
-    ts.name.insert(0, prefix);
-  };
+  auto add_prefix = [&](TransportStat& ts) { ts.name.insert(0, prefix); };
 
   prefix = "instance_1/";
   auto instance_1_stats = instance_1_->GetTransportStats();
   std::for_each(instance_1_stats.begin(), instance_1_stats.end(), add_prefix);
-  transport_stats.insert(transport_stats.end(),
-                         instance_1_stats.begin(), instance_1_stats.end());
+  transport_stats.insert(transport_stats.end(), instance_1_stats.begin(),
+                         instance_1_stats.end());
 
   prefix = "instance_2/";
   auto instance_2_stats = instance_2_->GetTransportStats();
   std::for_each(instance_2_stats.begin(), instance_2_stats.end(), add_prefix);
-  transport_stats.insert(transport_stats.end(),
-                         instance_2_stats.begin(), instance_2_stats.end());
+  transport_stats.insert(transport_stats.end(), instance_2_stats.begin(),
+                         instance_2_stats.end());
 
   return transport_stats;
 }
 
-void ProtocolDriverDoubleBarrel::InitiateRpc(int peer_index, ClientRpcState* state,
-                                     std::function<void(void)> done_callback) {
-  if (0x1 & std::atomic_fetch_add_explicit(&use_instance_1_, 1, std::memory_order_relaxed)) {
+void ProtocolDriverDoubleBarrel::InitiateRpc(
+    int peer_index, ClientRpcState* state,
+    std::function<void(void)> done_callback) {
+  if (0x1 & std::atomic_fetch_add_explicit(&use_instance_1_, 1,
+                                           std::memory_order_relaxed)) {
     instance_1_->InitiateRpc(peer_index, state, done_callback);
   } else {
     instance_2_->InitiateRpc(peer_index, state, done_callback);
