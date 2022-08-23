@@ -25,8 +25,10 @@ class ProtocolDriverTest
     : public testing::TestWithParam<ProtocolDriverOptions> {};
 
 TEST_P(ProtocolDriverTest, Allocate) {
+  ProtocolDriverOptions pdo = GetParam();
   int port = 0;
-  auto pd = AllocateProtocolDriver(GetParam(), &port).value();
+  auto maybe_pd = AllocateProtocolDriver(pdo, &port);
+  ASSERT_OK(maybe_pd.status());
 }
 
 TEST_P(ProtocolDriverTest, SetNumPeers) {
