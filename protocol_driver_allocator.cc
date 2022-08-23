@@ -14,31 +14,32 @@
 
 #include "protocol_driver_allocator.h"
 
-#include "protocol_driver_grpc.h"
-#include "protocol_driver_double_barrel.h"
 #include "composable_rpc_counter.h"
 #include "glog/logging.h"
+#include "protocol_driver_double_barrel.h"
+#include "protocol_driver_grpc.h"
 
 namespace distbench {
 
 int max_protocol_driver_tree_depth_ = 4;
 
-std::function<absl::StatusOr<ProtocolDriverOptions>(
-    const std::string&)>
+std::function<absl::StatusOr<ProtocolDriverOptions>(const std::string&)>
     alias_resolver_;
 
-void SetProtocolDriverAliasResolver(std::function<absl::StatusOr<ProtocolDriverOptions>(
-    const std::string&)> alias_resolver) {
+void SetProtocolDriverAliasResolver(
+    std::function<absl::StatusOr<ProtocolDriverOptions>(const std::string&)>
+        alias_resolver) {
   alias_resolver_ = alias_resolver;
 }
 
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     ProtocolDriverOptions opts, int* port, int tree_depth) {
-  LOG(INFO) << "AllocateProtocolDriver called with protocol_name: '"<< opts.protocol_name() << "'";
+  LOG(INFO) << "AllocateProtocolDriver called with protocol_name: '"
+            << opts.protocol_name() << "'";
   if (tree_depth == max_protocol_driver_tree_depth_) {
     return absl::FailedPreconditionError(
-      absl::StrCat("Tree cannot be deeper than max depth of: ",
-                   max_protocol_driver_tree_depth_, "."));
+        absl::StrCat("Tree cannot be deeper than max depth of: ",
+                     max_protocol_driver_tree_depth_, "."));
   }
   std::unique_ptr<ProtocolDriver> pd;
   if (opts.protocol_name() == "grpc" ||
@@ -51,12 +52,12 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
   } else {
     if (alias_resolver_ == nullptr) {
       return absl::InvalidArgumentError(
-        "Protocol driver alias resolver function is not set.");
+          "Protocol driver alias resolver function is not set.");
     }
     auto maybe_resolved_opts = alias_resolver_(opts.protocol_name());
     if (!maybe_resolved_opts.ok()) return maybe_resolved_opts.status();
     opts = maybe_resolved_opts.value();
-    auto maybe_pd = AllocateProtocolDriver(opts, port, tree_depth+1);
+    auto maybe_pd = AllocateProtocolDriver(opts, port, tree_depth + 1);
     if (!maybe_pd.ok()) return maybe_pd.status();
     pd = std::move(maybe_pd.value());
   }
