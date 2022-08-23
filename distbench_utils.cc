@@ -432,4 +432,18 @@ absl::Status SaveResultProtoToFileBinary(
   return absl::OkStatus();
 }
 
+void AddServerStringOptionTo(ProtocolDriverOptions& pdo,
+                             std::string option_name, std::string value) {
+  auto* ns = pdo.add_server_settings();
+  ns->set_name(option_name);
+  ns->set_string_value(value);
+}
+
+void AddClientStringOptionTo(ProtocolDriverOptions& pdo,
+                             std::string option_name, std::string value) {
+  auto* ns = pdo.add_client_settings();
+  ns->set_name(option_name);
+  ns->set_string_value(value);
+}
+
 }  // namespace distbench

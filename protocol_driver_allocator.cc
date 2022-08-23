@@ -46,7 +46,7 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     pd = std::make_unique<ProtocolDriverGrpc>();
   } else if (opts.protocol_name() == "double_barrel") {
     pd = std::make_unique<ProtocolDriverDoubleBarrel>(tree_depth);
-  } else if (opts.protocol_name() == "test_fixture") {
+  } else if (opts.protocol_name() == "composable_rpc_counter") {
     pd = std::make_unique<ComposableRpcCounter>(tree_depth);
   } else {
     if (alias_resolver_ == nullptr) {

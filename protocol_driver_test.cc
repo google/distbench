@@ -115,19 +115,6 @@ TEST_P(ProtocolDriverTest, Invoke) {
   }
   pd->ShutdownClient();
 
-  if (pdo.protocol_name() == "double_barrel") {
-    std::map<std::string, int> expected_transport_stats = {
-      {"instance_1/client_rpc_cnt", kNumIterations/2},
-      {"instance_1/server_rpc_cnt", kNumIterations},
-      {"instance_2/client_rpc_cnt", kNumIterations/2},
-      {"instance_2/server_rpc_cnt", 0}
-    };
-    auto transport_stats = pd->GetTransportStats();
-    EXPECT_EQ(transport_stats.size(), 4);
-    for (const auto& stat: transport_stats) {
-      EXPECT_EQ(stat.value, expected_transport_stats[stat.name]);
-    }
-  }
   EXPECT_EQ(server_rpc_count, kNumIterations);
   EXPECT_EQ(client_rpc_count, kNumIterations);
 }
@@ -246,20 +233,6 @@ void Echo(benchmark::State& state, ProtocolDriverOptions opts) {
   }
 }
 
-void AddServerStringOptionTo(ProtocolDriverOptions& pdo,
-                             std::string option_name, std::string value) {
-  auto* ns = pdo.add_server_settings();
-  ns->set_name(option_name);
-  ns->set_string_value(value);
-}
-
-void AddClientStringOptionTo(ProtocolDriverOptions& pdo,
-                             std::string option_name, std::string value) {
-  auto* ns = pdo.add_client_settings();
-  ns->set_name(option_name);
-  ns->set_string_value(value);
-}
-
 ProtocolDriverOptions GrpcOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
@@ -277,8 +250,7 @@ ProtocolDriverOptions DoubleBarrelGrpc() {
   pdo.set_protocol_name("double_barrel");
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "inline");
-  AddServerStringOptionTo(pdo, "next_protocol_driver", "test_fixture");
-  AddServerStringOptionTo(pdo, "driver_under_test", "grpc");
+  AddServerStringOptionTo(pdo, "next_protocol_driver", "grpc");
   return pdo;
 }
 
