@@ -581,22 +581,6 @@ class PollingRpcHandlerFsm {
 };
 }  // anonymous namespace
 
-// Server =====================================================================
-namespace {
-class TrafficAsyncServiceCq : public Traffic::AsyncService {
- public:
-  ~TrafficAsyncServiceCq() override {}
-
-  void SetHandler(
-      std::function<std::function<void()>(ServerRpcState* state)> handler) {
-    handler_ = handler;
-  }
-
- private:
-  std::function<std::function<void()>(ServerRpcState* state)> handler_;
-};
-
-}  // anonymous namespace
 GrpcPollingServerDriver::GrpcPollingServerDriver()
     : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
 
@@ -609,7 +593,7 @@ absl::Status GrpcPollingServerDriver::InitializeServer(
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  traffic_async_service_ = absl::make_unique<TrafficAsyncServiceCq>();
+  traffic_async_service_ = absl::make_unique<Traffic::AsyncService>();
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -637,8 +621,6 @@ absl::Status GrpcPollingServerDriver::InitializeServer(
 
 void GrpcPollingServerDriver::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
-  static_cast<TrafficAsyncServiceCq*>(traffic_async_service_.get())
-      ->SetHandler(handler);
   handler_ = handler;
 }
 
