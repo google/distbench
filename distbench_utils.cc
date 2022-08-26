@@ -85,9 +85,19 @@ void InitLibs(const char* argv0) {
 absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
                                                    int ip_version) {
   if (ip_version == 4) {
-    return GetBestAddress(true, netdev);
+    auto res = GetBestAddress(true, netdev);
+    if (res.ok() && !res.value().isIPv4()) {
+      return absl::NotFoundError(
+          absl::StrCat("No IPv4 address found for netdev '", netdev, "'"));
+    }
+    return res;
   } else if (ip_version == 6) {
-    return GetBestAddress(false, netdev);
+    auto res = GetBestAddress(false, netdev);
+    if (res.ok() && res.value().isIPv4()) {
+      return absl::NotFoundError(
+          absl::StrCat("No IPv6 address found for netdev '", netdev, "'"));
+    }
+    return res;
   } else {
     return GetBestAddress(use_ipv4_first, netdev);
   }
