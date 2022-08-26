@@ -205,6 +205,7 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   DistbenchThreadpool thread_pool_;
   absl::Notification server_shutdown_detected_;
   absl::Notification handle_rpcs_started_;
+  absl::Notification handler_set_;
 };
 
 }  // namespace distbench
