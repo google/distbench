@@ -17,14 +17,13 @@
 #include "absl/base/internal/sysinfo.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
+
+#if USE_HOMA
 #include "homa_client.h"
 #include "homa_listener.h"
+#endif
 
-// All these defines belong in the BUILD file.
-#define USE_HOMA 1
-#if USE_HOMA
-#define DEFAULT_TRANSPORT "homa"
-#else
+#ifndef DEFAULT_TRANSPORT
 #define DEFAULT_TRANSPORT "tcp"
 #endif
 
@@ -35,7 +34,7 @@ namespace {
 std::shared_ptr<grpc::Channel> CreateClientChannel(
     const std::string& socket_address, std::string_view transport) {
   if (transport == "homa") {
-#ifdef USE_HOMA
+#if USE_HOMA
     return HomaClient::createInsecureChannel(socket_address.data());
 #else
     return {};
@@ -50,7 +49,7 @@ std::shared_ptr<grpc::Channel> CreateClientChannel(
 std::shared_ptr<grpc::ServerCredentials> CreateServerCreds(
     std::string_view transport) {
   if (transport == "homa") {
-#ifdef USE_HOMA
+#if USE_HOMA
     return HomaListener::insecureCredentials();
 #else
     return {};
