@@ -12,10 +12,31 @@ bool_flag(
     build_setting_default = False
 )
 
+bool_flag(
+    name = "with-homa",
+    build_setting_default = False
+)
+
+bool_flag(
+    name = "with-homa-default",
+    build_setting_default = False
+)
+
 config_setting(
     name = "with_mercury",
     flag_values = {":with-mercury": 'True'}
 )
+
+config_setting(
+    name = "with_homa",
+    flag_values = {":with-homa": 'True'}
+)
+
+config_setting(
+    name = "with_homa_default",
+    flag_values = {":with-homa-default": 'True'}
+)
+
 
 cc_library(
     name = "distbench_netutils",
@@ -146,8 +167,18 @@ cc_library(
         ":distbench_utils",
         ":protocol_driver_api",
         "@com_github_grpc_grpc//:grpc++",
-        "@grpc_homa//:homa_lib",
-    ],
+    ]
+    + select({
+        "with_homa": ["@grpc_homa//:homa_lib", ],
+        "//conditions:default": []
+    }),
+    copts = select({
+        ":with_homa": ["-DUSE_HOMA=1"],
+        "//conditions:default": []
+    }) + select({
+        ":with_homa_default": ["-DDEFAULT_TRANSPORT=\\\"homa\\\""],
+        "//conditions:default": []
+    })
 )
 
 cc_library(
