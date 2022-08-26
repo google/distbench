@@ -333,6 +333,10 @@ hg_return_t ProtocolDriverMercury::RpcServerCallback(hg_handle_t handle) {
 
 hg_return_t ProtocolDriverMercury::StaticRpcServerDoneCallback(
     const struct hg_cb_info* hg_cb_info) {
+  if (hg_cb_info->ret != HG_SUCCESS) {
+    LOG(ERROR) << "StaticRpcServerDoneCallback with non success ret=" <<
+              hg_cb_info->ret;
+  }
   mercury_generic_rpc_string_t* result =
       (mercury_generic_rpc_string_t*)hg_cb_info->arg;
   delete result;
