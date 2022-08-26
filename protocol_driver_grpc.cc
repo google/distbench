@@ -198,7 +198,10 @@ absl::StatusOr<std::string> GrpcInlineServerDriver::HandlePreConnect(
 void GrpcInlineServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
-void GrpcInlineServerDriver::ShutdownServer() { server_->Shutdown(); }
+void GrpcInlineServerDriver::ShutdownServer() {
+  if (server_)
+    server_->Shutdown();
+}
 
 std::vector<TransportStat> GrpcInlineServerDriver::GetTransportStats() {
   return {};
@@ -639,7 +642,9 @@ void GrpcPollingServerDriver::ShutdownServer() {
     server_->Shutdown();
     server_shutdown_detected_.WaitForNotification();
   }
-  server_cq_->Shutdown();
+  if (server_cq_) {
+    server_cq_->Shutdown();
+  }
   if (handle_rpcs_ && handle_rpcs_->joinable()) {
     handle_rpcs_->join();
   }
