@@ -82,8 +82,15 @@ void InitLibs(const char* argv0) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
-absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev) {
-  return GetBestAddress(use_ipv4_first, netdev);
+absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
+                                                   int ip_version) {
+  if (ip_version == 4) {
+    return GetBestAddress(true, netdev);
+  } else if (ip_version == 6) {
+    return GetBestAddress(false, netdev);
+  } else {
+    return GetBestAddress(use_ipv4_first, netdev);
+  }
 }
 
 absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
