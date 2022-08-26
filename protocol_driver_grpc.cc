@@ -584,7 +584,7 @@ class PollingRpcHandlerFsm {
 GrpcPollingServerDriver::GrpcPollingServerDriver()
     : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
 
-GrpcPollingServerDriver::~GrpcPollingServerDriver() {}
+GrpcPollingServerDriver::~GrpcPollingServerDriver() { ShutdownServer(); }
 
 absl::Status GrpcPollingServerDriver::InitializeServer(
     const ProtocolDriverOptions& pd_opts, int* port) {
@@ -622,6 +622,7 @@ absl::Status GrpcPollingServerDriver::InitializeServer(
 void GrpcPollingServerDriver::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   handler_ = handler;
+  handler_set_.Notify();
 }
 
 absl::StatusOr<std::string> GrpcPollingServerDriver::HandlePreConnect(
@@ -639,6 +640,7 @@ void GrpcPollingServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
 void GrpcPollingServerDriver::ShutdownServer() {
+  if (!handler_set_.HasBeenNotified()) handler_set_.Notify();
   if (server_) {
     server_->Shutdown();
     server_shutdown_detected_.WaitForNotification();
@@ -662,6 +664,7 @@ void GrpcPollingServerDriver::HandleRpcs() {
   void* tag;
   bool ok;
   bool post_new_handler = true;
+  handler_set_.WaitForNotification();
   while (server_cq_->Next(&tag, &ok)) {
     PollingRpcHandlerFsm* rpc_fsm = static_cast<PollingRpcHandlerFsm*>(tag);
     if (!ok) {
