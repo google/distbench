@@ -34,8 +34,6 @@ void SetProtocolDriverAliasResolver(
 
 absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     ProtocolDriverOptions opts, int* port, int tree_depth) {
-  LOG(INFO) << "AllocateProtocolDriver called with protocol_name: '"
-            << opts.protocol_name() << "'";
   if (tree_depth == max_protocol_driver_tree_depth_) {
     return absl::FailedPreconditionError(
         absl::StrCat("Tree cannot be deeper than max depth of: ",
@@ -57,9 +55,7 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     auto maybe_resolved_opts = alias_resolver_(opts.protocol_name());
     if (!maybe_resolved_opts.ok()) return maybe_resolved_opts.status();
     opts = maybe_resolved_opts.value();
-    auto maybe_pd = AllocateProtocolDriver(opts, port, tree_depth + 1);
-    if (!maybe_pd.ok()) return maybe_pd.status();
-    pd = std::move(maybe_pd.value());
+    return AllocateProtocolDriver(opts, port, tree_depth + 1);
   }
   absl::Status ret = pd->Initialize(opts, port);
   if (!ret.ok()) {
