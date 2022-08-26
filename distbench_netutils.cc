@@ -118,9 +118,6 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(bool prefer_ipv4,
         "No address found for any netdev (prefer_ipv4=", prefer_ipv4, ")"));
   }
 
-  LOG(WARNING) << "Using " << best_match.ToString() << " for netdev " << netdev
-               << " (score=" << score << ", prefer_ipv4=" << prefer_ipv4 << ")";
-
   return best_match;
 }
 

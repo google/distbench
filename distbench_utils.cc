@@ -215,25 +215,21 @@ void ApplyServerSettingsToGrpcBuilder(grpc::ServerBuilder* builder,
                                       const ProtocolDriverOptions& pd_opts) {
   for (const auto& setting : pd_opts.server_settings()) {
     if (!setting.has_name()) {
-      LOG(INFO) << "ProtocolDriverOptions NamedSetting has no name !";
+      LOG(ERROR) << "ProtocolDriverOptions NamedSetting has no name !";
       continue;
     }
     const auto& name = setting.name();
     if (setting.has_string_value()) {
-      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name
-                << "]=" << setting.string_value();
       builder->AddChannelArgument(name, setting.string_value());
       continue;
     }
     if (setting.has_int64_value()) {
-      LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name
-                << "]=" << setting.int64_value();
       builder->AddChannelArgument(name, setting.int64_value());
       continue;
     }
 
-    LOG(INFO) << "ProtocolDriverOptions.NamedSetting[" << name << "]"
-              << " not setting found (str or int)!";
+    LOG(ERROR) << "ProtocolDriverOptions.NamedSetting[" << name << "]"
+               << " no setting found (str or int)!";
   }
 }
 
