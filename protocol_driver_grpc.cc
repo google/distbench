@@ -176,7 +176,6 @@ absl::Status GrpcInlineServerDriver::InitializeServer(
     return absl::UnknownError("Grpc Traffic service failed to start");
   }
 
-  LOG(INFO) << "Grpc Traffic server listening on " << server_socket_address_;
   return absl::OkStatus();
 }
 
@@ -233,7 +232,6 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
   }
-  LOG(INFO) << "Grpc Client Type: " << client_type;
   return client_->InitializeClient(pd_opts);
 }
 
@@ -256,7 +254,6 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
-  LOG(INFO) << "Grpc Server Type: " << server_type;
   return server_->InitializeServer(pd_opts, port);
 }
 
@@ -457,8 +454,6 @@ absl::Status GrpcHandoffServerDriver::InitializeServer(
         "Grpc Async Callback Traffic service failed to start");
   }
 
-  LOG(INFO) << "Grpc Async Callback Traffic server listening on "
-            << server_socket_address_;
   return absl::OkStatus();
 }
 
@@ -611,7 +606,6 @@ absl::Status GrpcPollingServerDriver::InitializeServer(
     return absl::UnknownError("Grpc Traffic service failed to start");
   }
 
-  LOG(INFO) << "Grpc Traffic server listening on " << server_socket_address_;
   // Proceed to the server's main loop.
   handle_rpcs_ = absl::make_unique<std::thread>(
       &GrpcPollingServerDriver::HandleRpcs, this);
