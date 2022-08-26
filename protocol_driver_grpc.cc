@@ -639,10 +639,12 @@ void GrpcPollingServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
 void GrpcPollingServerDriver::ShutdownServer() {
-  server_->Shutdown();
-  server_shutdown_detected_.WaitForNotification();
+  if (server_) {
+    server_->Shutdown();
+    server_shutdown_detected_.WaitForNotification();
+  }
   server_cq_->Shutdown();
-  if (handle_rpcs_->joinable()) {
+  if (handle_rpcs_ && handle_rpcs_->joinable()) {
     handle_rpcs_->join();
   }
 }
