@@ -96,8 +96,9 @@ absl::Status ProtocolDriverMercury::Initialize(
 
   PrintMercuryVersion();
   LOG(INFO) << "Mercury Traffic server listening on " << server_socket_address_;
-  progress_thread_ =
-      std::thread(&ProtocolDriverMercury::RpcCompletionThread, this);
+  progress_thread_ = RunRegisteredThread("MercuryProgress", [=]() {
+    this->RpcCompletionThread();
+  });
   return absl::OkStatus();
 }
 
