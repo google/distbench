@@ -7,6 +7,8 @@ cc_library(
     deps = [":libfabric_static"],
     linkopts = [
         "-lm",
+        "-lnuma",
+        "-luuid",
         "-lpthread",
         "-lrt",
         "-ldl",
