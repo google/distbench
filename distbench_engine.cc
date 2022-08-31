@@ -678,7 +678,6 @@ void DistBenchEngine::RunActionList(int list_index,
           next_iteration_time = s.state_table[i].next_iteration_time;
         }
         done = false;
-        break;
       }
     }
     if (done) break;
