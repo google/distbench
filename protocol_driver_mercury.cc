@@ -306,6 +306,10 @@ hg_return_t ProtocolDriverMercury::RpcServerCallback(hg_handle_t handle) {
   if (hg_ret != HG_SUCCESS) {
     LOG(ERROR) << "HG_Free_input: failed";
   }
+  hg_ret = HG_Destroy(handle);
+  if (hg_ret != HG_SUCCESS) {
+    LOG(ERROR) << "HG_Destroy: failed";
+  }
 
   rpc_state->request = request;
   rpc_state->SetSendResponseFunction([rpc_state, handle]() {
