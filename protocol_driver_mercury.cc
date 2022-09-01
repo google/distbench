@@ -36,7 +36,7 @@ ProtocolDriverMercury::ProtocolDriverMercury() {}
 absl::Status ProtocolDriverMercury::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
-  auto maybe_ip = IpAddressForDevice(netdev_name);
+  auto maybe_ip = IpAddressForDevice(netdev_name, 4);
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
@@ -49,9 +49,9 @@ absl::Status ProtocolDriverMercury::Initialize(
   // TODO: Choosen interface does not seem respected
   std::string info_string =
       GetNamedSettingString(pd_opts.server_settings(), "hg_init_info_string",
-                            "ofi+tcp://__SERVER_IP__");
+                            "tcp://__SERVER_IP__");
   info_string = absl::StrReplaceAll(
-      info_string, {{"__SERVER_IP__", server_ip_address_.ToStringForURI()}});
+      info_string, {{"__SERVER_IP__", server_socket_address_}});
   hg_class_ = HG_Init(info_string.c_str(), /*listen=*/NA_TRUE);
   if (hg_class_ == nullptr) {
     return absl::UnknownError("HG_Init: failed");
