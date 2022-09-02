@@ -219,6 +219,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
       std::shared_ptr<ActionIterationState> iteration_state);
   std::vector<int> PickRpcFanoutTargets(ActionState* action_state);
 
+  int WasteCpuCycles();
+  void AddActivityLogs(ServicePerformanceLog* log);
+
   std::unique_ptr<SimulatedClientRpc[]> client_rpc_table_;
   std::vector<SimulatedServerRpc> server_rpc_table_;
   std::vector<ActionListTableEntry> action_lists_;
@@ -255,10 +258,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
 
-  // Activity for wasting cpu cycles.
-  int WasteCpuCycles();
-  int GetWasteCpuFuncCnt();
-  std::atomic<int64_t> cpu_waste_func_cnt_ = 0;
+  // Activity related variables.
+  std::atomic<int64_t> cpu_waste_iteration_cnt_ = 0;
 };
 
 }  // namespace distbench
