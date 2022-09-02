@@ -268,6 +268,11 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.actionlist_index = it4->second;
       } else if (action.proto.has_activity_name()) {
+        if (action.proto.activity_name() != "waste_cpu_cycles") {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Invalid activity name: ", action.proto.activity_name(),
+              " provided."));
+        }
         LOG(INFO) << "Activity_name is: " << action.proto.activity_name();
       } else {
         return absl::InvalidArgumentError(
@@ -558,10 +563,10 @@ void DistBenchEngine::FinishTraffic() {
 
 void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* log) {
   auto& activity_log =
-      (*log->mutable_activity_logs())[std::string("Activity_Cpu_Waste_Cycles")];
+      (*log->mutable_activity_logs())[std::string("WasteCpuCycles")];
   auto activity_metric = activity_log.add_activity_metrics();
-  activity_metric->set_name("cpu_waste_iteration_cnt");
-  activity_metric->set_value_int(cpu_waste_iteration_cnt_);
+  activity_metric->set_name("waste_cpu_iteration_cnt");
+  activity_metric->set_value_int(waste_cpu_iteration_cnt_);
 }
 
 ServicePerformanceLog DistBenchEngine::GetLogs() {
@@ -907,6 +912,7 @@ int DistBenchEngine::WasteCpuCycles() {
   // TODO:
   // 1. Move this function to an activity library.
   // 2. Remove #include <bits/stdc++.h> above.
+  // 3. Get the size of 'v' from config proto.
   std::vector<int> v(2000, 0);
   int sum = 0;
   srand(time(0));
@@ -957,13 +963,12 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
         };
   } else if (action.proto.has_activity_name()) {
     // TODO:
-    // Currently we have only one activity.
-    // While adding more activities, move this to a new function
-    // that shall launch the activities.
+    // Currently we have only one activity. In future,
+    // make a map of activity_name to function.
     action_state->iteration_function =
         [this](std::shared_ptr<ActionIterationState> iteration_state) {
           WasteCpuCycles();
-          std::atomic_fetch_add_explicit(&cpu_waste_iteration_cnt_, 1,
+          std::atomic_fetch_add_explicit(&waste_cpu_iteration_cnt_, 1,
                                          std::memory_order_relaxed);
           FinishIteration(iteration_state);
         };

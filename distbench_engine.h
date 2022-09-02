@@ -222,6 +222,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   int WasteCpuCycles();
   void AddActivityLogs(ServicePerformanceLog* log);
 
+  std::atomic<int64_t> waste_cpu_iteration_cnt_ = 0;
+
   std::unique_ptr<SimulatedClientRpc[]> client_rpc_table_;
   std::vector<SimulatedServerRpc> server_rpc_table_;
   std::vector<ActionListTableEntry> action_lists_;
@@ -257,9 +259,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::BitGen random_generator;
 
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
-
-  // Activity related variables.
-  std::atomic<int64_t> cpu_waste_iteration_cnt_ = 0;
 };
 
 }  // namespace distbench
