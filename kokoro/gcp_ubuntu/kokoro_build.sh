@@ -73,6 +73,7 @@ time {
 function install_clang_and_check_file_formatting() {
   sudo apt install clang-format
   which clang-format
+  clang-format -i -style=file distbench_engine.cc
   echo "$(pwd)"
   echo "$(ls)"
   echo "$(cat Makefile)"
