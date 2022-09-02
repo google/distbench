@@ -443,7 +443,8 @@ TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationMercury) {
 }
 #endif
 
-TestSequence GetCliqueTestSequence(int nb_cliques, bool use_antagonism) {
+TestSequence GetCliqueTestSequence(int nb_cliques, bool use_activity,
+                                   std::string activity_name = "") {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
 
@@ -459,7 +460,7 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool use_antagonism) {
   auto* l1 = test->add_action_lists();
   l1->set_name("clique");
   l1->add_action_names("clique_queries");
-  if (use_antagonism) l1->add_action_names("antagonism");
+  if (use_activity) l1->add_action_names("antagonism");
 
   auto a1 = test->add_actions();
   a1->set_name("clique_queries");
@@ -468,10 +469,10 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool use_antagonism) {
   a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
   a1->set_rpc_name("clique_query");
 
-  if (use_antagonism) {
+  if (use_activity) {
     auto a2 = test->add_actions();
     a2->set_name("antagonism");
-    a2->set_activity_name("waste_cpu_cycles");
+    a2->set_activity_name(activity_name);
     a2->mutable_iterations()->set_max_duration_us(2'000'000);
   }
 
@@ -505,46 +506,6 @@ void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
       }
     }
   }
-}
-
-TEST(DistBenchTestSequencer, CliqueAntagonistTest) {
-  int nb_cliques = 2;
-
-  DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
-
-  auto test_sequence = GetCliqueTestSequence(nb_cliques, true);
-
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
-
-  CheckCpuWasteIterationCnt(results, false);
-
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
-
-  const auto& log_summary = test_results.log_summary();
-  const auto& latency_summary = log_summary[1];
-  size_t pos = latency_summary.find("N: ") + 3;
-  ASSERT_NE(pos, std::string::npos);
-  const std::string N_value = latency_summary.substr(pos);
-
-  std::string N_value2 = N_value.substr(0, N_value.find(' '));
-  int N;
-  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
-  int min = 624 * (nb_cliques * (nb_cliques - 1));
-  int max = 626 * (nb_cliques * (nb_cliques - 1));
-  ASSERT_LE(N, max);
-  ASSERT_GE(N, min);
-
-  ASSERT_EQ(test_results.service_logs().instance_logs_size(), nb_cliques);
-  const auto& instance_results_it =
-      test_results.service_logs().instance_logs().find("clique/0");
-  ASSERT_NE(instance_results_it,
-            test_results.service_logs().instance_logs().end());
 }
 
 TEST(DistBenchTestSequencer, CliqueTest) {
@@ -585,6 +546,65 @@ TEST(DistBenchTestSequencer, CliqueTest) {
       test_results.service_logs().instance_logs().find("clique/0");
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
+}
+
+TEST(DistBenchTestSequencer, CliqueAntagonistTest) {
+  int nb_cliques = 3;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  auto test_sequence =
+      GetCliqueTestSequence(nb_cliques, true, "waste_cpu_cycles");
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  CheckCpuWasteIterationCnt(results, false);
+
+  // The remainder of this test checks the same
+  // things as CliqueTest.
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  int min = 624 * (nb_cliques * (nb_cliques - 1));
+  int max = 626 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_LE(N, max);
+  ASSERT_GE(N, min);
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), nb_cliques);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+}
+
+TEST(DistBenchTestSequencer, WrongActivityName) {
+  int nb_cliques = 3;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  auto test_sequence =
+      GetCliqueTestSequence(nb_cliques, true, "unknown_activity");
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_EQ(status.error_code(), grpc::ABORTED);
 }
 
 TEST(DistBenchTestSequencer, StochasticTest) {
