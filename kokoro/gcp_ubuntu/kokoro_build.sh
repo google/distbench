@@ -70,7 +70,8 @@ time {
   run_with_retries update_gcc
 }
 
-function check_file_formatting() {
+function install_clang_and_check_file_formatting() {
+  sudo apt install clang-format
   echo "$(pwd)"
   echo "$(ls)"
   echo "$(cat Makefile)"
@@ -104,7 +105,7 @@ cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
 echo
 echo Checking file formatting
 echo
-check_file_formatting
+install_clang_and_check_file_formatting
 
 print_and_run run_with_retries bazel fetch :all
 
