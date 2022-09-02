@@ -71,6 +71,9 @@ time {
 }
 
 function check_file_formatting() {
+  echo "$(pwd)"
+  echo "$(ls)"
+  echo "$(cat Makefile)"
   make clang-format
   BADLY_FORMATTED_FILES=$(git status --untracked-files=no --porcelain | sed s/^...//)
   if [[ $BADLY_FORMATTED_FILES ]]; then
