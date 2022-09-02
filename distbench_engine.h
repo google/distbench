@@ -201,6 +201,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // If true this entire action list was triggered by a warmup RPC, so all
     // actions it initiates will propgate the warmup flag:
     bool warmup_;
+    std::atomic<int> pending_rpc_count_ = 0;
   };
 
   absl::Status InitializeTables();
