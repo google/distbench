@@ -268,7 +268,7 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.actionlist_index = it4->second;
       } else if (action.proto.has_activity_name()) {
-        if (action.proto.activity_name() != "waste_cpu_cycles") {
+        if (action.proto.activity_name() != "waste_cpu") {
           return absl::InvalidArgumentError(absl::StrCat(
               "Invalid activity name: ", action.proto.activity_name(),
               " provided."));
@@ -549,10 +549,10 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 }
 
 void DistBenchEngine::CancelTraffic() {
+  LOG(INFO) << engine_name_ << ": Got CancelTraffic";
   if (!canceled_.HasBeenNotified()) {
     canceled_mu_.Lock();
     if (!canceled_.HasBeenNotified()) {
-      LOG(INFO) << engine_name_ << ": Got CancelTraffic";
       canceled_.Notify();
     }
     canceled_mu_.Unlock();
@@ -739,8 +739,7 @@ void DistBenchEngine::RunActionList(int list_index,
       s.finished_action_indices.clear();
     }
     s.action_mu.Unlock();
-    auto is_canceled = canceled_.HasBeenNotified();
-    if (is_canceled) {
+    if (canceled_.HasBeenNotified()) {
       LOG(INFO) << engine_name_ << ": Cancelled action list "
                 << s.action_list->proto.name();
 
