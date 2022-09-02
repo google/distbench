@@ -254,6 +254,11 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::BitGen random_generator;
 
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
+
+  // Activity for wasting cpu cycles.
+  int WasteCpuCycles();
+  int GetWasteCpuFuncCnt();
+  std::atomic<int64_t> cpu_waste_func_cnt_ = 0;
 };
 
 }  // namespace distbench
