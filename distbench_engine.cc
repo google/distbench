@@ -40,6 +40,7 @@ grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
 DistBenchEngine::DistBenchEngine(std::unique_ptr<ProtocolDriver> pd)
     : pd_(std::move(pd)) {
   clock_ = &pd_->GetClock();
+  engine_start_time_ = clock_->Now();
 }
 
 DistBenchEngine::~DistBenchEngine() {
@@ -550,7 +551,9 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 
 void DistBenchEngine::CancelTraffic() {
   LOG(INFO) << engine_name_ << ": Got CancelTraffic";
-  canceled_.Notify();
+  canceled_mu_.Lock();
+  if (!canceled_.HasBeenNotified()) canceled_.Notify();
+  canceled_mu_.Unlock();
 }
 
 void DistBenchEngine::FinishTraffic() {
@@ -659,7 +662,11 @@ void DistBenchEngine::RunActionList(int list_index,
     for (int i = 0; i < size; ++i) {
       if (s.state_table[i].started) {
         if (s.state_table[i].next_iteration_time < now) {
-          StartOpenLoopIteration(&s.state_table[i]);
+          if (s.state_table[i].action->proto.has_activity_name()) {
+            StartOpenLoopIterationForActivity(&s.state_table[i]);
+          } else {
+            StartOpenLoopIteration(&s.state_table[i]);
+          }
         }
         continue;
       }
@@ -681,21 +688,25 @@ void DistBenchEngine::RunActionList(int list_index,
         s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state,
                                               this]() {
           incoming_rpc_state->SendResponseIfSet();
+          canceled_mu_.Lock();
           if (!canceled_.HasBeenNotified() &
-              s.state_table[i].action->proto.kill_all_action_lists_when_done())
+              s.state_table[i].action->proto.cancel_traffic_when_done())
             canceled_.Notify();
+          canceled_mu_.Unlock();
           s.FinishAction(i);
         };
       } else {
         s.state_table[i].all_done_callback = [&s, i, this]() {
+          canceled_mu_.Lock();
           if (!canceled_.HasBeenNotified() &
-              s.state_table[i].action->proto.kill_all_action_lists_when_done())
+              s.state_table[i].action->proto.cancel_traffic_when_done())
             canceled_.Notify();
+          canceled_mu_.Unlock();
           s.FinishAction(i);
         };
       }
       s.state_table[i].action_list_state = &s;
-      atomic_fetch_add_explicit(&s.pending_rpc_count_, 1,
+      atomic_fetch_add_explicit(&s.pending_action_count_, 1,
                                 std::memory_order_relaxed);
       RunAction(&s.state_table[i]);
     }
@@ -710,19 +721,15 @@ void DistBenchEngine::RunActionList(int list_index,
       }
     }
     if (done) break;
-    auto some_actions_finished = [&s]() {
-      int pending_actions = atomic_load_explicit(&s.pending_rpc_count_,
-                                                 std::memory_order_relaxed);
-      return !pending_actions || !s.finished_action_indices.empty();
+    auto some_actions_finished = [&s, this]() {
+      return s.DidSomeActionsFinish();
     };
 
     // Idle here till some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
             next_iteration_time)) {
-      int pending_actions = atomic_load_explicit(&s.pending_rpc_count_,
-                                                 std::memory_order_relaxed);
-      if (s.finished_action_indices.empty() && pending_actions > 0) {
+      if (!s.DidSomeActionsFinish()) {
         LOG(FATAL) << "finished_action_indices is empty";
       }
       for (const auto& finished_action_index : s.finished_action_indices) {
@@ -733,7 +740,10 @@ void DistBenchEngine::RunActionList(int list_index,
       s.finished_action_indices.clear();
     }
     s.action_mu.Unlock();
-    if (canceled_.HasBeenNotified()) {
+    canceled_mu_.Lock();
+    auto is_canceled = canceled_.HasBeenNotified();
+    canceled_mu_.Unlock();
+    if (is_canceled) {
       LOG(INFO) << engine_name_ << ": Cancelled action list "
                 << s.action_list->proto.name();
 
@@ -765,9 +775,16 @@ void DistBenchEngine::RunActionList(int list_index,
 void DistBenchEngine::ActionListState::FinishAction(int action_index) {
   action_mu.Lock();
   finished_action_indices.push_back(action_index);
-  atomic_fetch_sub_explicit(&pending_rpc_count_, 1, std::memory_order_relaxed);
+  atomic_fetch_sub_explicit(&pending_action_count_, 1,
+                            std::memory_order_relaxed);
   action_mu.Unlock();
 }
+
+bool DistBenchEngine::ActionListState::DidSomeActionsFinish() {
+  int pending_actions =
+      atomic_load_explicit(&pending_action_count_, std::memory_order_relaxed);
+  return !pending_actions || !finished_action_indices.empty();
+};
 
 void DistBenchEngine::ActionListState::CancelActivities() {
   int size = action_list->proto.action_names_size();
@@ -781,11 +798,7 @@ void DistBenchEngine::ActionListState::CancelActivities() {
 }
 
 void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
-  auto some_actions_finished = [&]() {
-    int pending_actions =
-        atomic_load_explicit(&pending_rpc_count_, std::memory_order_relaxed);
-    return !pending_actions || !finished_action_indices.empty();
-  };
+  auto some_actions_finished = [this]() { return DidSomeActionsFinish(); };
   bool done;
   do {
     action_mu.LockWhen(absl::Condition(&some_actions_finished));
@@ -794,8 +807,7 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
     int size = action_list->proto.action_names_size();
     for (int i = 0; i < size; ++i) {
       const auto& state = state_table[i];
-      if (!state.action->proto.has_activity_name() && state.started &&
-          !state.finished) {
+      if (state.started && !state.finished) {
         done = false;
         break;
       }
@@ -1033,7 +1045,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
   action_state->time_limit = time_limit;
   action_state->next_iteration = 0;
   if (action_state->action->proto.has_activity_name()) {
-    action_state->next_iteration_time = clock_->Now();
+    action_state->next_iteration_time = engine_start_time_;
   }
   action_state->iteration_mutex.Unlock();
 
@@ -1075,19 +1087,24 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
 }
 
 void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
+  absl::Duration period = absl::Nanoseconds(
+      action_state->action->proto.iterations().open_loop_interval_ns());
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
-  if (!action_state->action->proto.has_activity_name()) {
-    absl::Duration period = absl::Nanoseconds(
-        action_state->action->proto.iterations().open_loop_interval_ns());
-    action_state->iteration_mutex.Lock();
-    action_state->next_iteration_time += period;
-    if (action_state->next_iteration_time > action_state->time_limit) {
-      action_state->next_iteration_time = absl::InfiniteFuture();
-    }
-    it_state->iteration_number = action_state->next_iteration++;
-    action_state->iteration_mutex.Unlock();
+  action_state->iteration_mutex.Lock();
+  action_state->next_iteration_time += period;
+  if (action_state->next_iteration_time > action_state->time_limit) {
+    action_state->next_iteration_time = absl::InfiniteFuture();
   }
+  it_state->iteration_number = action_state->next_iteration++;
+  action_state->iteration_mutex.Unlock();
+  StartIteration(it_state);
+}
+
+void DistBenchEngine::StartOpenLoopIterationForActivity(
+    ActionState* action_state) {
+  auto it_state = std::make_shared<ActionIterationState>();
+  it_state->action_state = action_state;
   StartIteration(it_state);
 }
 
@@ -1097,7 +1114,9 @@ void DistBenchEngine::FinishIteration(
   bool open_loop =
       state->action->proto.iterations().has_open_loop_interval_ns();
   bool start_another_iteration = !open_loop;
+  canceled_mu_.Lock();
   bool done = canceled_.HasBeenNotified();
+  canceled_mu_.Unlock();
   state->iteration_mutex.Lock();
   ++state->finished_iterations;
   if (state->next_iteration == state->iteration_limit) {

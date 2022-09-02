@@ -105,9 +105,10 @@ message ActivityLog {
 
 // Logs for an individual instance of a service:
 message ServicePerformanceLog {
-  // The key is the server service instance name.
-  // Used for rpc logs from peers.
+  // The key is service name and value is rpc logs.
   map<string, PeerPerformanceLog> peer_logs = 1;
+
+  // The key is activity name and value is activity logs.
   map<string, ActivityLog> activity_logs = 2;
 }
 

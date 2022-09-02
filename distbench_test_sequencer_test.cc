@@ -470,7 +470,7 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
     a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
   }
   a1->set_rpc_name("clique_query");
-  a1->set_kill_all_action_lists_when_done(true);
+  a1->set_cancel_traffic_when_done(true);
 
   if (!activity_name.empty()) {
     auto a2 = test->add_actions();
@@ -493,11 +493,9 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
 
 void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
                                int expected_iteration_cnt_lower_bound = 0) {
-  LOG(INFO) << "CCWIC Entered";
   for (const auto& res : results.test_results()) {
     for (const auto& [instance_name, instance_log] :
          res.service_logs().instance_logs()) {
-      LOG(INFO) << "CCWIC InstanceLogs";
       if (expected_iteration_cnt_lower_bound == 0) {
         EXPECT_EQ(instance_log.activity_logs().size(), 0);
       } else {
@@ -506,12 +504,10 @@ void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
 
       for (const auto& [activity_name, activity_log] :
            instance_log.activity_logs()) {
-        LOG(INFO) << "CCWIC Activity logs";
         for (const auto& metric : activity_log.activity_metrics()) {
+          EXPECT_EQ(metric.name(), "iteration_count");
           if (metric.name() == "iteration_count") {
             EXPECT_GT(metric.value_int(), expected_iteration_cnt_lower_bound);
-            LOG(INFO) << "ABHAY: cpu waste iteration cnt=" << metric.value_int()
-                      << ", lb=" << expected_iteration_cnt_lower_bound;
           }
         }
       }
