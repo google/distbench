@@ -563,7 +563,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
   ASSERT_OK(tester.Initialize(nb_cliques));
 
   auto test_sequence =
-      GetCliqueTestSequence(nb_cliques, true, "waste_cpu_cycles");
+      GetCliqueTestSequence(nb_cliques, true, "waste_cpu");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
@@ -571,7 +571,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 500);
+  CheckCpuWasteIterationCnt(results, 100);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -607,7 +607,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   ASSERT_OK(tester.Initialize(nb_cliques));
 
   auto test_sequence =
-      GetCliqueTestSequence(nb_cliques, false, "waste_cpu_cycles");
+      GetCliqueTestSequence(nb_cliques, false, "waste_cpu");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
@@ -615,7 +615,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 500);
+  CheckCpuWasteIterationCnt(results, 100);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
