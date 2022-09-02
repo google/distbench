@@ -69,6 +69,23 @@ function update_gcc() {
 time {
   run_with_retries update_gcc
 }
+
+function check_file_formatting() {
+  make clang-format
+  BADLY_FORMATTED_FILES=$(git status --untracked-files=no --porcelain | sed s/^...//)
+  if [[ $BADLY_FORMATTED_FILES ]]; then
+      echo Following files must be formatted with clang-format:
+      echo "$BADLY_FORMATTED_FILES"
+      echo Please run 'make clang-format' before commiting.
+      exit 1
+  fi
+}
+
+echo
+echo Checking file formatting
+echo
+print_and_run check_file_formatting
+
 export CXX=g++-9
 export CC=gcc-9
 
