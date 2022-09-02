@@ -562,8 +562,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(nb_cliques));
 
-  auto test_sequence =
-      GetCliqueTestSequence(nb_cliques, true, "waste_cpu");
+  auto test_sequence = GetCliqueTestSequence(nb_cliques, true, "waste_cpu");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
@@ -606,8 +605,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(nb_cliques));
 
-  auto test_sequence =
-      GetCliqueTestSequence(nb_cliques, false, "waste_cpu");
+  auto test_sequence = GetCliqueTestSequence(nb_cliques, false, "waste_cpu");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);

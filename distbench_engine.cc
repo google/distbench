@@ -1096,8 +1096,7 @@ void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
   StartIteration(it_state);
 }
 
-void DistBenchEngine::RunActivity(
-    ActionState* action_state) {
+void DistBenchEngine::RunActivity(ActionState* action_state) {
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
   StartIteration(it_state);
