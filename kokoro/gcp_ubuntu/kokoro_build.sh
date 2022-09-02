@@ -78,7 +78,6 @@ function install_clang_and_check_file_formatting() {
   echo "$(pwd)"
   echo "$(ls)"
   echo "$(cat Makefile)"
-  make clang-format
   BADLY_FORMATTED_FILES=$(git status --untracked-files=no --porcelain | sed s/^...//)
   if [[ $BADLY_FORMATTED_FILES ]]; then
       echo Following files must be formatted with clang-format:
@@ -86,6 +85,7 @@ function install_clang_and_check_file_formatting() {
       echo Please run 'make clang-format' before commiting.
       exit 1
   fi
+  make clang-format
 }
 
 export CXX=g++-9
