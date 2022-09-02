@@ -94,14 +94,15 @@ $CC --version
 bazel --version
 
 echo
+echo Running Bazel fetch
+echo
+cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
+
+echo
 echo Checking file formatting
 echo
 print_and_run check_file_formatting
 
-echo
-echo Running Bazel fetch
-echo
-cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
 print_and_run run_with_retries bazel fetch :all
 
 echo
