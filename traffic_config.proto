@@ -69,7 +69,7 @@ message Action {
     string activity_name = 6;
   }
   optional bool send_response_when_done = 10;
-  optional bool kill_all_action_lists_when_done = 11 [default = false];
+  optional bool cancel_traffic_when_done = 11 [default = false];
 }
 
 message ActionList {

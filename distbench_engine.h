@@ -175,6 +175,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
     void CancelActivities();
+    bool DidSomeActionsFinish();
     void RecordLatency(size_t rpc_index, size_t service_type, size_t instance,
                        ClientRpcState* state);
     void RecordPackedLatency(size_t sample_number, size_t index,
@@ -202,7 +203,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // If true this entire action list was triggered by a warmup RPC, so all
     // actions it initiates will propgate the warmup flag:
     bool warmup_;
-    std::atomic<int> pending_rpc_count_ = 0;
+    std::atomic<int> pending_action_count_ = 0;
   };
 
   absl::Status InitializeTables();
@@ -214,6 +215,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
                      bool force_warmup = false);
   void RunAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);
+  void StartOpenLoopIterationForActivity(ActionState* action_state);
   void StartIteration(std::shared_ptr<ActionIterationState> iteration_state);
   void FinishIteration(std::shared_ptr<ActionIterationState> iteration_state);
 
@@ -235,7 +237,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   int get_payload_size(const std::string& name);
 
-  absl::Notification canceled_;
+  absl::Mutex canceled_mu_;
+  absl::Notification canceled_ ABSL_GUARDED_BY(canceled_mu_);
   DistributedSystemDescription traffic_config_;
   ServiceEndpointMap service_map_;
   std::string service_name_;
@@ -261,6 +264,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::BitGen random_generator;
 
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
+  absl::Time engine_start_time_;
 };
 
 }  // namespace distbench
