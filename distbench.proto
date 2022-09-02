@@ -106,7 +106,7 @@ message ActivityLog {
 // Logs for an individual instance of a service:
 message ServicePerformanceLog {
   // The key is service instance's name and the value contains performance
-  // logs of RPCs initiated by that service instance.
+  // logs of RPCs initiated to the named service instance.
   map<string, PeerPerformanceLog> peer_logs = 1;
 
   // The key is activity name and value is activity logs.
