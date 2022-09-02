@@ -47,9 +47,8 @@ absl::Status ProtocolDriverMercury::Initialize(
   }
 
   // TODO: Choosen interface does not seem respected
-  std::string info_string =
-      GetNamedSettingString(pd_opts.server_settings(), "hg_init_info_string",
-                            "tcp://__SERVER_IP__");
+  std::string info_string = GetNamedSettingString(
+      pd_opts.server_settings(), "hg_init_info_string", "tcp://__SERVER_IP__");
   info_string = absl::StrReplaceAll(
       info_string, {{"__SERVER_IP__", server_socket_address_}});
   hg_class_ = HG_Init(info_string.c_str(), /*listen=*/NA_TRUE);
@@ -96,9 +95,8 @@ absl::Status ProtocolDriverMercury::Initialize(
 
   PrintMercuryVersion();
   LOG(INFO) << "Mercury Traffic server listening on " << server_socket_address_;
-  progress_thread_ = RunRegisteredThread("MercuryProgress", [=]() {
-    this->RpcCompletionThread();
-  });
+  progress_thread_ = RunRegisteredThread(
+      "MercuryProgress", [=]() { this->RpcCompletionThread(); });
   return absl::OkStatus();
 }
 
@@ -338,8 +336,8 @@ hg_return_t ProtocolDriverMercury::RpcServerCallback(hg_handle_t handle) {
 hg_return_t ProtocolDriverMercury::StaticRpcServerDoneCallback(
     const struct hg_cb_info* hg_cb_info) {
   if (hg_cb_info->ret != HG_SUCCESS) {
-    LOG(ERROR) << "StaticRpcServerDoneCallback with non success ret=" <<
-              hg_cb_info->ret;
+    LOG(ERROR) << "StaticRpcServerDoneCallback with non success ret="
+               << hg_cb_info->ret;
   }
   mercury_generic_rpc_string_t* result =
       (mercury_generic_rpc_string_t*)hg_cb_info->arg;
