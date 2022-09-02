@@ -199,7 +199,8 @@ void GrpcInlineServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
 void GrpcInlineServerDriver::ShutdownServer() {
-  if (server_) server_->Shutdown();
+  if (server_)
+    server_->Shutdown();
 }
 
 std::vector<TransportStat> GrpcInlineServerDriver::GetTransportStats() {
