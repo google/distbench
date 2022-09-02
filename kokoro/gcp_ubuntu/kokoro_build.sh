@@ -72,6 +72,7 @@ time {
 
 function install_clang_and_check_file_formatting() {
   sudo apt install clang-format
+  which clang-format
   echo "$(pwd)"
   echo "$(ls)"
   echo "$(cat Makefile)"
