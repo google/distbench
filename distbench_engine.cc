@@ -551,7 +551,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 
 void DistBenchEngine::CancelTraffic() {
   LOG(INFO) << engine_name_ << ": Got CancelTraffic";
-  canceled_.Notify();
+  if (!canceled_.HasBeenNotified()) canceled_.Notify();
 }
 
 void DistBenchEngine::FinishTraffic() {
@@ -562,11 +562,13 @@ void DistBenchEngine::FinishTraffic() {
 }
 
 void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* log) {
-  auto& activity_log =
-      (*log->mutable_activity_logs())[std::string("WasteCpuCycles")];
-  auto activity_metric = activity_log.add_activity_metrics();
-  activity_metric->set_name("waste_cpu_iteration_cnt");
-  activity_metric->set_value_int(waste_cpu_iteration_cnt_);
+  if (waste_cpu_iteration_cnt_) {
+    auto& activity_log =
+        (*log->mutable_activity_logs())[std::string("WasteCpuCycles")];
+    auto activity_metric = activity_log.add_activity_metrics();
+    activity_metric->set_name("iteration_count");
+    activity_metric->set_value_int(waste_cpu_iteration_cnt_);
+  }
 }
 
 ServicePerformanceLog DistBenchEngine::GetLogs() {
@@ -678,14 +680,27 @@ void DistBenchEngine::RunActionList(int list_index,
           ((size == 1) ||
            s.state_table[i].action->proto.send_response_when_done())) {
         sent_response_early = true;
-        s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state]() {
+        s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state,
+                                              this]() {
           incoming_rpc_state->SendResponseIfSet();
+          if (!canceled_.HasBeenNotified() &
+              s.state_table[i].action->proto.kill_all_action_lists_when_done())
+            canceled_.Notify();
           s.FinishAction(i);
         };
       } else {
-        s.state_table[i].all_done_callback = [&s, i]() { s.FinishAction(i); };
+        s.state_table[i].all_done_callback = [&s, i, this]() {
+          if (!canceled_.HasBeenNotified() &
+              s.state_table[i].action->proto.kill_all_action_lists_when_done())
+            canceled_.Notify();
+          s.FinishAction(i);
+        };
       }
       s.state_table[i].action_list_state = &s;
+      if (s.state_table[i].action->rpc_service_index >= 0) {
+        atomic_fetch_add_explicit(&s.pending_rpc_count_, 1,
+                                  std::memory_order_relaxed);
+      }
       RunAction(&s.state_table[i]);
     }
     absl::Time next_iteration_time = absl::InfiniteFuture();
@@ -700,13 +715,18 @@ void DistBenchEngine::RunActionList(int list_index,
     }
     if (done) break;
     auto some_actions_finished = [&s]() {
-      return !s.finished_action_indices.empty();
+      int pending_actions = atomic_load_explicit(&s.pending_rpc_count_,
+                                                 std::memory_order_relaxed);
+      return !pending_actions || !s.finished_action_indices.empty();
     };
 
+    // TODO: comment: we spend time here - idle.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
             next_iteration_time)) {
-      if (s.finished_action_indices.empty()) {
+      int pending_actions = atomic_load_explicit(&s.pending_rpc_count_,
+                                                 std::memory_order_relaxed);
+      if (s.finished_action_indices.empty() && pending_actions > 0) {
         LOG(FATAL) << "finished_action_indices is empty";
       }
       for (const auto& finished_action_index : s.finished_action_indices) {
@@ -747,12 +767,15 @@ void DistBenchEngine::RunActionList(int list_index,
 void DistBenchEngine::ActionListState::FinishAction(int action_index) {
   action_mu.Lock();
   finished_action_indices.push_back(action_index);
+  atomic_fetch_sub_explicit(&pending_rpc_count_, 1, std::memory_order_relaxed);
   action_mu.Unlock();
 }
 
 void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
   auto some_actions_finished = [&]() {
-    return !finished_action_indices.empty();
+    int pending_actions =
+        atomic_load_explicit(&pending_rpc_count_, std::memory_order_relaxed);
+    return !pending_actions || !finished_action_indices.empty();
   };
   bool done;
   do {
@@ -762,7 +785,8 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
     int size = action_list->proto.action_names_size();
     for (int i = 0; i < size; ++i) {
       const auto& state = state_table[i];
-      if (state.started && !state.finished) {
+      if (state.action->proto.has_rpc_name() && state.started &&
+          !state.finished) {
         done = false;
         break;
       }
@@ -913,8 +937,8 @@ int DistBenchEngine::WasteCpuCycles() {
   // 1. Move this function to an activity library.
   // 2. Remove #include <bits/stdc++.h> above.
   // 3. Get the size of 'v' from config proto.
-  std::vector<int> v(2000, 0);
   int sum = 0;
+  std::vector<int> v(250000, 0);
   srand(time(0));
   generate(v.begin(), v.end(), rand);
   std::sort(v.begin(), v.end());
@@ -970,7 +994,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           WasteCpuCycles();
           std::atomic_fetch_add_explicit(&waste_cpu_iteration_cnt_, 1,
                                          std::memory_order_relaxed);
-          FinishIteration(iteration_state);
+          RunRegisteredThread("FinishIteration", [this, iteration_state]() {
+            FinishIteration(iteration_state);
+          }).detach();
         };
   } else {
     LOG(FATAL) << "Supporting only RPCs and Activities as of now.";
@@ -1058,7 +1084,7 @@ void DistBenchEngine::FinishIteration(
   ActionState* state = iteration_state->action_state;
   bool open_loop =
       state->action->proto.iterations().has_open_loop_interval_ns();
-  bool start_another_iteration = !open_loop;
+  bool start_another_iteration = !open_loop && !canceled_.HasBeenNotified();
   bool done = false;
   state->iteration_mutex.Lock();
   ++state->finished_iterations;
