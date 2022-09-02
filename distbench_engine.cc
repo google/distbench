@@ -23,7 +23,8 @@
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
-namespace distbench {
+namespace
+distbench {
 
 grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
                                               const ConnectRequest* request,
