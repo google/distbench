@@ -273,7 +273,6 @@ absl::Status DistBenchEngine::InitializeTables() {
               "Invalid activity name: ", action.proto.activity_name(),
               " provided."));
         }
-        LOG(INFO) << "Activity_name is: " << action.proto.activity_name();
       } else {
         return absl::InvalidArgumentError(
             "only rpc actions & activities are supported for now");
@@ -551,7 +550,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 
 void DistBenchEngine::CancelTraffic() {
   LOG(INFO) << engine_name_ << ": Got CancelTraffic";
-  if (!canceled_.HasBeenNotified()) canceled_.Notify();
+  canceled_.Notify();
 }
 
 void DistBenchEngine::FinishTraffic() {
@@ -602,7 +601,6 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
 // and longer RPCs will return a non-empty function that the protocol driver
 // should process in a seperate thread.
 std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
-  // LOG(INFO) << engine_name_ << ": " << state->request->ShortDebugString();
   CHECK(state->request->has_rpc_index());
   const auto& server_rpc = server_rpc_table_[state->request->rpc_index()];
   const auto& rpc_def = server_rpc.rpc_definition;
@@ -697,10 +695,8 @@ void DistBenchEngine::RunActionList(int list_index,
         };
       }
       s.state_table[i].action_list_state = &s;
-      if (s.state_table[i].action->rpc_service_index >= 0) {
-        atomic_fetch_add_explicit(&s.pending_rpc_count_, 1,
-                                  std::memory_order_relaxed);
-      }
+      atomic_fetch_add_explicit(&s.pending_rpc_count_, 1,
+                                std::memory_order_relaxed);
       RunAction(&s.state_table[i]);
     }
     absl::Time next_iteration_time = absl::InfiniteFuture();
@@ -720,7 +716,7 @@ void DistBenchEngine::RunActionList(int list_index,
       return !pending_actions || !s.finished_action_indices.empty();
     };
 
-    // TODO: comment: we spend time here - idle.
+    // Idle here till some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
             next_iteration_time)) {
@@ -740,6 +736,8 @@ void DistBenchEngine::RunActionList(int list_index,
     if (canceled_.HasBeenNotified()) {
       LOG(INFO) << engine_name_ << ": Cancelled action list "
                 << s.action_list->proto.name();
+
+      s.CancelActivities();
       s.WaitForAllPendingActions();
       break;
     }
@@ -771,6 +769,17 @@ void DistBenchEngine::ActionListState::FinishAction(int action_index) {
   action_mu.Unlock();
 }
 
+void DistBenchEngine::ActionListState::CancelActivities() {
+  int size = action_list->proto.action_names_size();
+  for (int i = 0; i < size; ++i) {
+    auto action_state = &state_table[i];
+    if (action_state->action->proto.has_activity_name()) {
+      action_state->all_done_callback();
+      action_state->finished = true;
+    }
+  }
+}
+
 void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
   auto some_actions_finished = [&]() {
     int pending_actions =
@@ -785,7 +794,7 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
     int size = action_list->proto.action_names_size();
     for (int i = 0; i < size; ++i) {
       const auto& state = state_table[i];
-      if (state.action->proto.has_rpc_name() && state.started &&
+      if (!state.action->proto.has_activity_name() && state.started &&
           !state.finished) {
         done = false;
         break;
@@ -932,13 +941,13 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
   }
 }
 
-int DistBenchEngine::WasteCpuCycles() {
+int DistBenchEngine::WasteCpuCycles(int size) {
   // TODO:
   // 1. Move this function to an activity library.
   // 2. Remove #include <bits/stdc++.h> above.
   // 3. Get the size of 'v' from config proto.
   int sum = 0;
-  std::vector<int> v(250000, 0);
+  std::vector<int> v(size, 0);
   srand(time(0));
   generate(v.begin(), v.end(), rand);
   std::sort(v.begin(), v.end());
@@ -990,13 +999,11 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     // Currently we have only one activity. In future,
     // make a map of activity_name to function.
     action_state->iteration_function =
-        [this](std::shared_ptr<ActionIterationState> iteration_state) {
-          WasteCpuCycles();
+        [this,
+         action_state](std::shared_ptr<ActionIterationState> iteration_state) {
+          WasteCpuCycles(2500);
           std::atomic_fetch_add_explicit(&waste_cpu_iteration_cnt_, 1,
                                          std::memory_order_relaxed);
-          RunRegisteredThread("FinishIteration", [this, iteration_state]() {
-            FinishIteration(iteration_state);
-          }).detach();
         };
   } else {
     LOG(FATAL) << "Supporting only RPCs and Activities as of now.";
@@ -1025,6 +1032,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
   action_state->iteration_limit = max_iterations;
   action_state->time_limit = time_limit;
   action_state->next_iteration = 0;
+  if (action_state->action->proto.has_activity_name()) {
+    action_state->next_iteration_time = clock_->Now();
+  }
   action_state->iteration_mutex.Unlock();
 
   if (open_loop) {
@@ -1065,17 +1075,19 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
 }
 
 void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
-  absl::Duration period = absl::Nanoseconds(
-      action_state->action->proto.iterations().open_loop_interval_ns());
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
-  action_state->iteration_mutex.Lock();
-  action_state->next_iteration_time += period;
-  if (action_state->next_iteration_time > action_state->time_limit) {
-    action_state->next_iteration_time = absl::InfiniteFuture();
+  if (!action_state->action->proto.has_activity_name()) {
+    absl::Duration period = absl::Nanoseconds(
+        action_state->action->proto.iterations().open_loop_interval_ns());
+    action_state->iteration_mutex.Lock();
+    action_state->next_iteration_time += period;
+    if (action_state->next_iteration_time > action_state->time_limit) {
+      action_state->next_iteration_time = absl::InfiniteFuture();
+    }
+    it_state->iteration_number = action_state->next_iteration++;
+    action_state->iteration_mutex.Unlock();
   }
-  it_state->iteration_number = action_state->next_iteration++;
-  action_state->iteration_mutex.Unlock();
   StartIteration(it_state);
 }
 
@@ -1084,8 +1096,8 @@ void DistBenchEngine::FinishIteration(
   ActionState* state = iteration_state->action_state;
   bool open_loop =
       state->action->proto.iterations().has_open_loop_interval_ns();
-  bool start_another_iteration = !open_loop && !canceled_.HasBeenNotified();
-  bool done = false;
+  bool start_another_iteration = !open_loop;
+  bool done = canceled_.HasBeenNotified();
   state->iteration_mutex.Lock();
   ++state->finished_iterations;
   if (state->next_iteration == state->iteration_limit) {
@@ -1106,7 +1118,7 @@ void DistBenchEngine::FinishIteration(
       start_another_iteration = false;
     }
   }
-  if (start_another_iteration) {
+  if (start_another_iteration && !done) {
     iteration_state->iteration_number = state->next_iteration++;
   }
   int pending_iterations = state->next_iteration - state->finished_iterations;

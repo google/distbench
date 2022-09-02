@@ -174,6 +174,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionListState {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
+    void CancelActivities();
     void RecordLatency(size_t rpc_index, size_t service_type, size_t instance,
                        ClientRpcState* state);
     void RecordPackedLatency(size_t sample_number, size_t index,
@@ -220,7 +221,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
       std::shared_ptr<ActionIterationState> iteration_state);
   std::vector<int> PickRpcFanoutTargets(ActionState* action_state);
 
-  int WasteCpuCycles();
+  int WasteCpuCycles(int size);
   void AddActivityLogs(ServicePerformanceLog* log);
 
   std::atomic<int64_t> waste_cpu_iteration_cnt_ = 0;

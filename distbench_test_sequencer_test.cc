@@ -443,7 +443,7 @@ TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationMercury) {
 }
 #endif
 
-TestSequence GetCliqueTestSequence(int nb_cliques,
+TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
                                    std::string activity_name = "") {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -465,8 +465,10 @@ TestSequence GetCliqueTestSequence(int nb_cliques,
   auto a1 = test->add_actions();
   a1->set_name("clique_queries");
   a1->mutable_iterations()->set_max_duration_us(2'000'000);
-  a1->mutable_iterations()->set_open_loop_interval_ns(3'200'000);
-  a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
+  if (open_loop) {
+    a1->mutable_iterations()->set_open_loop_interval_ns(3'200'000);
+    a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
+  }
   a1->set_rpc_name("clique_query");
   a1->set_kill_all_action_lists_when_done(true);
 
@@ -491,19 +493,25 @@ TestSequence GetCliqueTestSequence(int nb_cliques,
 
 void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
                                int expected_iteration_cnt_lower_bound = 0) {
+  LOG(INFO) << "CCWIC Entered";
   for (const auto& res : results.test_results()) {
     for (const auto& [instance_name, instance_log] :
          res.service_logs().instance_logs()) {
+      LOG(INFO) << "CCWIC InstanceLogs";
       if (expected_iteration_cnt_lower_bound == 0) {
         EXPECT_EQ(instance_log.activity_logs().size(), 0);
-        continue;
+      } else {
+        EXPECT_GT(instance_log.activity_logs().size(), 0);
       }
 
       for (const auto& [activity_name, activity_log] :
            instance_log.activity_logs()) {
+        LOG(INFO) << "CCWIC Activity logs";
         for (const auto& metric : activity_log.activity_metrics()) {
-          if (metric.name() == "cpu_waste_iteration_cnt") {
+          if (metric.name() == "iteration_count") {
             EXPECT_GT(metric.value_int(), expected_iteration_cnt_lower_bound);
+            LOG(INFO) << "ABHAY: cpu waste iteration cnt=" << metric.value_int()
+                      << ", lb=" << expected_iteration_cnt_lower_bound;
           }
         }
       }
@@ -517,7 +525,7 @@ TEST(DistBenchTestSequencer, CliqueTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(nb_cliques));
 
-  auto test_sequence = GetCliqueTestSequence(nb_cliques);
+  auto test_sequence = GetCliqueTestSequence(nb_cliques, true);
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
@@ -551,13 +559,14 @@ TEST(DistBenchTestSequencer, CliqueTest) {
             test_results.service_logs().instance_logs().end());
 }
 
-TEST(DistBenchTestSequencer, CliqueAntagonistTest) {
+TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(nb_cliques));
 
-  auto test_sequence = GetCliqueTestSequence(nb_cliques, "waste_cpu_cycles");
+  auto test_sequence =
+      GetCliqueTestSequence(nb_cliques, true, "waste_cpu_cycles");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
@@ -565,7 +574,7 @@ TEST(DistBenchTestSequencer, CliqueAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 1000);
+  CheckCpuWasteIterationCnt(results, 600);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -594,13 +603,56 @@ TEST(DistBenchTestSequencer, CliqueAntagonistTest) {
             test_results.service_logs().instance_logs().end());
 }
 
+TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
+  int nb_cliques = 2;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  auto test_sequence =
+      GetCliqueTestSequence(nb_cliques, false, "waste_cpu_cycles");
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  CheckCpuWasteIterationCnt(results, 600);
+
+  // The remainder of this test checks the same
+  // things as CliqueTest.
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  int min = 300 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_GE(N, min);
+  LOG(INFO) << "Total N is: " << N;
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), nb_cliques);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+}
+
 TEST(DistBenchTestSequencer, WrongActivityName) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(nb_cliques));
 
-  auto test_sequence = GetCliqueTestSequence(nb_cliques, "unknown_activity");
+  auto test_sequence =
+      GetCliqueTestSequence(nb_cliques, true, "unknown_activity");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
