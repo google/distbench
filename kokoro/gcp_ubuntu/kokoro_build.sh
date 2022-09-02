@@ -81,13 +81,13 @@ function check_file_formatting() {
   fi
 }
 
+export CXX=g++-9
+export CC=gcc-9
+
 echo
 echo Checking file formatting
 echo
 print_and_run check_file_formatting
-
-export CXX=g++-9
-export CC=gcc-9
 
 bazel_install
 export PATH="$HOME/bin:$PATH"
