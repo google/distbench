@@ -271,7 +271,7 @@ absl::Status DistBenchEngine::InitializeTables() {
         LOG(INFO) << "Activity_name is: " << action.proto.activity_name();
       } else {
         return absl::InvalidArgumentError(
-            "only rpc actions & antagonism are supported for now");
+            "only rpc actions & activities are supported for now");
       }
       action.dependent_action_indices.resize(action.proto.dependencies_size());
       for (int k = 0; k < action.proto.dependencies_size(); ++k) {
@@ -556,6 +556,14 @@ void DistBenchEngine::FinishTraffic() {
   }
 }
 
+void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* log) {
+  auto& activity_log =
+      (*log->mutable_activity_logs())[std::string("Activity_Cpu_Waste_Cycles")];
+  auto activity_metric = activity_log.add_activity_metrics();
+  activity_metric->set_name("cpu_waste_iteration_cnt");
+  activity_metric->set_value_int(cpu_waste_iteration_cnt_);
+}
+
 ServicePerformanceLog DistBenchEngine::GetLogs() {
   ServicePerformanceLog log;
   for (size_t i = 0; i < peers_.size(); ++i) {
@@ -576,8 +584,7 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
       }
     }
   }
-  auto activity_log = log.mutable_activity_log();
-  activity_log->set_cpu_waste_func_cnt(GetWasteCpuFuncCnt());
+  AddActivityLogs(&log);
   return log;
 }
 
@@ -896,10 +903,11 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
   }
 }
 
-int DistBenchEngine::GetWasteCpuFuncCnt() { return cpu_waste_func_cnt_; }
-
 int DistBenchEngine::WasteCpuCycles() {
-  std::vector<int> v(500, 0);
+  // TODO:
+  // 1. Move this function to an activity library.
+  // 2. Remove #include <bits/stdc++.h> above.
+  std::vector<int> v(2000, 0);
   int sum = 0;
   srand(time(0));
   generate(v.begin(), v.end(), rand);
@@ -948,17 +956,19 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           RunRpcActionIteration(iteration_state);
         };
   } else if (action.proto.has_activity_name()) {
+    // TODO:
+    // Currently we have only one activity.
+    // While adding more activities, move this to a new function
+    // that shall launch the activities.
     action_state->iteration_function =
         [this](std::shared_ptr<ActionIterationState> iteration_state) {
-          RunRegisteredThread("AntagonistThread", [this, iteration_state]() {
-            WasteCpuCycles();
-            std::atomic_fetch_add_explicit(&cpu_waste_func_cnt_, 1,
-                                           std::memory_order_relaxed);
-            FinishIteration(iteration_state);
-          }).detach();
+          WasteCpuCycles();
+          std::atomic_fetch_add_explicit(&cpu_waste_iteration_cnt_, 1,
+                                         std::memory_order_relaxed);
+          FinishIteration(iteration_state);
         };
   } else {
-    LOG(FATAL) << "Support only RPCs and simulated computations yet.";
+    LOG(FATAL) << "Supporting only RPCs and Activities as of now.";
   }
 
   bool open_loop = false;
