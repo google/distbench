@@ -101,7 +101,7 @@ cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
 echo
 echo Checking file formatting
 echo
-print_and_run check_file_formatting
+check_file_formatting
 
 print_and_run run_with_retries bazel fetch :all
 
