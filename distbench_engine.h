@@ -215,7 +215,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
                      bool force_warmup = false);
   void RunAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);
-  void StartOpenLoopIterationForActivity(ActionState* action_state);
+  void RunActivity(ActionState* action_state);
   void StartIteration(std::shared_ptr<ActionIterationState> iteration_state);
   void FinishIteration(std::shared_ptr<ActionIterationState> iteration_state);
 
@@ -223,7 +223,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
       std::shared_ptr<ActionIterationState> iteration_state);
   std::vector<int> PickRpcFanoutTargets(ActionState* action_state);
 
-  int WasteCpuCycles(int size);
+  int WasteCpu(int size);
   void AddActivityLogs(ServicePerformanceLog* log);
 
   std::atomic<int64_t> waste_cpu_iteration_cnt_ = 0;
@@ -264,7 +264,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::BitGen random_generator;
 
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
-  absl::Time engine_start_time_;
 };
 
 }  // namespace distbench

@@ -504,6 +504,7 @@ void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
 
       for (const auto& [activity_name, activity_log] :
            instance_log.activity_logs()) {
+        EXPECT_EQ(activity_name, "WasteCpu");
         for (const auto& metric : activity_log.activity_metrics()) {
           EXPECT_EQ(metric.name(), "iteration_count");
           if (metric.name() == "iteration_count") {
@@ -570,7 +571,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 600);
+  CheckCpuWasteIterationCnt(results, 500);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -614,7 +615,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 600);
+  CheckCpuWasteIterationCnt(results, 500);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
