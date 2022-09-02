@@ -14,6 +14,8 @@
 
 #include "distbench_engine.h"
 
+#include <bits/stdc++.h>
+
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
@@ -265,9 +267,11 @@ absl::Status DistBenchEngine::InitializeTables() {
               "Action_list not found: ", action.proto.action_list_name()));
         }
         action.actionlist_index = it4->second;
+      } else if (action.proto.has_activity_name()) {
+        LOG(INFO) << "Activity_name is: " << action.proto.activity_name();
       } else {
         return absl::InvalidArgumentError(
-            "only rpc actions are supported for now");
+            "only rpc actions & antagonism are supported for now");
       }
       action.dependent_action_indices.resize(action.proto.dependencies_size());
       for (int k = 0; k < action.proto.dependencies_size(); ++k) {
@@ -572,6 +576,8 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
       }
     }
   }
+  auto activity_log = log.mutable_activity_log();
+  activity_log->set_cpu_waste_func_cnt(GetWasteCpuFuncCnt());
   return log;
 }
 
@@ -890,6 +896,18 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
   }
 }
 
+int DistBenchEngine::GetWasteCpuFuncCnt() { return cpu_waste_func_cnt_; }
+
+int DistBenchEngine::WasteCpuCycles() {
+  std::vector<int> v(500, 0);
+  int sum = 0;
+  srand(time(0));
+  generate(v.begin(), v.end(), rand);
+  std::sort(v.begin(), v.end());
+  for (auto num : v) sum += num;
+  return sum;
+}
+
 void DistBenchEngine::RunAction(ActionState* action_state) {
   auto& action = *action_state->action;
   if (action.actionlist_index >= 0) {
@@ -929,8 +947,18 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
         [this](std::shared_ptr<ActionIterationState> iteration_state) {
           RunRpcActionIteration(iteration_state);
         };
+  } else if (action.proto.has_activity_name()) {
+    action_state->iteration_function =
+        [this](std::shared_ptr<ActionIterationState> iteration_state) {
+          RunRegisteredThread("AntagonistThread", [this, iteration_state]() {
+            WasteCpuCycles();
+            std::atomic_fetch_add_explicit(&cpu_waste_func_cnt_, 1,
+                                           std::memory_order_relaxed);
+            FinishIteration(iteration_state);
+          }).detach();
+        };
   } else {
-    LOG(FATAL) << "Do not support simulated computations yet";
+    LOG(FATAL) << "Support only RPCs and simulated computations yet.";
   }
 
   bool open_loop = false;

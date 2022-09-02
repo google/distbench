@@ -443,7 +443,94 @@ TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationMercury) {
 }
 #endif
 
-TEST(DistBenchTestSequencer, clique_test) {
+TEST(DistBenchTestSequencer, CliqueAntagonistTest) {
+  int nb_cliques = 2;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* lo_opts = test->add_protocol_driver_options();
+  lo_opts->set_name("lo_opts");
+  lo_opts->set_netdev_name("lo");
+
+  auto* s1 = test->add_services();
+  s1->set_name("clique");
+  s1->set_count(nb_cliques);
+  s1->set_protocol_driver_options_name("lo_opts");
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("clique");
+  l1->add_action_names("clique_queries");
+  l1->add_action_names("antagonism");
+
+  auto a1 = test->add_actions();
+  a1->set_name("clique_queries");
+  a1->mutable_iterations()->set_max_duration_us(2'000'000);
+  a1->mutable_iterations()->set_open_loop_interval_ns(3'200'000);
+  a1->mutable_iterations()->set_open_loop_interval_distribution("sync_burst");
+  a1->set_rpc_name("clique_query");
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("clique_query");
+  r1->set_client("clique");
+  r1->set_server("clique");
+  r1->set_fanout_filter("all");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("clique_query");
+
+  auto a2 = test->add_actions();
+  a2->set_name("antagonism");
+  a2->set_activity_name("waste_cpu_cycles");
+  a2->mutable_iterations()->set_max_duration_us(2'000'000);
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  for (const auto& res : results.test_results()) {
+    for (const auto& [instance_name, instance_log] :
+         res.service_logs().instance_logs()) {
+      auto waste_cpu_func_cnt =
+          instance_log.activity_log().cpu_waste_func_cnt();
+      // TODO: Find a better way of getting bounds
+      ASSERT_GT(waste_cpu_func_cnt, 3000);
+
+      // LOG(INFO) << "Activity Log: instance_name: " << instance_name
+      //           << ", waste_cpu_func_cnt: " << waste_cpu_func_cnt;
+    }
+  }
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  int min = 624 * (nb_cliques * (nb_cliques - 1));
+  int max = 626 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_LE(N, max);
+  ASSERT_GE(N, min);
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), nb_cliques);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+}
+
+TEST(DistBenchTestSequencer, CliqueTest) {
   int nb_cliques = 3;
 
   DistBenchTester tester;

@@ -91,10 +91,16 @@ message RUsageStats {
   optional RUsage rusage_diff = 2;
 }
 
+message ActivityLog {
+  optional int32 cpu_waste_func_cnt = 1;
+}
+
 // Logs for an individual instance of a service:
 message ServicePerformanceLog {
-  // The key is the server service instance name
+  // The key is the server service instance name.
+  // Used for rpc logs from peers.
   map<string, PeerPerformanceLog> peer_logs = 1;
+  optional ActivityLog activity_log = 2;
 }
 
 // Logs for multiple service instances:
