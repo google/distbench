@@ -24,7 +24,6 @@ basicprof:
 
 clang-format:
 	for file in *.{cc,h}; do\
-		echo "clang-format -i -style=file $${file};";\
 		clang-format -i -style=file $${file};\
 	done
 

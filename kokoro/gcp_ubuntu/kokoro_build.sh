@@ -78,8 +78,10 @@ function install_clang_and_check_file_formatting() {
   echo "$(pwd)"
   echo "$(ls)"
   echo "$(cat Makefile)"
+  for file in *.{cc,h}; do\
+    clang-format -i -style=file ${file};\
+  done
   BADLY_FORMATTED_FILES=$(git status --untracked-files=no --porcelain | sed s/^...//)
-  make clang-format
   if [[ $BADLY_FORMATTED_FILES ]]; then
       echo Following files must be formatted with clang-format:
       echo "$BADLY_FORMATTED_FILES"
