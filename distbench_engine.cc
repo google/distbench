@@ -719,9 +719,7 @@ void DistBenchEngine::RunActionList(int list_index,
       }
     }
     if (done) break;
-    auto some_actions_finished = [&s, this]() {
-      return s.DidSomeActionsFinish();
-    };
+    auto some_actions_finished = [&s]() { return s.DidSomeActionsFinish(); };
 
     // Idle here till some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
@@ -953,8 +951,8 @@ int DistBenchEngine::WasteCpu(int size) {
   // 1. Move this function to an activity library.
   // 2. Remove #include <bits/stdc++.h> above.
   // 3. Get the size of 'v' from config proto.
-  int sum = 0;
-  std::vector<int> v(size, 0);
+  unsigned int sum = 0;
+  std::vector<unsigned int> v(size, 0);
   srand(time(0));
   generate(v.begin(), v.end(), rand);
   std::sort(v.begin(), v.end());
@@ -1006,8 +1004,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     // Currently we have only one activity. In future,
     // make a map of activity_name to function.
     action_state->iteration_function =
-        [this,
-         action_state](std::shared_ptr<ActionIterationState> iteration_state) {
+        [this](std::shared_ptr<ActionIterationState> iteration_state) {
           WasteCpu(2500);
           std::atomic_fetch_add_explicit(&waste_cpu_iteration_cnt_, 1,
                                          std::memory_order_relaxed);
