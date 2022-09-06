@@ -238,7 +238,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   int get_payload_size(const std::string& name);
 
   absl::Mutex canceled_mu_;
-  absl::Notification canceled_ ABSL_GUARDED_BY(canceled_mu_);
+  absl::Notification canceled_;
   DistributedSystemDescription traffic_config_;
   ServiceEndpointMap service_map_;
   std::string service_name_;
