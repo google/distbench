@@ -112,6 +112,9 @@ void ProtocolDriverMercury::SetNumPeers(int num_peers) {
 ProtocolDriverMercury::~ProtocolDriverMercury() {
   ShutdownServer();
   ShutdownClient();
+  if (hg_class_ != nullptr) {
+    HG_Deregister(hg_class_, mercury_generic_rpc_id_);
+  }
   if (hg_context_ != nullptr) {
     HG_Context_destroy(hg_context_);
   }
@@ -207,9 +210,6 @@ void ProtocolDriverMercury::InitiateRpc(
 void ProtocolDriverMercury::ChurnConnection(int peer) {}
 
 void ProtocolDriverMercury::ShutdownServer() {
-  if (hg_class_ != nullptr) {
-    HG_Deregister(hg_class_, mercury_generic_rpc_id_);
-  }
 }
 
 void ProtocolDriverMercury::ShutdownClient() {
