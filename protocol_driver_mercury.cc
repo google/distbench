@@ -42,8 +42,9 @@ absl::Status ProtocolDriverMercury::Initialize(
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
 
   // TODO: Choosen interface does not seem respected
-  std::string info_string = GetNamedSettingString(
-      pd_opts.server_settings(), "hg_init_info_string", "tcp://__SERVER_IP__");
+  std::string info_string =
+      GetNamedSettingString(pd_opts.server_settings(), "hg_init_info_string",
+                            "ofi+tcp://__SERVER_IP__");
   info_string = absl::StrReplaceAll(
       info_string, {{"__SERVER_IP__", server_socket_address_}});
   {
