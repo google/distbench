@@ -51,7 +51,7 @@ absl::Status ProtocolDriverMercury::Initialize(
       pd_opts.server_settings(), "hg_init_info_string", "tcp://__SERVER_IP__");
   info_string = absl::StrReplaceAll(
       info_string, {{"__SERVER_IP__", server_socket_address_}});
-  hg_class_ = HG_Init(info_string.c_str(), /*listen=*/NA_TRUE);
+  hg_class_ = HG_Init(info_string.c_str(), /*listen=*/true);
   if (hg_class_ == nullptr) {
     return absl::UnknownError("HG_Init: failed");
   }
