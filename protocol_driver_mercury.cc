@@ -41,17 +41,15 @@ absl::Status ProtocolDriverMercury::Initialize(
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
 
-  {
-    absl::MutexLock l(&mercury_init_mutex);
-    HG_Set_log_level("warning");
-  }
-
   // TODO: Choosen interface does not seem respected
   std::string info_string = GetNamedSettingString(
       pd_opts.server_settings(), "hg_init_info_string", "tcp://__SERVER_IP__");
   info_string = absl::StrReplaceAll(
       info_string, {{"__SERVER_IP__", server_socket_address_}});
-  hg_class_ = HG_Init(info_string.c_str(), /*listen=*/true);
+  {
+    absl::MutexLock l(&mercury_init_mutex);
+    hg_class_ = HG_Init(info_string.c_str(), /*listen=*/true);
+  }
   if (hg_class_ == nullptr) {
     return absl::UnknownError("HG_Init: failed");
   }
@@ -112,14 +110,17 @@ void ProtocolDriverMercury::SetNumPeers(int num_peers) {
 ProtocolDriverMercury::~ProtocolDriverMercury() {
   ShutdownServer();
   ShutdownClient();
-  if (hg_class_ != nullptr) {
-    HG_Deregister(hg_class_, mercury_generic_rpc_id_);
-  }
-  if (hg_context_ != nullptr) {
-    HG_Context_destroy(hg_context_);
-  }
-  if (hg_class_ != nullptr) {
-    HG_Finalize(hg_class_);
+  {
+    absl::MutexLock l(&mercury_init_mutex);
+    if (hg_class_ != nullptr) {
+      HG_Deregister(hg_class_, mercury_generic_rpc_id_);
+    }
+    if (hg_context_ != nullptr) {
+      HG_Context_destroy(hg_context_);
+    }
+    if (hg_class_ != nullptr) {
+      HG_Finalize(hg_class_);
+    }
   }
 }
 
@@ -209,8 +210,7 @@ void ProtocolDriverMercury::InitiateRpc(
 
 void ProtocolDriverMercury::ChurnConnection(int peer) {}
 
-void ProtocolDriverMercury::ShutdownServer() {
-}
+void ProtocolDriverMercury::ShutdownServer() {}
 
 void ProtocolDriverMercury::ShutdownClient() {
   while (pending_rpcs_) {
