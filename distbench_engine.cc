@@ -267,10 +267,10 @@ absl::Status DistBenchEngine::InitializeTables() {
               "Action_list not found: ", action.proto.action_list_name()));
         }
         action.actionlist_index = it4->second;
-      } else if (action.proto.has_activity_name()) {
-        if (action.proto.activity_name() != "waste_cpu") {
+      } else if (action.proto.has_activity_config_name()) {
+        if (action.proto.activity_config_name() != "waste_cpu") {
           return absl::InvalidArgumentError(absl::StrCat(
-              "Invalid activity name: ", action.proto.activity_name(),
+              "Invalid activity name: ", action.proto.activity_config_name(),
               " provided."));
         }
       } else {
@@ -664,7 +664,7 @@ void DistBenchEngine::RunActionList(int list_index,
     for (int i = 0; i < size; ++i) {
       if (s.state_table[i].started) {
         if (s.state_table[i].next_iteration_time < now) {
-          if (s.state_table[i].action->proto.has_activity_name()) {
+          if (s.state_table[i].action->proto.has_activity_config_name()) {
             RunActivity(&s.state_table[i]);
           } else {
             StartOpenLoopIteration(&s.state_table[i]);
@@ -783,7 +783,7 @@ void DistBenchEngine::ActionListState::CancelActivities() {
   int size = action_list->proto.action_names_size();
   for (int i = 0; i < size; ++i) {
     auto action_state = &state_table[i];
-    if (action_state->action->proto.has_activity_name()) {
+    if (action_state->action->proto.has_activity_config_name()) {
       action_state->all_done_callback();
       action_state->finished = true;
     }
@@ -999,7 +999,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
         [this](std::shared_ptr<ActionIterationState> iteration_state) {
           RunRpcActionIteration(iteration_state);
         };
-  } else if (action.proto.has_activity_name()) {
+  } else if (action.proto.has_activity_config_name()) {
     // TODO:
     // Currently we have only one activity. In future,
     // make a map of activity_name to function.
@@ -1036,7 +1036,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
   action_state->iteration_limit = max_iterations;
   action_state->time_limit = time_limit;
   action_state->next_iteration = 0;
-  if (action_state->action->proto.has_activity_name()) {
+  if (action_state->action->proto.has_activity_config_name()) {
     action_state->next_iteration_time = absl::InfinitePast();
   }
   action_state->iteration_mutex.Unlock();

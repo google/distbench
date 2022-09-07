@@ -444,7 +444,7 @@ TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationMercury) {
 #endif
 
 TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
-                                   std::string activity_name = "") {
+                                   std::string activity_config_name = "") {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
 
@@ -460,7 +460,7 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
   auto* l1 = test->add_action_lists();
   l1->set_name("clique");
   l1->add_action_names("clique_queries");
-  if (!activity_name.empty()) l1->add_action_names("antagonism");
+  if (!activity_config_name.empty()) l1->add_action_names("antagonism");
 
   auto a1 = test->add_actions();
   a1->set_name("clique_queries");
@@ -472,10 +472,10 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
   a1->set_rpc_name("clique_query");
   a1->set_cancel_traffic_when_done(true);
 
-  if (!activity_name.empty()) {
+  if (!activity_config_name.empty()) {
     auto a2 = test->add_actions();
     a2->set_name("antagonism");
-    a2->set_activity_name(activity_name);
+    a2->set_activity_config_name(activity_config_name);
     a2->mutable_iterations()->set_max_duration_us(600'000'000);
   }
 
