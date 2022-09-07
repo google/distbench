@@ -382,14 +382,4 @@ hg_return_t ProtocolDriverMercury::RpcClientCallback(
   return HG_SUCCESS;
 }
 
-absl::Status ProtocolDriverMercury::InitializeServer(
-    const ProtocolDriverOptions& pd_opts, int* port) {
-  return absl::UnimplementedError("TODO: Split Initialize");
-}
-
-absl::Status ProtocolDriverMercury::InitializeClient(
-    const ProtocolDriverOptions& pd_opts) {
-  return absl::UnimplementedError("TODO: Split Initialize");
-}
-
 }  // namespace distbench
