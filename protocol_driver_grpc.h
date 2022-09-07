@@ -27,7 +27,7 @@ class GrpcPollingClientDriver : public ProtocolDriverClient {
   GrpcPollingClientDriver();
   ~GrpcPollingClientDriver() override;
 
-  absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts) override;
 
   void SetNumPeers(int num_peers) override;
 
@@ -61,8 +61,8 @@ class GrpcInlineServerDriver : public ProtocolDriverServer {
   GrpcInlineServerDriver();
   ~GrpcInlineServerDriver() override;
 
-  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
-                                int* port) override;
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                          int* port) override;
 
   void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
                       handler) override;
@@ -88,9 +88,6 @@ class ProtocolDriverGrpc : public ProtocolDriver {
 
   absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
                           int* port) override;
-  absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
-  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
-                                int* port) override;
 
   void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
                       handler) override;
@@ -122,7 +119,7 @@ class GrpcCallbackClientDriver : public ProtocolDriverClient {
   GrpcCallbackClientDriver();
   ~GrpcCallbackClientDriver() override;
 
-  absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts) override;
 
   void SetNumPeers(int num_peers) override;
 
@@ -153,8 +150,8 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
   GrpcHandoffServerDriver();
   ~GrpcHandoffServerDriver() override;
 
-  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
-                                int* port) override;
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                          int* port) override;
 
   void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
                       handler) override;
@@ -178,8 +175,8 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   GrpcPollingServerDriver();
   ~GrpcPollingServerDriver() override;
 
-  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
-                                int* port) override;
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                          int* port) override;
 
   void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
                       handler) override;
