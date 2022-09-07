@@ -49,6 +49,8 @@ class GrpcPollingClientDriver : public ProtocolDriverClient {
 
  private:
   void RpcCompletionThread();
+
+  std::string transport_;
   absl::Notification shutdown_;
   std::atomic<int> pending_rpcs_ = 0;
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
@@ -79,6 +81,7 @@ class GrpcInlineServerDriver : public ProtocolDriverServer {
   int server_port_ = 0;
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
+  std::string transport_;
 };
 
 class ProtocolDriverGrpc : public ProtocolDriver {
@@ -143,6 +146,7 @@ class GrpcCallbackClientDriver : public ProtocolDriverClient {
   absl::Notification shutdown_;
   std::atomic<int> pending_rpcs_ = 0;
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
+  std::string transport_;
 };
 
 class GrpcHandoffServerDriver : public ProtocolDriverServer {
@@ -168,6 +172,7 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
   int server_port_ = 0;
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
+  std::string transport_;
 };
 
 class GrpcPollingServerDriver : public ProtocolDriverServer {
@@ -203,6 +208,7 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   absl::Notification server_shutdown_detected_;
   absl::Notification handle_rpcs_started_;
   absl::Notification handler_set_;
+  std::string transport_;
 };
 
 }  // namespace distbench
