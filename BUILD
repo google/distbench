@@ -146,6 +146,7 @@ cc_library(
         ":distbench_utils",
         ":protocol_driver_api",
         "@com_github_grpc_grpc//:grpc++",
+        "@grpc_homa//:homa_lib",
     ],
 )
 
