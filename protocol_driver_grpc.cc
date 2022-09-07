@@ -24,7 +24,7 @@ namespace distbench {
 GrpcPollingClientDriver::GrpcPollingClientDriver() {}
 GrpcPollingClientDriver::~GrpcPollingClientDriver() { ShutdownClient(); }
 
-absl::Status GrpcPollingClientDriver::InitializeClient(
+absl::Status GrpcPollingClientDriver::Initialize(
     const ProtocolDriverOptions& pd_opts) {
   cq_poller_ = std::thread(&GrpcPollingClientDriver::RpcCompletionThread, this);
   return absl::OkStatus();
@@ -152,7 +152,7 @@ class TrafficService : public Traffic::Service {
 GrpcInlineServerDriver::GrpcInlineServerDriver() {}
 GrpcInlineServerDriver::~GrpcInlineServerDriver() {}
 
-absl::Status GrpcInlineServerDriver::InitializeServer(
+absl::Status GrpcInlineServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
@@ -211,14 +211,6 @@ ProtocolDriverGrpc::ProtocolDriverGrpc() {}
 
 absl::Status ProtocolDriverGrpc::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
-  absl::Status ret = InitializeClient(pd_opts);
-  if (!ret.ok()) return ret;
-
-  return InitializeServer(pd_opts, port);
-}
-
-absl::Status ProtocolDriverGrpc::InitializeClient(
-    const ProtocolDriverOptions& pd_opts) {
   // Build the client
   bool is_async = pd_opts.name() == "grpc_async";
   std::string default_client_type = is_async ? "callback" : "polling";
@@ -234,13 +226,10 @@ absl::Status ProtocolDriverGrpc::InitializeClient(
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
   }
-  return client_->InitializeClient(pd_opts);
-}
+  absl::Status ret = client_->Initialize(pd_opts);
+  if (!ret.ok()) return ret;
 
-absl::Status ProtocolDriverGrpc::InitializeServer(
-    const ProtocolDriverOptions& pd_opts, int* port) {
   // Build the server
-  bool is_async = pd_opts.name() == "grpc_async";
   std::string default_server_type = is_async ? "handoff" : "inline";
   std::string server_type =
       GetNamedServerSettingString(pd_opts, "server_type", default_server_type);
@@ -256,7 +245,7 @@ absl::Status ProtocolDriverGrpc::InitializeServer(
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
-  return server_->InitializeServer(pd_opts, port);
+  return server_->Initialize(pd_opts, port);
 }
 
 void ProtocolDriverGrpc::SetHandler(
@@ -322,7 +311,7 @@ GrpcCallbackClientDriver::GrpcCallbackClientDriver() {}
 
 GrpcCallbackClientDriver::~GrpcCallbackClientDriver() { ShutdownClient(); }
 
-absl::Status GrpcCallbackClientDriver::InitializeClient(
+absl::Status GrpcCallbackClientDriver::Initialize(
     const ProtocolDriverOptions& pd_opts) {
   return absl::OkStatus();
 }
@@ -431,7 +420,7 @@ class TrafficServiceAsyncCallback
 GrpcHandoffServerDriver::GrpcHandoffServerDriver() {}
 GrpcHandoffServerDriver::~GrpcHandoffServerDriver() {}
 
-absl::Status GrpcHandoffServerDriver::InitializeServer(
+absl::Status GrpcHandoffServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);
@@ -583,7 +572,7 @@ GrpcPollingServerDriver::GrpcPollingServerDriver()
 
 GrpcPollingServerDriver::~GrpcPollingServerDriver() { ShutdownServer(); }
 
-absl::Status GrpcPollingServerDriver::InitializeServer(
+absl::Status GrpcPollingServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(netdev_name);

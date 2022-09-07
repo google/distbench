@@ -26,9 +26,6 @@ class ProtocolDriverDoubleBarrel : public ProtocolDriver {
 
   absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
                           int* port) override;
-  absl::Status InitializeClient(const ProtocolDriverOptions& pd_opts) override;
-  absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
-                                int* port) override;
 
   void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
                       handler) override;

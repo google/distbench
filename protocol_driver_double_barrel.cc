@@ -55,18 +55,6 @@ absl::Status ProtocolDriverDoubleBarrel::Initialize(
   return absl::OkStatus();
 }
 
-absl::Status ProtocolDriverDoubleBarrel::InitializeClient(
-    const ProtocolDriverOptions& pd_opts) {
-  return absl::UnimplementedError(
-      "InitializeClient is not implemented for double_barrel.");
-}
-
-absl::Status ProtocolDriverDoubleBarrel::InitializeServer(
-    const ProtocolDriverOptions& pd_opts, int* port) {
-  return absl::UnimplementedError(
-      "InitializeServer is not implemented for double_barrel.");
-}
-
 void ProtocolDriverDoubleBarrel::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   instance_1_->SetHandler(handler);

@@ -49,20 +49,6 @@ absl::Status ComposableRpcCounter::Initialize(
   return absl::OkStatus();
 }
 
-absl::Status ComposableRpcCounter::InitializeClient(
-    const ProtocolDriverOptions& pd_opts) {
-  return absl::UnimplementedError(
-      "InitializeClient should not be implemented here because Initialize() is "
-      "invoked directly from AllocateProtocolDriver().");
-}
-
-absl::Status ComposableRpcCounter::InitializeServer(
-    const ProtocolDriverOptions& pd_opts, int* port) {
-  return absl::UnimplementedError(
-      "InitializeServer should not be implemented here because Initialize() is "
-      "invoked directly from AllocateProtocolDriver().");
-}
-
 void ComposableRpcCounter::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   auto server_handler = [=](ServerRpcState* state) {

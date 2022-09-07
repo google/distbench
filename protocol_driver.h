@@ -71,8 +71,9 @@ class SimpleClock {
 class ProtocolDriverClient {
  public:
   virtual ~ProtocolDriverClient() {}
-  virtual absl::Status InitializeClient(
-      const ProtocolDriverOptions& pd_opts) = 0;
+  virtual absl::Status Initialize(const ProtocolDriverOptions& pd_opts) {
+    return absl::OkStatus();
+  }
 
   // Client interface =========================================================
   virtual void SetNumPeers(int num_peers) = 0;
@@ -98,8 +99,10 @@ class ProtocolDriverClient {
 class ProtocolDriverServer {
  public:
   virtual ~ProtocolDriverServer() {}
-  virtual absl::Status InitializeServer(const ProtocolDriverOptions& pd_opts,
-                                        int* port) = 0;
+  virtual absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                                  int* port) {
+    return absl::OkStatus();
+  }
 
   // Server interface =========================================================
   virtual void SetHandler(
@@ -131,6 +134,11 @@ class ProtocolDriver : public ProtocolDriverClient,
 
   // Misc interface ===========================================================
   virtual SimpleClock& GetClock();
+
+ private:
+  // Hide the Initialize functions of the base classes:
+  using ProtocolDriverClient::Initialize;
+  using ProtocolDriverServer::Initialize;
 };
 
 }  // namespace distbench
