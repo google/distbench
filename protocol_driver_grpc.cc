@@ -17,8 +17,50 @@
 #include "absl/base/internal/sysinfo.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
+#include "homa_client.h"
+#include "homa_listener.h"
+
+// All these defines belong in the BUILD file.
+#define USE_HOMA 1
+#if USE_HOMA
+#define DEFAULT_TRANSPORT "homa"
+#else
+#define DEFAULT_TRANSPORT "tcp"
+#endif
 
 namespace distbench {
+
+namespace {
+
+std::shared_ptr<grpc::Channel> CreateClientChannel(
+    const std::string& socket_address, std::string_view transport) {
+  if (transport == "homa") {
+#ifdef USE_HOMA
+    return HomaClient::createInsecureChannel(socket_address.data());
+#else
+    return {};
+#endif
+  } else {
+    std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
+    return grpc::CreateCustomChannel(socket_address, creds,
+                                     DistbenchCustomChannelArguments());
+  }
+}
+
+std::shared_ptr<grpc::ServerCredentials> CreateServerCreds(
+    std::string_view transport) {
+  if (transport == "homa") {
+#ifdef USE_HOMA
+    return HomaListener::insecureCredentials();
+#else
+    return {};
+#endif
+  } else {
+    return MakeServerCredentials();
+  }
+}
+
+}  // anonymous namespace
 
 // Client =====================================================================
 GrpcPollingClientDriver::GrpcPollingClientDriver() {}
@@ -27,6 +69,8 @@ GrpcPollingClientDriver::~GrpcPollingClientDriver() { ShutdownClient(); }
 absl::Status GrpcPollingClientDriver::Initialize(
     const ProtocolDriverOptions& pd_opts) {
   cq_poller_ = std::thread(&GrpcPollingClientDriver::RpcCompletionThread, this);
+  transport_ =
+      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
   return absl::OkStatus();
 }
 
@@ -40,9 +84,8 @@ absl::Status GrpcPollingClientDriver::HandleConnect(
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
-  std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
-      addr.socket_address(), creds, DistbenchCustomChannelArguments());
+  std::shared_ptr<grpc::Channel> channel =
+      CreateClientChannel(addr.socket_address(), transport_);
   grpc_client_stubs_[peer] = Traffic::NewStub(channel);
   return absl::OkStatus();
 }
@@ -124,11 +167,14 @@ void GrpcPollingClientDriver::ShutdownClient() {
 namespace {
 class TrafficService : public Traffic::Service {
  public:
-  ~TrafficService() override {}
+  ~TrafficService() override {
+    if (!handler_set_.HasBeenNotified()) handler_set_.Notify();
+  }
 
   void SetHandler(
       std::function<std::function<void()>(ServerRpcState* state)> handler) {
     handler_ = handler;
+    handler_set_.Notify();
   }
 
   grpc::Status GenericRpc(grpc::ServerContext* context,
@@ -139,12 +185,21 @@ class TrafficService : public Traffic::Service {
     rpc_state.request = request;
     rpc_state.SetSendResponseFunction(
         [&]() { *response = std::move(rpc_state.response); });
-    handler_(&rpc_state);
-    // Note: this should be an asynchronous server for generality.
-    return grpc::Status::OK;
+    handler_set_.WaitForNotification();
+    if (handler_) {
+      auto remaining_work = handler_(&rpc_state);
+      if (remaining_work) {
+        remaining_work();
+      }
+      return grpc::Status::OK;
+    } else {
+      return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                          "invalid type for key");
+    }
   }
 
  private:
+  absl::Notification handler_set_;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
 };
 
@@ -155,6 +210,8 @@ GrpcInlineServerDriver::~GrpcInlineServerDriver() {}
 absl::Status GrpcInlineServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
+  transport_ =
+      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
   auto maybe_ip = IpAddressForDevice(netdev_name);
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
@@ -163,7 +220,7 @@ absl::Status GrpcInlineServerDriver::Initialize(
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
-      MakeServerCredentials();
+      CreateServerCreds(transport_);
   builder.AddListeningPort(server_socket_address_, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
@@ -313,6 +370,8 @@ GrpcCallbackClientDriver::~GrpcCallbackClientDriver() { ShutdownClient(); }
 
 absl::Status GrpcCallbackClientDriver::Initialize(
     const ProtocolDriverOptions& pd_opts) {
+  transport_ =
+      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
   return absl::OkStatus();
 }
 
@@ -326,9 +385,8 @@ absl::Status GrpcCallbackClientDriver::HandleConnect(
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
-  std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
-      addr.socket_address(), creds, DistbenchCustomChannelArguments());
+  std::shared_ptr<grpc::Channel> channel =
+      CreateClientChannel(addr.socket_address(), transport_);
   grpc_client_stubs_[peer] = Traffic::NewStub(channel);
   return absl::OkStatus();
 }
@@ -386,11 +444,14 @@ class TrafficServiceAsyncCallback
   TrafficServiceAsyncCallback()
       // Create a thread pool, reserving 50% of the cpus to handle responses.
       : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
-  ~TrafficServiceAsyncCallback() override {}
+  ~TrafficServiceAsyncCallback() override {
+    if (!handler_set_.HasBeenNotified()) handler_set_.Notify();
+  }
 
   void SetHandler(
       std::function<std::function<void()>(ServerRpcState* state)> handler) {
     handler_ = handler;
+    handler_set_.Notify();
   }
 
   grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context,
@@ -404,14 +465,18 @@ class TrafficServiceAsyncCallback
       reactor->Finish(grpc::Status::OK);
     });
     rpc_state->SetFreeStateFunction([=]() { delete rpc_state; });
-    auto fct_action_list_thread = handler_(rpc_state);
-    if (fct_action_list_thread) {
-      thread_pool_.AddWork(fct_action_list_thread);
+    handler_set_.WaitForNotification();
+    if (handler_) {
+      auto remaining_work = handler_(rpc_state);
+      if (remaining_work) {
+        thread_pool_.AddWork(remaining_work);
+      }
     }
     return reactor;
   }
 
  private:
+  absl::Notification handler_set_;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
   distbench::DistbenchThreadpool thread_pool_;
 };
@@ -423,6 +488,8 @@ GrpcHandoffServerDriver::~GrpcHandoffServerDriver() {}
 absl::Status GrpcHandoffServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
+  transport_ =
+      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
   auto maybe_ip = IpAddressForDevice(netdev_name);
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
@@ -431,7 +498,7 @@ absl::Status GrpcHandoffServerDriver::Initialize(
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
-      MakeServerCredentials();
+      CreateServerCreds(transport_);
   builder.AddListeningPort(server_socket_address_, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
@@ -518,9 +585,9 @@ class PollingRpcHandlerFsm {
     IncRef();
     rpc_state_.SetFreeStateFunction([=]() { DecRefAndMaybeDelete(); });
     if (*handler_) {
-      auto f = (*handler_)(&rpc_state_);
-      if (f) {
-        thread_pool_->AddWork(f);
+      auto remaining_work = (*handler_)(&rpc_state_);
+      if (remaining_work) {
+        thread_pool_->AddWork(remaining_work);
       }
     }
   }
@@ -567,6 +634,7 @@ class PollingRpcHandlerFsm {
 };
 }  // anonymous namespace
 
+// Server =====================================================================
 GrpcPollingServerDriver::GrpcPollingServerDriver()
     : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
 
@@ -575,6 +643,8 @@ GrpcPollingServerDriver::~GrpcPollingServerDriver() { ShutdownServer(); }
 absl::Status GrpcPollingServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
+  transport_ =
+      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
   auto maybe_ip = IpAddressForDevice(netdev_name);
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
@@ -583,7 +653,7 @@ absl::Status GrpcPollingServerDriver::Initialize(
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
-      MakeServerCredentials();
+      CreateServerCreds(transport_);
   builder.AddListeningPort(server_socket_address_, server_creds, port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
