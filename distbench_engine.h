@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "absl/random/random.h"
+#include "activity.h"
 #include "distbench.grpc.pb.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
@@ -144,6 +145,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::function<void(void)> all_done_callback;
 
     std::map<int, std::vector<int>> partially_randomized_vectors;
+
+    std::unique_ptr<Activity> activity;
   };
 
   struct PackedLatencySample {
@@ -175,6 +178,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
     void CancelActivities();
+    std::map<std::string, ActivityLog> GetAllActivitiesLog();
     bool DidSomeActionsFinish();
     void RecordLatency(size_t rpc_index, size_t service_type, size_t instance,
                        ClientRpcState* state);
@@ -210,6 +214,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializePayloadsMap();
   absl::Status InitializeRpcDefinitionStochastic(RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
+  absl::Status InitializeActivityConfigMap();
 
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);
@@ -254,6 +259,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   // Payloads definitions
   std::map<std::string, PayloadSpec> payload_map_;
   std::map<std::string, RpcDefinition> rpc_map_;
+  std::map<std::string, ActivityConfig> activity_config_map_;
 
   // The first index is the service, the second is the instance.
   std::vector<std::vector<PeerMetadata>> peers_;
@@ -264,6 +270,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::BitGen random_generator;
 
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
+  absl::Mutex activities_log_mu_;
+  std::map<std::string, ActivityLog> activities_logs_;
 };
 
 }  // namespace distbench

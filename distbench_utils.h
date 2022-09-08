@@ -130,6 +130,12 @@ void AddServerStringOptionTo(ProtocolDriverOptions& pdo,
 void AddClientStringOptionTo(ProtocolDriverOptions& pdo,
                              std::string option_name, std::string value);
 
+void AddActivitySettingIntTo(ActivityConfig& ac, std::string option_name,
+                             int value);
+
+void AddActivitySettingStringTo(ActivityConfig& ac, std::string option_name,
+                                std::string value);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

@@ -443,8 +443,33 @@ TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationMercury) {
 }
 #endif
 
+void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
+                 std::string activity_name) {
+  auto activity_config = absl::StrCat(activity_name, "_Config");
+
+  // Add activity-action to action list.
+  action_list->add_action_names(activity_name);
+
+  if (activity_name == "unknown_activity") return;
+
+  // Add the description of activity.
+  auto a = test->add_actions();
+  a->set_name(activity_name);
+  a->set_activity_config_name(activity_config);
+  a->mutable_iterations()->set_max_duration_us(600'000'000);
+
+  if (activity_name == "known_activity_unknown_config") return;
+
+  // Add the settings of activity.
+  auto* ac = test->add_activity_configs();
+  ac->set_name(activity_config);
+  AddActivitySettingStringTo(*ac, "activity_func", "WasteCpu");
+  AddActivitySettingIntTo(*ac, "array_size", 2500);
+}
+
 TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
-                                   std::string activity_config_name = "") {
+                                   std::string activity_name = "",
+                                   std::string activity_name_2 = "") {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
 
@@ -460,7 +485,6 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
   auto* l1 = test->add_action_lists();
   l1->set_name("clique");
   l1->add_action_names("clique_queries");
-  if (!activity_config_name.empty()) l1->add_action_names("antagonism");
 
   auto a1 = test->add_actions();
   a1->set_name("clique_queries");
@@ -472,11 +496,12 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
   a1->set_rpc_name("clique_query");
   a1->set_cancel_traffic_when_done(true);
 
-  if (!activity_config_name.empty()) {
-    auto a2 = test->add_actions();
-    a2->set_name("antagonism");
-    a2->set_activity_config_name(activity_config_name);
-    a2->mutable_iterations()->set_max_duration_us(600'000'000);
+  if (!activity_name.empty()) {
+    AddActivity(test, l1, activity_name);
+  }
+
+  if (!activity_name_2.empty()) {
+    AddActivity(test, l1, activity_name_2);
   }
 
   auto* r1 = test->add_rpc_descriptions();
@@ -492,7 +517,8 @@ TestSequence GetCliqueTestSequence(int nb_cliques, bool open_loop,
 }
 
 void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
-                               int expected_iteration_cnt_lower_bound = 0) {
+                               int expected_iteration_cnt_lower_bound = 0,
+                               int expected_activity_num = 0) {
   for (const auto& res : results.test_results()) {
     for (const auto& [instance_name, instance_log] :
          res.service_logs().instance_logs()) {
@@ -502,9 +528,10 @@ void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
         EXPECT_GT(instance_log.activity_logs().size(), 0);
       }
 
+      EXPECT_EQ(instance_log.activity_logs_size(), expected_activity_num);
+
       for (const auto& [activity_name, activity_log] :
            instance_log.activity_logs()) {
-        EXPECT_EQ(activity_name, "WasteCpu");
         for (const auto& metric : activity_log.activity_metrics()) {
           EXPECT_EQ(metric.name(), "iteration_count");
           if (metric.name() == "iteration_count") {
@@ -562,7 +589,8 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(nb_cliques));
 
-  auto test_sequence = GetCliqueTestSequence(nb_cliques, true, "waste_cpu");
+  auto test_sequence =
+      GetCliqueTestSequence(nb_cliques, true, "WasteCpu2500", "WasteCpu2500_2");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
@@ -570,7 +598,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 100);
+  CheckCpuWasteIterationCnt(results, 100, 2);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -605,7 +633,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(nb_cliques));
 
-  auto test_sequence = GetCliqueTestSequence(nb_cliques, false, "waste_cpu");
+  auto test_sequence = GetCliqueTestSequence(nb_cliques, false, "WasteCpu2500");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
@@ -613,7 +641,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 100);
+  CheckCpuWasteIterationCnt(results, 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -640,7 +668,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
             test_results.service_logs().instance_logs().end());
 }
 
-TEST(DistBenchTestSequencer, WrongActivityName) {
+TEST(DistBenchTestSequencer, UnknownActivity) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
@@ -648,6 +676,22 @@ TEST(DistBenchTestSequencer, WrongActivityName) {
 
   auto test_sequence =
       GetCliqueTestSequence(nb_cliques, true, "unknown_activity");
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_EQ(status.error_code(), grpc::ABORTED);
+}
+
+TEST(DistBenchTestSequencer, KnownActivityUnknownConfig) {
+  int nb_cliques = 3;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  auto test_sequence =
+      GetCliqueTestSequence(nb_cliques, true, "known_activity_unknown_config");
 
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);

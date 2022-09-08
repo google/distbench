@@ -289,6 +289,7 @@ cc_library(
         ":distbench_cc_grpc_proto",
         ":distbench_utils",
         ":protocol_driver_api",
+        ":activity_api",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/random",
@@ -400,4 +401,15 @@ cc_test(
     ],
 )
 
-
+cc_library(
+    name = "activity_api",
+    srcs = ["activity.cc"],
+    hdrs = ["activity.h"],
+    deps = [
+        ":distbench_utils",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/random",
+        ":traffic_config_cc_proto",
+    ],
+)
