@@ -160,6 +160,16 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
   return absl::OkStatus();
 }
 
+absl::Status DistBenchEngine::InitializeActivityConfigMap() {
+  for (int i = 0; i < traffic_config_.activity_configs_size(); ++i) {
+    ActivityConfig activity_config = traffic_config_.activity_configs(i);
+    const auto& activity_config_name = activity_config.name();
+    LOG(INFO) << "IADM: " << activity_config_name;
+    activity_config_map_[activity_config_name] = activity_config;
+  }
+  return absl::OkStatus();
+}
+
 absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc_spec = traffic_config_.rpc_descriptions(i);
@@ -207,6 +217,9 @@ absl::Status DistBenchEngine::InitializeTables() {
 
   absl::Status ret_init_rpc_def = InitializeRpcDefinitionsMap();
   if (!ret_init_rpc_def.ok()) return ret_init_rpc_def;
+
+  absl::Status ret_init_activity_config = InitializeActivityConfigMap();
+  if (!ret_init_activity_config.ok()) return ret_init_activity_config;
 
   // Convert the action table to a map indexed by name:
   std::map<std::string, Action> action_map;
@@ -268,10 +281,12 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.actionlist_index = it4->second;
       } else if (action.proto.has_activity_config_name()) {
-        if (action.proto.activity_config_name() != "waste_cpu") {
-          return absl::InvalidArgumentError(absl::StrCat(
-              "Invalid activity name: ", action.proto.activity_config_name(),
-              " provided."));
+        auto it5 =
+            activity_config_map_.find(action.proto.activity_config_name());
+        if (it5 == activity_config_map_.end()) {
+          return absl::InvalidArgumentError(
+              absl::StrCat("Activity config not found for: ",
+                           action.proto.activity_config_name()));
         }
       } else {
         return absl::InvalidArgumentError(
@@ -566,12 +581,8 @@ void DistBenchEngine::FinishTraffic() {
 }
 
 void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* log) {
-  if (waste_cpu_iteration_cnt_) {
-    auto& activity_log =
-        (*log->mutable_activity_logs())[std::string("WasteCpu")];
-    auto activity_metric = activity_log.add_activity_metrics();
-    activity_metric->set_name("iteration_count");
-    activity_metric->set_value_int(waste_cpu_iteration_cnt_);
+  for (auto& al : activities_logs_) {
+    (*log->mutable_activity_logs())[al.first] = al.second;
   }
 }
 
@@ -742,6 +753,10 @@ void DistBenchEngine::RunActionList(int list_index,
 
       s.CancelActivities();
       s.WaitForAllPendingActions();
+      auto activity_log_per_runlist = s.GetAllActivitiesLog();
+      absl::MutexLock m(&activities_log_mu_);
+      activities_logs_.insert(activity_log_per_runlist.begin(),
+                              activity_log_per_runlist.end());
       break;
     }
   }
@@ -788,6 +803,20 @@ void DistBenchEngine::ActionListState::CancelActivities() {
       action_state->finished = true;
     }
   }
+}
+
+std::map<std::string, ActivityLog>
+DistBenchEngine::ActionListState::GetAllActivitiesLog() {
+  int size = action_list->proto.action_names_size();
+  std::map<std::string, ActivityLog> ret;
+  for (int i = 0; i < size; ++i) {
+    auto action_state = &state_table[i];
+    if (action_state->action->proto.has_activity_config_name()) {
+      ActivityLog al = action_state->activity->GetActivityLog();
+      ret[action_state->action->proto.name()] = al;
+    }
+  }
+  return ret;
 }
 
 void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
@@ -1000,14 +1029,21 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           RunRpcActionIteration(iteration_state);
         };
   } else if (action.proto.has_activity_config_name()) {
-    // TODO:
-    // Currently we have only one activity. In future,
-    // make a map of activity_name to function.
+    ActivityConfig ac =
+        activity_config_map_[action.proto.activity_config_name()];
+    auto maybe_activity = AllocateActivity(ac);
+    if (!maybe_activity.ok()) {
+      LOG(FATAL) << "Failure: AllocateActivity failed for: '"
+                 << action.proto.activity_config_name()
+                 << "' with status: " << maybe_activity.status();
+    }
+    action_state->activity = std::move(maybe_activity.value());
+    auto maybe_init = action_state->activity->Initialize(ac);
+
     action_state->iteration_function =
-        [this](std::shared_ptr<ActionIterationState> iteration_state) {
-          WasteCpu(2500);
-          std::atomic_fetch_add_explicit(&waste_cpu_iteration_cnt_, 1,
-                                         std::memory_order_relaxed);
+        [this,
+         action_state](std::shared_ptr<ActionIterationState> iteration_state) {
+          action_state->activity->DoActivity();
         };
   } else {
     LOG(FATAL) << "Supporting only RPCs and Activities as of now.";

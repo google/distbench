@@ -59,6 +59,11 @@ message Iterations {
   optional int64 warmup_iterations = 6 [default = 0];
 }
 
+message ActivityConfig {
+  optional string name = 1;
+  repeated NamedSetting activity_settings = 2;
+}
+
 message Action {
   optional string name = 1;
   repeated string dependencies = 2;
@@ -83,8 +88,10 @@ message ActionList {
 
 message NamedSetting {
   optional string name = 1;
-  optional string string_value = 2;
-  optional int64  int64_value = 3;
+  oneof value {
+    string string_value = 2;
+    int64  int64_value = 3;
+  };
 }
 
 message ProtocolDriverOptions {
@@ -102,6 +109,7 @@ message DistributedSystemDescription {
   map<string, ServiceBundle> node_service_bundles = 2;
   repeated PayloadSpec payload_descriptions = 3;
   repeated RpcSpec rpc_descriptions = 4;
+  repeated ActivityConfig activity_configs = 11;
   repeated Action actions = 5;
   repeated ActionList action_lists = 6;
   optional string default_protocol = 7 [default = "grpc"];
