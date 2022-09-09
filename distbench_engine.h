@@ -178,7 +178,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     void FinishAction(int action_index);
     void WaitForAllPendingActions();
     void CancelActivities();
-    std::map<std::string, ActivityLog> GetAllActivitiesLog();
+    void UpdateActivitiesLog(
+        std::map<std::string, ActivityLog>& activities_logs);
     bool DidSomeActionsFinish();
     void RecordLatency(size_t rpc_index, size_t service_type, size_t instance,
                        ClientRpcState* state);
