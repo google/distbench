@@ -18,6 +18,9 @@
 #include "glog/logging.h"
 #include "protocol_driver_double_barrel.h"
 #include "protocol_driver_grpc.h"
+#ifdef WITH_HOMA
+#include "protocol_driver_homa.h"
+#endif
 #ifdef WITH_MERCURY
 #include "protocol_driver_mercury.h"
 #endif
@@ -50,6 +53,10 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
     pd = std::make_unique<ProtocolDriverDoubleBarrel>(tree_depth);
   } else if (opts.protocol_name() == "composable_rpc_counter") {
     pd = std::make_unique<ComposableRpcCounter>(tree_depth);
+#ifdef WITH_HOMA
+  } else if (opts.protocol_name() == "homa") {
+    pd = std::make_unique<ProtocolDriverHoma>();
+#endif
 #ifdef WITH_MERCURY
   } else if (opts.protocol_name() == "mercury") {
     pd = std::make_unique<ProtocolDriverMercury>();
