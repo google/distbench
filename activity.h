@@ -23,19 +23,32 @@
 
 namespace distbench {
 
-enum class ActivityName {
-  kWasteCpu = 0,
-  kPolluteCache,
-};
-
+// Base class for activities that run along with RPCs in distbench.
+// Activities can be used to simulate various activities occuring in real world,
+// for eg. RPC processing delays, CPU work, cache corruption, etc.
 class Activity {
  public:
+  // Initializes the class members from configuration provided
+  // in ActivityConfig.
   virtual absl::Status Initialize(const ActivityConfig& ac) = 0;
+
+  // Executes the Activity present in the class. This function is added to
+  // DistBenchEngine::ActionState's iteration_function by DistBenchEngine::RunAction
+  // method. As a result this method is called multiple times in a loop till the
+  // Activity is cancelled.
   virtual void DoActivity() = 0;
+
+  // Returns an ActivityLog containing results metrics of Activity's run.
   virtual ActivityLog GetActivityLog() = 0;
+
   std::string activity_name_;
-  int iteration_count_ = 0;
 };
+
+// Returns a unique_ptr to a newly instantiated Activity as per the
+// configuration in ActivityConfig. Returns an error if the instantiation of
+// Activity fails.
+absl::StatusOr<std::unique_ptr<Activity>> AllocateActivity(
+    const ActivityConfig& ac);
 
 class WasteCpu : public Activity {
  public:
@@ -44,11 +57,10 @@ class WasteCpu : public Activity {
   absl::Status Initialize(const ActivityConfig& ac) override;
 
  private:
-  int array_size_ = -1;
+  std::vector<int> rand_array;
+  int iteration_count_ = 0;
+  int64_t optimization_preventing_num_ = 0;
 };
-
-absl::StatusOr<std::unique_ptr<Activity>> AllocateActivity(
-    const ActivityConfig& ac);
 
 }  // namespace distbench
 

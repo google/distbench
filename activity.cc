@@ -32,18 +32,15 @@ absl::StatusOr<std::unique_ptr<Activity>> AllocateActivity(
   return activity;
 }
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
 void WasteCpu::DoActivity() {
   iteration_count_++;
   int sum = 0;
-  std::vector<int> v(array_size_, 0);
   srand(time(0));
-  generate(v.begin(), v.end(), rand);
-  std::sort(v.begin(), v.end());
-  for (auto num : v) sum += num;
+  generate(rand_array.begin(), rand_array.end(), rand);
+  std::sort(rand_array.begin(), rand_array.end());
+  for (auto num : rand_array) sum += num;
+  optimization_preventing_num_ = sum;
 }
-#pragma GCC pop_options
 
 ActivityLog WasteCpu::GetActivityLog() {
   ActivityLog alog;
@@ -56,8 +53,13 @@ ActivityLog WasteCpu::GetActivityLog() {
 }
 
 absl::Status WasteCpu::Initialize(const ActivityConfig& ac) {
-  array_size_ =
+  auto array_size =
       GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
+  if (array_size < 1) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Array size (", array_size, ") must be a positive integer."));
+  }
+  rand_array.resize(array_size);
   activity_name_ = ac.name();
   iteration_count_ = 0;
   return absl::OkStatus();

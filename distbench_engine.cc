@@ -164,8 +164,14 @@ absl::Status DistBenchEngine::InitializeActivityConfigMap() {
   for (int i = 0; i < traffic_config_.activity_configs_size(); ++i) {
     ActivityConfig activity_config = traffic_config_.activity_configs(i);
     const auto& activity_config_name = activity_config.name();
-    LOG(INFO) << "IADM: " << activity_config_name;
-    activity_config_map_[activity_config_name] = activity_config;
+    if (activity_config_map_.find(activity_config_name) ==
+        activity_config_map_.end()) {
+      activity_config_map_[activity_config_name] = activity_config;
+    } else {
+      return absl::FailedPreconditionError(
+          absl::StrCat("Activity config '", activity_config_name,
+                       "' was defined more than once."));
+    }
   }
   return absl::OkStatus();
 }
@@ -753,10 +759,8 @@ void DistBenchEngine::RunActionList(int list_index,
 
       s.CancelActivities();
       s.WaitForAllPendingActions();
-      auto activity_log_per_runlist = s.GetAllActivitiesLog();
       absl::MutexLock m(&activities_log_mu_);
-      activities_logs_.insert(activity_log_per_runlist.begin(),
-                              activity_log_per_runlist.end());
+      s.UpdateActivitiesLog(activities_logs_);
       break;
     }
   }
@@ -805,18 +809,21 @@ void DistBenchEngine::ActionListState::CancelActivities() {
   }
 }
 
-std::map<std::string, ActivityLog>
-DistBenchEngine::ActionListState::GetAllActivitiesLog() {
+void DistBenchEngine::ActionListState::UpdateActivitiesLog(
+    std::map<std::string, ActivityLog>& activities_logs) {
   int size = action_list->proto.action_names_size();
-  std::map<std::string, ActivityLog> ret;
   for (int i = 0; i < size; ++i) {
     auto action_state = &state_table[i];
     if (action_state->action->proto.has_activity_config_name()) {
+      auto activity_name = action_state->action->proto.name();
       ActivityLog al = action_state->activity->GetActivityLog();
-      ret[action_state->action->proto.name()] = al;
+      if (activities_logs.find(activity_name) == activities_logs.end()) {
+        activities_logs[action_state->action->proto.name()] = al;
+      } else {
+        activities_logs[action_state->action->proto.name()].MergeFrom(al);
+      }
     }
   }
-  return ret;
 }
 
 void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
@@ -1029,7 +1036,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           RunRpcActionIteration(iteration_state);
         };
   } else if (action.proto.has_activity_config_name()) {
-    ActivityConfig ac =
+    ActivityConfig& ac =
         activity_config_map_[action.proto.activity_config_name()];
     auto maybe_activity = AllocateActivity(ac);
     if (!maybe_activity.ok()) {
@@ -1037,8 +1044,14 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
                  << action.proto.activity_config_name()
                  << "' with status: " << maybe_activity.status();
     }
+
     action_state->activity = std::move(maybe_activity.value());
-    auto maybe_init = action_state->activity->Initialize(ac);
+    auto status = action_state->activity->Initialize(ac);
+    if (!status.ok()) {
+      LOG(FATAL) << "Failure: Initialize failed for: '"
+                 << action.proto.activity_config_name()
+                 << "' with status: " << status;
+    }
 
     action_state->iteration_function =
         [this,
