@@ -134,11 +134,19 @@ cc_library(
         ":composable_rpc_counter",
     ]
     + select({
+        "with_homa": [":protocol_driver_homa", ],
+        "//conditions:default": []
+    })
+    + select({
         "with_mercury": [":protocol_driver_mercury", ],
         "//conditions:default": []
     }),
     copts = select({
         ":with_mercury":["-DWITH_MERCURY"],
+        "//conditions:default": []
+    })
+    + select({
+        ":with_homa":["-DWITH_HOMA"],
         "//conditions:default": []
     })
 )
@@ -201,6 +209,25 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "protocol_driver_homa",
+    srcs = [
+        "protocol_driver_homa.cc",
+    ],
+    hdrs = [
+        "protocol_driver_homa.h",
+    ],
+    deps = [
+        ":distbench_cc_grpc_proto",
+        ":distbench_utils",
+        ":protocol_driver_api",
+        "@homa_module//:homa_api",
+        "@com_google_absl//absl/strings",
+    ],
+    tags = [
+        "manual"
+    ],
+)
 
 cc_test(
     name = "protocol_driver_test",
@@ -215,9 +242,15 @@ cc_test(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog"
-    ],
+    ] + select({
+        "with_homa": [":protocol_driver_homa", ],
+        "//conditions:default": []
+    }),
     copts = select({
         ":with_mercury":["-DWITH_MERCURY"],
+        "//conditions:default": []
+    }) + select({
+        ":with_homa":["-DWITH_HOMA"],
         "//conditions:default": []
     })
 )
@@ -291,11 +324,17 @@ cc_test(
         ":protocol_driver_allocator",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_googletest//:gtest_main",
-    ],
+    ] + select({
+        "with_homa": [":protocol_driver_homa", ],
+        "//conditions:default": []
+    }),
     copts = select({
         ":with_mercury":["-DWITH_MERCURY"],
         "//conditions:default": []
-    }),
+    }) + select({
+        ":with_homa":["-DWITH_HOMA"],
+        "//conditions:default": []
+    })
 )
 
 cc_library(

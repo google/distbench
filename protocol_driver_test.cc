@@ -280,6 +280,19 @@ ProtocolDriverOptions GrpcCallbackClientInlineServer() {
   return pdo;
 }
 
+ProtocolDriverOptions HomaOptions() {
+  ProtocolDriverOptions ret;
+  ret.set_protocol_name("homa");
+  return ret;
+}
+
+ProtocolDriverOptions HomaTransport(ProtocolDriverOptions pdo) {
+  auto opt = pdo.add_server_settings();
+  opt->set_name("transport");
+  opt->set_string_value("homa");
+  return pdo;
+}
+
 ProtocolDriverOptions MercuryOptions() {
   ProtocolDriverOptions ret;
   ret.set_protocol_name("mercury");
@@ -297,16 +310,25 @@ BENCHMARK(BM_GrpcCallbackEcho);
 
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
-                         testing::Values(GrpcOptions(),
-                                         GrpcAsynCallbackOptions(),
-                                         GrpcPollingClientHandoffServer(),
-                                         GrpcPollingClientPollingServer(),
-                                         GrpcCallbackClientInlineServer(),
-#ifdef WITH_MERCURY
-                                         MercuryOptions(),
+                         testing::Values(
+                           GrpcOptions(),
+                           GrpcAsynCallbackOptions(),
+                           GrpcPollingClientHandoffServer(),
+                           GrpcPollingClientPollingServer(),
+                           GrpcCallbackClientInlineServer(),
+#ifdef WITH_HOMA
+                           HomaOptions(),
+                           HomaTransport(GrpcOptions()),
+                           HomaTransport(GrpcAsynCallbackOptions()),
+                           HomaTransport(GrpcPollingClientHandoffServer()),
+                           HomaTransport(GrpcPollingClientPollingServer()),
+                           HomaTransport(GrpcCallbackClientInlineServer()),
 #endif
-                                         DoubleBarrelGrpc()
-                                         )
+#ifdef WITH_MERCURY
+                           MercuryOptions(),
+#endif
+                           DoubleBarrelGrpc()
+                           )
                          );
 // clang-format on
 

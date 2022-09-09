@@ -192,8 +192,7 @@ class TrafficService : public Traffic::Service {
       }
       return grpc::Status::OK;
     } else {
-      return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
-                          "invalid type for key");
+      return grpc::Status(grpc::StatusCode::UNAVAILABLE, "No rpc handler set.");
     }
   }
 
