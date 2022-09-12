@@ -429,6 +429,20 @@ TEST(DistBenchTestSequencer,
   RunIntenseTrafficMaxDurationMaxIteration("grpc_async_callback");
 }
 
+#ifdef WITH_THRIFT
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationThrift) {
+  RunIntenseTrafficMaxDuration("thrift");
+}
+
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxIterationThrift) {
+  RunIntenseTrafficMaxIteration("thrift");
+}
+
+TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationThrift) {
+  RunIntenseTrafficMaxDurationMaxIteration("thrift");
+}
+#endif
+
 #ifdef WITH_MERCURY
 TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMercury) {
   RunIntenseTrafficMaxDuration("mercury");

@@ -74,3 +74,9 @@ new_local_repository(
     build_file = "libfabric.BUILD",
 )
 
+new_local_repository(
+    name = "apache_thrift",
+    path = "../opt/thrift",
+    build_file = "thrift.BUILD",
+)
+

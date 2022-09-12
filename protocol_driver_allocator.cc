@@ -21,6 +21,9 @@
 #ifdef WITH_MERCURY
 #include "protocol_driver_mercury.h"
 #endif
+#ifdef WITH_THRIFT
+#include "protocol_driver_thrift.h"
+#endif
 
 namespace distbench {
 
@@ -53,6 +56,10 @@ absl::StatusOr<std::unique_ptr<ProtocolDriver>> AllocateProtocolDriver(
 #ifdef WITH_MERCURY
   } else if (opts.protocol_name() == "mercury") {
     pd = std::make_unique<ProtocolDriverMercury>();
+#endif
+#ifdef WITH_THRIFT
+  } else if (opts.protocol_name() == "thrift") {
+    pd = std::make_unique<ProtocolDriverThrift>();
 #endif
   } else {
     if (alias_resolver_ == nullptr) {
