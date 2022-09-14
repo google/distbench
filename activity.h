@@ -23,14 +23,18 @@
 
 namespace distbench {
 
+struct StoredActivityConfig;
+
 // Base class for activities that run along with RPCs in distbench.
 // Activities can be used to simulate various activities occuring in real world,
 // for eg. RPC processing delays, CPU work, cache corruption, etc.
 class Activity {
  public:
+  virtual ~Activity(){};
+
   // Initializes the class members from configuration provided
   // in ActivityConfig.
-  virtual absl::Status Initialize(const ActivityConfig& ac) = 0;
+  virtual absl::Status Initialize(StoredActivityConfig* sac) = 0;
 
   // Executes the Activity present in the class. This function is added to
   // DistBenchEngine::ActionState's iteration_function by DistBenchEngine::RunAction
@@ -40,26 +44,35 @@ class Activity {
 
   // Returns an ActivityLog containing results metrics of Activity's run.
   virtual ActivityLog GetActivityLog() = 0;
-
-  std::string activity_name_;
 };
 
 // Returns a unique_ptr to a newly instantiated Activity as per the
 // configuration in ActivityConfig. Returns an error if the instantiation of
 // Activity fails.
-absl::StatusOr<std::unique_ptr<Activity>> AllocateActivity(
-    const ActivityConfig& ac);
+absl::StatusOr<std::unique_ptr<Activity>> AllocateAndInitializeActivity(
+    StoredActivityConfig* sac);
 
 class WasteCpu : public Activity {
  public:
   void DoActivity() override;
   ActivityLog GetActivityLog() override;
-  absl::Status Initialize(const ActivityConfig& ac) override;
+  absl::Status Initialize(StoredActivityConfig* sac) override;
 
  private:
   std::vector<int> rand_array;
   int iteration_count_ = 0;
   int64_t optimization_preventing_num_ = 0;
+  std::string activity_config_name_;
+};
+
+struct WasteCpuConfig {
+  int array_size;
+};
+
+struct StoredActivityConfig {
+  struct WasteCpuConfig waste_cpu_config;
+  std::string activity_config_name;
+  std::string activity_func;
 };
 
 }  // namespace distbench
