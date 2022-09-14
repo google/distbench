@@ -37,9 +37,9 @@ class Activity {
   virtual absl::Status Initialize(StoredActivityConfig* sac) = 0;
 
   // Executes the Activity present in the class. This function is added to
-  // DistBenchEngine::ActionState's iteration_function by DistBenchEngine::RunAction
-  // method. As a result this method is called multiple times in a loop till the
-  // Activity is cancelled.
+  // DistBenchEngine::ActionState's iteration_function by
+  // DistBenchEngine::RunAction method. As a result this method is called
+  // multiple times in a loop till the Activity is cancelled.
   virtual void DoActivity() = 0;
 
   // Returns an ActivityLog containing results metrics of Activity's run.

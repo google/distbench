@@ -498,4 +498,50 @@ void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
   ns->set_string_value(value);
 }
 
+std::string GetActivityMetricString(
+    const ::google::protobuf::RepeatedPtrField<distbench::ActivityMetric>&
+        metrics,
+    absl::string_view metric_name, std::string default_value) {
+  for (const auto& metric : metrics) {
+    if (!metric.has_name()) {
+      LOG(ERROR) << "ActivityMetric has no name !";
+      continue;
+    }
+    const auto& name = metric.name();
+    if (name != metric_name) continue;
+    if (metric.has_value_int()) {
+      LOG(ERROR) << "ActivityMetric [" << name << "] should be a string !";
+      continue;
+    }
+    if (metric.has_value_string()) {
+      return metric.value_string();
+    }
+  }
+
+  return default_value;
+}
+
+int64_t GetActivityMetricInt64(
+    const ::google::protobuf::RepeatedPtrField<distbench::ActivityMetric>&
+        metrics,
+    absl::string_view metric_name, int64_t default_value) {
+  for (const auto& metric : metrics) {
+    if (!metric.has_name()) {
+      LOG(ERROR) << "ActivityMetric has no name !";
+      continue;
+    }
+    const auto& name = metric.name();
+    if (name != metric_name) continue;
+    if (metric.has_value_string()) {
+      LOG(ERROR) << "ActivityMetric [" << name << "] should be an int !";
+      continue;
+    }
+    if (metric.has_value_int()) {
+      return metric.value_int();
+    }
+  }
+
+  return default_value;
+}
+
 }  // namespace distbench
