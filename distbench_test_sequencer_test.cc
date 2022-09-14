@@ -449,14 +449,18 @@ struct TestSequenceParams {
   std::string activity_name = "";
   std::string activity_name_2 = "";
   bool duplicate_activity_config = false;
+  bool activity_with_same_config = false;
 };
 
 void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
-                 std::string activity_name) {
+                 std::string activity_name,
+                 bool activity_with_same_config = false) {
   auto activity_config = absl::StrCat(activity_name, "_Config");
 
   // Add activity-action to action list.
   action_list->add_action_names(activity_name);
+  if (activity_with_same_config)
+    action_list->add_action_names(activity_name + "_duplicate");
 
   if (activity_name == "unknown_activity") return;
 
@@ -465,6 +469,12 @@ void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
   a->set_name(activity_name);
   a->set_activity_config_name(activity_config);
   a->mutable_iterations()->set_max_duration_us(600'000'000);
+  if (activity_with_same_config) {
+    auto a = test->add_actions();
+    a->set_name(activity_name + "_duplicate");
+    a->set_activity_config_name(activity_config);
+    a->mutable_iterations()->set_max_duration_us(600'000'000);
+  }
 
   if (activity_name == "known_activity_unknown_config") return;
 
@@ -507,7 +517,7 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
   a1->set_cancel_traffic_when_done(true);
 
   if (!activity_name.empty()) {
-    AddActivity(test, l1, activity_name);
+    AddActivity(test, l1, activity_name, params.activity_with_same_config);
     if (params.duplicate_activity_config) {
       auto* ac = test->add_activity_configs();
       ac->set_name(absl::StrCat(activity_name, "_Config"));
@@ -548,8 +558,6 @@ void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
 
       for (const auto& [activity_name, activity_log] :
            instance_log.activity_logs()) {
-        LOG(INFO) << "ActivityLog: " << activity_name;
-        LOG(INFO) << activity_log.DebugString();
         for (const auto& metric : activity_log.activity_metrics()) {
           EXPECT_EQ(metric.name(), "iteration_count");
           if (metric.name() == "iteration_count") {
@@ -685,6 +693,53 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   int N;
   ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
   int min = 300 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_GE(N, min);
+  LOG(INFO) << "Total N is: " << N;
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), nb_cliques);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+}
+
+TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
+  int nb_cliques = 2;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequenceParams params;
+  params.nb_cliques = nb_cliques;
+  params.activity_name = "WasteCpu2500";
+  params.activity_with_same_config = true;
+  auto test_sequence = GetCliqueTestSequence(params);
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  CheckCpuWasteIterationCnt(results, 100, 1);
+
+  // The remainder of this test checks the same
+  // things as CliqueTest.
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  int min = 624 * (nb_cliques * (nb_cliques - 1));
+  int max = 626 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_LE(N, max);
   ASSERT_GE(N, min);
   LOG(INFO) << "Total N is: " << N;
 

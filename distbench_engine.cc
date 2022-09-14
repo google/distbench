@@ -782,7 +782,7 @@ void DistBenchEngine::RunActionList(int list_index,
       s.CancelActivities();
       s.WaitForAllPendingActions();
       absl::MutexLock m(&activities_log_mu_);
-      s.UpdateActivitiesLog(activities_logs_);
+      s.UpdateActivitiesLog(&activities_logs_);
       break;
     }
   }
@@ -831,20 +831,54 @@ void DistBenchEngine::ActionListState::CancelActivities() {
   }
 }
 
+// Updates the activities_log_ map with the activity metrics for the activities
+// in current run list. In case two activities have same ActivityConfig, the
+// metrics from these activities are summed up into one metric.
+// For example:
+// The 'iteration_count' for two activities 'A1' and 'A2' that have the same
+// activity config 'AC' and have run 20 and 30 times respectively is reported as
+// iteration_count = 50.
 void DistBenchEngine::ActionListState::UpdateActivitiesLog(
-    std::map<std::string, ActivityLog>& activities_logs) {
+    std::map<std::string, ActivityLog>* activities_logs) {
   int size = action_list->proto.action_names_size();
   for (int i = 0; i < size; ++i) {
     auto action_state = &state_table[i];
     if (action_state->action->proto.has_activity_config_name()) {
-      auto activity_name = action_state->action->proto.name();
-      ActivityLog al = action_state->activity->GetActivityLog();
-      if (activities_logs.find(activity_name) == activities_logs.end()) {
-        activities_logs[action_state->action->proto.activity_config_name()] =
-            al;
+      auto activity_config_name =
+          action_state->action->proto.activity_config_name();
+      ActivityLog new_log = action_state->activity->GetActivityLog();
+      if (activities_logs->find(activity_config_name) ==
+          activities_logs->end()) {
+        (*activities_logs)[activity_config_name] = new_log;
       } else {
-        activities_logs[action_state->action->proto.activity_config_name()]
-            .MergeFrom(al);
+        for (auto new_log_it = new_log.activity_metrics().begin();
+             new_log_it != new_log.activity_metrics().end(); new_log_it++) {
+          auto new_name = new_log_it->name();
+          auto new_value_int = new_log_it->value_int();
+          bool new_metric = false;
+
+          for (auto combined_log_it = (*activities_logs)[activity_config_name]
+                                          .mutable_activity_metrics()
+                                          ->begin();
+               combined_log_it != (*activities_logs)[activity_config_name]
+                                      .mutable_activity_metrics()
+                                      ->end();
+               combined_log_it++) {
+            if (new_name == combined_log_it->name()) {
+              combined_log_it->set_value_int(new_value_int +
+                                             combined_log_it->value_int());
+              new_metric = true;
+              break;
+            }
+          }
+
+          if (new_metric) {
+            auto* am =
+                (*activities_logs)[activity_config_name].add_activity_metrics();
+            am->set_name(new_name);
+            am->set_value_int(new_value_int);
+          }
+        }
       }
     }
   }
@@ -1060,7 +1094,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           RunRpcActionIteration(iteration_state);
         };
   } else if (action.proto.has_activity_config_name()) {
-    auto* sac = &stored_activity_config_[activity_config_indices_map_[action.proto.activity_config_name()]];
+    auto* sac =
+        &stored_activity_config_
+            [activity_config_indices_map_[action.proto.activity_config_name()]];
 
     auto maybe_activity = AllocateAndInitializeActivity(sac);
     if (!maybe_activity.ok()) {

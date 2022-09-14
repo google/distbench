@@ -93,10 +93,8 @@ message RUsageStats {
 
 message ActivityMetric {
   optional string name = 1;
-  oneof value {
-    string value_string = 2;
-    int64 value_int = 3;
-  };
+  optional string value_string = 2;
+  optional int64  value_int = 3;
 }
 
 message ActivityLog {
