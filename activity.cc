@@ -18,17 +18,24 @@
 
 namespace distbench {
 
-absl::StatusOr<std::unique_ptr<Activity>> AllocateActivity(
-    const ActivityConfig& ac) {
+absl::StatusOr<std::unique_ptr<Activity>> AllocateAndInitializeActivity(
+    StoredActivityConfig* sac) {
   std::unique_ptr<Activity> activity;
-  auto activity_func =
-      GetNamedSettingString(ac.activity_settings(), "activity_func", "None");
+  auto activity_func = sac->activity_func;
   if (activity_func == "WasteCpu") {
     activity = std::make_unique<WasteCpu>();
   } else {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid activity '", activity_func, "' was requested."));
   }
+
+  auto status = activity->Initialize(sac);
+  if (!status.ok()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Failure: Activity Initialize failed for: '", sac->activity_config_name,
+        "' with status: ", status.message()));
+  }
+
   return activity;
 }
 
@@ -52,15 +59,14 @@ ActivityLog WasteCpu::GetActivityLog() {
   return alog;
 }
 
-absl::Status WasteCpu::Initialize(const ActivityConfig& ac) {
-  auto array_size =
-      GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
+absl::Status WasteCpu::Initialize(StoredActivityConfig* sac) {
+  auto array_size = sac->waste_cpu_config.array_size;
   if (array_size < 1) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Array size (", array_size, ") must be a positive integer."));
   }
   rand_array.resize(array_size);
-  activity_name_ = ac.name();
+  activity_config_name_ = sac->activity_config_name;
   iteration_count_ = 0;
   return absl::OkStatus();
 }

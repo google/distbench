@@ -216,6 +216,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeRpcDefinitionStochastic(RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
   absl::Status InitializeActivityConfigMap();
+  absl::Status StoreActivityConfig(ActivityConfig& ac);
 
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);
@@ -260,7 +261,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   // Payloads definitions
   std::map<std::string, PayloadSpec> payload_map_;
   std::map<std::string, RpcDefinition> rpc_map_;
-  std::map<std::string, ActivityConfig> activity_config_map_;
+  std::map<std::string, int> activity_config_indices_map_;
+  std::vector<StoredActivityConfig> stored_activity_config_;
 
   // The first index is the service, the second is the instance.
   std::vector<std::vector<PeerMetadata>> peers_;

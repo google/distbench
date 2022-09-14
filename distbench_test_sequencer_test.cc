@@ -471,8 +471,8 @@ void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
   // Add the settings of activity.
   auto* ac = test->add_activity_configs();
   ac->set_name(activity_config);
-  AddActivitySettingStringTo(*ac, "activity_func", "WasteCpu");
-  AddActivitySettingIntTo(*ac, "array_size", 2500);
+  AddActivitySettingStringTo(ac, "activity_func", "WasteCpu");
+  AddActivitySettingIntTo(ac, "array_size", 2500);
 }
 
 TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
@@ -511,8 +511,8 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
     if (params.duplicate_activity_config) {
       auto* ac = test->add_activity_configs();
       ac->set_name(absl::StrCat(activity_name, "_Config"));
-      AddActivitySettingStringTo(*ac, "activity_func", "WasteCpu");
-      AddActivitySettingIntTo(*ac, "array_size", 2500);
+      AddActivitySettingStringTo(ac, "activity_func", "WasteCpu");
+      AddActivitySettingIntTo(ac, "array_size", 2500);
     }
   }
 

@@ -88,10 +88,8 @@ message ActionList {
 
 message NamedSetting {
   optional string name = 1;
-  oneof value {
-    string string_value = 2;
-    int64  int64_value = 3;
-  };
+  optional string string_value = 2;
+  optional int64  int64_value = 3;
 }
 
 message ProtocolDriverOptions {

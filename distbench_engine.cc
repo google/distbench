@@ -160,13 +160,35 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
   return absl::OkStatus();
 }
 
+absl::Status DistBenchEngine::StoreActivityConfig(ActivityConfig& ac) {
+  StoredActivityConfig s;
+  s.activity_func =
+      GetNamedSettingString(ac.activity_settings(), "activity_func", "");
+  s.activity_config_name = ac.name();
+
+  if (s.activity_func == "WasteCpu") {
+    s.waste_cpu_config.array_size =
+        GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
+  } else {
+    return absl::FailedPreconditionError(absl::StrCat(
+        "Activity config '", s.activity_config_name,
+        "' has an unknown activity_func '", s.activity_func, "'."));
+  }
+
+  activity_config_indices_map_[s.activity_config_name] =
+      stored_activity_config_.size();
+  stored_activity_config_.push_back(s);
+  return absl::OkStatus();
+}
+
 absl::Status DistBenchEngine::InitializeActivityConfigMap() {
   for (int i = 0; i < traffic_config_.activity_configs_size(); ++i) {
     ActivityConfig activity_config = traffic_config_.activity_configs(i);
     const auto& activity_config_name = activity_config.name();
-    if (activity_config_map_.find(activity_config_name) ==
-        activity_config_map_.end()) {
-      activity_config_map_[activity_config_name] = activity_config;
+    if (activity_config_indices_map_.find(activity_config_name) ==
+        activity_config_indices_map_.end()) {
+      auto status = StoreActivityConfig(activity_config);
+      if (!status.ok()) return status;
     } else {
       return absl::FailedPreconditionError(
           absl::StrCat("Activity config '", activity_config_name,
@@ -287,9 +309,9 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.actionlist_index = it4->second;
       } else if (action.proto.has_activity_config_name()) {
-        auto it5 =
-            activity_config_map_.find(action.proto.activity_config_name());
-        if (it5 == activity_config_map_.end()) {
+        auto it5 = activity_config_indices_map_.find(
+            action.proto.activity_config_name());
+        if (it5 == activity_config_indices_map_.end()) {
           return absl::InvalidArgumentError(
               absl::StrCat("Activity config not found for: ",
                            action.proto.activity_config_name()));
@@ -818,9 +840,11 @@ void DistBenchEngine::ActionListState::UpdateActivitiesLog(
       auto activity_name = action_state->action->proto.name();
       ActivityLog al = action_state->activity->GetActivityLog();
       if (activities_logs.find(activity_name) == activities_logs.end()) {
-        activities_logs[action_state->action->proto.name()] = al;
+        activities_logs[action_state->action->proto.activity_config_name()] =
+            al;
       } else {
-        activities_logs[action_state->action->proto.name()].MergeFrom(al);
+        activities_logs[action_state->action->proto.activity_config_name()]
+            .MergeFrom(al);
       }
     }
   }
@@ -1036,23 +1060,16 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           RunRpcActionIteration(iteration_state);
         };
   } else if (action.proto.has_activity_config_name()) {
-    ActivityConfig& ac =
-        activity_config_map_[action.proto.activity_config_name()];
-    auto maybe_activity = AllocateActivity(ac);
+    auto* sac = &stored_activity_config_[activity_config_indices_map_[action.proto.activity_config_name()]];
+
+    auto maybe_activity = AllocateAndInitializeActivity(sac);
     if (!maybe_activity.ok()) {
-      LOG(FATAL) << "Failure: AllocateActivity failed for: '"
+      LOG(ERROR) << "Failure: AllocateAndInitializeActivity failed for: '"
                  << action.proto.activity_config_name()
                  << "' with status: " << maybe_activity.status();
     }
 
     action_state->activity = std::move(maybe_activity.value());
-    auto status = action_state->activity->Initialize(ac);
-    if (!status.ok()) {
-      LOG(FATAL) << "Failure: Initialize failed for: '"
-                 << action.proto.activity_config_name()
-                 << "' with status: " << status;
-    }
-
     action_state->iteration_function =
         [this,
          action_state](std::shared_ptr<ActionIterationState> iteration_state) {

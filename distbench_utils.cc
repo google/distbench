@@ -484,16 +484,16 @@ void AddClientStringOptionTo(ProtocolDriverOptions& pdo,
   ns->set_string_value(value);
 }
 
-void AddActivitySettingIntTo(ActivityConfig& ac, std::string option_name,
+void AddActivitySettingIntTo(ActivityConfig* ac, std::string option_name,
                              int value) {
-  auto* ns = ac.add_activity_settings();
+  auto* ns = ac->add_activity_settings();
   ns->set_name(option_name);
   ns->set_int64_value(value);
 }
 
-void AddActivitySettingStringTo(ActivityConfig& ac, std::string option_name,
+void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
                                 std::string value) {
-  auto* ns = ac.add_activity_settings();
+  auto* ns = ac->add_activity_settings();
   ns->set_name(option_name);
   ns->set_string_value(value);
 }
