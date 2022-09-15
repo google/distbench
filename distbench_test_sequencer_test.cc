@@ -450,16 +450,16 @@ struct TestSequenceParams {
   std::string activity_name_2 = "";
   bool duplicate_activity_config = false;
   bool activity_with_same_config = false;
+  bool invalid_config = false;
 };
 
 void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
-                 std::string activity_name,
-                 bool activity_with_same_config = false) {
+                 std::string activity_name, TestSequenceParams params) {
   auto activity_config = absl::StrCat(activity_name, "_Config");
 
   // Add activity-action to action list.
   action_list->add_action_names(activity_name);
-  if (activity_with_same_config)
+  if (params.activity_with_same_config)
     action_list->add_action_names(activity_name + "_duplicate");
 
   if (activity_name == "unknown_activity") return;
@@ -469,7 +469,7 @@ void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
   a->set_name(activity_name);
   a->set_activity_config_name(activity_config);
   a->mutable_iterations()->set_max_duration_us(600'000'000);
-  if (activity_with_same_config) {
+  if (params.activity_with_same_config) {
     auto a = test->add_actions();
     a->set_name(activity_name + "_duplicate");
     a->set_activity_config_name(activity_config);
@@ -482,7 +482,10 @@ void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
   auto* ac = test->add_activity_configs();
   ac->set_name(activity_config);
   AddActivitySettingStringTo(ac, "activity_func", "WasteCpu");
-  AddActivitySettingIntTo(ac, "array_size", 2500);
+  if (params.invalid_config)
+    AddActivitySettingIntTo(ac, "array_size", -1);
+  else
+    AddActivitySettingIntTo(ac, "array_size", 2500);
 }
 
 TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
@@ -517,7 +520,7 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
   a1->set_cancel_traffic_when_done(true);
 
   if (!activity_name.empty()) {
-    AddActivity(test, l1, activity_name, params.activity_with_same_config);
+    AddActivity(test, l1, activity_name, params);
     if (params.duplicate_activity_config) {
       auto* ac = test->add_activity_configs();
       ac->set_name(absl::StrCat(activity_name, "_Config"));
@@ -527,7 +530,7 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
   }
 
   if (!activity_name_2.empty()) {
-    AddActivity(test, l1, activity_name_2);
+    AddActivity(test, l1, activity_name_2, params);
   }
 
   auto* r1 = test->add_rpc_descriptions();
@@ -798,6 +801,25 @@ TEST(DistBenchTestSequencer, RedefineActivityConfig) {
   params.open_loop = false;
   params.activity_name = "WasteCpu2500";
   params.duplicate_activity_config = true;
+  auto test_sequence = GetCliqueTestSequence(params);
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_EQ(status.error_code(), grpc::ABORTED);
+}
+
+TEST(DistBenchTestSequencer, PreCheckInvalidActivityConfig) {
+  int nb_cliques = 3;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequenceParams params;
+  params.nb_cliques = nb_cliques;
+  params.activity_name = "WasteCpu2500";
+  params.invalid_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
 
   TestSequenceResults results;
