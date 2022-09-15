@@ -23,7 +23,7 @@
 
 namespace distbench {
 
-struct StoredActivityConfig;
+struct ParsedActivityConfig;
 
 // Base class for activities that run along with RPCs in distbench.
 // Activities can be used to simulate various activities occuring in real world,
@@ -34,7 +34,7 @@ class Activity {
 
   // Initializes the class members from configuration provided
   // in ActivityConfig.
-  virtual void Initialize(StoredActivityConfig* sac) = 0;
+  virtual void Initialize(ParsedActivityConfig* config) = 0;
 
   // Executes the Activity present in the class. This function is called from
   // DistBenchEngine::ActionState's iteration_function by
@@ -48,13 +48,13 @@ class Activity {
 
 // Returns a unique_ptr to a newly instantiated Activity as described by the
 // configuration in ActivityConfig.
-std::unique_ptr<Activity> AllocateActivity(StoredActivityConfig* sac);
+std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config);
 
 class WasteCpu : public Activity {
  public:
   void DoActivity() override;
   ActivityLog GetActivityLog() override;
-  void Initialize(StoredActivityConfig* sac) override;
+  void Initialize(ParsedActivityConfig* config) override;
   static absl::Status ValidateConfig(ActivityConfig& ac);
 
  private:
@@ -68,7 +68,7 @@ struct WasteCpuConfig {
   int array_size;
 };
 
-struct StoredActivityConfig {
+struct ParsedActivityConfig {
   struct WasteCpuConfig waste_cpu_config;
   std::string activity_config_name;
   std::string activity_func;

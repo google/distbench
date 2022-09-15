@@ -161,7 +161,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
 }
 
 absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
-  StoredActivityConfig s;
+  ParsedActivityConfig s;
   s.activity_func =
       GetNamedSettingString(ac.activity_settings(), "activity_func", "");
   s.activity_config_name = ac.name();
@@ -613,7 +613,7 @@ void DistBenchEngine::FinishTraffic() {
 }
 
 void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* sp_log) {
-  for (auto& alog : cummulative_activity_logs_) {
+  for (auto& alog : cumulative_activity_logs_) {
     auto& activity_log = (*sp_log->mutable_activity_logs())[alog.first];
     for (auto& metric : alog.second) {
       auto* am = activity_log.add_activity_metrics();
@@ -790,8 +790,6 @@ void DistBenchEngine::RunActionList(int list_index,
 
       s.CancelActivities();
       s.WaitForAllPendingActions();
-      absl::MutexLock m(&activities_log_mu_);
-      s.UpdateActivitiesLog(&cummulative_activity_logs_);
       break;
     }
   }
@@ -813,6 +811,9 @@ void DistBenchEngine::RunActionList(int list_index,
       }
     }
   }
+
+  absl::MutexLock m(&cumulative_activity_log_mu_);
+  s.UpdateActivitiesLog(&cumulative_activity_logs_);
 }
 
 void DistBenchEngine::ActionListState::FinishAction(int action_index) {
@@ -848,25 +849,20 @@ void DistBenchEngine::ActionListState::CancelActivities() {
 // iteration_count = 50.
 void DistBenchEngine::ActionListState::UpdateActivitiesLog(
     std::map<std::string, std::map<std::string, int64_t>>*
-        cummulative_activity_logs) {
+        cumulative_activity_logs) {
   for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
     if (action_state->action->proto.has_activity_config_name()) {
       auto activity_config_name =
           action_state->action->proto.activity_config_name();
-
-      auto log_it = cummulative_activity_logs->find(activity_config_name);
-      if (log_it == cummulative_activity_logs->end()) {
-        (*cummulative_activity_logs)[activity_config_name] =
-            std::map<std::string, int64_t>();
-        log_it = cummulative_activity_logs->find(activity_config_name);
-      }
-
       auto new_log = action_state->activity->GetActivityLog();
+
       for (auto new_metrics_it = new_log.activity_metrics().begin();
            new_metrics_it != new_log.activity_metrics().end();
            new_metrics_it++) {
-        (log_it->second)[new_metrics_it->name()] += new_metrics_it->value_int();
+        (*cumulative_activity_logs)[activity_config_name]
+                                   [new_metrics_it->name()] +=
+            new_metrics_it->value_int();
       }
     }
   }
@@ -1081,12 +1077,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           RunRpcActionIteration(iteration_state);
         };
   } else if (action.proto.has_activity_config_name()) {
-    auto* sac = &stored_activity_config_[action.activity_config_index];
-
-    auto activity = std::move(AllocateActivity(sac));
-    activity->Initialize(sac);
-
-    action_state->activity = std::move(activity);
+    auto* config = &stored_activity_config_[action.activity_config_index];
+    action_state->activity = AllocateActivity(config);
+    action_state->activity->Initialize(config);
     action_state->iteration_function =
         [this,
          action_state](std::shared_ptr<ActionIterationState> iteration_state) {

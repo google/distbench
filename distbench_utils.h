@@ -136,16 +136,6 @@ void AddActivitySettingIntTo(ActivityConfig* ac, std::string option_name,
 void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
                                 std::string value);
 
-int64_t GetActivityMetricInt64(
-    const ::google::protobuf::RepeatedPtrField<distbench::ActivityMetric>&
-        metrics,
-    absl::string_view metric_name, int64_t default_value);
-
-std::string GetActivityMetricString(
-    const ::google::protobuf::RepeatedPtrField<distbench::ActivityMetric>&
-        metrics,
-    absl::string_view metric_name, std::string default_value);
-
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
