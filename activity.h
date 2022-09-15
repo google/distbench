@@ -36,19 +36,18 @@ class Activity {
   // in ActivityConfig.
   virtual void Initialize(StoredActivityConfig* sac) = 0;
 
-  // Executes the Activity present in the class. This function is added to
+  // Executes the Activity present in the class. This function is called from
   // DistBenchEngine::ActionState's iteration_function by
   // DistBenchEngine::RunAction method. As a result this method is called
-  // multiple times in a loop till the Activity is cancelled.
+  // multiple times in a loop until the Activity is cancelled.
   virtual void DoActivity() = 0;
 
   // Returns an ActivityLog containing results metrics of Activity's run.
   virtual ActivityLog GetActivityLog() = 0;
 };
 
-// Returns a unique_ptr to a newly instantiated Activity as per the
-// configuration in ActivityConfig. Returns an error if the instantiation of
-// Activity fails.
+// Returns a unique_ptr to a newly instantiated Activity as described by the
+// configuration in ActivityConfig.
 std::unique_ptr<Activity> AllocateActivity(StoredActivityConfig* sac);
 
 class WasteCpu : public Activity {

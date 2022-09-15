@@ -217,7 +217,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeRpcDefinitionStochastic(RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
   absl::Status InitializeActivityConfigMap();
-  absl::Status StoreActivityConfig(ActivityConfig& ac);
+  absl::Status ParseActivityConfig(ActivityConfig& ac);
 
   void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);

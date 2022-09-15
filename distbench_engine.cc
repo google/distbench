@@ -160,7 +160,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
   return absl::OkStatus();
 }
 
-absl::Status DistBenchEngine::StoreActivityConfig(ActivityConfig& ac) {
+absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
   StoredActivityConfig s;
   s.activity_func =
       GetNamedSettingString(ac.activity_settings(), "activity_func", "");
@@ -190,7 +190,7 @@ absl::Status DistBenchEngine::InitializeActivityConfigMap() {
     const auto& activity_config_name = activity_config.name();
     if (activity_config_indices_map_.find(activity_config_name) ==
         activity_config_indices_map_.end()) {
-      auto status = StoreActivityConfig(activity_config);
+      auto status = ParseActivityConfig(activity_config);
       if (!status.ok()) return status;
     } else {
       return absl::FailedPreconditionError(
@@ -825,8 +825,7 @@ bool DistBenchEngine::ActionListState::DidSomeActionsFinish() {
 };
 
 void DistBenchEngine::ActionListState::CancelActivities() {
-  int size = action_list->proto.action_names_size();
-  for (int i = 0; i < size; ++i) {
+  for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
     if (action_state->action->proto.has_activity_config_name()) {
       action_state->all_done_callback();
@@ -835,50 +834,47 @@ void DistBenchEngine::ActionListState::CancelActivities() {
   }
 }
 
-// Updates the activities_log_ map with the activity metrics for the activities
-// in current run list. In case two activities have same ActivityConfig, the
-// metrics from these activities are summed up into one metric.
+// Updates the activities_log_ map with the activity metrics from the
+// activities. In case two activities have same ActivityConfig, the metrics from
+// these activities are summed up into one metric.
 // For example:
 // The 'iteration_count' for two activities 'A1' and 'A2' that have the same
 // activity config 'AC' and have run 20 and 30 times respectively is reported as
 // iteration_count = 50.
 void DistBenchEngine::ActionListState::UpdateActivitiesLog(
     std::map<std::string, ActivityLog>* activities_logs) {
-  int size = action_list->proto.action_names_size();
-  for (int i = 0; i < size; ++i) {
+  for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
     if (action_state->action->proto.has_activity_config_name()) {
+      ActivityLog new_log = action_state->activity->GetActivityLog();
       auto activity_config_name =
           action_state->action->proto.activity_config_name();
-      ActivityLog new_log = action_state->activity->GetActivityLog();
-      if (activities_logs->find(activity_config_name) ==
-          activities_logs->end()) {
+
+      auto maybe_existing_log_it = activities_logs->find(activity_config_name);
+      if (maybe_existing_log_it == activities_logs->end()) {
         (*activities_logs)[activity_config_name] = new_log;
+
       } else {
+        auto* existing_log = &(maybe_existing_log_it->second);
         for (auto new_log_it = new_log.activity_metrics().begin();
              new_log_it != new_log.activity_metrics().end(); new_log_it++) {
           auto new_name = new_log_it->name();
           auto new_value_int = new_log_it->value_int();
           bool new_metric = false;
 
-          for (auto combined_log_it = (*activities_logs)[activity_config_name]
-                                          .mutable_activity_metrics()
-                                          ->begin();
-               combined_log_it != (*activities_logs)[activity_config_name]
-                                      .mutable_activity_metrics()
-                                      ->end();
-               combined_log_it++) {
-            if (new_name == combined_log_it->name()) {
-              combined_log_it->set_value_int(new_value_int +
-                                             combined_log_it->value_int());
+          for (auto metric_it =
+                   existing_log->mutable_activity_metrics()->begin();
+               metric_it != existing_log->mutable_activity_metrics()->end();
+               metric_it++) {
+            if (new_name == metric_it->name()) {
+              metric_it->set_value_int(new_value_int + metric_it->value_int());
               new_metric = true;
               break;
             }
           }
 
           if (new_metric) {
-            auto* am =
-                (*activities_logs)[activity_config_name].add_activity_metrics();
+            auto* am = existing_log->add_activity_metrics();
             am->set_name(new_name);
             am->set_value_int(new_value_int);
           }
@@ -895,8 +891,7 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
     action_mu.LockWhen(absl::Condition(&some_actions_finished));
     finished_action_indices.clear();
     done = true;
-    int size = action_list->proto.action_names_size();
-    for (int i = 0; i < size; ++i) {
+    for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
       const auto& state = state_table[i];
       if (state.started && !state.finished) {
         done = false;
