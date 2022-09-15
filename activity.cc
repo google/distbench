@@ -18,9 +18,9 @@
 
 namespace distbench {
 
-std::unique_ptr<Activity> AllocateActivity(StoredActivityConfig* sac) {
+std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
   std::unique_ptr<Activity> activity;
-  auto activity_func = sac->activity_func;
+  auto activity_func = config->activity_func;
 
   if (activity_func == "WasteCpu") {
     activity = std::make_unique<WasteCpu>();
@@ -49,9 +49,9 @@ ActivityLog WasteCpu::GetActivityLog() {
   return alog;
 }
 
-void WasteCpu::Initialize(StoredActivityConfig* sac) {
-  rand_array.resize(sac->waste_cpu_config.array_size);
-  activity_config_name_ = sac->activity_config_name;
+void WasteCpu::Initialize(ParsedActivityConfig* config) {
+  rand_array.resize(config->waste_cpu_config.array_size);
+  activity_config_name_ = config->activity_config_name;
   iteration_count_ = 0;
 }
 

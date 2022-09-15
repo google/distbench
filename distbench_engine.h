@@ -181,7 +181,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     void CancelActivities();
     void UpdateActivitiesLog(
         std::map<std::string, std::map<std::string, int64_t>>*
-            cummulative_activity_logs);
+            cumulative_activity_logs);
     bool DidSomeActionsFinish();
     void RecordLatency(size_t rpc_index, size_t service_type, size_t instance,
                        ClientRpcState* state);
@@ -264,7 +264,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::map<std::string, PayloadSpec> payload_map_;
   std::map<std::string, RpcDefinition> rpc_map_;
   std::map<std::string, int> activity_config_indices_map_;
-  std::vector<StoredActivityConfig> stored_activity_config_;
+  std::vector<ParsedActivityConfig> stored_activity_config_;
 
   // The first index is the service, the second is the instance.
   std::vector<std::vector<PeerMetadata>> peers_;
@@ -275,9 +275,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::BitGen random_generator;
 
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
-  absl::Mutex activities_log_mu_;
+  absl::Mutex cumulative_activity_log_mu_;
   std::map<std::string, std::map<std::string, int64_t>>
-      cummulative_activity_logs_;
+      cumulative_activity_logs_;
 };
 
 }  // namespace distbench
