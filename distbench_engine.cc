@@ -167,6 +167,9 @@ absl::Status DistBenchEngine::StoreActivityConfig(ActivityConfig& ac) {
   s.activity_config_name = ac.name();
 
   if (s.activity_func == "WasteCpu") {
+    auto status = WasteCpu::ValidateConfig(ac);
+    if (!status.ok()) return status;
+
     s.waste_cpu_config.array_size =
         GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
   } else {
@@ -316,6 +319,7 @@ absl::Status DistBenchEngine::InitializeTables() {
               absl::StrCat("Activity config not found for: ",
                            action.proto.activity_config_name()));
         }
+        action.activity_config_index = it5->second;
       } else {
         return absl::InvalidArgumentError(
             "only rpc actions & activities are supported for now");
@@ -1094,18 +1098,12 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           RunRpcActionIteration(iteration_state);
         };
   } else if (action.proto.has_activity_config_name()) {
-    auto* sac =
-        &stored_activity_config_
-            [activity_config_indices_map_[action.proto.activity_config_name()]];
+    auto* sac = &stored_activity_config_[action.activity_config_index];
 
-    auto maybe_activity = AllocateAndInitializeActivity(sac);
-    if (!maybe_activity.ok()) {
-      LOG(ERROR) << "Failure: AllocateAndInitializeActivity failed for: '"
-                 << action.proto.activity_config_name()
-                 << "' with status: " << maybe_activity.status();
-    }
+    auto activity = std::move(AllocateActivity(sac));
+    activity->Initialize(sac);
 
-    action_state->activity = std::move(maybe_activity.value());
+    action_state->activity = std::move(activity);
     action_state->iteration_function =
         [this,
          action_state](std::shared_ptr<ActionIterationState> iteration_state) {

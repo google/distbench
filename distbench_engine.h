@@ -103,6 +103,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // index into the client_rpc_table_/server_rpc_table_;
     int rpc_index = -1;
     int actionlist_index = -1;
+    int activity_config_index = -1;
     std::vector<int> dependent_action_indices;
   };
 

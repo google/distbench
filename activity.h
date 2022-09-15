@@ -34,7 +34,7 @@ class Activity {
 
   // Initializes the class members from configuration provided
   // in ActivityConfig.
-  virtual absl::Status Initialize(StoredActivityConfig* sac) = 0;
+  virtual void Initialize(StoredActivityConfig* sac) = 0;
 
   // Executes the Activity present in the class. This function is added to
   // DistBenchEngine::ActionState's iteration_function by
@@ -49,14 +49,14 @@ class Activity {
 // Returns a unique_ptr to a newly instantiated Activity as per the
 // configuration in ActivityConfig. Returns an error if the instantiation of
 // Activity fails.
-absl::StatusOr<std::unique_ptr<Activity>> AllocateAndInitializeActivity(
-    StoredActivityConfig* sac);
+std::unique_ptr<Activity> AllocateActivity(StoredActivityConfig* sac);
 
 class WasteCpu : public Activity {
  public:
   void DoActivity() override;
   ActivityLog GetActivityLog() override;
-  absl::Status Initialize(StoredActivityConfig* sac) override;
+  void Initialize(StoredActivityConfig* sac) override;
+  static absl::Status ValidateConfig(ActivityConfig& ac);
 
  private:
   std::vector<int> rand_array;
