@@ -612,9 +612,14 @@ void DistBenchEngine::FinishTraffic() {
   }
 }
 
-void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* log) {
-  for (auto& al : activities_logs_) {
-    (*log->mutable_activity_logs())[al.first] = al.second;
+void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* sp_log) {
+  for (auto& alog : cummulative_activity_logs_) {
+    auto& activity_log = (*sp_log->mutable_activity_logs())[alog.first];
+    for (auto& metric : alog.second) {
+      auto* am = activity_log.add_activity_metrics();
+      am->set_name(metric.first);
+      am->set_value_int(metric.second);
+    }
   }
 }
 
@@ -786,7 +791,7 @@ void DistBenchEngine::RunActionList(int list_index,
       s.CancelActivities();
       s.WaitForAllPendingActions();
       absl::MutexLock m(&activities_log_mu_);
-      s.UpdateActivitiesLog(&activities_logs_);
+      s.UpdateActivitiesLog(&cummulative_activity_logs_);
       break;
     }
   }
@@ -842,43 +847,26 @@ void DistBenchEngine::ActionListState::CancelActivities() {
 // activity config 'AC' and have run 20 and 30 times respectively is reported as
 // iteration_count = 50.
 void DistBenchEngine::ActionListState::UpdateActivitiesLog(
-    std::map<std::string, ActivityLog>* activities_logs) {
+    std::map<std::string, std::map<std::string, int64_t>>*
+        cummulative_activity_logs) {
   for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
     if (action_state->action->proto.has_activity_config_name()) {
-      ActivityLog new_log = action_state->activity->GetActivityLog();
       auto activity_config_name =
           action_state->action->proto.activity_config_name();
 
-      auto maybe_existing_log_it = activities_logs->find(activity_config_name);
-      if (maybe_existing_log_it == activities_logs->end()) {
-        (*activities_logs)[activity_config_name] = new_log;
+      auto log_it = cummulative_activity_logs->find(activity_config_name);
+      if (log_it == cummulative_activity_logs->end()) {
+        (*cummulative_activity_logs)[activity_config_name] =
+            std::map<std::string, int64_t>();
+        log_it = cummulative_activity_logs->find(activity_config_name);
+      }
 
-      } else {
-        auto* existing_log = &(maybe_existing_log_it->second);
-        for (auto new_log_it = new_log.activity_metrics().begin();
-             new_log_it != new_log.activity_metrics().end(); new_log_it++) {
-          auto new_name = new_log_it->name();
-          auto new_value_int = new_log_it->value_int();
-          bool new_metric = false;
-
-          for (auto metric_it =
-                   existing_log->mutable_activity_metrics()->begin();
-               metric_it != existing_log->mutable_activity_metrics()->end();
-               metric_it++) {
-            if (new_name == metric_it->name()) {
-              metric_it->set_value_int(new_value_int + metric_it->value_int());
-              new_metric = true;
-              break;
-            }
-          }
-
-          if (new_metric) {
-            auto* am = existing_log->add_activity_metrics();
-            am->set_name(new_name);
-            am->set_value_int(new_value_int);
-          }
-        }
+      auto new_log = action_state->activity->GetActivityLog();
+      for (auto new_metrics_it = new_log.activity_metrics().begin();
+           new_metrics_it != new_log.activity_metrics().end();
+           new_metrics_it++) {
+        (log_it->second)[new_metrics_it->name()] += new_metrics_it->value_int();
       }
     }
   }
