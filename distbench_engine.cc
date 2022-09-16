@@ -172,6 +172,15 @@ absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
 
     s.waste_cpu_config.array_size =
         GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
+  } else if (s.activity_func == "PolluteDataCache") {
+    auto status = PolluteDataCache::ValidateConfig(ac);
+    if (!status.ok()) return status;
+
+    s.pollute_data_cache_config.array_size =
+        GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
+    s.pollute_data_cache_config.array_reads_per_iteration =
+        GetNamedSettingInt64(ac.activity_settings(),
+                             "array_reads_per_iteration", 1000);
   } else {
     return absl::FailedPreconditionError(absl::StrCat(
         "Activity config '", s.activity_config_name,
