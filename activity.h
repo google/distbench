@@ -19,6 +19,7 @@
 #include "distbench.pb.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
+#include "random"
 #include "traffic_config.pb.h"
 
 namespace distbench {
@@ -50,6 +51,8 @@ class Activity {
 // configuration in ActivityConfig.
 std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config);
 
+// Activity: WasteCpu
+
 class WasteCpu : public Activity {
  public:
   void DoActivity() override;
@@ -68,8 +71,33 @@ struct WasteCpuConfig {
   int array_size;
 };
 
+// Activity: PolluteDataCache
+
+class PolluteDataCache : public Activity {
+ public:
+  static absl::Status ValidateConfig(ActivityConfig& ac);
+  void Initialize(ParsedActivityConfig* config) override;
+  void DoActivity() override;
+  ActivityLog GetActivityLog() override;
+
+ private:
+  int iteration_count_ = 0;
+  int array_reads_per_iteration_ = 0;
+  std::vector<int> data_array_;
+  int64_t optimization_preventing_num_ = 0;
+  std::string activity_config_name_;
+  std::uniform_int_distribution<> random_index_;
+  std::mt19937 rand_gen_;
+};
+
+struct PolluteDataCacheConfig {
+  int array_size;
+  int array_reads_per_iteration;
+};
+
 struct ParsedActivityConfig {
   struct WasteCpuConfig waste_cpu_config;
+  struct PolluteDataCacheConfig pollute_data_cache_config;
   std::string activity_config_name;
   std::string activity_func;
 };

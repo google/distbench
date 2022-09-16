@@ -24,10 +24,14 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
 
   if (activity_func == "WasteCpu") {
     activity = std::make_unique<WasteCpu>();
+  } else if (activity_func == "PolluteDataCache") {
+    activity = std::make_unique<PolluteDataCache>();
   }
 
   return activity;
 }
+
+// Activity: WasteCpu
 
 void WasteCpu::DoActivity() {
   iteration_count_++;
@@ -63,6 +67,63 @@ absl::Status WasteCpu::ValidateConfig(ActivityConfig& ac) {
         "Array size (", array_size, ") must be a positive integer."));
   }
   return absl::OkStatus();
+}
+
+// Activity: PolluteDataCache
+
+absl::Status PolluteDataCache::ValidateConfig(ActivityConfig& ac) {
+  auto array_size =
+      GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
+  if (array_size < 1) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Array size (", array_size, ") must be a positive integer."));
+  }
+
+  auto array_reads_per_iteration = GetNamedSettingInt64(
+      ac.activity_settings(), "array_reads_per_iteration", 1000);
+  if (array_reads_per_iteration < 1) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Array reads per iteration (", array_reads_per_iteration,
+                     ") must be a positive integer."));
+  }
+  return absl::OkStatus();
+}
+
+void PolluteDataCache::Initialize(ParsedActivityConfig* config) {
+  srand(time(0));
+  auto array_size = config->pollute_data_cache_config.array_size;
+
+  data_array_.resize(array_size);
+  generate(data_array_.begin(), data_array_.end(), rand);
+
+  random_index_ = std::uniform_int_distribution<>(0, array_size - 1);
+  array_reads_per_iteration_ =
+      config->pollute_data_cache_config.array_reads_per_iteration;
+  activity_config_name_ = config->activity_config_name;
+  iteration_count_ = 0;
+
+  std::random_device rd;
+  rand_gen_ = std::mt19937(rd());
+}
+
+void PolluteDataCache::DoActivity() {
+  iteration_count_++;
+  int64_t sum = 0;
+  for (int i = 0; i < array_reads_per_iteration_; i++) {
+    int index = random_index_(rand_gen_);
+    sum += data_array_[index];
+  }
+  optimization_preventing_num_ = sum;
+}
+
+ActivityLog PolluteDataCache::GetActivityLog() {
+  ActivityLog alog;
+  if (iteration_count_) {
+    auto* am = alog.add_activity_metrics();
+    am->set_name("iteration_count");
+    am->set_value_int(iteration_count_);
+  }
+  return alog;
 }
 
 }  // namespace distbench
