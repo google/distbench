@@ -25,5 +25,3 @@ cmake DCMAKE_-BUILD_TYPE=Debug -DNA_USE_SM=OFF -DNA_USE_OFI=ON -DOFI_INCLUDE_DIR
 make -j 6
 make install
 cd ../../distbench
-
-bazel test :all --//:with-mercury -c dbg
