@@ -36,8 +36,8 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
 void WasteCpu::DoActivity() {
   iteration_count_++;
   int sum = 0;
-  srand(time(0));
-  generate(rand_array.begin(), rand_array.end(), rand);
+  std::srand(time(0));
+  std::generate(rand_array.begin(), rand_array.end(), std::rand);
   std::sort(rand_array.begin(), rand_array.end());
   for (auto num : rand_array) sum += num;
   optimization_preventing_num_ = sum;
@@ -90,11 +90,13 @@ absl::Status PolluteDataCache::ValidateConfig(ActivityConfig& ac) {
 }
 
 void PolluteDataCache::Initialize(ParsedActivityConfig* config) {
-  srand(time(0));
+  std::srand(time(0));
   auto array_size = config->pollute_data_cache_config.array_size;
 
   data_array_.resize(array_size);
-  generate(data_array_.begin(), data_array_.end(), rand);
+  for (int i=0; i<array_size; i++) {
+    data_array_[i] = i;
+  }
 
   random_index_ = std::uniform_int_distribution<>(0, array_size - 1);
   array_reads_per_iteration_ =
@@ -110,8 +112,11 @@ void PolluteDataCache::DoActivity() {
   iteration_count_++;
   int64_t sum = 0;
   for (int i = 0; i < array_reads_per_iteration_; i++) {
+    // 'rand_gen_' is Mersenne Twister generator.
     int index = random_index_(rand_gen_);
-    sum += data_array_[index];
+
+    // This is read and write operation.
+    sum += data_array_[index]++;
   }
   optimization_preventing_num_ = sum;
 }
