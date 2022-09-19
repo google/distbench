@@ -177,7 +177,7 @@ absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
     if (!status.ok()) return status;
 
     s.pollute_data_cache_config.array_size =
-        GetNamedSettingInt64(ac.activity_settings(), "array_size", 10'000'000);
+        GetNamedSettingInt64(ac.activity_settings(), "array_size", 2'000'000);
     s.pollute_data_cache_config.array_reads_per_iteration =
         GetNamedSettingInt64(ac.activity_settings(),
                              "array_reads_per_iteration", 1000);
