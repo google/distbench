@@ -55,7 +55,6 @@ ActivityLog WasteCpu::GetActivityLog() {
 
 void WasteCpu::Initialize(ParsedActivityConfig* config) {
   rand_array.resize(config->waste_cpu_config.array_size);
-  activity_config_name_ = config->activity_config_name;
   iteration_count_ = 0;
 }
 
@@ -101,7 +100,6 @@ void PolluteDataCache::Initialize(ParsedActivityConfig* config) {
   random_index_ = std::uniform_int_distribution<>(0, array_size - 1);
   array_reads_per_iteration_ =
       config->pollute_data_cache_config.array_reads_per_iteration;
-  activity_config_name_ = config->activity_config_name;
   iteration_count_ = 0;
 
   std::random_device rd;

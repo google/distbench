@@ -730,7 +730,7 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
   params.open_loop = false;
   params.activity_name = "PolluteDataCache2M";
   params.activity_func = "PolluteDataCache";
-  params.array_size = 32'000'000;
+  params.array_size = 2'000'000;
   auto test_sequence = GetCliqueTestSequence(params);
 
   TestSequenceResults results;

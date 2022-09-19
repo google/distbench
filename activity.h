@@ -64,7 +64,6 @@ class WasteCpu : public Activity {
   std::vector<int> rand_array;
   int iteration_count_ = 0;
   int64_t optimization_preventing_num_ = 0;
-  std::string activity_config_name_;
 };
 
 struct WasteCpuConfig {
@@ -85,7 +84,6 @@ class PolluteDataCache : public Activity {
   int array_reads_per_iteration_ = 0;
   std::vector<int> data_array_;
   int64_t optimization_preventing_num_ = 0;
-  std::string activity_config_name_;
   std::uniform_int_distribution<> random_index_;
   std::mt19937 rand_gen_;
 };
