@@ -103,15 +103,14 @@ void PolluteDataCache::Initialize(ParsedActivityConfig* config) {
   iteration_count_ = 0;
 
   std::random_device rd;
-  rand_gen_ = std::mt19937(rd());
+  mersenne_twister_prng_ = std::mt19937(rd());
 }
 
 void PolluteDataCache::DoActivity() {
   iteration_count_++;
   int64_t sum = 0;
   for (int i = 0; i < array_reads_per_iteration_; i++) {
-    // 'rand_gen_' is Mersenne Twister generator.
-    int index = random_index_(rand_gen_);
+    int index = random_index_(mersenne_twister_prng_);
 
     // This is read and write operation.
     sum += data_array_[index]++;
