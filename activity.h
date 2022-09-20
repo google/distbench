@@ -85,7 +85,7 @@ class PolluteDataCache : public Activity {
   std::vector<int> data_array_;
   int64_t optimization_preventing_num_ = 0;
   std::uniform_int_distribution<> random_index_;
-  std::mt19937 rand_gen_;
+  std::mt19937 mersenne_twister_prng_;
 };
 
 struct PolluteDataCacheConfig {
