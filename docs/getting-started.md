@@ -10,7 +10,7 @@ For general information about Distbench, please consult the
 
 ### Dependencies
 
-To build Distbench, you need to have Bazel installed.
+To build Distbench, you need to have Bazel and g++11.3 installed.
 
 Follow the instructions for your distribution at
 <https://docs.bazel.build/versions/master/install.html> to install Bazel.
@@ -19,6 +19,8 @@ Follow the instructions for your distribution at
 
 Once Bazel is installed, you can build Distbench with the following command:
 ```bash
+export CC=gcc-11
+export CXX=g++-11
 bazel build :all
 ```
 
