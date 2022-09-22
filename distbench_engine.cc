@@ -1092,7 +1092,6 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
   } else if (action.proto.has_activity_config_name()) {
     auto* config = &stored_activity_config_[action.activity_config_index];
     action_state->activity = AllocateActivity(config);
-    action_state->activity->Initialize(config);
     action_state->iteration_function =
         [this,
          action_state](std::shared_ptr<ActionIterationState> iteration_state) {

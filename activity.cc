@@ -28,6 +28,7 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
     activity = std::make_unique<PolluteDataCache>();
   }
 
+  activity->Initialize(config);
   return activity;
 }
 
