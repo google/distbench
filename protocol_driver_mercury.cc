@@ -217,8 +217,7 @@ void ProtocolDriverMercury::ShutdownClient() {
   while (pending_rpcs_) {
     sched_yield();
   }
-  if (!shutdown_.HasBeenNotified()) {
-    shutdown_.Notify();
+  if (shutdown_.TryToNotify()) {
     if (progress_thread_.joinable()) {
       progress_thread_.join();
     }

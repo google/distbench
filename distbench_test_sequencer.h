@@ -20,6 +20,7 @@
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
 #include "distbench.grpc.pb.h"
+#include "distbench_utils.h"
 
 namespace distbench {
 
@@ -87,7 +88,7 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;
   TestSequencerOpts opts_;
-  absl::Notification shutdown_requested_;
+  SafeNotification shutdown_requested_;
 };
 
 }  // namespace distbench

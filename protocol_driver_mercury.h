@@ -71,7 +71,7 @@ class ProtocolDriverMercury : public ProtocolDriver {
       const struct hg_cb_info* callback_info);
 
   std::atomic<int> pending_rpcs_ = 0;
-  absl::Notification shutdown_;
+  SafeNotification shutdown_;
   std::thread progress_thread_;
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;

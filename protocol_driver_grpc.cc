@@ -167,13 +167,13 @@ namespace {
 class TrafficService : public Traffic::Service {
  public:
   ~TrafficService() override {
-    if (!handler_set_.HasBeenNotified()) handler_set_.Notify();
+    handler_set_.TryToNotify();
   }
 
   void SetHandler(
       std::function<std::function<void()>(ServerRpcState* state)> handler) {
     handler_ = handler;
-    handler_set_.Notify();
+    handler_set_.TryToNotify();
   }
 
   grpc::Status GenericRpc(grpc::ServerContext* context,
@@ -197,7 +197,7 @@ class TrafficService : public Traffic::Service {
   }
 
  private:
-  absl::Notification handler_set_;
+  SafeNotification handler_set_;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
 };
 
@@ -443,13 +443,13 @@ class TrafficServiceAsyncCallback
       // Create a thread pool, reserving 50% of the cpus to handle responses.
       : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
   ~TrafficServiceAsyncCallback() override {
-    if (!handler_set_.HasBeenNotified()) handler_set_.Notify();
+    handler_set_.TryToNotify();
   }
 
   void SetHandler(
       std::function<std::function<void()>(ServerRpcState* state)> handler) {
     handler_ = handler;
-    handler_set_.Notify();
+    handler_set_.TryToNotify();
   }
 
   grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context,
@@ -474,7 +474,7 @@ class TrafficServiceAsyncCallback
   }
 
  private:
-  absl::Notification handler_set_;
+  SafeNotification handler_set_;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
   distbench::DistbenchThreadpool thread_pool_;
 };
@@ -675,7 +675,7 @@ absl::Status GrpcPollingServerDriver::Initialize(
 void GrpcPollingServerDriver::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   handler_ = handler;
-  handler_set_.Notify();
+  handler_set_.TryToNotify();
 }
 
 absl::StatusOr<std::string> GrpcPollingServerDriver::HandlePreConnect(
@@ -693,7 +693,7 @@ void GrpcPollingServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
 void GrpcPollingServerDriver::ShutdownServer() {
-  if (!handler_set_.HasBeenNotified()) handler_set_.Notify();
+  handler_set_.TryToNotify();
   if (server_) {
     server_->Shutdown();
     server_shutdown_detected_.WaitForNotification();
@@ -723,7 +723,7 @@ void GrpcPollingServerDriver::HandleRpcs() {
   while (server_cq_->Next(&tag, &ok)) {
     PollingRpcHandlerFsm* rpc_fsm = static_cast<PollingRpcHandlerFsm*>(tag);
     if (!ok) {
-      server_shutdown_detected_.Notify();
+      server_shutdown_detected_.TryToNotify();
       post_new_handler = false;
       rpc_fsm->DecRefAndMaybeDelete();
       continue;

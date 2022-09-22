@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "absl/status/statusor.h"
+#include "absl/synchronization/notification.h"
 #include "distbench.pb.h"
 #include "distbench_netutils.h"
 #include "google/protobuf/stubs/status_macros.h"
@@ -32,6 +33,34 @@ ostream& operator<<(ostream& out, grpc::Status const& c);
 };
 
 namespace distbench {
+
+// This is to allow Notify to be called from multiple threads safely:
+// This scenario happens when unit tests timeout and obscure why they
+// failed by crashing.
+class SafeNotification {
+ public:
+
+  // Returns true if Notify was not already called.
+  bool TryToNotify() {
+    if (!n.HasBeenNotified()) {
+      absl::MutexLock m(&mu);
+      if (!n.HasBeenNotified()) {
+        n.Notify();
+        return true;
+      }
+    }
+    return false;
+  }
+  bool HasBeenNotified() {
+    return n.HasBeenNotified();
+  }
+  void WaitForNotification() {
+    n.WaitForNotification();
+  }
+ private:
+  absl::Mutex mu;
+  absl::Notification n;
+};
 
 void set_use_ipv4_first(bool _use_ipv4_first);
 

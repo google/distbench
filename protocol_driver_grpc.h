@@ -143,7 +143,6 @@ class GrpcCallbackClientDriver : public ProtocolDriverClient {
   virtual std::vector<TransportStat> GetTransportStats() override;
 
  private:
-  absl::Notification shutdown_;
   std::atomic<int> pending_rpcs_ = 0;
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
   std::string transport_;
@@ -205,9 +204,9 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   grpc::ServerContext context;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
   DistbenchThreadpool thread_pool_;
-  absl::Notification server_shutdown_detected_;
+  SafeNotification server_shutdown_detected_;
   absl::Notification handle_rpcs_started_;
-  absl::Notification handler_set_;
+  SafeNotification handler_set_;
   std::string transport_;
 };
 

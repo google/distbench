@@ -606,12 +606,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 
 void DistBenchEngine::CancelTraffic() {
   LOG(INFO) << engine_name_ << ": Got CancelTraffic";
-  if (!canceled_.HasBeenNotified()) {
-    absl::MutexLock m(&canceled_mu_);
-    if (!canceled_.HasBeenNotified()) {
-      canceled_.Notify();
-    }
-  }
+  canceled_.TryToNotify();
 }
 
 void DistBenchEngine::FinishTraffic() {
