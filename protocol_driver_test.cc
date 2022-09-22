@@ -15,24 +15,31 @@
 #include "benchmark/benchmark.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "protocol_driver_allocator.h"
 
 namespace distbench {
 
+ProtocolDriverOptions PdoFromString(const std::string& s) {
+  ProtocolDriverOptions pdo;
+  google::protobuf::TextFormat::ParseFromString(s, &pdo);
+  return pdo;
+}
+
 class ProtocolDriverTest
-    : public testing::TestWithParam<ProtocolDriverOptions> {};
+    : public testing::TestWithParam<std::string> {};
 
 TEST_P(ProtocolDriverTest, Allocate) {
-  ProtocolDriverOptions pdo = GetParam();
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
   int port = 0;
   auto maybe_pd = AllocateProtocolDriver(pdo, &port);
   ASSERT_OK(maybe_pd.status());
 }
 
 TEST_P(ProtocolDriverTest, SetNumPeers) {
-  ProtocolDriverOptions pdo = GetParam();
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
   int port = 0;
   auto maybe_pd = AllocateProtocolDriver(pdo, &port);
   ASSERT_OK(maybe_pd.status());
@@ -45,7 +52,7 @@ TEST_P(ProtocolDriverTest, SetNumPeers) {
 }
 
 TEST_P(ProtocolDriverTest, GetConnectionHandle) {
-  ProtocolDriverOptions pdo = GetParam();
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
   int port = 0;
   auto maybe_pd = AllocateProtocolDriver(pdo, &port);
   ASSERT_OK(maybe_pd.status());
@@ -61,7 +68,7 @@ TEST_P(ProtocolDriverTest, GetConnectionHandle) {
 }
 
 TEST_P(ProtocolDriverTest, HandleConnect) {
-  ProtocolDriverOptions pdo = GetParam();
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
   int port = 0;
   auto maybe_pd = AllocateProtocolDriver(pdo, &port);
   ASSERT_OK(maybe_pd.status());
@@ -78,7 +85,7 @@ TEST_P(ProtocolDriverTest, HandleConnect) {
 }
 
 TEST_P(ProtocolDriverTest, Invoke) {
-  ProtocolDriverOptions pdo = GetParam();
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
   int port = 0;
   auto maybe_pd = AllocateProtocolDriver(pdo, &port);
   ASSERT_OK(maybe_pd.status());
@@ -122,7 +129,7 @@ TEST_P(ProtocolDriverTest, Invoke) {
 }
 
 TEST_P(ProtocolDriverTest, SelfEcho) {
-  ProtocolDriverOptions pdo = GetParam();
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
   int port = 0;
   auto maybe_pd = AllocateProtocolDriver(pdo, &port);
   ASSERT_OK(maybe_pd.status());
@@ -153,7 +160,7 @@ TEST_P(ProtocolDriverTest, SelfEcho) {
 }
 
 TEST_P(ProtocolDriverTest, Echo) {
-  ProtocolDriverOptions pdo = GetParam();
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
   int port1 = 0;
   auto maybe_pd1 = AllocateProtocolDriver(pdo, &port1);
   ASSERT_OK(maybe_pd1.status());
@@ -194,7 +201,8 @@ TEST_P(ProtocolDriverTest, Echo) {
   EXPECT_EQ(client_rpc_count, 1);
 }
 
-void Echo(benchmark::State& state, ProtocolDriverOptions opts) {
+void Echo(benchmark::State& state, std::string opts_string) {
+  ProtocolDriverOptions opts = PdoFromString(opts_string);
   int port1 = 0;
   auto maybe_pd1 = AllocateProtocolDriver(opts, &port1);
   ASSERT_OK(maybe_pd1.status());
@@ -235,68 +243,69 @@ void Echo(benchmark::State& state, ProtocolDriverOptions opts) {
   }
 }
 
-ProtocolDriverOptions GrpcOptions() {
+std::string GrpcOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
-  return pdo;
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions GrpcAsynCallbackOptions() {
+std::string GrpcAsynCallbackOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc_async_callback");
-  return pdo;
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions DoubleBarrelGrpc() {
+std::string DoubleBarrelGrpc() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("double_barrel");
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "inline");
   AddServerStringOptionTo(pdo, "next_protocol_driver", "grpc");
-  return pdo;
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions GrpcPollingClientHandoffServer() {
+std::string GrpcPollingClientHandoffServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
-  return pdo;
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions GrpcPollingClientPollingServer() {
+std::string GrpcPollingClientPollingServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "polling");
-  return pdo;
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions GrpcCallbackClientInlineServer() {
+std::string GrpcCallbackClientInlineServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "callback");
   AddServerStringOptionTo(pdo, "server_type", "inline");
-  return pdo;
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions HomaOptions() {
-  ProtocolDriverOptions ret;
-  ret.set_protocol_name("homa");
-  return ret;
+std::string HomaOptions() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("homa");
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions HomaTransport(ProtocolDriverOptions pdo) {
+std::string HomaTransport(std::string pdo_in) {
+  ProtocolDriverOptions pdo = PdoFromString(pdo_in);;
   auto opt = pdo.add_server_settings();
   opt->set_name("transport");
   opt->set_string_value("homa");
-  return pdo;
+  return pdo.DebugString();
 }
 
-ProtocolDriverOptions MercuryOptions() {
-  ProtocolDriverOptions ret;
-  ret.set_protocol_name("mercury");
-  return ret;
+std::string MercuryOptions() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("mercury");
+  return pdo.DebugString();
 }
 
 void BM_GrpcEcho(benchmark::State& state) { Echo(state, GrpcOptions()); }
