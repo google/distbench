@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "distbench_test_sequencer.h"
+#include "distbench_utils.h"
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
@@ -174,7 +175,7 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
     *response->add_test_results() = std::move(result);
   }
   if (request->tests_setting().shutdown_after_tests()) {
-    shutdown_requested_.Notify();
+    shutdown_requested_.TryToNotify();
   }
   return grpc::Status::OK;
 }
@@ -561,9 +562,7 @@ void TestSequencer::Shutdown() {
       finished_rpc->node->idle = true;
     }
   }
-  if (!shutdown_requested_.HasBeenNotified()) {
-    shutdown_requested_.Notify();
-  }
+  shutdown_requested_.TryToNotify();
   if (grpc_server_) {
     grpc_server_->Shutdown();
   }

@@ -64,9 +64,9 @@ class ProtocolDriverHoma : public ProtocolDriver {
   std::string netdev_name_;
   std::thread client_completion_thread_;
   std::thread server_thread_;
-  absl::Notification handler_set_;
-  absl::Notification shutting_down_server_;
-  absl::Notification shutting_down_client_;
+  SafeNotification handler_set_;
+  SafeNotification shutting_down_server_;
+  SafeNotification shutting_down_client_;
 
   std::function<std::function<void()>(ServerRpcState* state)> rpc_handler_;
 

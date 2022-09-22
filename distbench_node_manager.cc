@@ -209,14 +209,12 @@ grpc::Status NodeManager::ShutdownNode(grpc::ServerContext* context,
                                        const ShutdownNodeRequest* request,
                                        ShutdownNodeResult* response) {
   LOG(INFO) << "Shutting down node " << config_.node_alias();
-  shutdown_requested_.Notify();
+  shutdown_requested_.TryToNotify();
   return grpc::Status::OK;
 }
 
 void NodeManager::Shutdown() {
-  if (!shutdown_requested_.HasBeenNotified()) {
-    shutdown_requested_.Notify();
-  }
+  shutdown_requested_.TryToNotify();
   if (grpc_server_) {
     grpc_server_->Shutdown();
   }

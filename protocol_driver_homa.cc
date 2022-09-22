@@ -116,7 +116,7 @@ ProtocolDriverHoma::~ProtocolDriverHoma() {
 void ProtocolDriverHoma::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
   rpc_handler_ = handler;
-  handler_set_.Notify();
+  handler_set_.TryToNotify();
 }
 
 void ProtocolDriverHoma::SetNumPeers(int num_peers) {
@@ -183,9 +183,8 @@ void ProtocolDriverHoma::ChurnConnection(int peer) {
 }
 
 void ProtocolDriverHoma::ShutdownServer() {
-  if (!handler_set_.HasBeenNotified()) handler_set_.Notify();
-  if (!shutting_down_server_.HasBeenNotified()) {
-    shutting_down_server_.Notify();
+  handler_set_.TryToNotify();
+  if (shutting_down_server_.TryToNotify()) {
     if (server_thread_.joinable()) {
       server_thread_.join();
     }
@@ -195,8 +194,7 @@ void ProtocolDriverHoma::ShutdownServer() {
 }
 
 void ProtocolDriverHoma::ShutdownClient() {
-  if (!shutting_down_client_.HasBeenNotified()) {
-    shutting_down_client_.Notify();
+  if (shutting_down_client_.TryToNotify()) {
     if (client_completion_thread_.joinable()) {
       client_completion_thread_.join();
     }

@@ -93,7 +93,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;
   NodeManagerOpts opts_;
-  absl::Notification shutdown_requested_;
+  SafeNotification shutdown_requested_;
   NodeConfig config_;
 
   struct rusage rusage_start_test_;
