@@ -214,6 +214,8 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   new_rpc->state = state;
   new_rpc->serialized_request = "?";  // Homa can't send a 0 byte message :(
   state->request.AppendToString(&new_rpc->serialized_request);
+  const char* const buf = new_rpc->serialized_request.data();
+  const size_t buflen = new_rpc->serialized_request.size();
 #ifdef THREAD_SANITIZER
   __tsan_release(new_rpc);
 #endif
@@ -222,8 +224,7 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   uint64_t kernel_rpc_number;
 
   int64_t res = homa_send(
-      homa_client_sock_, new_rpc->serialized_request.data(),
-      new_rpc->serialized_request.size(), &peer_addresses_[peer_index],
+      homa_client_sock_, buf, buflen, &peer_addresses_[peer_index],
       &kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
   if (res < 0) {
     LOG(INFO) << "homa_send result: " << res << " errno: " << errno
