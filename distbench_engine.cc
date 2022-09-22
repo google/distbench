@@ -782,15 +782,7 @@ void DistBenchEngine::RunActionList(int list_index,
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
             next_iteration_time)) {
-      if (!s.DidSomeActionsFinish()) {
-        LOG(FATAL) << "finished_action_indices is empty";
-      }
-      for (const auto& finished_action_index : s.finished_action_indices) {
-        s.state_table[finished_action_index].finished = true;
-        s.state_table[finished_action_index].next_iteration_time =
-            absl::InfiniteFuture();
-      }
-      s.finished_action_indices.clear();
+      s.HandleFinishedActions();
     }
     s.action_mu.Unlock();
     if (canceled_.HasBeenNotified()) {
@@ -839,6 +831,18 @@ bool DistBenchEngine::ActionListState::DidSomeActionsFinish() {
   return !pending_actions || !finished_action_indices.empty();
 };
 
+void DistBenchEngine::ActionListState::HandleFinishedActions() {
+  if (!DidSomeActionsFinish()) {
+    LOG(FATAL) << "finished_action_indices is empty";
+  }
+  for (const auto& finished_action_index : finished_action_indices) {
+    state_table[finished_action_index].finished = true;
+    state_table[finished_action_index].next_iteration_time =
+      absl::InfiniteFuture();
+  }
+  finished_action_indices.clear();
+}
+
 void DistBenchEngine::ActionListState::CancelActivities() {
   for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
@@ -882,7 +886,7 @@ void DistBenchEngine::ActionListState::WaitForAllPendingActions() {
   bool done;
   do {
     action_mu.LockWhen(absl::Condition(&some_actions_finished));
-    finished_action_indices.clear();
+    HandleFinishedActions();
     done = true;
     for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
       const auto& state = state_table[i];
