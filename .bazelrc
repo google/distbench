@@ -15,8 +15,9 @@ build:asan --linkopt -fsanitize=address
 build:tsan --strip=never
 build:tsan --copt=-fsanitize=thread
 build:tsan --copt=-fno-omit-frame-pointer
-build:tsan --copt=-DGPR_NO_DIRECT_SYSCALLS
+build:tsan --copt=-DTHREAD_SANITIZER
 build:tsan --copt=-DGRPC_TSAN
+build:tsan --copt=-DGPR_NO_DIRECT_SYSCALLS
 build:tsan --linkopt=-fsanitize=thread
 # This is needed to address false positive problem with abseil.
 # https://github.com/google/sanitizers/issues/953

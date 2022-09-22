@@ -9,7 +9,6 @@ namespace distbench {
 
 struct PendingHomaRpc {
   ClientRpcState* state;
-  uint64_t kernel_rpc_number;
   std::string serialized_request;
   std::function<void(void)> done_callback;
 };

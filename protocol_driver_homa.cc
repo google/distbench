@@ -216,16 +216,20 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   new_rpc->state = state;
   new_rpc->serialized_request = "?";  // Homa can't send a 0 byte message :(
   state->request.AppendToString(&new_rpc->serialized_request);
+#ifdef THREAD_SANITIZER
+  __tsan_release(new_rpc);
+#endif
 
   ++pending_rpcs_;
+  uint64_t kernel_rpc_number;
 
   int64_t res = homa_send(
       homa_client_sock_, new_rpc->serialized_request.data(),
       new_rpc->serialized_request.size(), &peer_addresses_[peer_index],
-      &new_rpc->kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
+      &kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
   if (res < 0) {
     LOG(INFO) << "homa_send result: " << res << " errno: " << errno
-              << " kernel_rpc_number " << new_rpc->kernel_rpc_number;
+              << " kernel_rpc_number " << kernel_rpc_number;
     delete new_rpc;
     state->success = false;
     done_callback();
@@ -305,6 +309,9 @@ void ProtocolDriverHoma::ClientCompletionThread() {
       }
     }
     PendingHomaRpc* pending_rpc = reinterpret_cast<PendingHomaRpc*>(cookie);
+#ifdef THREAD_SANITIZER
+    __tsan_acquire(pending_rpc);
+#endif
     CHECK(pending_rpc) << "Completion cookie was NULL";
     if (recv_errno || !length) {
       pending_rpc->state->success = false;
