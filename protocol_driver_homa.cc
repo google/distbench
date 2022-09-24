@@ -16,8 +16,6 @@ ProtocolDriverHoma::ProtocolDriverHoma() {}
 
 absl::Status ProtocolDriverHoma::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
-  VLOG(1) << "ProtocolDriverOptions: " << pd_opts.DebugString();
-
   if (pd_opts.has_netdev_name()) {
     netdev_name_ = pd_opts.netdev_name();
   }
@@ -165,12 +163,6 @@ absl::StatusOr<std::string> ProtocolDriverHoma::HandlePreConnect(
   addr.set_socket_address(my_server_socket_address_);
   std::string ret;
   addr.AppendToString(&ret);
-
-  VLOG(1) << "Homa: HandlePreConnect: "
-          << "peer: " << peer << ", ip_address: " << addr.ip_address()
-          << ", port: " << addr.port()
-          << ", socket_address: " << addr.socket_address() << ".";
-
   return ret;
 }
 
