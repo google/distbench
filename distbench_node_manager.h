@@ -83,6 +83,10 @@ class NodeManager final : public DistBenchNodeManager::Service {
   absl::Status AllocService(const ServiceOpts& service_opts)
       ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
+  std::string NodeAlias() ABSL_LOCKS_EXCLUDED(config_mutex_) {
+    absl::MutexLock m(&config_mutex_);
+    return config_.node_alias();
+  }
   absl::Mutex mutex_;
   DistributedSystemDescription traffic_config_ ABSL_GUARDED_BY(mutex_);
   ServiceEndpointMap peers_ ABSL_GUARDED_BY(mutex_);
@@ -94,7 +98,8 @@ class NodeManager final : public DistBenchNodeManager::Service {
   std::string service_address_;
   NodeManagerOpts opts_;
   SafeNotification shutdown_requested_;
-  NodeConfig config_;
+  absl::Mutex config_mutex_;
+  NodeConfig config_ ABSL_GUARDED_BY(config_mutex_);
 
   struct rusage rusage_start_test_;
 };
