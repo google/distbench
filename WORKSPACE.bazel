@@ -76,12 +76,12 @@ new_local_repository(
 
 http_archive(
     name = "grpc_homa",
-    sha256 = "a4dc556bfe4ec80e3988201fc5ae4707b68245441fd9f52af03d3c7dcd93d06e",
+    sha256 = "b0fb747ac13e66ea1ef4e2dc2473cd32d942d6917519ba07077ae99ff07f8e6d",
     urls = [
-        "https://github.com/PlatformLab/grpc_homa/archive/19c595ad6c80f0f0fc268449aa46d8df67ac4f6c.tar.gz"
+        "https://github.com/PlatformLab/grpc_homa/archive/783937a9aa7200b2dd2d13886a6f4d871845526f.tar.gz"
     ],
     build_file = "@//:grpc_homa.BUILD",
-    strip_prefix = "grpc_homa-19c595ad6c80f0f0fc268449aa46d8df67ac4f6c",
+    strip_prefix = "grpc_homa-783937a9aa7200b2dd2d13886a6f4d871845526f",
 )
 
 http_archive(
