@@ -187,7 +187,7 @@ grpc::Status NodeManager::GetTrafficResult(
     }
     ClearServices();
   }
-  (*response->mutable_node_usages())[config_.node_alias()] =
+  (*response->mutable_node_usages())[NodeAlias()] =
       GetRUsageStatsFromStructs(rusage_start_test_, DoGetRusage());
 
   return grpc::Status::OK;
@@ -196,20 +196,21 @@ grpc::Status NodeManager::GetTrafficResult(
 grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
                                         const CancelTrafficRequest* request,
                                         CancelTrafficResult* response) {
-  LOG(INFO) << "Starting CancelTraffic on " << config_.node_alias();
+  LOG(INFO) << "Starting CancelTraffic on " << NodeAlias();
   absl::ReaderMutexLock m(&mutex_);
   for (const auto& service_engine : service_engines_) {
     service_engine.second->CancelTraffic();
   }
-  LOG(INFO) << "Finished CancelTraffic on " << config_.node_alias();
+  LOG(INFO) << "Finished CancelTraffic on " << NodeAlias();
   return grpc::Status::OK;
 }
 
 grpc::Status NodeManager::ShutdownNode(grpc::ServerContext* context,
                                        const ShutdownNodeRequest* request,
                                        ShutdownNodeResult* response) {
-  LOG(INFO) << "Shutting down node " << config_.node_alias();
-  shutdown_requested_.TryToNotify();
+  if (shutdown_requested_.TryToNotify()) {
+    LOG(INFO) << "Shutting down node " << NodeAlias();
+  }
   return grpc::Status::OK;
 }
 
@@ -280,6 +281,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   grpc::ClientContext context;
   SetGrpcClientContextDeadline(&context, /*max_time_s=*/60);
   context.set_wait_for_ready(true);
+  absl::MutexLock m(&config_mutex_);
   grpc::Status status =
       test_sequencer_stub->RegisterNode(&context, reg, &config_);
   if (!status.ok()) {
