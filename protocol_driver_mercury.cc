@@ -92,8 +92,10 @@ absl::Status ProtocolDriverMercury::Initialize(
 
   server_socket_address_ = std::string(buf);
 
+#ifndef THREAD_SANITIZER
   PrintMercuryVersion();
   VLOG(1) << "Mercury Traffic server listening on " << server_socket_address_;
+#endif
   progress_thread_ = RunRegisteredThread(
       "MercuryProgress", [=]() { this->RpcCompletionThread(); });
   return absl::OkStatus();
@@ -134,8 +136,6 @@ absl::Status ProtocolDriverMercury::HandleConnect(
     std::string remote_connection_info, int peer) {
   CHECK_GE(peer, 0);
   CHECK_LT((size_t)peer, remote_addresses_.size());
-
-  VLOG(1) << "Connect to peer " << peer << " at " << remote_connection_info;
 
   hg_return_t hg_ret;
   hg_ret = HG_Addr_lookup2(hg_class_, remote_connection_info.c_str(),
