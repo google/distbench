@@ -14,12 +14,13 @@
 #ifndef DISTBENCH_ACTIVITY_H_
 #define DISTBENCH_ACTIVITY_H_
 
+#include <random>
+
 #include "absl/status/statusor.h"
 #include "activity.h"
 #include "distbench.pb.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
-#include "random"
 #include "traffic_config.pb.h"
 
 namespace distbench {
