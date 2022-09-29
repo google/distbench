@@ -9,32 +9,32 @@ package(
 
 bool_flag(
     name = "with-mercury",
-    build_setting_default = False
+    build_setting_default = False,
 )
 
 bool_flag(
     name = "with-homa",
-    build_setting_default = False
+    build_setting_default = False,
 )
 
 bool_flag(
     name = "with-homa-default",
-    build_setting_default = False
+    build_setting_default = False,
 )
 
 config_setting(
     name = "with_mercury",
-    flag_values = {":with-mercury": 'True'}
+    flag_values = {":with-mercury": "True"},
 )
 
 config_setting(
     name = "with_homa",
-    flag_values = {":with-homa": 'True'}
+    flag_values = {":with-homa": "True"},
 )
 
 config_setting(
     name = "with_homa_default",
-    flag_values = {":with-homa-default": 'True'}
+    flag_values = {":with-homa-default": "True"},
 )
 
 
