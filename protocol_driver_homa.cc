@@ -215,9 +215,9 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   ++pending_rpcs_;
   uint64_t kernel_rpc_number;
 
-  int64_t res = homa_send(
-      homa_client_sock_, buf, buflen, &peer_addresses_[peer_index],
-      &kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
+  int64_t res =
+      homa_send(homa_client_sock_, buf, buflen, &peer_addresses_[peer_index],
+                &kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
   if (res < 0) {
     LOG(INFO) << "homa_send result: " << res << " errno: " << errno
               << " kernel_rpc_number " << kernel_rpc_number;
@@ -238,8 +238,8 @@ void ProtocolDriverHoma::ServerThread() {
     size_t length = 0;
     errno = 0;
     int64_t error = homa_recv(homa_server_sock_, rx_buf, sizeof(rx_buf),
-                                     HOMA_RECV_NONBLOCKING | HOMA_RECV_REQUEST,
-                                     &src_addr, &rpc_id, &length, NULL);
+                              HOMA_RECV_NONBLOCKING | HOMA_RECV_REQUEST,
+                              &src_addr, &rpc_id, &length, NULL);
     int recv_errno = errno;
     if (error < 0) {
       if (recv_errno != EINTR && recv_errno != EAGAIN) {
@@ -261,7 +261,7 @@ void ProtocolDriverHoma::ServerThread() {
       std::string txbuf = "!";  // Homa can't send a 0 byte message :(
       rpc_state->response.AppendToString(&txbuf);
       int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
-                                        txbuf.length(), &src_addr, rpc_id);
+                                 txbuf.length(), &src_addr, rpc_id);
       if (error) {
         LOG(ERROR) << "homa_reply for " << rpc_id
                    << " returned error: " << strerror(errno);

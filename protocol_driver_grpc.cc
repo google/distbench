@@ -166,9 +166,7 @@ void GrpcPollingClientDriver::ShutdownClient() {
 namespace {
 class TrafficService : public Traffic::Service {
  public:
-  ~TrafficService() override {
-    handler_set_.TryToNotify();
-  }
+  ~TrafficService() override { handler_set_.TryToNotify(); }
 
   void SetHandler(
       std::function<std::function<void()>(ServerRpcState* state)> handler) {
@@ -442,9 +440,7 @@ class TrafficServiceAsyncCallback
   TrafficServiceAsyncCallback()
       // Create a thread pool, reserving 50% of the cpus to handle responses.
       : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
-  ~TrafficServiceAsyncCallback() override {
-    handler_set_.TryToNotify();
-  }
+  ~TrafficServiceAsyncCallback() override { handler_set_.TryToNotify(); }
 
   void SetHandler(
       std::function<std::function<void()>(ServerRpcState* state)> handler) {
