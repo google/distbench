@@ -1088,8 +1088,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     auto* config = &stored_activity_config_[action.activity_config_index];
     action_state->activity = AllocateActivity(config);
     action_state->iteration_function =
-        [this,
-         action_state](std::shared_ptr<ActionIterationState> iteration_state) {
+        [action_state](std::shared_ptr<ActionIterationState> iteration_state) {
           action_state->activity->DoActivity();
         };
   } else {
