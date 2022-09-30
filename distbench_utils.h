@@ -39,7 +39,6 @@ namespace distbench {
 // failed by crashing.
 class SafeNotification {
  public:
-
   // Returns true if Notify was not already called.
   bool TryToNotify() {
     if (!n.HasBeenNotified()) {
@@ -51,12 +50,9 @@ class SafeNotification {
     }
     return false;
   }
-  bool HasBeenNotified() {
-    return n.HasBeenNotified();
-  }
-  void WaitForNotification() {
-    n.WaitForNotification();
-  }
+  bool HasBeenNotified() { return n.HasBeenNotified(); }
+  void WaitForNotification() { n.WaitForNotification(); }
+
  private:
   absl::Mutex mu;
   absl::Notification n;

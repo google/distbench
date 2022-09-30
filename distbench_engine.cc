@@ -833,7 +833,7 @@ void DistBenchEngine::ActionListState::HandleFinishedActions() {
   for (const auto& finished_action_index : finished_action_indices) {
     state_table[finished_action_index].finished = true;
     state_table[finished_action_index].next_iteration_time =
-      absl::InfiniteFuture();
+        absl::InfiniteFuture();
   }
   finished_action_indices.clear();
 }

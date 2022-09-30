@@ -94,7 +94,7 @@ void PolluteDataCache::Initialize(ParsedActivityConfig* config) {
   auto array_size = config->pollute_data_cache_config.array_size;
 
   data_array_.resize(array_size);
-  for (int i=0; i<array_size; i++) {
+  for (int i = 0; i < array_size; i++) {
     data_array_[i] = i;
   }
 

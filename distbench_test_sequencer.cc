@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "distbench_test_sequencer.h"
-#include "distbench_utils.h"
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
