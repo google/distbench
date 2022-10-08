@@ -17,23 +17,26 @@
 namespace distbench {
 
 DistbenchThreadpool::DistbenchThreadpool(int nb_threads) {
-  auto task_runner = [&]() {
-    do {
-      std::function<void()> task;
-      {
-        absl::MutexLock m(&mutex_);
-        if (work_queue_.empty()) {
-          if (shutdown_.HasBeenNotified()) return;
-          continue;
-        }
-        task = work_queue_.front();
-        work_queue_.pop();
-      }
-      task();
-    } while (true);
-  };
 
   for (int i = 0; i < nb_threads; i++) {
+    auto task_runner = [&, i]() {
+      do {
+        std::function<void()> task;
+        {
+          absl::MutexLock m(&mutex_);
+          if (work_queue_.empty()) {
+            // All threads except thread-0 relinquish CPU
+            // if there is no work.
+            if ( i != 0 ) sched_yield();
+            if (shutdown_.HasBeenNotified()) return;
+            continue;
+          }
+          task = work_queue_.front();
+          work_queue_.pop();
+        }
+        task();
+      } while (true);
+    };
     threads_.push_back(RunRegisteredThread("ThreadPool", task_runner));
   }
 }
