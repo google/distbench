@@ -233,7 +233,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
       std::shared_ptr<ActionIterationState> iteration_state);
   std::vector<int> PickRpcFanoutTargets(ActionState* action_state);
 
-  int WasteCpu(int size);
   void AddActivityLogs(ServicePerformanceLog* sp_log);
 
   std::atomic<int64_t> waste_cpu_iteration_cnt_ = 0;
