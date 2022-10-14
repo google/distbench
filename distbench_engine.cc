@@ -1031,20 +1031,6 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
   }
 }
 
-int DistBenchEngine::WasteCpu(int size) {
-  // TODO:
-  // 1. Move this function to an activity library.
-  // 2. Remove #include <bits/stdc++.h> above.
-  // 3. Get the size of 'v' from config proto.
-  unsigned int sum = 0;
-  std::vector<unsigned int> v(size, 0);
-  srand(time(0));
-  generate(v.begin(), v.end(), rand);
-  std::sort(v.begin(), v.end());
-  for (auto num : v) sum += num;
-  return sum;
-}
-
 void DistBenchEngine::RunAction(ActionState* action_state) {
   auto& action = *action_state->action;
   if (action.actionlist_index >= 0) {
