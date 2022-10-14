@@ -14,8 +14,6 @@
 
 #include "distbench_engine.h"
 
-#include <bits/stdc++.h>
-
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
