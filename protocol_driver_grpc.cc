@@ -14,6 +14,8 @@
 
 #include "protocol_driver_grpc.h"
 
+#include <memory>
+
 #include "absl/base/internal/sysinfo.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
@@ -212,7 +214,7 @@ absl::Status GrpcInlineServerDriver::Initialize(
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  traffic_service_ = absl::make_unique<TrafficService>();
+  traffic_service_ = std::make_unique<TrafficService>();
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -488,7 +490,7 @@ absl::Status GrpcHandoffServerDriver::Initialize(
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  traffic_service_ = absl::make_unique<TrafficServiceAsyncCallback>();
+  traffic_service_ = std::make_unique<TrafficServiceAsyncCallback>();
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -643,7 +645,7 @@ absl::Status GrpcPollingServerDriver::Initialize(
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  traffic_async_service_ = absl::make_unique<Traffic::AsyncService>();
+  traffic_async_service_ = std::make_unique<Traffic::AsyncService>();
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -662,8 +664,8 @@ absl::Status GrpcPollingServerDriver::Initialize(
   }
 
   // Proceed to the server's main loop.
-  handle_rpcs_ = absl::make_unique<std::thread>(
-      &GrpcPollingServerDriver::HandleRpcs, this);
+  handle_rpcs_ =
+      std::make_unique<std::thread>(&GrpcPollingServerDriver::HandleRpcs, this);
   handle_rpcs_started_.WaitForNotification();
   return absl::OkStatus();
 }
