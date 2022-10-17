@@ -17,7 +17,6 @@
 namespace distbench {
 
 DistbenchThreadpool::DistbenchThreadpool(int nb_threads) {
-
   for (int i = 0; i < nb_threads; i++) {
     auto task_runner = [&, i]() {
       do {
@@ -27,7 +26,7 @@ DistbenchThreadpool::DistbenchThreadpool(int nb_threads) {
           if (work_queue_.empty()) {
             // All threads except thread-0 relinquish CPU
             // if there is no work.
-            if ( i != 0 ) sched_yield();
+            if (i != 0) sched_yield();
             if (shutdown_.HasBeenNotified()) return;
             continue;
           }
