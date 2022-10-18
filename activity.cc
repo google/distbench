@@ -36,7 +36,7 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
 
 void WasteCpu::DoActivity() {
   iteration_count_++;
-  int sum = 0;
+  unsigned int sum = 0;
   std::srand(time(0));
   std::generate(rand_array.begin(), rand_array.end(), std::rand);
   std::sort(rand_array.begin(), rand_array.end());
