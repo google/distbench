@@ -295,7 +295,6 @@ std::string HomaOptions() {
 
 std::string HomaTransport(std::string pdo_in) {
   ProtocolDriverOptions pdo = PdoFromString(pdo_in);
-  ;
   auto opt = pdo.add_server_settings();
   opt->set_name("transport");
   opt->set_string_value("homa");
