@@ -664,8 +664,7 @@ absl::Status GrpcPollingServerDriver::Initialize(
   }
 
   // Proceed to the server's main loop.
-  handle_rpcs_ =
-      std::make_unique<std::thread>(&GrpcPollingServerDriver::HandleRpcs, this);
+  handle_rpcs_ = RunRegisteredThread("RpcHandler", [=]() { HandleRpcs(); });
   handle_rpcs_started_.WaitForNotification();
   return absl::OkStatus();
 }
@@ -699,8 +698,8 @@ void GrpcPollingServerDriver::ShutdownServer() {
   if (server_cq_) {
     server_cq_->Shutdown();
   }
-  if (handle_rpcs_ && handle_rpcs_->joinable()) {
-    handle_rpcs_->join();
+  if (handle_rpcs_.joinable()) {
+    handle_rpcs_.join();
   }
 }
 

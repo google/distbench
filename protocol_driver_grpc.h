@@ -192,7 +192,7 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   std::vector<TransportStat> GetTransportStats() override;
   void ProcessGenericRpc(GenericRequest* request, GenericResponse* response);
   void HandleRpcs();
-  std::unique_ptr<std::thread> handle_rpcs_;
+  std::thread handle_rpcs_;
 
  private:
   std::unique_ptr<grpc::Server> server_;
