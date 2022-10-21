@@ -12,7 +12,7 @@ test_with_mercury:
 	bazel test --config=tsan :all --//:with-mercury --test_output=all
 
 test_homa:
-	bazel test :all --//:with-homa --//:with-homa-default
+	bazel test :all --//:with-homa --//:with-homa-grpc
 
 test_asan:
 	bazel test --config=asan --test_output=errors :all

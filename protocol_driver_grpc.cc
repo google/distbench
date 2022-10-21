@@ -20,7 +20,7 @@
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
-#if USE_HOMA
+#if WITH_HOMA_GRPC
 #include "homa_client.h"
 #include "homa_listener.h"
 #endif
@@ -36,7 +36,7 @@ namespace {
 std::shared_ptr<grpc::Channel> CreateClientChannel(
     const std::string& socket_address, std::string_view transport) {
   if (transport == "homa") {
-#if USE_HOMA
+#if WITH_HOMA_GRPC
     return HomaClient::createInsecureChannel(socket_address.data());
 #else
     return {};
@@ -51,7 +51,7 @@ std::shared_ptr<grpc::Channel> CreateClientChannel(
 std::shared_ptr<grpc::ServerCredentials> CreateServerCreds(
     std::string_view transport) {
   if (transport == "homa") {
-#if USE_HOMA
+#if WITH_HOMA_GRPC
     return HomaListener::insecureCredentials();
 #else
     return {};

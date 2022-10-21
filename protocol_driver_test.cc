@@ -326,6 +326,8 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                            GrpcCallbackClientInlineServer(),
 #ifdef WITH_HOMA
                            HomaOptions(),
+#endif
+#ifdef WITH_HOMA_GRPC
                            HomaTransport(GrpcOptions()),
                            HomaTransport(GrpcAsynCallbackOptions()),
                            HomaTransport(GrpcPollingClientHandoffServer()),
