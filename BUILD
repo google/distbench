@@ -18,7 +18,7 @@ bool_flag(
 )
 
 bool_flag(
-    name = "with-homa-default",
+    name = "with-homa-grpc",
     build_setting_default = False,
 )
 
@@ -33,10 +33,9 @@ config_setting(
 )
 
 config_setting(
-    name = "with_homa_default",
-    flag_values = {":with-homa-default": "True"},
+    name = "with_homa_grpc",
+    flag_values = {":with-homa-grpc": "True"},
 )
-
 
 cc_library(
     name = "distbench_netutils",
@@ -149,6 +148,10 @@ cc_library(
         ":with_homa":["-DWITH_HOMA"],
         "//conditions:default": []
     })
+    + select({
+        ":with_homa_grpc":["-DWITH_HOMA_GRPC"],
+        "//conditions:default": []
+    })
 )
 
 cc_library(
@@ -177,14 +180,11 @@ cc_library(
         "@com_github_grpc_grpc//:grpc++",
     ]
     + select({
-        "with_homa": ["@grpc_homa//:homa_lib", ],
+        "with_homa_grpc": ["@grpc_homa//:homa_lib", ],
         "//conditions:default": []
     }),
     copts = select({
-        ":with_homa": ["-DUSE_HOMA=1"],
-        "//conditions:default": []
-    }) + select({
-        ":with_homa_default": ["-DDEFAULT_TRANSPORT=\\\"homa\\\""],
+        ":with_homa_grpc": ["-DWITH_HOMA_GRPC=1"],
         "//conditions:default": []
     })
 )
@@ -251,6 +251,9 @@ cc_test(
         "//conditions:default": []
     }) + select({
         ":with_homa":["-DWITH_HOMA"],
+        "//conditions:default": []
+    }) + select({
+        ":with_homa_grpc": ["-DWITH_HOMA_GRPC=1"],
         "//conditions:default": []
     })
 )
