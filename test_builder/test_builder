@@ -169,6 +169,7 @@ function log_stderr() {
 ################################################################################
 function auto_usage() {
   local -a usage_params
+  local -A usage_params_dict
   local -A params_dict
   params_dict[protocol_driver]=""
   params_dict[protocol_alias]=""
@@ -177,7 +178,7 @@ function auto_usage() {
   log_stderr " Parameters for $2=$3:"
   local key
   for key in "${usage_params[@]}"; do
-    log_stderr "  ${key} (default=${params_dict[${key}]})"
+    log_stderr "  ${key} (default=${params_dict[${key}]}) ${usage_params_dict[${key}]}"
   done
 }
 
@@ -669,12 +670,18 @@ function maybe_run_test_sequence() {
 #   None
 # Inherits and mutates:
 #   params_dict (associative array)
+#   usage params_dict (optional associative array)
 #   usage_params (optional array)
 ################################################################################
 function set_parameter_default() {
   if declare -p usage_params &> /dev/null; then
     # Save the name of the parameter to help automatically generate usage info:
     usage_params+=("$1")
+    if [[ $# -gt 2 ]]; then
+      usage_params_dict[$1]="available options: $3"
+    else
+      usage_params_dict[$1]=""
+    fi
   fi
   if [[ ! -v params_dict[$1] ]]; then
     params_dict[$1]="$2"
@@ -689,8 +696,8 @@ function set_parameter_default() {
 #   params_dict (associative array)
 ################################################################################
 function grpc_protocol_driver_setup() {
-  set_parameter_default client_type "polling"
-  set_parameter_default server_type "inline"
+  set_parameter_default client_type "polling" "callback polling"
+  set_parameter_default server_type "inline" "handoff inline polling"
   local CLIENT_TYPE="${params_dict[client_type]}"
   local SERVER_TYPE="${params_dict[server_type]}"
   params_dict[protocol_alias]="grpc_${CLIENT_TYPE}_${SERVER_TYPE}"
@@ -722,7 +729,7 @@ function clique_traffic_pattern_setup() {
 
   set_parameter_default rpc_interval_us 16000
   set_parameter_default node_count 10
-  set_parameter_default synchronization_mode sync_burst
+  set_parameter_default synchronization_mode sync_burst "sync_burst sync_burst_spread"
   local RPC_INTERVAL_US="${params_dict[rpc_interval_us]}"
   local NODE_COUNT="${params_dict[node_count]}"
   validate_integer 100 RPC_INTERVAL_US
