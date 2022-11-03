@@ -176,7 +176,7 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
 
 class GrpcPollingServerDriver : public ProtocolDriverServer {
  public:
-  GrpcPollingServerDriver();
+  GrpcPollingServerDriver(int threadpool_size);
   ~GrpcPollingServerDriver() override;
 
   absl::Status Initialize(const ProtocolDriverOptions& pd_opts,

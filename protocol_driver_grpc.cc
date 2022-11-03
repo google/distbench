@@ -295,8 +295,11 @@ absl::Status ProtocolDriverGrpc::Initialize(
     server_ =
         std::unique_ptr<ProtocolDriverServer>(new GrpcHandoffServerDriver());
   } else if (server_type == "polling") {
+    auto threadpool_size = GetNamedServerSettingInt64(
+        pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
     server_ =
-        std::unique_ptr<ProtocolDriverServer>(new GrpcPollingServerDriver());
+        std::unique_ptr<ProtocolDriverServer>(
+            new GrpcPollingServerDriver(threadpool_size));
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
@@ -439,9 +442,8 @@ namespace {
 class TrafficServiceAsyncCallback
     : public Traffic::ExperimentalCallbackService {
  public:
-  TrafficServiceAsyncCallback()
-      // Create a thread pool, reserving 50% of the cpus to handle responses.
-      : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
+  TrafficServiceAsyncCallback(int threadpool_size)
+      : thread_pool_(threadpool_size) {}
   ~TrafficServiceAsyncCallback() override { handler_set_.TryToNotify(); }
 
   void SetHandler(
@@ -490,7 +492,10 @@ absl::Status GrpcHandoffServerDriver::Initialize(
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  traffic_service_ = std::make_unique<TrafficServiceAsyncCallback>();
+  auto threadpool_size = GetNamedServerSettingInt64(
+      pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
+  traffic_service_ = std::make_unique<TrafficServiceAsyncCallback>(
+      threadpool_size);
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -631,8 +636,8 @@ class PollingRpcHandlerFsm {
 }  // anonymous namespace
 
 // Server =====================================================================
-GrpcPollingServerDriver::GrpcPollingServerDriver()
-    : thread_pool_((absl::base_internal::NumCPUs() + 1) / 2) {}
+GrpcPollingServerDriver::GrpcPollingServerDriver(int threadpool_size)
+    : thread_pool_(threadpool_size) {}
 
 GrpcPollingServerDriver::~GrpcPollingServerDriver() { ShutdownServer(); }
 
