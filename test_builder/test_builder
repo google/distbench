@@ -698,8 +698,10 @@ function set_parameter_default() {
 function grpc_protocol_driver_setup() {
   set_parameter_default client_type "polling" "callback polling"
   set_parameter_default server_type "inline" "handoff inline polling"
+  set_parameter_default threadpool_size "4" "0, 1, 2, 3, etc. and -1 for NumCPU() threads."
   local CLIENT_TYPE="${params_dict[client_type]}"
   local SERVER_TYPE="${params_dict[server_type]}"
+  local THREADPOOL_SIZE="${params_dict[threadpool_size]}"
   params_dict[protocol_alias]="grpc_${CLIENT_TYPE}_${SERVER_TYPE}"
   params_dict[protocol_driver]="grpc"
   params_dict[protocol_driver_options_proto]="  default_protocol: 'grpc'
@@ -708,7 +710,20 @@ function grpc_protocol_driver_setup() {
     server_settings {
       name: 'server_type'
       string_value: '${SERVER_TYPE}'
-    }
+    }"
+
+  if [[ $SERVER_TYPE != "inline" ]] &&
+    [[ $THREADPOOL_SIZE != "-1" ]] ;
+  then
+    params_dict[protocol_alias]+="_${THREADPOOL_SIZE}"
+    params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'threadpool_size'
+      int64_value: ${THREADPOOL_SIZE}
+    }"
+  fi
+
+  params_dict[protocol_driver_options_proto]+="
     client_settings {
       name: 'client_type'
       string_value: '${CLIENT_TYPE}'
