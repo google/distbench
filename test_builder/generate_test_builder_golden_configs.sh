@@ -22,6 +22,7 @@ test_builder -o . client_server
 test_builder -o . client_server:parallel_queries=25
 test_builder -o . client_server:client_count=3
 test_builder -o . client_server:server_count=6
+test_builder -o . client_server:server_type=handoff:threadpool_size=8
 
 test_builder -o . multi_level_rpc
 test_builder -o . multi_level_rpc:qps=20000
@@ -42,3 +43,7 @@ test_builder -o - parameter_sweep rpc_interval_us 4000 1000 8000 \
   -c clique -l LabelFoo- \
   node_count=2 node_count=3 node_count=4 \
   > sweep2.config
+
+# Generate a parameter sweep of threadpool_size:
+test_builder -o - parameter_sweep threadpool_size 1 1 4 client_server:server_type=polling \
+  > sweep3.config
