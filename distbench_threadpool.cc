@@ -13,10 +13,14 @@
 // limitations under the License.
 
 #include "distbench_threadpool.h"
+#include "glog/logging.h"
 
 namespace distbench {
 
+#ifdef USE_DISTBENCH_THREADPOOL
+
 DistbenchThreadpool::DistbenchThreadpool(int nb_threads) {
+  LOG(ERROR) << "Threadpool size is: " << nb_threads;
   for (int i = 0; i < nb_threads; i++) {
     auto task_runner = [&, i]() {
       do {
@@ -51,5 +55,30 @@ void DistbenchThreadpool::AddWork(std::function<void()> function) {
   absl::MutexLock m(&mutex_);
   work_queue_.push(function);
 }
+
+#else
+
+DistbenchThreadpool::DistbenchThreadpool(int nb_threads) {
+  LOG(ERROR) << "C-threadpool size is: " << nb_threads;
+  thpool_ = thpool_init(nb_threads);
+}
+
+DistbenchThreadpool::~DistbenchThreadpool() {
+  thpool_wait(thpool_);
+  thpool_destroy(thpool_);
+}
+
+void Trampoline(void * function) {
+  auto f = reinterpret_cast<std::function<void()>*> (function);
+  (*f)();
+  delete f;
+}
+
+void DistbenchThreadpool::AddWork(std::function<void()> function) {
+  auto* fpointer = new std::function<void()> (function);
+  thpool_add_work(thpool_, Trampoline, fpointer);
+}
+
+#endif
 
 }  // namespace distbench

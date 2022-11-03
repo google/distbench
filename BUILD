@@ -380,6 +380,13 @@ cc_library(
     ],
 )
 
+config_setting(
+    name = "use_distbench_threadpool",
+    values = {
+        "define": "USE_DISTBENCH_THREADPOOL=yes"
+    }
+)
+
 cc_library(
     name = "distbench_threadpool_lib",
     srcs = ["distbench_threadpool.cc"],
@@ -389,7 +396,12 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/strings",
+        "@com_github_cthreadpool//:thpool"
     ],
+    copts = select({
+        ":use_distbench_threadpool":["--define USE_DISTBENCH_THREADPOOL"],
+        "//conditions:default": [],
+    })
 )
 
 cc_test(

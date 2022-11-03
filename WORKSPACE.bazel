@@ -93,3 +93,13 @@ http_archive(
     build_file = "@//:homa_module.BUILD",
     strip_prefix = "HomaModule-77a00c82ef6b89493e6ce61659d279304680b6f8",
 )
+
+http_archive(
+    name = "com_github_cthreadpool",
+    sha256 = "959b5fb4bbab434972a8c03ff70843d498cb74989e69a0819a90792510decebd",
+    urls = [
+        "https://github.com/Pithikos/C-Thread-Pool/archive/b259a6e29a76d756f68c3665a3d841e5848e928b.tar.gz"
+    ],
+    build_file = "c-thread-pool.BUILD",
+    strip_prefix = "C-Thread-Pool-b259a6e29a76d756f68c3665a3d841e5848e928b",
+)

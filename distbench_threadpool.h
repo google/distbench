@@ -21,6 +21,7 @@
 
 #include "absl/synchronization/notification.h"
 #include "distbench_utils.h"
+#include "thpool.h"
 
 namespace distbench {
 
@@ -35,6 +36,10 @@ class DistbenchThreadpool {
   absl::Notification shutdown_;
   std::vector<std::thread> threads_;
   std::queue<std::function<void()> > work_queue_;
+
+  // This is the C-Threadpool from an external library.
+  // https://github.com/Pithikos/C-Thread-Pool
+  threadpool thpool_;
 };
 
 }  // namespace distbench
