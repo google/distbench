@@ -21,7 +21,10 @@
 
 #include "absl/synchronization/notification.h"
 #include "distbench_utils.h"
+
+#ifndef USE_DISTBENCH_THREADPOOL
 #include "thpool.h"
+#endif
 
 namespace distbench {
 
@@ -37,9 +40,12 @@ class DistbenchThreadpool {
   std::vector<std::thread> threads_;
   std::queue<std::function<void()> > work_queue_;
 
+#ifndef USE_DISTBENCH_THREADPOOL
   // This is the C-Threadpool from an external library.
   // https://github.com/Pithikos/C-Thread-Pool
   threadpool thpool_;
+#endif
+
 };
 
 }  // namespace distbench

@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #include "distbench_threadpool.h"
-#include "glog/logging.h"
 
 namespace distbench {
 
 #ifdef USE_DISTBENCH_THREADPOOL
 
 DistbenchThreadpool::DistbenchThreadpool(int nb_threads) {
-  LOG(ERROR) << "Threadpool size is: " << nb_threads;
   for (int i = 0; i < nb_threads; i++) {
     auto task_runner = [&, i]() {
       do {
@@ -59,7 +57,6 @@ void DistbenchThreadpool::AddWork(std::function<void()> function) {
 #else
 
 DistbenchThreadpool::DistbenchThreadpool(int nb_threads) {
-  LOG(ERROR) << "C-threadpool size is: " << nb_threads;
   thpool_ = thpool_init(nb_threads);
 }
 

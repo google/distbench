@@ -176,6 +176,7 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
 
 class GrpcPollingServerDriver : public ProtocolDriverServer {
  public:
+  // TODO: Add a struct of threadpool options in future.
   GrpcPollingServerDriver(int threadpool_size);
   ~GrpcPollingServerDriver() override;
 
