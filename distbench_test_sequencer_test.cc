@@ -454,6 +454,7 @@ struct TestSequenceParams {
   bool activity_with_same_config = false;
   bool invalid_config = false;
   int array_size = 0;
+  int max_iteration_count = -1;
 };
 
 void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
@@ -472,7 +473,11 @@ void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
   auto a = test->add_actions();
   a->set_name(activity_name);
   a->set_activity_config_name(activity_config);
-  a->mutable_iterations()->set_max_duration_us(600'000'000);
+  if (params.max_iteration_count != -1) {
+    a->mutable_iterations()->set_max_iteration_count(params.max_iteration_count);
+  } else {
+    a->mutable_iterations()->set_max_duration_us(600'000'000);
+  }
   if (params.activity_with_same_config) {
     auto a = test->add_actions();
     a->set_name(activity_name + "_duplicate");
@@ -553,7 +558,8 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
 
 void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
                                int expected_iteration_cnt_lower_bound = 0,
-                               int expected_activity_num = 0) {
+                               int expected_activity_num = 0,
+                               bool exact_match = false) {
   for (const auto& res : results.test_results()) {
     for (const auto& [instance_name, instance_log] :
          res.service_logs().instance_logs()) {
@@ -572,7 +578,11 @@ void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
         for (const auto& metric : activity_log.activity_metrics()) {
           EXPECT_EQ(metric.name(), "iteration_count");
           if (metric.name() == "iteration_count") {
-            EXPECT_GT(metric.value_int(), expected_iteration_cnt_lower_bound);
+            if (exact_match) {
+              EXPECT_EQ(metric.value_int(), expected_iteration_cnt_lower_bound);
+            } else {
+              EXPECT_GT(metric.value_int(), expected_iteration_cnt_lower_bound);
+            }
           }
         }
       }
@@ -740,6 +750,54 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
   ASSERT_OK(status);
 
   CheckCpuWasteIterationCnt(results, 100, 1);
+
+  // The remainder of this test checks the same
+  // things as CliqueTest.
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  int min = 100 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_GE(N, min);
+  LOG(INFO) << "Total N is: " << N;
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), nb_cliques);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+}
+
+TEST(DistBenchTestSequencer, WasteCpuWithMaxIterationCount) {
+  int nb_cliques = 2;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequenceParams params;
+  params.nb_cliques = nb_cliques;
+  params.open_loop = false;
+  params.activity_name = "WasteCpu2500";
+  params.activity_func = "WasteCpu";
+  params.array_size = 2500;
+  params.max_iteration_count = 10;
+  auto test_sequence = GetCliqueTestSequence(params);
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  CheckCpuWasteIterationCnt(results, 10, 1, true);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
