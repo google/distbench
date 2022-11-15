@@ -52,9 +52,9 @@ class Activity {
 // configuration in ActivityConfig.
 std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config);
 
-// Activity: WasteCpu
+// Activity: ConsumeCpu
 
-class WasteCpu : public Activity {
+class ConsumeCpu : public Activity {
  public:
   void DoActivity() override;
   ActivityLog GetActivityLog() override;
@@ -67,7 +67,7 @@ class WasteCpu : public Activity {
   int64_t optimization_preventing_num_ = 0;
 };
 
-struct WasteCpuConfig {
+struct ConsumeCpuConfig {
   int array_size;
 };
 
@@ -95,7 +95,7 @@ struct PolluteDataCacheConfig {
 };
 
 struct ParsedActivityConfig {
-  struct WasteCpuConfig waste_cpu_config;
+  struct ConsumeCpuConfig waste_cpu_config;
   struct PolluteDataCacheConfig pollute_data_cache_config;
   std::string activity_config_name;
   std::string activity_func;

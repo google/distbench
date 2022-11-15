@@ -22,8 +22,8 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
   std::unique_ptr<Activity> activity;
   auto activity_func = config->activity_func;
 
-  if (activity_func == "WasteCpu") {
-    activity = std::make_unique<WasteCpu>();
+  if (activity_func == "ConsumeCpu") {
+    activity = std::make_unique<ConsumeCpu>();
   } else if (activity_func == "PolluteDataCache") {
     activity = std::make_unique<PolluteDataCache>();
   }
@@ -32,9 +32,9 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
   return activity;
 }
 
-// Activity: WasteCpu
+// Activity: ConsumeCpu
 
-void WasteCpu::DoActivity() {
+void ConsumeCpu::DoActivity() {
   iteration_count_++;
   unsigned int sum = 0;
   std::srand(time(0));
@@ -44,7 +44,7 @@ void WasteCpu::DoActivity() {
   optimization_preventing_num_ = sum;
 }
 
-ActivityLog WasteCpu::GetActivityLog() {
+ActivityLog ConsumeCpu::GetActivityLog() {
   ActivityLog alog;
   if (iteration_count_) {
     auto* am = alog.add_activity_metrics();
@@ -54,12 +54,12 @@ ActivityLog WasteCpu::GetActivityLog() {
   return alog;
 }
 
-void WasteCpu::Initialize(ParsedActivityConfig* config) {
+void ConsumeCpu::Initialize(ParsedActivityConfig* config) {
   rand_array.resize(config->waste_cpu_config.array_size);
   iteration_count_ = 0;
 }
 
-absl::Status WasteCpu::ValidateConfig(ActivityConfig& ac) {
+absl::Status ConsumeCpu::ValidateConfig(ActivityConfig& ac) {
   auto array_size =
       GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
   if (array_size < 1) {
