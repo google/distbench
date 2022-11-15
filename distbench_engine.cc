@@ -1072,8 +1072,9 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
     auto* config = &stored_activity_config_[action.activity_config_index];
     action_state->activity = AllocateActivity(config);
     action_state->iteration_function =
-        [action_state](std::shared_ptr<ActionIterationState> iteration_state) {
+        [this, action_state](std::shared_ptr<ActionIterationState> iteration_state) {
           action_state->activity->DoActivity();
+          FinishIteration(iteration_state);
         };
   } else {
     LOG(FATAL) << "Supporting only RPCs and Activities as of now.";
@@ -1199,7 +1200,8 @@ void DistBenchEngine::FinishIteration(
   state->iteration_mutex.Unlock();
   if (done && !pending_iterations) {
     state->all_done_callback();
-  } else if (start_another_iteration) {
+  } else if (!state->action->proto.has_activity_config_name() &&
+             start_another_iteration) {
     StartIteration(iteration_state);
   }
 }
