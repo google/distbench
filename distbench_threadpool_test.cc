@@ -36,16 +36,13 @@ TEST(DistBenchThreadPool, PerformSimpleWork) {
 
 TEST(DistBenchThreadPool, ParallelAddTest) {
   std::atomic<int> work_counter = 0;
-  {
-    distbench::DistbenchThreadpool dtp_work_performer{4};
-    {
-      distbench::DistbenchThreadpool dtp_work_generator{4};
-      for (int i = 0; i < 1000; i++) {
-        dtp_work_generator.AddWork(
-            [&]() { dtp_work_performer.AddWork([&]() { ++work_counter; }); });
-      }
-    }  // Complete the work of dtp_work_generator.
-  }    // Complete the work of dtp_work_performer.
+  distbench::DistbenchThreadpool dtp_work_performer{4};
+  distbench::DistbenchThreadpool dtp_work_generator{4};
+  for (int i = 0; i < 1000; i++) {
+    dtp_work_generator.AddWork(
+      [&]() { dtp_work_performer.AddWork([&]() { ++work_counter; }); });
+  }
+  sleep(5);
   ASSERT_EQ(work_counter, 1000);
 }
 
