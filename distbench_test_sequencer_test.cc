@@ -640,10 +640,10 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
-  params.activity_name = "WasteCpu2500";
-  params.activity_name_2 = "WasteCpu2500_2";
-  params.activity_func = "WasteCpu";
-  params.activity_func_2 = "WasteCpu";
+  params.activity_name = "ConsumeCpu2500";
+  params.activity_name_2 = "ConsumeCpu2500_2";
+  params.activity_func = "ConsumeCpu";
+  params.activity_func_2 = "ConsumeCpu";
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
@@ -691,8 +691,8 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
   params.open_loop = false;
-  params.activity_name = "WasteCpu2500";
-  params.activity_func = "WasteCpu";
+  params.activity_name = "ConsumeCpu2500";
+  params.activity_func = "ConsumeCpu";
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
@@ -776,7 +776,7 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
             test_results.service_logs().instance_logs().end());
 }
 
-TEST(DistBenchTestSequencer, WasteCpuWithMaxIterationCount) {
+TEST(DistBenchTestSequencer, ConsumeCpuWithMaxIterationCount) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
@@ -785,8 +785,8 @@ TEST(DistBenchTestSequencer, WasteCpuWithMaxIterationCount) {
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
   params.open_loop = false;
-  params.activity_name = "WasteCpu2500";
-  params.activity_func = "WasteCpu";
+  params.activity_name = "ConsumeCpu2500";
+  params.activity_func = "ConsumeCpu";
   params.array_size = 2500;
   params.max_iteration_count = 10;
   auto test_sequence = GetCliqueTestSequence(params);
@@ -832,8 +832,8 @@ TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
-  params.activity_name = "WasteCpu2500";
-  params.activity_func = "WasteCpu";
+  params.activity_name = "ConsumeCpu2500";
+  params.activity_func = "ConsumeCpu";
   params.array_size = 2500;
   params.activity_with_same_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
@@ -882,7 +882,7 @@ TEST(DistBenchTestSequencer, UnknownActivity) {
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
   params.activity_name = "unknown_activity";
-  params.activity_func = "WasteCpu";
+  params.activity_func = "ConsumeCpu";
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
@@ -903,7 +903,7 @@ TEST(DistBenchTestSequencer, KnownActivityUnknownConfig) {
   params.nb_cliques = nb_cliques;
   params.open_loop = true;
   params.activity_name = "known_activity_unknown_config";
-  params.activity_func = "WasteCpu";
+  params.activity_func = "ConsumeCpu";
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
@@ -923,8 +923,8 @@ TEST(DistBenchTestSequencer, RedefineActivityConfig) {
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
   params.open_loop = false;
-  params.activity_name = "WasteCpu2500";
-  params.activity_func = "WasteCpu";
+  params.activity_name = "ConsumeCpu2500";
+  params.activity_func = "ConsumeCpu";
   params.array_size = 2500;
   params.duplicate_activity_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
@@ -944,8 +944,8 @@ TEST(DistBenchTestSequencer, PreCheckInvalidActivityConfig) {
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
-  params.activity_name = "WasteCpu2500";
-  params.activity_func = "WasteCpu";
+  params.activity_name = "ConsumeCpu2500";
+  params.activity_func = "ConsumeCpu";
   params.array_size = 2500;
   params.invalid_config = true;
   auto test_sequence = GetCliqueTestSequence(params);

@@ -164,8 +164,8 @@ absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
       GetNamedSettingString(ac.activity_settings(), "activity_func", "");
   s.activity_config_name = ac.name();
 
-  if (s.activity_func == "WasteCpu") {
-    auto status = WasteCpu::ValidateConfig(ac);
+  if (s.activity_func == "ConsumeCpu") {
+    auto status = ConsumeCpu::ValidateConfig(ac);
     if (!status.ok()) return status;
 
     s.waste_cpu_config.array_size =
