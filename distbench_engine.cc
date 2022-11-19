@@ -86,15 +86,23 @@ int DistBenchEngine::get_payload_size(const std::string& payload_name) {
   return size;
 }
 
-absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
+absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
     RpcDefinition& rpc_def) {
   const auto& rpc_spec = rpc_def.rpc_spec;
   std::string fanout_filter = rpc_spec.fanout_filter();
   const std::string stochastic_keyword = "stochastic";
-
-  rpc_def.is_stochastic_fanout = false;
+  const std::string all_keyword = "all";
+  const std::string random_keyword = "random";
+  const std::string round_robin_keyword = "round_robin";
 
   if (!absl::StartsWith(fanout_filter, stochastic_keyword)) {
+    if (fanout_filter.empty() || fanout_filter == all_keyword) {
+      rpc_def.fanout_filter = kAll;
+    } else if (fanout_filter == random_keyword) {
+      rpc_def.fanout_filter = kRandomSingle;
+    } else if (fanout_filter == round_robin_keyword) {
+      rpc_def.fanout_filter = kRoundRobin;
+    }
     return absl::OkStatus();
   }
   fanout_filter.erase(0, stochastic_keyword.length());
@@ -153,8 +161,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionStochastic(
         "Invalid stochastic filter; need at least a value pair");
   }
 
-  rpc_def.is_stochastic_fanout = true;
-
+  rpc_def.fanout_filter = kStochastic;
   return absl::OkStatus();
 }
 
@@ -248,7 +255,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
                    << "; using a default of " << rpc_def.response_payload_size;
     }
 
-    auto ret = InitializeRpcDefinitionStochastic(rpc_def);
+    auto ret = InitializeRpcFanoutFilter(rpc_def);
     if (!ret.ok()) return ret;
 
     rpc_map_[rpc_name] = rpc_def;
@@ -1298,70 +1305,75 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     ActionState* action_state) {
   const int rpc_index = action_state->rpc_index;
   const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
-  const auto& rpc_spec = rpc_def.rpc_spec;
   std::vector<int> targets;
   int num_servers = peers_[action_state->rpc_service_index].size();
-  const std::string& fanout_filter = rpc_spec.fanout_filter();
 
-  if (rpc_def.is_stochastic_fanout) {
-    std::map<int, std::vector<int>> partial_rand_vects =
-        action_state->partially_randomized_vectors;
+  switch (rpc_def.fanout_filter) {
+    default:
+      // Default case: return the first instance of the service
+      targets.reserve(1);
+      targets.push_back(0);
+      break;
 
-    int nb_targets = 0;
-    float random_val = absl::Uniform(random_generator, 0, 1.0);
-    float cur_val = 0.0;
-    for (const auto& d : rpc_def.stochastic_dist) {
-      cur_val += d.probability;
-      if (random_val <= cur_val) {
-        nb_targets = d.nb_targets;
-        break;
+    case kRandomSingle:
+      targets.reserve(1);
+      targets.push_back(random() % num_servers);
+      break;
+
+    case kRoundRobin:
+      targets.reserve(1);
+      targets.push_back(client_rpc_table_[rpc_index].rpc_tracing_counter %
+                        num_servers);
+      break;
+
+    case kAll:
+      targets.reserve(num_servers);
+      for (int i = 0; i < num_servers; ++i) {
+        int target = i;
+        if (action_state->rpc_service_index != service_index_ ||
+            target != service_instance_) {
+          CHECK_NE(target, -1);
+          targets.push_back(target);
+        }
       }
-    }
-    if (nb_targets > num_servers) {
-      nb_targets = num_servers;
-    }
+      break;
 
-    // Generate a vector to pick random targets from (only done once)
-    partial_rand_vects.try_emplace(num_servers, std::vector<int>());
-    std::vector<int>& from_vector = partial_rand_vects[num_servers];
-    if (from_vector.empty()) {
-      for (int i = 0; i < num_servers; i++) {
-        from_vector.push_back(i);
+    case kStochastic:
+      std::map<int, std::vector<int>> partial_rand_vects =
+          action_state->partially_randomized_vectors;
+
+      int nb_targets = 0;
+      float random_val = absl::Uniform(random_generator, 0, 1.0);
+      float cur_val = 0.0;
+      for (const auto& d : rpc_def.stochastic_dist) {
+        cur_val += d.probability;
+        if (random_val <= cur_val) {
+          nb_targets = d.nb_targets;
+          break;
+        }
       }
-    }
+      if (nb_targets > num_servers) {
+        nb_targets = num_servers;
+      }
 
-    // Randomize and pick up to nb_targets
-    for (int i = 0; i < nb_targets; i++) {
-      int rnd_pos = i + (random() % (num_servers - i));
-      std::swap(from_vector[i], from_vector[rnd_pos]);
-      int target = from_vector[i];
-      CHECK_NE(target, -1);
-      targets.push_back(target);
-    }
-  } else if (fanout_filter == "all") {
-    targets.reserve(num_servers);
-    for (int i = 0; i < num_servers; ++i) {
-      int target = i;
-      if (action_state->rpc_service_index != service_index_ ||
-          target != service_instance_) {
+      // Generate a vector to pick random targets from (only done once)
+      partial_rand_vects.try_emplace(num_servers, std::vector<int>());
+      std::vector<int>& from_vector = partial_rand_vects[num_servers];
+      if (from_vector.empty()) {
+        for (int i = 0; i < num_servers; i++) {
+          from_vector.push_back(i);
+        }
+      }
+
+      // Randomize and pick up to nb_targets
+      for (int i = 0; i < nb_targets; i++) {
+        int rnd_pos = i + (random() % (num_servers - i));
+        std::swap(from_vector[i], from_vector[rnd_pos]);
+        int target = from_vector[i];
         CHECK_NE(target, -1);
         targets.push_back(target);
       }
-    }
-  } else {  // The following fanout options return 1 target
-    int target;
-    targets.reserve(1);
-    if (fanout_filter == "random") {
-      target = random() % num_servers;
-    } else if (fanout_filter == "round_robin") {
-      int64_t iteration = client_rpc_table_[rpc_index].rpc_tracing_counter;
-      target = iteration % num_servers;
-    } else {
-      // Default case: return the first instance of the service
-      target = 0;
-    }
-    CHECK_NE(target, -1);
-    targets.push_back(target);
+      break;
   }
 
   return targets;
