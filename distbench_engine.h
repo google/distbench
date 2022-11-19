@@ -51,12 +51,19 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int nb_targets;
   };
 
+  enum FanoutFilter {
+    kAll = 0,
+    kRandomSingle = 1,
+    kRoundRobin = 2,
+    kStochastic = 3,
+  };
+
   struct RpcDefinition {
     // Original proto
     RpcSpec rpc_spec;
 
     // Used to store decoded stochastic fanout
-    bool is_stochastic_fanout;
+    FanoutFilter fanout_filter;
     std::vector<StochasticDist> stochastic_dist;
 
     // Decoded
@@ -216,7 +223,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   absl::Status InitializeTables();
   absl::Status InitializePayloadsMap();
-  absl::Status InitializeRpcDefinitionStochastic(RpcDefinition& rpc_def);
+  absl::Status InitializeRpcFanoutFilter(RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
   absl::Status InitializeActivityConfigMap();
   absl::Status ParseActivityConfig(ActivityConfig& ac);
