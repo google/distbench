@@ -65,14 +65,14 @@ DistbenchThreadpool::~DistbenchThreadpool() {
   thpool_destroy(thpool_);
 }
 
-void Trampoline(void * function) {
-  auto f = reinterpret_cast<std::function<void()>*> (function);
+void Trampoline(void* function) {
+  auto f = reinterpret_cast<std::function<void()>*>(function);
   (*f)();
   delete f;
 }
 
 void DistbenchThreadpool::AddWork(std::function<void()> function) {
-  auto* fpointer = new std::function<void()> (function);
+  auto* fpointer = new std::function<void()>(function);
   thpool_add_work(thpool_, Trampoline, fpointer);
 }
 

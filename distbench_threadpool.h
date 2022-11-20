@@ -45,7 +45,6 @@ class DistbenchThreadpool {
   // https://github.com/Pithikos/C-Thread-Pool
   threadpool thpool_;
 #endif
-
 };
 
 }  // namespace distbench

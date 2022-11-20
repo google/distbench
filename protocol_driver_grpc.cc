@@ -297,9 +297,8 @@ absl::Status ProtocolDriverGrpc::Initialize(
   } else if (server_type == "polling") {
     auto threadpool_size = GetNamedServerSettingInt64(
         pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
-    server_ =
-        std::unique_ptr<ProtocolDriverServer>(
-            new GrpcPollingServerDriver(threadpool_size));
+    server_ = std::unique_ptr<ProtocolDriverServer>(
+        new GrpcPollingServerDriver(threadpool_size));
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
@@ -494,8 +493,8 @@ absl::Status GrpcHandoffServerDriver::Initialize(
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
   auto threadpool_size = GetNamedServerSettingInt64(
       pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
-  traffic_service_ = std::make_unique<TrafficServiceAsyncCallback>(
-      threadpool_size);
+  traffic_service_ =
+      std::make_unique<TrafficServiceAsyncCallback>(threadpool_size);
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
