@@ -474,7 +474,8 @@ void AddActivity(DistributedSystemDescription* test, ActionList* action_list,
   a->set_name(activity_name);
   a->set_activity_config_name(activity_config);
   if (params.max_iteration_count != -1) {
-    a->mutable_iterations()->set_max_iteration_count(params.max_iteration_count);
+    a->mutable_iterations()->set_max_iteration_count(
+        params.max_iteration_count);
   } else {
     a->mutable_iterations()->set_max_duration_us(600'000'000);
   }
