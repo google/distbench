@@ -58,7 +58,7 @@ ActivityLog ConsumeCpu::GetActivityLog() {
 }
 
 void ConsumeCpu::Initialize(ParsedActivityConfig* config) {
-  rand_array.resize(config->waste_cpu_config.array_size);
+  rand_array.resize(config->consume_cpu_config.array_size);
   iteration_count_ = 0;
 }
 

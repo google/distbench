@@ -175,7 +175,7 @@ absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
     auto status = ConsumeCpu::ValidateConfig(ac);
     if (!status.ok()) return status;
 
-    s.waste_cpu_config.array_size =
+    s.consume_cpu_config.array_size =
         GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
   } else if (s.activity_func == "PolluteDataCache") {
     auto status = PolluteDataCache::ValidateConfig(ac);

@@ -557,10 +557,10 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
   return test_sequence;
 }
 
-void CheckCpuWasteIterationCnt(const TestSequenceResults& results,
-                               int expected_iteration_cnt_lower_bound = 0,
-                               int expected_activity_num = 0,
-                               bool exact_match = false) {
+void CheckCpuConsumeIterationCnt(const TestSequenceResults& results,
+                                 int expected_iteration_cnt_lower_bound = 0,
+                                 int expected_activity_num = 0,
+                                 bool exact_match = false) {
   for (const auto& res : results.test_results()) {
     for (const auto& [instance_name, instance_log] :
          res.service_logs().instance_logs()) {
@@ -607,7 +607,7 @@ TEST(DistBenchTestSequencer, CliqueTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results);
+  CheckCpuConsumeIterationCnt(results);
 
   ASSERT_EQ(results.test_results().size(), 1);
   auto& test_results = results.test_results(0);
@@ -654,7 +654,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 100, 2);
+  CheckCpuConsumeIterationCnt(results, 100, 2);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -703,7 +703,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 100, 1);
+  CheckCpuConsumeIterationCnt(results, 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -750,7 +750,7 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 100, 1);
+  CheckCpuConsumeIterationCnt(results, 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -844,7 +844,7 @@ TEST(DistBenchTestSequencer, ConsumeCpuWithMaxIterationCount) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 10, 1, true);
+  CheckCpuConsumeIterationCnt(results, 10, 1, true);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
@@ -891,7 +891,7 @@ TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 100, 1);
+  CheckCpuConsumeIterationCnt(results, 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.

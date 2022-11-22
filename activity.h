@@ -118,7 +118,7 @@ struct PolluteInstructionCacheConfig {
 };
 
 struct ParsedActivityConfig {
-  struct ConsumeCpuConfig waste_cpu_config;
+  struct ConsumeCpuConfig consume_cpu_config;
   struct PolluteDataCacheConfig pollute_data_cache_config;
   struct PolluteInstructionCacheConfig pollute_instruction_cache_config;
   std::string activity_config_name;
