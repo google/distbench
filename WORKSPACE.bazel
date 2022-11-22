@@ -103,3 +103,13 @@ http_archive(
     build_file = "c-thread-pool.BUILD",
     strip_prefix = "C-Thread-Pool-b259a6e29a76d756f68c3665a3d841e5848e928b",
 )
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "com_github_nelhage_rules_boost",
+    sha256 = "a023496468931c8d64abc4ba036f985f3977da03a7f7680282d7e6d9e42ff27d",
+    url = "https://github.com/nelhage/rules_boost/archive/2cd6e7b540403fe737a10f90bc53de86a16a6eed.tar.gz",
+    strip_prefix = "rules_boost-2cd6e7b540403fe737a10f90bc53de86a16a6eed",
+)
+load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
+boost_deps()

@@ -776,6 +776,52 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
             test_results.service_logs().instance_logs().end());
 }
 
+TEST(DistBenchTestSequencer, PolluteInstructionCache) {
+  int nb_cliques = 2;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequenceParams params;
+  params.nb_cliques = nb_cliques;
+  params.open_loop = false;
+  params.activity_name = "myPolluteInstructionCache";
+  params.activity_func = "PolluteInstructionCache";
+  auto test_sequence = GetCliqueTestSequence(params);
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  CheckCpuWasteIterationCnt(results, 100, 1);
+
+  // The remainder of this test checks the same
+  // things as CliqueTest.
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  int min = 100 * (nb_cliques * (nb_cliques - 1));
+  ASSERT_GE(N, min);
+  LOG(INFO) << "Total N is: " << N;
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), nb_cliques);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("clique/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+}
+
 TEST(DistBenchTestSequencer, ConsumeCpuWithMaxIterationCount) {
   int nb_cliques = 2;
 
