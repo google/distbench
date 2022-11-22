@@ -242,7 +242,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   void AddActivityLogs(ServicePerformanceLog* sp_log);
 
-  std::atomic<int64_t> waste_cpu_iteration_cnt_ = 0;
+  std::atomic<int64_t> consume_cpu_iteration_cnt_ = 0;
 
   std::unique_ptr<SimulatedClientRpc[]> client_rpc_table_;
   std::vector<SimulatedServerRpc> server_rpc_table_;
