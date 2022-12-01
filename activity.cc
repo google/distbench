@@ -146,7 +146,7 @@ ActivityLog PolluteDataCache::GetActivityLog() {
 //
 // We create this 2D array because BOOST_PP_REPEAT() macro can
 // generate at most 255 repetitions.
-#define POLLUTE_ICACHE_LOOP_SIZE 255
+#define POLLUTE_ICACHE_LOOP_SIZE 100
 #define GENERATE_FUNC_INNER_LOOP(z, n, prefix)  \
   int DummyFunc_ ## prefix ## _ ## n (bool do_work) {       \
     /*
