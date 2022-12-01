@@ -135,7 +135,7 @@ ActivityLog PolluteDataCache::GetActivityLog() {
 // Activity: PolluteInstructionCache
 
 // The boost library (https://github.com/nelhage/rules_boost) is used to
-// create a large 2D array of functions with names -
+// create a 2D array of functions with names -
 //
 // DummyFunc_0_0, DummyFunc_0_1, ..., DummyFunc_0_{POLLUTE_ICACHE_LOOP_SIZE-1},
 // ...
@@ -144,14 +144,15 @@ ActivityLog PolluteDataCache::GetActivityLog() {
 // DummyFunc_{POLLUTE_ICACHE_LOOP_SIZE-1}_0, ..., DummyFunc_{POLLUTE_ICACHE_LOOP_SIZE-1}_{POLLUTE_ICACHE_LOOP_SIZE-1}.
 // Each of these functions returns an int.
 //
-// This 2D array was created because BOOST_PP_REPEAT() macro can
-// generate at most 1024 repetitions.
-//
-// The purpose of 'do_work' part of the function is only to increase
-// the size of the function.
+// We create this 2D array because BOOST_PP_REPEAT() macro can
+// generate at most 255 repetitions.
 #define POLLUTE_ICACHE_LOOP_SIZE 255
 #define GENERATE_FUNC_INNER_LOOP(z, n, prefix)  \
   int DummyFunc_ ## prefix ## _ ## n (bool do_work) {       \
+    /*
+     * The purpose of 'do_work' part of the function is only to increase
+     * the size of the function.
+     */ \
     if (do_work) {                \
       int result = 0;             \
       for (int i=0; i<n; i++) {   \
@@ -174,7 +175,8 @@ ActivityLog PolluteDataCache::GetActivityLog() {
 // Get the pointers to the functions created above and store it in
 // func_ptr_array.
 #define GET_FUNC_PTR_INNER_LOOP(z, n, prefix) \
-  func_ptr_array_[(prefix * POLLUTE_ICACHE_LOOP_SIZE + n)] = &DummyFunc_ ## prefix ## _ ## n;
+  func_ptr_array_[(prefix * POLLUTE_ICACHE_LOOP_SIZE + n)] = \
+    &DummyFunc_ ## prefix ## _ ## n;
 #define GET_FUNC_PTR_OUTER_LOOP(z, n, text) \
   BOOST_PP_REPEAT(POLLUTE_ICACHE_LOOP_SIZE, GET_FUNC_PTR_INNER_LOOP, n)
 
@@ -193,8 +195,8 @@ void PolluteInstructionCache::Initialize(ParsedActivityConfig* config) {
   std::random_device rd;
   mersenne_twister_prng_ = std::mt19937(rd());
 
-  array_reads_per_iteration_ =
-      config->pollute_instruction_cache_config.array_reads_per_iteration;
+  function_invocations_per_iteration_ =
+      config->pollute_instruction_cache_config.function_invocations_per_iteration;
   max_func_num_ = config->pollute_instruction_cache_config.max_func_num;
 
   max_func_num_ = max_func_num_ ?
@@ -209,8 +211,7 @@ void PolluteInstructionCache::DoActivity() {
   iteration_count_++;
   int64_t sum = 0;
 
-
-  for (int i = 0; i < array_reads_per_iteration_; i++) {
+  for (int i = 0; i < function_invocations_per_iteration_; i++) {
     int index = random_index_(mersenne_twister_prng_);
     sum += func_ptr_array_[index](false);
   }
