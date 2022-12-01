@@ -183,9 +183,9 @@ absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
     auto status = PolluteInstructionCache::ValidateConfig(ac);
     if (!status.ok()) return status;
 
-    s.pollute_instruction_cache_config.array_reads_per_iteration =
+    s.pollute_instruction_cache_config.function_invocations_per_iteration =
         GetNamedSettingInt64(ac.activity_settings(),
-                             "array_reads_per_iteration", 1000);
+                             "function_invocations_per_iteration", 1000);
 
     s.pollute_instruction_cache_config.max_func_num =
         GetNamedSettingInt64(ac.activity_settings(),
