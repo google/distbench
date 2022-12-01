@@ -187,9 +187,6 @@ absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
         GetNamedSettingInt64(ac.activity_settings(),
                              "function_invocations_per_iteration", 1000);
 
-    s.pollute_instruction_cache_config.max_func_num =
-        GetNamedSettingInt64(ac.activity_settings(),
-                             "max_func_num", 0);
   } else {
     return absl::FailedPreconditionError(absl::StrCat(
         "Activity config '", s.activity_config_name,
