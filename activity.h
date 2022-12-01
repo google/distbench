@@ -107,7 +107,6 @@ class PolluteInstructionCache : public Activity {
  private:
   int iteration_count_ = 0;
   int function_invocations_per_iteration_ = 0;
-  int max_func_num_ = 0;
   std::mt19937 mersenne_twister_prng_;
   std::vector<MyFunctionPtr> func_ptr_array_;
   int64_t optimization_preventer_ = 0;
@@ -116,7 +115,6 @@ class PolluteInstructionCache : public Activity {
 
 struct PolluteInstructionCacheConfig {
   int function_invocations_per_iteration;
-  int max_func_num;
 };
 
 struct ParsedActivityConfig {

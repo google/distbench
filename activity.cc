@@ -197,12 +197,8 @@ void PolluteInstructionCache::Initialize(ParsedActivityConfig* config) {
 
   function_invocations_per_iteration_ =
       config->pollute_instruction_cache_config.function_invocations_per_iteration;
-  max_func_num_ = config->pollute_instruction_cache_config.max_func_num;
 
-  max_func_num_ = max_func_num_ ?
-      std::min(max_func_num_, int(func_ptr_array_.size())) :
-      func_ptr_array_.size();
-  random_index_ = std::uniform_int_distribution<>(0, max_func_num_ - 1);
+  random_index_ = std::uniform_int_distribution<>(0, func_array_size - 1);
 
   iteration_count_ = 0;
 }
