@@ -796,7 +796,7 @@ TEST(DistBenchTestSequencer, PolluteInstructionCache) {
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
 
-  CheckCpuWasteIterationCnt(results, 100, 1);
+  CheckCpuConsumeIterationCnt(results, 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
