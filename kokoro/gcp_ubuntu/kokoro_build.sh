@@ -3,7 +3,16 @@
 # Fail on any error.
 set -e
 
+lsb_release -a
 uname -a
+ip a
+
+#sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0
+sudo /sbin/ip -6 addr add ::1/128 dev lo
+
+ip a
+
+exit 1
 
 # Display commands being run.
 # WARNING: please only enable 'set -x' if necessary for debugging, and be very
