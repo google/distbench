@@ -47,8 +47,6 @@ class DeviceIpAddress {
 std::vector<DeviceIpAddress> GetAllAddresses();
 absl::StatusOr<DeviceIpAddress> GetBestAddress(bool prefer_ipv4,
                                                std::string_view netdev);
-bool HasOnlyIPv4();
-std::string GetBindAddressFromPort(int port);
 
 };  // namespace distbench
 

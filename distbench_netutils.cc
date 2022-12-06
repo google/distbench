@@ -140,19 +140,4 @@ std::string DeviceIpAddress::ToStringForURI() const {
     return "[" + ip_ + "]";
 }
 
-bool HasOnlyIPv4() {
-  for (const auto& address : GetAllAddresses()) {
-    if (!address.isIPv4())
-      return false;
-  }
-  return true;
-}
-
-std::string GetBindAddressFromPort(int port) {
-  if (HasOnlyIPv4())
-    return absl::StrCat("*:", port);
-  else
-    return absl::StrCat("[::]:", port);
-}
-
 };  // namespace distbench

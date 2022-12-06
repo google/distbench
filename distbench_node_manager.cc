@@ -254,7 +254,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub =
       DistBenchTestSequencer::NewStub(channel);
 
-  service_address_ = GetBindAddressFromPort(*opts_.port);
+  service_address_ = absl::StrCat("[::]:", *opts_.port);
   grpc::ServerBuilder builder;
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -264,7 +264,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
   // Update the service_address_ with the obtained port
-  service_address_ = GetBindAddressFromPort(*opts_.port);
+  service_address_ = absl::StrCat("[::]:", *opts_.port);
   if (!grpc_server_) {
     return absl::UnknownError("NodeManager service failed to start");
   }
