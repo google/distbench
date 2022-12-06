@@ -56,21 +56,8 @@ function bazel_install {
   rm -rf  ~/.cache/bazel
 }
 
-
-function update_gcc() {
-  echo
-  echo Installing gcc version 9
-  echo
-  sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  sudo apt-get update -q
-  sudo apt-get install -q -o Dpkg::Use-Pty=0 -y gcc-9 g++-9
-}
-
-time {
-  run_with_retries update_gcc
-}
-export CXX=g++-9
-export CC=gcc-9
+export CXX=g++
+export CC=gcc
 
 bazel_install
 export PATH="$HOME/bin:$PATH"
