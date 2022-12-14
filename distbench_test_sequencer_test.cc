@@ -46,8 +46,7 @@ DistBenchTester::~DistBenchTester() {
 
 std::string ConnectionAddressFromBindAddress(std::string bind_address) {
   std::string connection_address;
-  connection_address =  absl::StrReplaceAll(
-    bind_address, {{"*", "localhost"}});
+  connection_address = absl::StrReplaceAll(bind_address, {{"*", "localhost"}});
   return connection_address;
 }
 
@@ -57,8 +56,8 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
   int port = 0;
   ts_opts.port = &port;
   test_sequencer->Initialize(ts_opts);
-  std::string service_address =  ConnectionAddressFromBindAddress(
-      test_sequencer->service_address());
+  std::string service_address =
+      ConnectionAddressFromBindAddress(test_sequencer->service_address());
   nodes.resize(num_nodes);
   for (int i = 0; i < num_nodes; ++i) {
     distbench::NodeManagerOpts nm_opts = {};
@@ -71,9 +70,8 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
   }
   std::shared_ptr<grpc::ChannelCredentials> client_creds =
       MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel =
-      grpc::CreateCustomChannel(service_address, client_creds,
-                                DistbenchCustomChannelArguments());
+  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+      service_address, client_creds, DistbenchCustomChannelArguments());
   test_sequencer_stub = DistBenchTestSequencer::NewStub(channel);
   return absl::OkStatus();
 }

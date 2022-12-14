@@ -142,8 +142,7 @@ std::string DeviceIpAddress::ToStringForURI() const {
 
 bool HasOnlyIPv4() {
   for (const auto& address : GetAllAddresses()) {
-    if (!address.isIPv4())
-      return false;
+    if (!address.isIPv4()) return false;
   }
   return true;
 }
