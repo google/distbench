@@ -449,7 +449,7 @@ absl::Status DistBenchEngine::Initialize(
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   server_ = builder.BuildAndStart();
-  server_address = GetBindAddressFromPort(*port); // port may have changed
+  server_address = GetBindAddressFromPort(*port);  // port may have changed
   if (!server_) {
     LOG(ERROR) << engine_name_ << ": Engine start failed on " << server_address;
     return absl::UnknownError("Engine service failed to start");
