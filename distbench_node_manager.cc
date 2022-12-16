@@ -177,7 +177,7 @@ grpc::Status NodeManager::GetTrafficResult(
   auto& instance_logs = *service_logs.mutable_instance_logs();
   for (const auto& service_engine : service_engines_) {
     auto log = service_engine.second->GetLogs();
-    if (log.peer_logs().empty()) continue;
+    if (log.peer_logs().empty() && log.activity_logs().empty()) continue;
     instance_logs[service_engine.first] = std::move(log);
   }
 

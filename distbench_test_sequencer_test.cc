@@ -599,6 +599,89 @@ void CheckCpuConsumeIterationCnt(const TestSequenceResults& results,
   }
 }
 
+TEST(DistBenchTestSequencer, ServerActivityTest) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(1);
+  client->set_protocol_driver_options_name("lo_opts");
+
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(1);
+  server->set_protocol_driver_options_name("lo_opts");
+
+  auto* rpc_desc = test->add_rpc_descriptions();
+  rpc_desc->set_name("client_server_rpc");
+  rpc_desc->set_client("client");
+  rpc_desc->set_server("server");
+  rpc_desc->set_request_payload_name("request_payload");
+  rpc_desc->set_response_payload_name("response_payload");
+
+  auto* client_al = test->add_action_lists();
+  client_al->set_name("client");
+  client_al->add_action_names("run_queries");
+
+  auto* lo_opts = test->add_protocol_driver_options();
+  lo_opts->set_name("lo_opts");
+  lo_opts->set_netdev_name("lo");
+
+  auto action = test->add_actions();
+  action->set_name("run_queries");
+  action->set_rpc_name("client_server_rpc");
+  action->mutable_iterations()->set_max_iteration_count(5);
+
+  auto* server_al = test->add_action_lists();
+  server_al->set_name("client_server_rpc");
+  server_al->add_action_names("MyConsumeCpu");
+
+  auto server_action = test->add_actions();
+  server_action->set_name("MyConsumeCpu");
+  server_action->set_activity_config_name("ConsumeCpuConfig");
+  server_action->mutable_iterations()->set_max_iteration_count(1);
+
+  auto* server_ac = test->add_activity_configs();
+  server_ac->set_name("ConsumeCpuConfig");
+  AddActivitySettingStringTo(server_ac, "activity_func", "ConsumeCpu");
+  AddActivitySettingIntTo(server_ac, "array_size", 10);
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  std::string N_value2 = N_value.substr(0, N_value.find(' '));
+  int N;
+  ASSERT_EQ(absl::SimpleAtoi(N_value2, &N), true);
+  ASSERT_EQ(N, 5);
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 2);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("server/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+  const auto& activity_log_it =
+      instance_results_it->second.activity_logs().find("ConsumeCpuConfig");
+  ASSERT_EQ(activity_log_it->second.activity_metrics(0).name(),
+            "iteration_count");
+  ASSERT_EQ(activity_log_it->second.activity_metrics(0).value_int(), 5);
+}
+
 TEST(DistBenchTestSequencer, CliqueTest) {
   int nb_cliques = 3;
 
