@@ -36,6 +36,22 @@ http_archive(
 )
 
 http_archive(
+    name = "bazel_skylib",
+    sha256 = "07b4117379dde7ab382345c3b0f5edfc6b7cff6c93756eac63da121e0bbcc5de",
+    strip_prefix = "bazel-skylib-1.1.1",
+    urls = [
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.1.1/bazel-skylib-1.1.1.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//lib:versions.bzl", "versions")
+
+versions.check(
+    minimum_bazel_version = "4.2.1",
+    maximum_bazel_version = "5.4.0",
+)
+
+http_archive(
   name = "com_google_googletest",
   urls = ["https://github.com/google/googletest/archive/011959aafddcd30611003de96cfd8d7a7685c700.zip"],
   strip_prefix = "googletest-011959aafddcd30611003de96cfd8d7a7685c700",
