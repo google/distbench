@@ -92,22 +92,22 @@ new_local_repository(
 
 http_archive(
     name = "grpc_homa",
-    sha256 = "b0fb747ac13e66ea1ef4e2dc2473cd32d942d6917519ba07077ae99ff07f8e6d",
+    sha256 = "25f98d87baec1d2ebaaf3bccd44f3e5ae68c56a65722bd2fe9c15bfc9d479749",
     urls = [
-        "https://github.com/PlatformLab/grpc_homa/archive/783937a9aa7200b2dd2d13886a6f4d871845526f.tar.gz"
+        "https://github.com/PlatformLab/grpc_homa/archive/b3b9a80213477d2073c698d2a82afb3292fcee4d.tar.gz"
     ],
     build_file = "@//:grpc_homa.BUILD",
-    strip_prefix = "grpc_homa-783937a9aa7200b2dd2d13886a6f4d871845526f",
+    strip_prefix = "grpc_homa-b3b9a80213477d2073c698d2a82afb3292fcee4d",
 )
 
 http_archive(
     name = "homa_module",
-    sha256 = "de4b71b83a154ff0efe0818a0ce1c1f7b399cd234bfa9552e7d3fba9533270c9",
+    sha256 = "0169a1e1162058137eddde7ce363d638287ddf6ec833ad51440f7f8cc31a8fec",
     urls = [
-        "https://github.com/PlatformLab/HomaModule/archive/9657265f95899330558c83082059034cae328e74.tar.gz"
+        "https://github.com/PlatformLab/HomaModule/archive/623d06b5c4d619fb625850d1408b6de8f62c3e28.tar.gz"
     ],
     build_file = "@//:homa_module.BUILD",
-    strip_prefix = "HomaModule-9657265f95899330558c83082059034cae328e74",
+    strip_prefix = "HomaModule-623d06b5c4d619fb625850d1408b6de8f62c3e28",
 )
 
 http_archive(

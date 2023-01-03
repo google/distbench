@@ -3,6 +3,7 @@
 
 #include "distbench_utils.h"
 #include "external/homa_module/homa.h"
+#include "external/homa_module/homa_receiver.h"
 #include "protocol_driver.h"
 
 namespace distbench {
@@ -47,6 +48,12 @@ class ProtocolDriverHoma : public ProtocolDriver {
  private:
   void ClientCompletionThread();
   void ServerThread();
+
+  const size_t kHomaBufferSize = 1000*HOMA_BPAGE_SIZE;
+  void* client_buffer_ = nullptr;
+  void* server_buffer_ = nullptr;
+  std::unique_ptr<homa::receiver> client_receiver_;
+  std::unique_ptr<homa::receiver> server_receiver_;
 
   int homa_client_sock_ = -1;
   int homa_server_sock_ = -1;
