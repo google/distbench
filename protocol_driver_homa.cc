@@ -1,6 +1,7 @@
 #include "protocol_driver_homa.h"
 
 #include <arpa/inet.h>
+#include <sys/mman.h>
 
 #include "distbench_utils.h"
 #include "external/homa_module/homa.h"
@@ -49,11 +50,30 @@ absl::Status ProtocolDriverHoma::Initialize(
     return absl::UnknownError(
         absl::StrCat(strerror(errno), " creating client homa socket"));
   }
+  client_buffer_ = mmap(
+      NULL, kHomaBufferSize, PROT_READ | PROT_WRITE,
+      MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+  struct homa_set_buf_args arg;
+  arg.start = client_buffer_;
+  arg.length = kHomaBufferSize;
+  setsockopt(homa_client_sock_, IPPROTO_HOMA, SO_HOMA_SET_BUF, &arg,
+             sizeof(arg));
+  client_receiver_ = std::make_unique<homa::receiver>(
+      homa_client_sock_, client_buffer_);
   homa_server_sock_ = socket(af, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_HOMA);
   if (homa_server_sock_ < 0) {
     return absl::UnknownError(
         absl::StrCat(strerror(errno), " creating server homa socket"));
   }
+  server_buffer_ = mmap(
+      NULL, kHomaBufferSize, PROT_READ | PROT_WRITE,
+      MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+  arg.start = server_buffer_;
+  arg.length = kHomaBufferSize;
+  setsockopt(homa_server_sock_, IPPROTO_HOMA, SO_HOMA_SET_BUF, &arg,
+             sizeof(arg));
+  server_receiver_ = std::make_unique<homa::receiver>(
+      homa_server_sock_, server_buffer_);
 
   sockaddr_in_union bind_addr = {};
   int bind_err = 0;
@@ -180,6 +200,11 @@ void ProtocolDriverHoma::ShutdownServer() {
     if (server_thread_.joinable()) {
       server_thread_.join();
     }
+    server_receiver_.reset();
+    if (server_buffer_) {
+      munmap(server_buffer_, kHomaBufferSize);
+      server_buffer_ = nullptr;
+    }
     close(homa_server_sock_);
     homa_server_sock_ = -1;
   }
@@ -192,6 +217,11 @@ void ProtocolDriverHoma::ShutdownClient() {
     }
     while (pending_rpcs_) {
       sched_yield();
+    }
+    client_receiver_.reset();
+    if (client_buffer_) {
+      munmap(client_buffer_, kHomaBufferSize);
+      client_buffer_ = nullptr;
     }
     close(homa_client_sock_);
     homa_client_sock_ = -1;
@@ -232,23 +262,28 @@ void ProtocolDriverHoma::ServerThread() {
 
   handler_set_.WaitForNotification();
   while (!shutting_down_server_.HasBeenNotified()) {
-    sockaddr_in_union src_addr;
-    uint64_t rpc_id = 0;
-    char rx_buf[1048576];
-    size_t length = 0;
     errno = 0;
-    int64_t error = homa_recv(homa_server_sock_, rx_buf, sizeof(rx_buf),
-                              HOMA_RECV_NONBLOCKING | HOMA_RECV_REQUEST,
-                              &src_addr, &rpc_id, &length, NULL);
+    ssize_t msg_length = server_receiver_->receive(
+        HOMA_RECVMSG_NONBLOCKING | HOMA_RECVMSG_REQUEST, 0);
     int recv_errno = errno;
-    if (error < 0) {
+    if (msg_length < 0) {
       if (recv_errno != EINTR && recv_errno != EAGAIN) {
-        LOG(ERROR) << "homa_recv had an error: " << strerror(recv_errno);
+        LOG(ERROR) << "server homa_recv had an error: " << strerror(recv_errno);
       }
       continue;
     }
+    if (msg_length == 0) {
+      LOG(ERROR) << "server homa_recv got zero length request.";
+      continue;
+    }
+    CHECK(server_receiver_->is_request());
+    const sockaddr_in_union src_addr = *server_receiver_->src_addr();
+    const uint64_t rpc_id = server_receiver_->id();
+
     GenericRequest* request = new GenericRequest;
-    if (!request->ParseFromArray(rx_buf + 1, length - 1)) {
+    char rx_buf[1048576];
+    server_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
+    if (!request->ParseFromArray(rx_buf + 1, msg_length - 1)) {
       LOG(FATAL) << "rx_buf did not parse as a GenericRequest";
     }
     ServerRpcState* rpc_state = new ServerRpcState;
@@ -263,7 +298,7 @@ void ProtocolDriverHoma::ServerThread() {
       int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
                                  txbuf.length(), &src_addr, rpc_id);
       if (error) {
-        LOG(ERROR) << "homa_reply for " << rpc_id
+        LOG(FATAL) << "homa_reply for " << rpc_id
                    << " returned error: " << strerror(errno);
       }
       --pending_actionlist_threads;
@@ -281,35 +316,32 @@ void ProtocolDriverHoma::ServerThread() {
 
 void ProtocolDriverHoma::ClientCompletionThread() {
   while (!shutting_down_client_.HasBeenNotified() || pending_rpcs_) {
-    sockaddr_in_union src_addr;
-    uint64_t rpc_id = 0;
-    uint64_t cookie = 0;
-    char rx_buf[1048576];
-    size_t length = 0;
     errno = 0;
-    int64_t error = homa_recv(homa_client_sock_, rx_buf, sizeof(rx_buf),
-                              HOMA_RECV_NONBLOCKING | HOMA_RECV_RESPONSE,
-                              &src_addr, &rpc_id, &length, &cookie);
+    ssize_t msg_length = client_receiver_->receive(
+        HOMA_RECVMSG_NONBLOCKING | HOMA_RECVMSG_RESPONSE, 0);
     int recv_errno = errno;
-    if (error < 0) {
-      if (recv_errno == EINTR || recv_errno == EAGAIN) {
-        continue;
-      }
-      if (recv_errno != ECANCELED) {
-        LOG(ERROR) << "homa_recv had an error: " << strerror(recv_errno);
-      }
+    if (msg_length < 0) {
+        if (recv_errno != EINTR && recv_errno != EAGAIN) {
+          LOG(ERROR) << "homa_recv had an error: " << strerror(recv_errno);
+	}
+	continue;
     }
-    PendingHomaRpc* pending_rpc = reinterpret_cast<PendingHomaRpc*>(cookie);
+
+    PendingHomaRpc* pending_rpc = reinterpret_cast<PendingHomaRpc*>(
+        client_receiver_->completion_cookie());
 #ifdef THREAD_SANITIZER
     __tsan_acquire(pending_rpc);
 #endif
     CHECK(pending_rpc) << "Completion cookie was NULL";
-    if (recv_errno || !length) {
+    if (recv_errno || !msg_length) {
       pending_rpc->state->success = false;
     } else {
       pending_rpc->state->success = true;
+      char rx_buf[1048576];
+      CHECK(!client_receiver_->is_request());
+      client_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
       if (!pending_rpc->state->response.ParseFromArray(rx_buf + 1,
-                                                       length - 1)) {
+                                                       msg_length - 1)) {
         LOG(FATAL) << "rx_buf did not parse as a GenericResponse";
       }
     }

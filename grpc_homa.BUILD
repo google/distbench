@@ -69,8 +69,23 @@ cc_library(
     ],
     deps = [
         ":homa_time_trace_lib",
+        ":homa_socket_lib",
         ":homa_stream_id_lib",
         ":homa_wire_lib",
+        "@com_github_grpc_grpc//:grpc++",
+        "@homa_module//:homa_api",
+    ]
+)
+
+cc_library(
+    name = "homa_socket_lib",
+    srcs = [
+        "homa_socket.cc",
+    ],
+    hdrs = [
+        "homa_socket.h",
+    ],
+    deps = [
         "@com_github_grpc_grpc//:grpc++",
         "@homa_module//:homa_api",
     ]
