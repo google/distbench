@@ -25,6 +25,8 @@ Use Distbench to:
 
 - [Distbench Overview](docs/quick-overview.md): Provides an overview of
   Distbench, its model and design.
+- [Distbench Workflow](docs/workflow.md): Discusses the workflow that distbench
+  enables, and its advantages compared to other tools.
 - [Distbench Getting Started](docs/getting-started.md): Provides information on
   how to compile and run Distbench for the first time.
 - [Distbench Workloads](workloads/README.md): Describes the workloads included.
