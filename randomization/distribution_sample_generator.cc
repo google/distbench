@@ -120,18 +120,33 @@ absl::Status DistributionSampleGenerator::InitializeWithCdf(
   auto* pmf_point = config_with_pmf.add_pmf_points();
   pmf_point->set_pmf(config.cdf_points(0).cdf());
   auto* data_point = pmf_point->add_data_points();
-  data_point->set_exact(config.cdf_points(0).value());
+
+  if (config.is_cdf_uniform()) {
+    data_point->set_lower(0);
+    data_point->set_upper(config.cdf_points(0).value());
+  } else {
+    data_point->set_exact(config.cdf_points(0).value());
+  }
 
   auto prev_cdf = config.cdf_points(0).cdf();
+  auto prev_data_value = config.cdf_points(0).value();
   for (int i = 1; i < config.cdf_points_size(); i++) {
     auto curr_cdf = config.cdf_points(i).cdf();
+    auto curr_data_value = config.cdf_points(i).value();
+
     auto* pmf_point = config_with_pmf.add_pmf_points();
     pmf_point->set_pmf(curr_cdf - prev_cdf);
 
     auto* data_point = pmf_point->add_data_points();
-    data_point->set_exact(config.cdf_points(i).value());
+    if (config.is_cdf_uniform()) {
+      data_point->set_lower(prev_data_value + 1);
+      data_point->set_upper(curr_data_value);
+    } else {
+      data_point->set_exact(curr_data_value);
+    }
 
     prev_cdf = curr_cdf;
+    prev_data_value = curr_data_value;
   }
 
   return InitializeWithPmf(config_with_pmf);
