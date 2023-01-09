@@ -52,4 +52,6 @@ message DistributionConfig {
 
   repeated CdfPoint cdf_points = 3;
   optional bool is_cdf_uniform = 4 [default = true];
+
+  repeated string field_names = 5;
 }
