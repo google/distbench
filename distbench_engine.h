@@ -22,6 +22,7 @@
 #include "distbench.grpc.pb.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
+#include "randomization/distribution_sample_generator.h"
 
 namespace distbench {
 
@@ -69,6 +70,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // Decoded
     int request_payload_size;
     int response_payload_size;
+
+    int sample_interpretor_index = -1;
   };
 
   struct PeerMetadata {
@@ -155,6 +158,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::map<int, std::vector<int>> partially_randomized_vectors;
 
     std::unique_ptr<Activity> activity;
+
+    std::default_random_engine* rand_gen = nullptr;
   };
 
   struct PackedLatencySample {
@@ -284,6 +289,32 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Mutex cumulative_activity_log_mu_;
   std::map<std::string, std::map<std::string, int64_t>>
       cumulative_activity_logs_;
+
+  struct SampleInterpretor {
+    std::unique_ptr<DistributionSampleGenerator> sample_generator;
+    std::vector<std::string> field_names;
+  };
+
+  std::map<std::string, int> sample_interpretor_indices_map_;
+  std::vector<SampleInterpretor> sample_interpretor_array_;
+
+  // Allocate Sample generator if the distribution configuration is
+  // valid. Return an error if the config is invalid of if same config
+  // is defined more than once. Add the unique_ptr for allocated sample
+  // generator to the sample_interpretor_array_ and store the index in
+  // sample_interpretor_indices_map_.
+  absl::Status AllocateAndInitializeSampleGenerators();
+
+  // Get the index of the sample interpretor in sample_interpretor_array_
+  int GetSampleInterpretorIndex(const std::string& name);
+
+  // Populate the common_request with values from generated
+  // samples by interpreting these values as per the field_names.
+  // TraceContext must be used to pass RPC response parameters
+  // from client to server.
+  void PopulateRequest(GenericRequest* common_request,
+                       const std::vector<int>& sample,
+                       const std::vector<std::string>& field_names);
 };
 
 }  // namespace distbench

@@ -255,6 +255,11 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
                    << "; using a default of " << rpc_def.response_payload_size;
     }
 
+    if (rpc_spec.has_distribution_config_name()) {
+      rpc_def.sample_interpretor_index =
+          GetSampleInterpretorIndex(rpc_spec.distribution_config_name());
+    }
+
     auto ret = InitializeRpcFanoutFilter(rpc_def);
     if (!ret.ok()) return ret;
 
@@ -267,6 +272,10 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 absl::Status DistBenchEngine::InitializeTables() {
   absl::Status ret_init_payload = InitializePayloadsMap();
   if (!ret_init_payload.ok()) return ret_init_payload;
+
+  absl::Status ret_init_distribution_config =
+      AllocateAndInitializeSampleGenerators();
+  if (!ret_init_distribution_config.ok()) return ret_init_distribution_config;
 
   absl::Status ret_init_rpc_def = InitializeRpcDefinitionsMap();
   if (!ret_init_rpc_def.ok()) return ret_init_rpc_def;
@@ -676,6 +685,11 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   const auto& rpc_def = server_rpc.rpc_definition;
   state->response.set_payload(std::string(rpc_def.response_payload_size, 'D'));
 
+  if (state->request->trace_context().has_response_payload_size()) {
+    state->response.set_payload(std::string(
+        state->request->trace_context().response_payload_size(), 'D'));
+  }
+
   int handler_action_list_index = server_rpc.handler_action_list_index;
   if (handler_action_list_index == -1) {
     state->SendResponseIfSet();
@@ -705,6 +719,8 @@ void DistBenchEngine::RunActionList(int list_index,
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
   bool sent_response_early = false;
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine rand_gen(seed);
 
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
@@ -748,6 +764,7 @@ void DistBenchEngine::RunActionList(int list_index,
       if (!deps_ready) continue;
       s.state_table[i].started = true;
       s.state_table[i].action = &s.action_list->list_actions[i];
+      s.state_table[i].rand_gen = &rand_gen;
       if ((!sent_response_early && incoming_rpc_state) &&
           ((size == 1) ||
            s.state_table[i].action->proto.send_response_when_done())) {
@@ -1265,6 +1282,17 @@ void DistBenchEngine::RunRpcActionIteration(
   common_request.set_warmup(iteration_state->warmup);
   common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
 
+  if (rpc_def.sample_interpretor_index != -1) {
+    auto index = rpc_def.sample_interpretor_index;
+    auto& sample_interpretor = sample_interpretor_array_[index];
+    auto generated_sample =
+        sample_interpretor.sample_generator->GetRandomSample(
+            action_state->rand_gen);
+
+    PopulateRequest(&common_request, generated_sample,
+                    sample_interpretor.field_names);
+  }
+
   const int rpc_service_index = action_state->rpc_service_index;
   const auto& servers = peers_[rpc_service_index];
   for (size_t i = 0; i < current_targets.size(); ++i) {
@@ -1377,6 +1405,73 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
   }
 
   return targets;
+}
+
+int DistBenchEngine::GetSampleInterpretorIndex(
+    const std::string& distribution_config_name) {
+  const auto& dc_index_it =
+      sample_interpretor_indices_map_.find(distribution_config_name);
+  if (dc_index_it == sample_interpretor_indices_map_.end()) {
+    LOG(WARNING) << "Unknown distribution_config_name: '"
+                 << distribution_config_name << "' provided.";
+    return -1;
+  }
+  return dc_index_it->second;
+}
+
+absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
+  for (int i = 0; i < traffic_config_.distribution_configs_size(); ++i) {
+    DistributionConfig config = traffic_config_.distribution_configs(i);
+    const auto& config_name = config.name();
+
+    if (sample_interpretor_indices_map_.find(config_name) ==
+        sample_interpretor_indices_map_.end()) {
+      if (!config.pmf_points().empty()) {
+        auto status = ValidateDistributionConfig(config);
+        if (!status.ok()) return status;
+      } else {
+        return absl::InvalidArgumentError(
+            absl::StrCat("PMF definition is missing in '", config_name, "'."));
+      }
+
+      auto maybe_sample_generator = AllocateSampleGenerator(config);
+      if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
+
+      auto sample_generator = std::move(maybe_sample_generator.value());
+      auto status = sample_generator->Initialize(config);
+      if (!status.ok()) return status;
+
+      std::vector<std::string> field_names;
+      for (const auto& name : config.field_names()) {
+        field_names.push_back(name);
+      }
+      SampleInterpretor sample_interpretor{std::move(sample_generator),
+                                           field_names};
+      sample_interpretor_array_.push_back(std::move(sample_interpretor));
+      sample_interpretor_indices_map_[config_name] =
+          sample_interpretor_array_.size() - 1;
+
+    } else {
+      return absl::FailedPreconditionError(
+          absl::StrCat("Distribution config '", config_name,
+                       "' was defined more than once."));
+    }
+  }
+  return absl::OkStatus();
+}
+
+void DistBenchEngine::PopulateRequest(
+    GenericRequest* common_request, const std::vector<int>& sample,
+    const std::vector<std::string>& field_names) {
+  for (size_t i = 0; i < field_names.size(); i++) {
+    if (field_names[i] == "request_payload_size") {
+      common_request->set_payload(std::string(sample[i], 'D'));
+
+    } else if (field_names[i] == "response_payload_size") {
+      common_request->mutable_trace_context()->set_response_payload_size(
+          sample[i]);
+    }
+  }
 }
 
 }  // namespace distbench

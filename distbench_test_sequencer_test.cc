@@ -1095,6 +1095,99 @@ TEST(DistBenchTestSequencer, PreCheckInvalidActivityConfig) {
   ASSERT_EQ(status.error_code(), grpc::ABORTED);
 }
 
+TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
+  int nb_cliques = 2;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequenceParams params;
+  params.nb_cliques = nb_cliques;
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(1);
+  client->set_protocol_driver_options_name("lo_opts");
+
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(1);
+  server->set_protocol_driver_options_name("lo_opts");
+
+  auto* rpc_desc = test->add_rpc_descriptions();
+  rpc_desc->set_name("client_server_rpc");
+  rpc_desc->set_client("client");
+  rpc_desc->set_server("server");
+  rpc_desc->set_distribution_config_name("MyPayloadDistribution");
+
+  auto* client_al = test->add_action_lists();
+  client_al->set_name("client");
+  client_al->add_action_names("run_queries");
+
+  auto* server_al = test->add_action_lists();
+  server_al->set_name("client_server_rpc");
+
+  auto* lo_opts = test->add_protocol_driver_options();
+  lo_opts->set_name("lo_opts");
+  lo_opts->set_netdev_name("lo");
+
+  auto* req_dist = test->add_distribution_configs();
+  req_dist->set_name("MyPayloadDistribution");
+  for (float i = 1; i < 5; i++) {
+    auto* pmf_point = req_dist->add_pmf_points();
+    pmf_point->set_pmf(i / 10);
+
+    auto* data_point = pmf_point->add_data_points();
+    data_point->set_exact(i * 11);
+
+    data_point = pmf_point->add_data_points();
+    data_point->set_exact(i * 9);
+  }
+  req_dist->add_field_names("request_payload_size");
+  req_dist->add_field_names("response_payload_size");
+
+  auto action = test->add_actions();
+  action->set_name("run_queries");
+  action->set_rpc_name("client_server_rpc");
+  action->mutable_iterations()->set_max_iteration_count(20);
+
+  // TODO: Delete this message in final version.
+  LOG(ERROR) << test_sequence.DebugString();
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  // TODO: Delete this message in final version.
+  LOG(ERROR) << "Test Results Are: "
+             << results.test_results(0).service_logs().DebugString();
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("client/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+
+  int num_samples = 0;
+  for (const auto& rpc_sample : instance_results_it->second.peer_logs()
+                                    .find("server/0")
+                                    ->second.rpc_logs()
+                                    .find(0)
+                                    ->second.successful_rpc_samples()) {
+    ASSERT_EQ(rpc_sample.request_size() % 11, 0);
+    ASSERT_EQ(rpc_sample.response_size() % 9, 0);
+    num_samples++;
+  }
+  ASSERT_EQ(num_samples, 20);
+}
+
 TEST(DistBenchTestSequencer, StochasticTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));

@@ -16,6 +16,8 @@ syntax = "proto2";
 
 package distbench;
 
+import "randomization/distribution.proto";
+
 // Specifies how many servers there are of each type.
 // The name of an individual instance is just $name/$intance_number,
 // e.g. "search_leaf/0"
@@ -46,6 +48,7 @@ message RpcSpec {
   optional string response_payload_name = 5;
   optional string fanout_filter = 6 [default = "all"];
   optional int32 tracing_interval = 7;
+  optional string distribution_config_name = 8;
 }
 
 message Iterations {
@@ -112,4 +115,5 @@ message DistributedSystemDescription {
   repeated ActionList action_lists = 6;
   optional string default_protocol = 7 [default = "grpc"];
   repeated ProtocolDriverOptions protocol_driver_options = 8;
+  repeated DistributionConfig distribution_configs = 12;
 }
