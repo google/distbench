@@ -103,6 +103,12 @@ message ProtocolDriverOptions {
   repeated NamedSetting client_settings = 5;
 }
 
+message RandomSampleGenerator {
+  optional string name = 1;
+  optional DistributionConfig distribution_config = 2;
+  repeated string field_names = 3;
+}
+
 message DistributedSystemDescription {
   optional string name = 9;
   map<string, string> attributes = 10;
@@ -115,5 +121,5 @@ message DistributedSystemDescription {
   repeated ActionList action_lists = 6;
   optional string default_protocol = 7 [default = "grpc"];
   repeated ProtocolDriverOptions protocol_driver_options = 8;
-  repeated DistributionConfig distribution_configs = 12;
+  repeated RandomSampleGenerator random_sample_generator = 12;
 }

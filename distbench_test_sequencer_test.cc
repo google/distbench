@@ -1134,20 +1134,23 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
   lo_opts->set_name("lo_opts");
   lo_opts->set_netdev_name("lo");
 
-  auto* req_dist = test->add_distribution_configs();
+  auto* rsg = test->add_random_sample_generator();
+  auto* req_dist = rsg->mutable_distribution_config();
   req_dist->set_name("MyPayloadDistribution");
   for (float i = 1; i < 5; i++) {
     auto* pmf_point = req_dist->add_pmf_points();
     pmf_point->set_pmf(i / 10);
 
+    // Request Payload Size
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i * 11);
 
+    // Response Payload Size
     data_point = pmf_point->add_data_points();
     data_point->set_exact(i * 9);
   }
-  req_dist->add_field_names("request_payload_size");
-  req_dist->add_field_names("response_payload_size");
+  rsg->add_field_names("request_payload_size");
+  rsg->add_field_names("response_payload_size");
 
   auto action = test->add_actions();
   action->set_name("run_queries");
@@ -1182,7 +1185,9 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
                                     .find(0)
                                     ->second.successful_rpc_samples()) {
     ASSERT_EQ(rpc_sample.request_size() % 11, 0);
+    ASSERT_NE(rpc_sample.request_size(), 0);
     ASSERT_EQ(rpc_sample.response_size() % 9, 0);
+    ASSERT_NE(rpc_sample.response_size(), 0);
     num_samples++;
   }
   ASSERT_EQ(num_samples, 20);

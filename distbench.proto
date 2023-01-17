@@ -42,8 +42,6 @@ message TraceContext {
   // Each engine along the chain also has an iteration count, in case
   // multiple RPCs are being sent.
   repeated int64 iterations = 2 [packed = true];
-
-  optional int64 response_payload_size = 3;
 }
 
 message RpcSample {
@@ -238,6 +236,8 @@ message GenericRequest {
   optional int32 rpc_index = 2;
   optional TraceContext trace_context = 3;
   optional bool warmup = 4;
+
+  optional int64 response_payload_size = 5;
 }
 
 message GenericResponse {
