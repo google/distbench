@@ -299,8 +299,10 @@ cc_proto_library(
 proto_library(
     name = "distbench_proto",
     srcs = ["distbench.proto"],
-    deps = ["traffic_config_proto",
-            "//randomization:distribution_proto"],
+    deps = [
+        "//randomization:distribution_proto",
+        ":traffic_config_proto"
+    ],
 )
 
 cc_proto_library(
@@ -372,8 +374,8 @@ cc_library(
     srcs = ["distbench_engine.cc"],
     hdrs = ["distbench_engine.h"],
     deps = [
-        ":activity_api",
         "//randomization:distribution_sample_generator",
+        ":activity_api",
         ":distbench_cc_grpc_proto",
         ":distbench_utils",
         ":grpc_wrapper",
