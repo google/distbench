@@ -1283,15 +1283,22 @@ void DistBenchEngine::RunRpcActionIteration(
   common_request.set_rpc_index(rpc_index);
   common_request.set_warmup(iteration_state->warmup);
 
-  std::vector<int> generated_sample(kMaxFieldNames, -1);
-  if (rpc_def.sample_interpretor_index != -1) {
+  if (rpc_def.sample_interpretor_index == -1) {
+    common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
+
+  } else {
     auto& sample_generator =
         sample_generator_array_[rpc_def.sample_interpretor_index];
-    generated_sample =
-        sample_generator->GetRandomSample(action_state->rand_gen);
-  }
+    auto sample = sample_generator->GetRandomSample(action_state->rand_gen);
 
-  PopulateCommonRequest(&common_request, generated_sample, rpc_def);
+    if (sample[kRequestPayloadSize] != -1) {
+      common_request.set_payload(std::string(sample[kRequestPayloadSize], 'D'));
+    }
+
+    if (sample[kResponsePayloadSize] != -1) {
+      common_request.set_response_payload_size(sample[kResponsePayloadSize]);
+    }
+  }
 
   const int rpc_service_index = action_state->rpc_service_index;
   const auto& servers = peers_[rpc_service_index];
@@ -1504,22 +1511,6 @@ absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
     }
   }
   return absl::OkStatus();
-}
-
-void DistBenchEngine::PopulateCommonRequest(GenericRequest* common_request,
-                                            const std::vector<int>& sample,
-                                            const RpcDefinition& rpc_def) {
-  if (sample[kRequestPayloadSize] == -1) {
-    common_request->set_payload(std::string(rpc_def.request_payload_size, 'D'));
-  } else {
-    common_request->set_payload(std::string(sample[kRequestPayloadSize], 'D'));
-  }
-
-  if (sample[kResponsePayloadSize] == -1) {
-    common_request->set_response_payload_size(rpc_def.response_payload_size);
-  } else {
-    common_request->set_response_payload_size(sample[kResponsePayloadSize]);
-  }
 }
 
 }  // namespace distbench
