@@ -1420,12 +1420,12 @@ int DistBenchEngine::GetSampleInterpretorIndex(
 }
 
 absl::StatusOr<DistributionConfig> DistBenchEngine::GetCanonicalConfig(
-    const RandomSampleGenerator& rsg) {
+    const DistributionConfig& input_config) {
   DistributionConfig canonical_config;
   std::vector<int> proto_to_canonical(kMaxFieldNames, -1);
 
-  for (int i = 0; i < rsg.field_names_size(); i++) {
-    auto field_name = rsg.field_names(i);
+  for (int i = 0; i < input_config.field_names_size(); i++) {
+    auto field_name = input_config.field_names(i);
 
     if (field_name == "request_payload_size")
       proto_to_canonical[kRequestPayloadSize] = i;
@@ -1437,8 +1437,6 @@ absl::StatusOr<DistributionConfig> DistBenchEngine::GetCanonicalConfig(
       return absl::InvalidArgumentError(
           absl::StrCat("Unknown Field Name: '", field_name, "'."));
   }
-
-  auto input_config = rsg.distribution_config();
 
   for (int i = 0; i < input_config.pmf_points_size(); i++) {
     auto* output_pmf_point = canonical_config.add_pmf_points();
@@ -1466,9 +1464,8 @@ absl::StatusOr<DistributionConfig> DistBenchEngine::GetCanonicalConfig(
 }
 
 absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
-  for (int i = 0; i < traffic_config_.random_sample_generator_size(); ++i) {
-    auto rsg = traffic_config_.random_sample_generator(i);
-    DistributionConfig config = rsg.distribution_config();
+  for (int i = 0; i < traffic_config_.distribution_config_size(); ++i) {
+    const auto& config = traffic_config_.distribution_config(i);
     const auto& config_name = config.name();
 
     if (sample_generator_indices_map_.find(config_name) ==
@@ -1481,7 +1478,7 @@ absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
             absl::StrCat("PMF definition is missing in '", config_name, "'."));
       }
 
-      auto maybe_canonical_config = GetCanonicalConfig(rsg);
+      auto maybe_canonical_config = GetCanonicalConfig(config);
       if (!maybe_canonical_config.ok()) return maybe_canonical_config.status();
       auto canonical_config = maybe_canonical_config.value();
 

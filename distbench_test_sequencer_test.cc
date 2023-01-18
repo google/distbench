@@ -1134,8 +1134,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
   lo_opts->set_name("lo_opts");
   lo_opts->set_netdev_name("lo");
 
-  auto* rsg = test->add_random_sample_generator();
-  auto* req_dist = rsg->mutable_distribution_config();
+  auto* req_dist = test->add_distribution_config();
   req_dist->set_name("MyPayloadDistribution");
   for (float i = 1; i < 5; i++) {
     auto* pmf_point = req_dist->add_pmf_points();
@@ -1149,8 +1148,8 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
     data_point = pmf_point->add_data_points();
     data_point->set_exact(i * 9);
   }
-  rsg->add_field_names("request_payload_size");
-  rsg->add_field_names("response_payload_size");
+  req_dist->add_field_names("request_payload_size");
+  req_dist->add_field_names("response_payload_size");
 
   auto action = test->add_actions();
   action->set_name("run_queries");

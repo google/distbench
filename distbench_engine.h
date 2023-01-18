@@ -320,7 +320,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
                              const RpcDefinition& rpc_def);
 
   absl::StatusOr<DistributionConfig> GetCanonicalConfig(
-      const RandomSampleGenerator& config);
+      const DistributionConfig& input_config);
 
   enum kFieldNames {
     kRequestPayloadSize = 0,
