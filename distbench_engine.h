@@ -312,6 +312,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
                              const std::vector<int>& sample,
                              const RpcDefinition& rpc_def);
 
+  // Get canonical version of DistributionConfig from the config
+  // provided by the user. The canonical version is then used to
+  // generate sample with 'kMaxFieldNames' dimensions.
   absl::StatusOr<DistributionConfig> GetCanonicalConfig(
       const DistributionConfig& input_config);
 
@@ -320,7 +323,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
     kResponsePayloadSize = 1,
     kMaxFieldNames = 2,
   };
-
 };
 
 }  // namespace distbench

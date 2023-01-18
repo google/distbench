@@ -1424,6 +1424,9 @@ absl::StatusOr<DistributionConfig> DistBenchEngine::GetCanonicalConfig(
   DistributionConfig canonical_config;
   std::vector<int> proto_to_canonical(kMaxFieldNames, -1);
 
+  // The field_names are used to map the indexes of variables in
+  // multidimensional sample from proto file to their place
+  // in the canonical config.
   for (int i = 0; i < input_config.field_names_size(); i++) {
     auto field_name = input_config.field_names(i);
 
@@ -1438,6 +1441,11 @@ absl::StatusOr<DistributionConfig> DistBenchEngine::GetCanonicalConfig(
           absl::StrCat("Unknown Field Name: '", field_name, "'."));
   }
 
+  // The proto_to_canonical from above is used to reorder the user's
+  // distribution config to form the canonical distribution config.
+  //
+  // If a certain field is not randomized by the user, then its
+  // canonical counterpart will contain '-1' as the value for all samples.
   for (int i = 0; i < input_config.pmf_points_size(); i++) {
     auto* output_pmf_point = canonical_config.add_pmf_points();
     auto input_pmf_point = input_config.pmf_points(i);
