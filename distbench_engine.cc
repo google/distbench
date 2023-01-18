@@ -1501,19 +1501,6 @@ absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
   return absl::OkStatus();
 }
 
-void DistBenchEngine::PopulateRequest(
-    GenericRequest* common_request, const std::vector<int>& sample,
-    const std::vector<std::string>& field_names) {
-  for (size_t i = 0; i < field_names.size(); i++) {
-    if (field_names[i] == "request_payload_size") {
-      common_request->set_payload(std::string(sample[i], 'D'));
-
-    } else if (field_names[i] == "response_payload_size") {
-      common_request->set_response_payload_size(sample[i]);
-    }
-  }
-}
-
 void DistBenchEngine::PopulateCommonRequest(GenericRequest* common_request,
                                             const std::vector<int>& sample,
                                             const RpcDefinition& rpc_def) {
