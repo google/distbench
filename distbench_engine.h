@@ -325,9 +325,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
   enum kFieldNames {
     kRequestPayloadSize = 0,
     kResponsePayloadSize = 1,
+    kMaxFieldNames = 2,
   };
 
-  const int kMaxFieldNames = 3;
 };
 
 }  // namespace distbench
