@@ -36,6 +36,7 @@ class DistributionSampleGenerator {
 
   absl::Status Initialize(const DistributionConfig& config);
   std::vector<int> GetRandomSample();
+  std::vector<int> GetRandomSample(std::default_random_engine* generator);
 
  private:
   int num_dimensions_;
@@ -46,7 +47,6 @@ class DistributionSampleGenerator {
   std::vector<std::vector<int>> exact_value_;
 
   std::vector<std::vector<std::uniform_int_distribution<>>> range_;
-  std::uniform_int_distribution<> random_index_;
   std::mt19937 mersenne_twister_prng_;
 
   std::vector<std::vector<bool>> is_exact_value_;

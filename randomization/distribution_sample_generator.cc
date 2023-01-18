@@ -194,8 +194,9 @@ absl::Status DistributionSampleGenerator::Initialize(
       absl::StrCat("Add CDF or PMF to '", config.name(), "'."));
 };
 
-std::vector<int> DistributionSampleGenerator::GetRandomSample() {
-  auto index = distribution_array_(generator_);
+std::vector<int> DistributionSampleGenerator::GetRandomSample(
+    std::default_random_engine* generator) {
+  auto index = distribution_array_(*generator);
   std::vector<int> sample;
 
   for (int dim = 0; dim < num_dimensions_; dim++) {
@@ -206,6 +207,10 @@ std::vector<int> DistributionSampleGenerator::GetRandomSample() {
     }
   }
   return sample;
+};
+
+std::vector<int> DistributionSampleGenerator::GetRandomSample() {
+  return GetRandomSample(&generator_);
 };
 
 }  // namespace distbench
