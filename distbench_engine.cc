@@ -1484,11 +1484,8 @@ absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
 
       auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
       if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
-      auto sample_generator = std::move(maybe_sample_generator.value());
-      auto status = sample_generator->Initialize(canonical_config);
-      if (!status.ok()) return status;
 
-      sample_generator_array_.push_back(std::move(sample_generator));
+      sample_generator_array_.push_back(std::move(maybe_sample_generator.value()));
       sample_generator_indices_map_[config_name] =
           sample_generator_array_.size() - 1;
 
