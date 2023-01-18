@@ -71,7 +71,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int request_payload_size;
     int response_payload_size;
 
-    int sample_interpretor_index = -1;
+    int sample_generator_index = -1;
   };
 
   struct PeerMetadata {
@@ -298,11 +298,11 @@ class DistBenchEngine : public ConnectionSetup::Service {
   // Allocate Sample generator if the distribution configuration is
   // valid. Return an error if the config is invalid of if same config
   // is defined more than once. Add the unique_ptr for allocated sample
-  // generator to the sample_interpretor_array_ and store the index in
-  // sample_interpretor_indices_map_.
+  // generator to the sample_generator_array_ and store the index in
+  // sample_generator_indices_map_.
   absl::Status AllocateAndInitializeSampleGenerators();
 
-  // Get the index of the sample interpretor in sample_generator_array_
+  // Get the index of the sample generator in sample_generator_array_
   int GetSampleGeneratorIndex(const std::string& name);
 
   // Get canonical version of DistributionConfig from the config

@@ -256,7 +256,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
     }
 
     if (rpc_spec.has_distribution_config_name()) {
-      rpc_def.sample_interpretor_index =
+      rpc_def.sample_generator_index =
           GetSampleGeneratorIndex(rpc_spec.distribution_config_name());
     }
 
@@ -1283,13 +1283,12 @@ void DistBenchEngine::RunRpcActionIteration(
   common_request.set_rpc_index(rpc_index);
   common_request.set_warmup(iteration_state->warmup);
 
-  if (rpc_def.sample_interpretor_index == -1) {
+  if (rpc_def.sample_generator_index == -1) {
     common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
 
   } else {
-    auto& sample_generator =
-        sample_generator_array_[rpc_def.sample_interpretor_index];
-    auto sample = sample_generator->GetRandomSample(action_state->rand_gen);
+    auto sample = sample_generator_array_[rpc_def.sample_generator_index]
+                      ->GetRandomSample(action_state->rand_gen);
 
     if (sample[kRequestPayloadSize] != -1) {
       common_request.set_payload(std::string(sample[kRequestPayloadSize], 'D'));
@@ -1500,7 +1499,8 @@ absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
       auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
       if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
 
-      sample_generator_array_.push_back(std::move(maybe_sample_generator.value()));
+      sample_generator_array_.push_back(
+          std::move(maybe_sample_generator.value()));
       sample_generator_indices_map_[config_name] =
           sample_generator_array_.size() - 1;
 
