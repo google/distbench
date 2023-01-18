@@ -109,9 +109,8 @@ message DistributedSystemDescription {
   repeated ServiceSpec services = 1;
   map<string, ServiceBundle> node_service_bundles = 2;
 
-  // To enable easy creation of text protos by the users,
-  // 'maps' have been avoided here and 'repeated' fields
-  // are used instead.
+  // In order to provide the users with an easy way of creating
+  // text_protos, 'repeated' fields are used instead of 'maps'.
   repeated PayloadSpec payload_descriptions = 3;
   repeated RpcSpec rpc_descriptions = 4;
   repeated ActivityConfig activity_configs = 11;

@@ -159,7 +159,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     std::unique_ptr<Activity> activity;
 
-    // Use rand_gen only from RunActionList's thread.
+    // The 'rand_gen' must be used only from RunActionList's thread
+    // to avoid race conditions.
     std::default_random_engine* rand_gen = nullptr;
   };
 
