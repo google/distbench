@@ -301,8 +301,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   // sample_interpretor_indices_map_.
   absl::Status AllocateAndInitializeSampleGenerators();
 
-  // Get the index of the sample interpretor in sample_interpretor_array_
-  int GetSampleInterpretorIndex(const std::string& name);
+  // Get the index of the sample interpretor in sample_generator_array_
+  int GetSampleGeneratorIndex(const std::string& name);
 
   // Populate the common_request with values from generated
   // samples by interpreting these values as per the field_names.

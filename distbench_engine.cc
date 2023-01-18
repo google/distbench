@@ -257,7 +257,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 
     if (rpc_spec.has_distribution_config_name()) {
       rpc_def.sample_interpretor_index =
-          GetSampleInterpretorIndex(rpc_spec.distribution_config_name());
+          GetSampleGeneratorIndex(rpc_spec.distribution_config_name());
     }
 
     auto ret = InitializeRpcFanoutFilter(rpc_def);
@@ -1407,7 +1407,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
   return targets;
 }
 
-int DistBenchEngine::GetSampleInterpretorIndex(
+int DistBenchEngine::GetSampleGeneratorIndex(
     const std::string& distribution_config_name) {
   const auto& dc_index_it =
       sample_generator_indices_map_.find(distribution_config_name);
