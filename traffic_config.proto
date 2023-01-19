@@ -16,6 +16,8 @@ syntax = "proto2";
 
 package distbench;
 
+import "randomization/distribution.proto";
+
 // Specifies how many servers there are of each type.
 // The name of an individual instance is just $name/$intance_number,
 // e.g. "search_leaf/0"
@@ -46,6 +48,7 @@ message RpcSpec {
   optional string response_payload_name = 5;
   optional string fanout_filter = 6 [default = "all"];
   optional int32 tracing_interval = 7;
+  optional string distribution_config_name = 8;
 }
 
 message Iterations {
@@ -105,11 +108,16 @@ message DistributedSystemDescription {
   map<string, string> attributes = 10;
   repeated ServiceSpec services = 1;
   map<string, ServiceBundle> node_service_bundles = 2;
+
+  // In order to provide the users with an easy way of creating
+  // text_protos, 'repeated' fields are used instead of 'maps'.
   repeated PayloadSpec payload_descriptions = 3;
   repeated RpcSpec rpc_descriptions = 4;
   repeated ActivityConfig activity_configs = 11;
   repeated Action actions = 5;
   repeated ActionList action_lists = 6;
+
   optional string default_protocol = 7 [default = "grpc"];
   repeated ProtocolDriverOptions protocol_driver_options = 8;
+  repeated DistributionConfig distribution_config = 12;
 }

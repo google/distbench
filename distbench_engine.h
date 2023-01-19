@@ -22,6 +22,7 @@
 #include "distbench.grpc.pb.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
+#include "randomization/distribution_sample_generator.h"
 
 namespace distbench {
 
@@ -69,6 +70,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // Decoded
     int request_payload_size;
     int response_payload_size;
+
+    int sample_generator_index = -1;
   };
 
   struct PeerMetadata {
@@ -155,6 +158,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::map<int, std::vector<int>> partially_randomized_vectors;
 
     std::unique_ptr<Activity> activity;
+
+    // The 'rand_gen' must be used only from RunActionList's thread
+    // to avoid race conditions.
+    std::default_random_engine* rand_gen = nullptr;
   };
 
   struct PackedLatencySample {
@@ -284,6 +291,20 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Mutex cumulative_activity_log_mu_;
   std::map<std::string, std::map<std::string, int64_t>>
       cumulative_activity_logs_;
+
+  std::map<std::string, int> sample_generator_indices_map_;
+  std::vector<std::unique_ptr<DistributionSampleGenerator>>
+      sample_generator_array_;
+
+  // Allocate Sample generator if the distribution configuration is
+  // valid. Return an error if the config is invalid of if same config
+  // is defined more than once. Add the unique_ptr for allocated sample
+  // generator to the sample_generator_array_ and store the index in
+  // sample_generator_indices_map_.
+  absl::Status AllocateAndInitializeSampleGenerators();
+
+  // Get the index of the sample generator in sample_generator_array_
+  int GetSampleGeneratorIndex(const std::string& name);
 };
 
 }  // namespace distbench
