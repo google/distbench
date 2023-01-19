@@ -1156,18 +1156,11 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
   action->set_rpc_name("client_server_rpc");
   action->mutable_iterations()->set_max_iteration_count(20);
 
-  // TODO: Delete this message in final version.
-  LOG(ERROR) << test_sequence.DebugString();
-
   TestSequenceResults results;
   auto context = CreateContextWithDeadline(/*max_time_s=*/75);
   grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
       context.get(), test_sequence, &results);
   ASSERT_OK(status);
-
-  // TODO: Delete this message in final version.
-  LOG(ERROR) << "Test Results Are: "
-             << results.test_results(0).service_logs().DebugString();
 
   ASSERT_EQ(results.test_results().size(), 1);
   auto& test_results = results.test_results(0);
