@@ -49,12 +49,14 @@ class ProtocolDriverHoma : public ProtocolDriver {
   void ClientCompletionThread();
   void ServerThread();
 
-  const size_t kHomaBufferSize = 1000*HOMA_BPAGE_SIZE;
+  const size_t kHomaBufferSize = 1000 * HOMA_BPAGE_SIZE;
   void* client_buffer_ = nullptr;
   void* server_buffer_ = nullptr;
   std::unique_ptr<homa::receiver> client_receiver_;
   std::unique_ptr<homa::receiver> server_receiver_;
 
+  sockaddr_in_union server_sock_addr_ = {};
+  sockaddr_in_union client_sock_addr_ = {};
   int homa_client_sock_ = -1;
   int homa_server_sock_ = -1;
   int server_port_ = 0;
