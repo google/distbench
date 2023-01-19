@@ -50,30 +50,28 @@ absl::Status ProtocolDriverHoma::Initialize(
     return absl::UnknownError(
         absl::StrCat(strerror(errno), " creating client homa socket"));
   }
-  client_buffer_ = mmap(
-      NULL, kHomaBufferSize, PROT_READ | PROT_WRITE,
-      MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+  client_buffer_ = mmap(NULL, kHomaBufferSize, PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
   struct homa_set_buf_args arg;
   arg.start = client_buffer_;
   arg.length = kHomaBufferSize;
   setsockopt(homa_client_sock_, IPPROTO_HOMA, SO_HOMA_SET_BUF, &arg,
              sizeof(arg));
-  client_receiver_ = std::make_unique<homa::receiver>(
-      homa_client_sock_, client_buffer_);
+  client_receiver_ =
+      std::make_unique<homa::receiver>(homa_client_sock_, client_buffer_);
   homa_server_sock_ = socket(af, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_HOMA);
   if (homa_server_sock_ < 0) {
     return absl::UnknownError(
         absl::StrCat(strerror(errno), " creating server homa socket"));
   }
-  server_buffer_ = mmap(
-      NULL, kHomaBufferSize, PROT_READ | PROT_WRITE,
-      MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+  server_buffer_ = mmap(NULL, kHomaBufferSize, PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
   arg.start = server_buffer_;
   arg.length = kHomaBufferSize;
   setsockopt(homa_server_sock_, IPPROTO_HOMA, SO_HOMA_SET_BUF, &arg,
              sizeof(arg));
-  server_receiver_ = std::make_unique<homa::receiver>(
-      homa_server_sock_, server_buffer_);
+  server_receiver_ =
+      std::make_unique<homa::receiver>(homa_server_sock_, server_buffer_);
 
   sockaddr_in_union bind_addr = {};
   int bind_err = 0;
@@ -98,20 +96,17 @@ absl::Status ProtocolDriverHoma::Initialize(
   socklen_t len = sizeof(server_sock_addr);
   if (getsockname(homa_server_sock_, &server_sock_addr.sa, &len) < 0) {
     return absl::UnknownError(
-        absl::StrCat(strerror(errno), " getting sockname from socket"));
+        absl::StrCat(strerror(errno), " getting sockname from server socket"));
   }
 
-  char addr_string[256];
   if (server_sock_addr.in4.sin_family == AF_INET) {
     *port = ntohs(server_sock_addr.in4.sin_port);
-    inet_ntop(AF_INET, &server_sock_addr.in4.sin_addr, addr_string,
-              sizeof(addr_string));
-    my_server_socket_address_ = absl::StrCat(addr_string, ":", *port);
+    my_server_socket_address_ =
+        absl::StrCat(server_ip_address_.ip(), ":", *port);
   } else if (server_sock_addr.in6.sin6_family == AF_INET6) {
     *port = ntohs(server_sock_addr.in6.sin6_port);
-    inet_ntop(AF_INET6, &server_sock_addr.in6.sin6_addr, addr_string,
-              sizeof(addr_string));
-    my_server_socket_address_ = absl::StrCat("[", addr_string, "]:", *port);
+    my_server_socket_address_ =
+        absl::StrCat("[", server_ip_address_.ip(), "]:", *port);
   } else {
     return absl::UnknownError(
         absl::StrCat("Unknown address family for homa socket: ",
@@ -198,6 +193,27 @@ void ProtocolDriverHoma::ShutdownServer() {
   handler_set_.TryToNotify();
   if (shutting_down_server_.TryToNotify()) {
     if (server_thread_.joinable()) {
+      // Initiate RPC to our own server sock, to wake up the server_thread_:
+      char buf[1] = {};
+      uint64_t kernel_rpc_number;
+      sockaddr_in_union loopback;
+      socklen_t len = sizeof(loopback);
+      if (getsockname(homa_server_sock_, &loopback.sa, &len) < 0) {
+        LOG(ERROR) << absl::StrCat(strerror(errno),
+                                   " getting sockname from server socket");
+      }
+      if (loopback.in6.sin6_family == AF_INET6) {
+        loopback.in6.sin6_addr = in6addr_loopback;
+      } else {
+        loopback.in4.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+      }
+
+      int64_t res = homa_send(homa_server_sock_, buf, 1, &loopback,
+                              &kernel_rpc_number, 0);
+      if (res < 0) {
+        LOG(INFO) << "homa_send result: " << res << " errno: " << errno
+                  << " kernel_rpc_number " << kernel_rpc_number;
+      }
       server_thread_.join();
     }
     server_receiver_.reset();
@@ -213,6 +229,29 @@ void ProtocolDriverHoma::ShutdownServer() {
 void ProtocolDriverHoma::ShutdownClient() {
   if (shutting_down_client_.TryToNotify()) {
     if (client_completion_thread_.joinable()) {
+      // Initiate RPC to our own client sock, then cancel it to wake up
+      // the client_completion_thread_:
+      char buf[1] = {};
+      uint64_t kernel_rpc_number;
+      sockaddr_in_union loopback;
+      socklen_t len = sizeof(loopback);
+      if (getsockname(homa_client_sock_, &loopback.sa, &len) < 0) {
+        LOG(ERROR) << absl::StrCat(strerror(errno),
+                                   " getting sockname from client socket");
+      }
+      if (loopback.in6.sin6_family == AF_INET6) {
+        loopback.in6.sin6_addr = in6addr_loopback;
+      } else {
+        loopback.in4.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+      }
+      int64_t res = homa_send(homa_client_sock_, buf, 1, &loopback,
+                              &kernel_rpc_number, 0);
+      if (res < 0) {
+        LOG(INFO) << "homa_send result: " << res << " errno: " << errno
+                  << " kernel_rpc_number " << kernel_rpc_number;
+      }
+
+      homa_abort(homa_client_sock_, kernel_rpc_number, EINTR);
       client_completion_thread_.join();
     }
     while (pending_rpcs_) {
@@ -261,10 +300,12 @@ void ProtocolDriverHoma::ServerThread() {
   std::atomic<int> pending_actionlist_threads = 0;
 
   handler_set_.WaitForNotification();
-  while (!shutting_down_server_.HasBeenNotified()) {
+  while (1) {
     errno = 0;
-    ssize_t msg_length = server_receiver_->receive(
-        HOMA_RECVMSG_NONBLOCKING | HOMA_RECVMSG_REQUEST, 0);
+    ssize_t msg_length = server_receiver_->receive(HOMA_RECVMSG_REQUEST, 0);
+    if (shutting_down_server_.HasBeenNotified()) {
+      break;
+    }
     int recv_errno = errno;
     if (msg_length < 0) {
       if (recv_errno != EINTR && recv_errno != EAGAIN) {
@@ -317,14 +358,13 @@ void ProtocolDriverHoma::ServerThread() {
 void ProtocolDriverHoma::ClientCompletionThread() {
   while (!shutting_down_client_.HasBeenNotified() || pending_rpcs_) {
     errno = 0;
-    ssize_t msg_length = client_receiver_->receive(
-        HOMA_RECVMSG_NONBLOCKING | HOMA_RECVMSG_RESPONSE, 0);
+    ssize_t msg_length = client_receiver_->receive(HOMA_RECVMSG_RESPONSE, 0);
     int recv_errno = errno;
     if (msg_length < 0) {
-        if (recv_errno != EINTR && recv_errno != EAGAIN) {
-          LOG(ERROR) << "homa_recv had an error: " << strerror(recv_errno);
-	}
-	continue;
+      if (recv_errno != EINTR && recv_errno != EAGAIN) {
+        LOG(ERROR) << "homa_recv had an error: " << strerror(recv_errno);
+      }
+      continue;
     }
 
     PendingHomaRpc* pending_rpc = reinterpret_cast<PendingHomaRpc*>(
