@@ -53,9 +53,9 @@ TEST(DistributionSampleGeneratorTest, BothCdfAndPdfConfig) {
 TEST(DistributionSampleGeneratorTest, ValidateDistributionPmfConfig) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 10);
+    pmf_point->set_pmf(i / 10.0);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
@@ -66,9 +66,9 @@ TEST(DistributionSampleGeneratorTest, ValidateDistributionPmfConfig) {
 TEST(DistributionSampleGeneratorTest, InvalidDistributionPmfConfig) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 20);
+    pmf_point->set_pmf(i / 20.0);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
@@ -83,10 +83,10 @@ TEST(DistributionSampleGeneratorTest, ValidateDistributionCdfConfig) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
   float cdf = 0;
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_value(i);
-    cdf += i / 10;
+    cdf += i / 10.0;
     cdf_point->set_cdf(cdf);
   }
   auto status = ValidateDistributionConfig(config);
@@ -98,10 +98,10 @@ TEST(DistributionSampleGeneratorTest,
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
   float cdf = 0;
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_value(i);
-    cdf += i / 20;
+    cdf += i / 20.0;
     cdf_point->set_cdf(cdf);
   }
   auto status = ValidateDistributionConfig(config);
@@ -116,10 +116,10 @@ TEST(DistributionSampleGeneratorTest,
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
   float cdf = 0;
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_value(100 - 10 * i);
-    cdf += i / 20;
+    cdf += i / 20.0;
     cdf_point->set_cdf(cdf);
   }
   auto status = ValidateDistributionConfig(config);
@@ -134,10 +134,10 @@ TEST(DistributionSampleGeneratorTest,
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
   float cdf = 0;
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_value(i);
-    cdf += i / 20;
+    cdf += i / 20.0;
     cdf_point->set_cdf(1 / cdf);
   }
   auto status = ValidateDistributionConfig(config);
@@ -152,11 +152,11 @@ int EstimateCount(int N, float fraction) { return N * fraction; }
 TEST(DistributionSampleGeneratorTest, FullTestPmf) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     // Generate values of 1, 2, 3 and 4 with a probability
     // of 0.1, 0.2, 0.3 and 0.4 respectively.
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 10);
+    pmf_point->set_pmf(i / 10.0);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
@@ -176,8 +176,8 @@ TEST(DistributionSampleGeneratorTest, FullTestPmf) {
 
   const int kTolerance = kReps / 100;
   ASSERT_EQ(sample_count.size(), 4);
-  for (float i = 1; i < 5; i++) {
-    ASSERT_LT(abs(sample_count[i] - EstimateCount(kReps, i / 10)), kTolerance);
+  for (int i = 1; i < 5; i++) {
+    ASSERT_LT(abs(sample_count[i] - EstimateCount(kReps, i / 10.0)), kTolerance);
   }
 }
 
@@ -187,10 +187,10 @@ TEST(DistributionSampleGeneratorTest, FullTestCdf) {
   config.set_is_cdf_uniform(false);
 
   float cdf = 0;
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     // Generate exact values of 100, 200, 300 and 400 with a CDF
     // of 0.1, 0.3, 0.6 and 1.0 respectively.
-    cdf += i / 10;
+    cdf += i / 10.0;
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_value(i * 100);
     cdf_point->set_cdf(cdf);
@@ -209,8 +209,8 @@ TEST(DistributionSampleGeneratorTest, FullTestCdf) {
 
   ASSERT_EQ(sample_count.size(), 4);
   const int kTolerance = kReps / 100;
-  for (float i = 1; i < 5; i++) {
-    ASSERT_LT(abs(sample_count[i * 100] - EstimateCount(kReps, i / 10)),
+  for (int i = 1; i < 5; i++) {
+    ASSERT_LT(abs(sample_count[i * 100] - EstimateCount(kReps, i / 10.0)),
               kTolerance);
   }
 }
@@ -221,10 +221,10 @@ TEST(DistributionSampleGeneratorTest, FullTestCdfUniformIntervals) {
   config.set_is_cdf_uniform(true);
 
   float cdf = 0;
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     // Generate integral values of less than or equal to 100, 200, 300
     // and 400 with a CDF of 0.1, 0.3, 0.6 and 1.0 respectively.
-    cdf += i / 10;
+    cdf += i / 10.0;
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_value(i * 100);
     cdf_point->set_cdf(cdf);
@@ -261,8 +261,8 @@ TEST(DistributionSampleGeneratorTest, FullTestCdfUniformIntervals) {
   }
 
   const int kTolerance = kReps / 100;
-  for (float i = 1; i < 5; i++) {
-    ASSERT_LT(abs(bucket[i * 100] - EstimateCount(kReps, i / 10)), kTolerance);
+  for (int i = 1; i < 5; i++) {
+    ASSERT_LT(abs(bucket[i * 100] - EstimateCount(kReps, i / 10.0)), kTolerance);
   }
 }
 
@@ -270,10 +270,10 @@ TEST(DistributionSampleGeneratorTest, InvalidCdfInitializeTest) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
   float cdf = 0;
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     // Generate values of 1, 2, 3 and 4 with a CDF
     // of 0.01, 0.03, 0.06 and 0.1 respectively.
-    cdf += i / 100;
+    cdf += i / 100.0;
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_value(i);
     cdf_point->set_cdf(cdf);
@@ -290,11 +290,11 @@ TEST(DistributionSampleGeneratorTest, InvalidCdfInitializeTest) {
 TEST(DistributionSampleGeneratorTest, InvalidPmfInitializeTest) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     // Generate values of 1, 2, 3 and 4 with a probability
     // of 0.01, 0.02, 0.03 and 0.04 respectively.
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 100);
+    pmf_point->set_pmf(i / 100.0);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
@@ -393,11 +393,11 @@ TEST(DistributionSampleGeneratorTest, PmfRangeAndValueMixTest) {
 TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
-  for (float i = 1; i < 5; i++) {
+  for (int i = 1; i < 5; i++) {
     // Generate values of (1,10) , (2,20), (3,30) and (4,40) with a probability
     // of 0.1, 0.2, 0.3 and 0.4 respectively.
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 10);
+    pmf_point->set_pmf(i / 10.0);
 
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
@@ -421,9 +421,9 @@ TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
   }
 
   const int kTolerance = kReps / 100;
-  for (float i = 1; i < 5; i++) {
-    std::vector<int> key = {int(i), int(i * 10)};
-    ASSERT_LT(abs(sample_count[key] - EstimateCount(kReps, i / 10)), kTolerance);
+  for (int i = 1; i < 5; i++) {
+    std::vector<int> key = {i, i * 10};
+    ASSERT_LT(abs(sample_count[key] - EstimateCount(kReps, i / 10.0)), kTolerance);
   }
 }
 
