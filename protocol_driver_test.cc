@@ -46,6 +46,8 @@ TEST_P(ProtocolDriverTest, SetNumPeers) {
   pd->SetNumPeers(1);
   pd->SetHandler([](ServerRpcState* s) {
     ADD_FAILURE() << "should not get here";
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void()>();
   });
 }
@@ -60,6 +62,8 @@ TEST_P(ProtocolDriverTest, GetConnectionHandle) {
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void()>();
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
@@ -76,6 +80,8 @@ TEST_P(ProtocolDriverTest, HandleConnect) {
   std::atomic<int> server_rpc_count = 0;
   pd->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void()>();
   });
   std::string addr = pd->HandlePreConnect("", 0).value();
@@ -180,6 +186,8 @@ TEST_P(ProtocolDriverTest, Echo) {
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState* s) {
     ADD_FAILURE() << "should not get here";
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void()>();
   });
   std::string addr1 = pd1->HandlePreConnect("", 0).value();
@@ -222,6 +230,8 @@ void Echo(benchmark::State& state, std::string opts_string) {
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState* s) {
     ADD_FAILURE() << "should not get here";
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
     return std::function<void()>();
   });
   std::string addr1 = pd1->HandlePreConnect("", 0).value();
