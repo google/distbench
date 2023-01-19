@@ -305,18 +305,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   // Get the index of the sample generator in sample_generator_array_
   int GetSampleGeneratorIndex(const std::string& name);
-
-  // Get canonical version of DistributionConfig from the config
-  // provided by the user. The canonical version is then used to
-  // generate sample with 'kMaxFieldNames' dimensions.
-  absl::StatusOr<DistributionConfig> GetCanonicalConfig(
-      const DistributionConfig& input_config);
-
-  enum kFieldNames {
-    kRequestPayloadSize = 0,
-    kResponsePayloadSize = 1,
-    kMaxFieldNames = 2,
-  };
 };
 
 }  // namespace distbench
