@@ -102,12 +102,12 @@ http_archive(
 
 http_archive(
     name = "homa_module",
-    sha256 = "0169a1e1162058137eddde7ce363d638287ddf6ec833ad51440f7f8cc31a8fec",
+    sha256 = "d9877e3bc4395e1556046f3730f47a8c5294ba573ce9404a977d24caf6571348",
     urls = [
-        "https://github.com/PlatformLab/HomaModule/archive/623d06b5c4d619fb625850d1408b6de8f62c3e28.tar.gz"
+        "https://github.com/PlatformLab/HomaModule/archive/a889ebc0d9c2a2437fc41323da01422e8314f6db.tar.gz"
     ],
     build_file = "@//:homa_module.BUILD",
-    strip_prefix = "HomaModule-623d06b5c4d619fb625850d1408b6de8f62c3e28",
+    strip_prefix = "HomaModule-a889ebc0d9c2a2437fc41323da01422e8314f6db",
 )
 
 http_archive(
