@@ -21,8 +21,8 @@
 #include <random>
 
 #include "absl/status/statusor.h"
+#include "distribution.pb.h"
 #include "glog/logging.h"
-#include "randomization/distribution.pb.h"
 
 namespace distbench {
 

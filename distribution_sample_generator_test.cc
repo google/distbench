@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "randomization/distribution_sample_generator.h"
+#include "distribution_sample_generator.h"
 
 #include "gtest/gtest.h"
 
@@ -177,7 +177,8 @@ TEST(DistributionSampleGeneratorTest, FullTestPmf) {
   const int kTolerance = kReps / 100;
   ASSERT_EQ(sample_count.size(), 4);
   for (int i = 1; i < 5; i++) {
-    ASSERT_LT(abs(sample_count[i] - EstimateCount(kReps, i / 10.0)), kTolerance);
+    ASSERT_LT(abs(sample_count[i] - EstimateCount(kReps, i / 10.0)),
+              kTolerance);
   }
 }
 
@@ -262,7 +263,8 @@ TEST(DistributionSampleGeneratorTest, FullTestCdfUniformIntervals) {
 
   const int kTolerance = kReps / 100;
   for (int i = 1; i < 5; i++) {
-    ASSERT_LT(abs(bucket[i * 100] - EstimateCount(kReps, i / 10.0)), kTolerance);
+    ASSERT_LT(abs(bucket[i * 100] - EstimateCount(kReps, i / 10.0)),
+              kTolerance);
   }
 }
 
@@ -423,7 +425,8 @@ TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
   const int kTolerance = kReps / 100;
   for (int i = 1; i < 5; i++) {
     std::vector<int> key = {i, i * 10};
-    ASSERT_LT(abs(sample_count[key] - EstimateCount(kReps, i / 10.0)), kTolerance);
+    ASSERT_LT(abs(sample_count[key] - EstimateCount(kReps, i / 10.0)),
+              kTolerance);
   }
 }
 

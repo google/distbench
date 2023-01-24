@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "randomization/distribution_sample_generator.h"
+#include "distribution_sample_generator.h"
 
 namespace distbench {
 
