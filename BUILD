@@ -7,6 +7,8 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
+# Declare flags that can be set on the build/test command line,
+# e.g. bazel build :all --//:with-homa --//:with-homa-grpc
 bool_flag(
     name = "with-mercury",
     build_setting_default = False,
@@ -22,6 +24,13 @@ bool_flag(
     build_setting_default = False,
 )
 
+# TODO: Make the threadpool run-time configurable.
+bool_flag(
+    name = "use-distbench-threadpool",
+    build_setting_default = True,
+)
+
+# Declare build settings that propgate flags values to build rules:
 config_setting(
     name = "with_mercury",
     flag_values = {":with-mercury": "True"},
@@ -35,6 +44,11 @@ config_setting(
 config_setting(
     name = "with_homa_grpc",
     flag_values = {":with-homa-grpc": "True"},
+)
+
+config_setting(
+    name = "use_distbench_threadpool",
+    flag_values = {":use-distbench-threadpool": "True"},
 )
 
 cc_library(
@@ -162,10 +176,10 @@ cc_library(
         ":protocol_driver_double_barrel",
         ":protocol_driver_grpc",
     ] + select({
-        "with_homa": [":protocol_driver_homa"],
+        ":with_homa": [":protocol_driver_homa"],
         "//conditions:default": [],
     }) + select({
-        "with_mercury": [":protocol_driver_mercury"],
+        ":with_mercury": [":protocol_driver_mercury"],
         "//conditions:default": [],
     }),
 )
@@ -189,7 +203,7 @@ cc_library(
         ":grpc_wrapper",
         ":protocol_driver_api",
     ] + select({
-        "with_homa_grpc": ["@grpc_homa//:homa_lib"],
+        ":with_homa_grpc": ["@grpc_homa//:homa_lib"],
         "//conditions:default": [],
     }),
 )
@@ -266,7 +280,7 @@ cc_test(
         "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog"
     ] + select({
-        "with_homa": [":protocol_driver_homa"],
+        ":with_homa": [":protocol_driver_homa"],
         "//conditions:default": [],
     }),
 )
@@ -374,10 +388,10 @@ cc_library(
     srcs = ["distbench_engine.cc"],
     hdrs = ["distbench_engine.h"],
     deps = [
-        ":distribution_sample_generator",
         ":activity_api",
         ":distbench_cc_grpc_proto",
         ":distbench_utils",
+        ":distribution_sample_generator",
         ":grpc_wrapper",
         ":protocol_driver_api",
         "@com_google_absl//absl/status:statusor",
@@ -386,17 +400,14 @@ cc_library(
     ],
 )
 
-config_setting(
-    name = "do_not_use_distbench_threadpool",
-    values = {
-        "define": "USE_DISTBENCH_THREADPOOL=no"
-    }
-)
-
 cc_library(
     name = "distbench_threadpool_lib",
     srcs = ["distbench_threadpool.cc"],
     hdrs = ["distbench_threadpool.h"],
+    defines = select({
+        ":use_distbench_threadpool": ["USE_DISTBENCH_THREADPOOL=1"],
+        "//conditions:default":[],
+    }),
     deps = [
         ":distbench_utils",
         "@com_google_absl//absl/status:statusor",
@@ -404,10 +415,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_github_cthreadpool//:thpool"
     ],
-    copts = select({
-        ":do_not_use_distbench_threadpool":[],
-        "//conditions:default":["--define USE_DISTBENCH_THREADPOOL"],
-    })
 )
 
 cc_test(
