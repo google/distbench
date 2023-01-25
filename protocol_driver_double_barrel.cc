@@ -31,7 +31,7 @@ absl::Status ProtocolDriverDoubleBarrel::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   auto pdo = pd_opts;
   auto server_settings = pdo.mutable_server_settings();
-  google::protobuf::RepeatedPtrField<NamedSetting>::iterator
+  ::google::protobuf::RepeatedPtrField<NamedSetting>::iterator
       next_protocol_driver_it = server_settings->end();
   for (auto it = server_settings->begin(); it != server_settings->end(); it++) {
     if (it->name() == "next_protocol_driver") {

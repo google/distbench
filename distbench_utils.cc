@@ -415,8 +415,8 @@ absl::StatusOr<int64_t> GetNamedAttributeInt64(
 absl::StatusOr<TestSequence> ParseTestSequenceTextProto(
     const std::string& text_proto) {
   TestSequence test_sequence;
-  if (google::protobuf::TextFormat::ParseFromString(text_proto,
-                                                    &test_sequence)) {
+  if (::google::protobuf::TextFormat::ParseFromString(text_proto,
+                                                      &test_sequence)) {
     return test_sequence;
   }
   return absl::InvalidArgumentError("Error parsing the TestSequence proto");
@@ -450,8 +450,8 @@ absl::Status SaveResultProtoToFile(
     return absl::InvalidArgumentError(error_message + filename);
   }
 
-  google::protobuf::io::FileOutputStream fos_resultproto(fd_proto);
-  if (!google::protobuf::TextFormat::Print(result, &fos_resultproto)) {
+  ::google::protobuf::io::FileOutputStream fos_resultproto(fd_proto);
+  if (!::google::protobuf::TextFormat::Print(result, &fos_resultproto)) {
     return absl::InvalidArgumentError("Error writing the result proto file");
   }
 
