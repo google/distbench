@@ -325,7 +325,7 @@ void ProtocolDriverHoma::ServerThread() {
     char rx_buf[1048576];
     server_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
     if (!request->ParseFromArray(rx_buf + 1, msg_length - 1)) {
-      LOG(FATAL) << "rx_buf did not parse as a GenericRequest";
+      LOG(ERROR) << "rx_buf did not parse as a GenericRequest";
     }
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
@@ -339,7 +339,7 @@ void ProtocolDriverHoma::ServerThread() {
       int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
                                  txbuf.length(), &src_addr, rpc_id);
       if (error) {
-        LOG(FATAL) << "homa_reply for " << rpc_id
+        LOG(ERROR) << "homa_reply for " << rpc_id
                    << " returned error: " << strerror(errno);
       }
       --pending_actionlist_threads;
@@ -382,7 +382,7 @@ void ProtocolDriverHoma::ClientCompletionThread() {
       client_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
       if (!pending_rpc->state->response.ParseFromArray(rx_buf + 1,
                                                        msg_length - 1)) {
-        LOG(FATAL) << "rx_buf did not parse as a GenericResponse";
+        LOG(ERROR) << "rx_buf did not parse as a GenericResponse";
       }
     }
     pending_rpc->done_callback();
