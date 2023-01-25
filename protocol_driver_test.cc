@@ -24,7 +24,7 @@ namespace distbench {
 
 ProtocolDriverOptions PdoFromString(const std::string& s) {
   ProtocolDriverOptions pdo;
-  google::protobuf::TextFormat::ParseFromString(s, &pdo);
+  ::google::protobuf::TextFormat::ParseFromString(s, &pdo);
   return pdo;
 }
 

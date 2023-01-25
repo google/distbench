@@ -220,7 +220,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     absl::Mutex reservoir_sample_lock_;
 
     // This area is used to allocate TraceContext objects for packed samples:
-    google::protobuf::Arena sample_arena_;
+    ::google::protobuf::Arena sample_arena_;
 
     // If true this entire action list was triggered by a warmup RPC, so all
     // actions it initiates will propgate the warmup flag:
