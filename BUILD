@@ -8,7 +8,7 @@ package(
 )
 
 # Declare flags that can be set on the build/test command line,
-# e.g. bazel build :all --//:with-homa --//:with-homa-grpc
+# e.g. bazel build :all --//:with-homa=true --//:with-homa-grpc=true
 bool_flag(
     name = "with-mercury",
     build_setting_default = False,
