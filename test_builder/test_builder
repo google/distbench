@@ -209,6 +209,7 @@ function main() {
   local CONFIG_LABEL_PREFIX=""
   local CONFIG_PREFIX=""
   local TEST_DURATION_SECONDS=30
+  local RESULTS_COLLECTION_TIMEOUT=120
   local OUTPUT_DIR
 
   local OPTIND=1
@@ -736,11 +737,12 @@ function grpc_protocol_driver_setup() {
 # Arguments:
 #   None
 # Inherits and mutates:
+#   RESULTS_COLLECTION_TIMEOUT
 #   params_dict (associative array)
 ################################################################################
 function clique_traffic_pattern_setup() {
   local -i TEST_DURATION="${params_dict[test_duration]}"
-  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+  params_dict[test_timeout]="$((TEST_DURATION + RESULTS_COLLECTION_TIMEOUT))"
 
   set_parameter_default rpc_interval_us 16000
   set_parameter_default node_count 10
@@ -804,11 +806,12 @@ function clique_traffic_pattern_setup() {
 # Arguments:
 #   None
 # Inherits and mutates:
+#   RESULTS_COLLECTION_TIMEOUT
 #   params_dict (associative array)
 ################################################################################
 function client_server_traffic_pattern_setup() {
   local -i TEST_DURATION="${params_dict[test_duration]}"
-  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+  params_dict[test_timeout]="$((TEST_DURATION + RESULTS_COLLECTION_TIMEOUT))"
 
   set_parameter_default parallel_queries 100
   set_parameter_default client_count 1
@@ -874,11 +877,12 @@ function client_server_traffic_pattern_setup() {
 # Arguments:
 #   None
 # Inherits and mutates:
+#   RESULTS_COLLECTION_TIMEOUT
 #   params_dict (associative array)
 ################################################################################
 function tripartite_traffic_pattern_setup() {
   local -i TEST_DURATION="${params_dict[test_duration]}"
-  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+  params_dict[test_timeout]="$((TEST_DURATION + RESULTS_COLLECTION_TIMEOUT))"
 
   set_parameter_default client_count 1
   set_parameter_default index_count 1
@@ -980,11 +984,12 @@ function tripartite_traffic_pattern_setup() {
 # Arguments:
 #   None
 # Inherits and mutates:
+#   RESULTS_COLLECTION_TIMEOUT
 #   params_dict (associative array)
 ################################################################################
 function multi_level_rpc_traffic_pattern_setup() {
   local -i TEST_DURATION="${params_dict[test_duration]}"
-  params_dict[test_timeout]="$((TEST_DURATION + 60))"
+  params_dict[test_timeout]="$((TEST_DURATION + RESULTS_COLLECTION_TIMEOUT))"
 
   set_parameter_default qps 10000
   set_parameter_default root_count 4
