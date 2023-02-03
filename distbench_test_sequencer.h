@@ -32,6 +32,7 @@ struct RegisteredNode {
 };
 
 struct TestSequencerOpts {
+  std::string control_plane_device;
   int* port;
 };
 
