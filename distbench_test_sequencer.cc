@@ -494,7 +494,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
     rpc_state.node = &registered_nodes_[it->second];
-    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
+    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/600);
     rpc_state.request.set_clear_services(true);
     rpc_state.rpc = rpc_state.node->stub->AsyncGetTrafficResult(
         &rpc_state.context, rpc_state.request, &cq);
