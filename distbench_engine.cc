@@ -443,7 +443,8 @@ absl::Status DistBenchEngine::InitializeTables() {
 
 absl::Status DistBenchEngine::Initialize(
     const DistributedSystemDescription& global_description,
-    std::string_view service_name, int service_instance, int* port) {
+    std::string_view control_plane_device, std::string_view service_name,
+    int service_instance, int* port) {
   traffic_config_ = global_description;
   CHECK(!service_name.empty());
   service_name_ = service_name;
@@ -457,7 +458,8 @@ absl::Status DistBenchEngine::Initialize(
   if (!ret.ok()) return ret;
 
   // Start server
-  std::string server_address = GetBindAddressFromPort(*port);
+  std::string server_address =
+      GetBindAddressFromPort(control_plane_device, *port);
   grpc::ServerBuilder builder;
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -466,7 +468,8 @@ absl::Status DistBenchEngine::Initialize(
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   server_ = builder.BuildAndStart();
-  server_address = GetBindAddressFromPort(*port);  // port may have changed
+  // *port may have changed if a new port was assigned.
+  server_address = GetBindAddressFromPort(control_plane_device, *port);
   if (!server_) {
     LOG(ERROR) << engine_name_ << ": Engine start failed on " << server_address;
     return absl::UnknownError("Engine service failed to start");

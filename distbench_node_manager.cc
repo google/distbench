@@ -125,9 +125,9 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   if (!maybe_pd.ok()) return maybe_pd.status();
 
   auto engine = std::make_unique<DistBenchEngine>(std::move(maybe_pd.value()));
-  absl::Status ret =
-      engine->Initialize(traffic_config_, service_opts.service_type,
-                         service_opts.service_instance, service_opts.port);
+  absl::Status ret = engine->Initialize(
+      traffic_config_, opts_.control_plane_device, service_opts.service_type,
+      service_opts.service_instance, service_opts.port);
   if (!ret.ok()) return ret;
 
   service_engines_[std::string(service_opts.service_name)] = std::move(engine);
@@ -254,7 +254,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub =
       DistBenchTestSequencer::NewStub(channel);
 
-  service_address_ = GetBindAddressFromPort(*opts_.port);
+  service_address_ =
+      GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
   grpc::ServerBuilder builder;
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
@@ -264,7 +265,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
   // Update the service_address_ with the obtained port
-  service_address_ = GetBindAddressFromPort(*opts_.port);
+  service_address_ =
+      GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
   if (!grpc_server_) {
     return absl::UnknownError("NodeManager service failed to start");
   }
@@ -273,7 +275,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
 
   NodeRegistration reg;
   reg.set_hostname(Hostname());
-  auto maybe_ip = IpAddressForDevice(opts.control_plane_device);
+  auto maybe_ip = IpAddressForDevice(opts_.control_plane_device);
   if (!maybe_ip.ok()) return maybe_ip.status();
   reg.set_control_ip(maybe_ip.value().ip());
   reg.set_control_port(*opts_.port);

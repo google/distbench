@@ -44,13 +44,11 @@ class DeviceIpAddress {
   int net_family_;
 };
 
-std::vector<DeviceIpAddress> GetAllAddresses();
+std::vector<DeviceIpAddress> GetAllAddresses(std::string_view netdev);
 absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev);
 absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
                                                bool prefer_ipv4);
-bool HasOnlyIPv4();
-
-std::string GetBindAddressFromPort(int port);
+std::string GetBindAddressFromPort(std::string_view netdev, int port);
 absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
                                                    int ip_version = 0);
 std::string SocketAddressForIp(DeviceIpAddress ip, int port);

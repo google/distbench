@@ -41,7 +41,7 @@ ABSL_FLAG(bool, prefer_ipv4, false,
 
 namespace distbench {
 
-std::vector<DeviceIpAddress> GetAllAddresses() {
+std::vector<DeviceIpAddress> GetAllAddresses(std::string_view netdev) {
   struct ifaddrs* ifaddr;
   int family;
   char host[NI_MAXHOST];
@@ -64,7 +64,9 @@ std::vector<DeviceIpAddress> GetAllAddresses() {
                     host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
     if (s == 0) {  // Success
       DeviceIpAddress ip_address(host, ifa->ifa_name, family);
-      result.emplace_back(ip_address);
+      if (netdev.empty() || netdev == ip_address.netdevice()) {
+        result.emplace_back(ip_address);
+      }
     }
   }
 
@@ -78,7 +80,7 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev) {
 
 absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
                                                bool prefer_ipv4) {
-  auto all_addresses = GetAllAddresses();
+  auto all_addresses = GetAllAddresses("");
 
   // Exact match
   for (const auto& address : all_addresses) {
@@ -149,16 +151,20 @@ std::string DeviceIpAddress::ToStringForURI() const {
     return "[" + ip_ + "]";
 }
 
-bool HasOnlyIPv4() {
-  for (const auto& address : GetAllAddresses()) {
+namespace {
+
+bool HasOnlyIPv4(std::string_view netdev) {
+  for (const auto& address : GetAllAddresses(netdev)) {
     if (!address.isIPv4()) return false;
   }
   return true;
 }
 
-std::string GetBindAddressFromPort(int port) {
-  if (HasOnlyIPv4())
-    return absl::StrCat("*:", port);
+}  // namespace
+
+std::string GetBindAddressFromPort(std::string_view netdev, int port) {
+  if (HasOnlyIPv4(netdev))
+    return absl::StrCat("0.0.0.0:", port);
   else
     return absl::StrCat("[::]:", port);
 }

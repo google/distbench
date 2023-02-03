@@ -228,6 +228,7 @@ int MainTestSequencer(std::vector<char*>& arguments) {
   if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
   int port = absl::GetFlag(FLAGS_port);
   distbench::TestSequencerOpts opts = {
+      .control_plane_device = absl::GetFlag(FLAGS_control_plane_netdev),
       .port = &port,
   };
   distbench::TestSequencer test_sequencer;

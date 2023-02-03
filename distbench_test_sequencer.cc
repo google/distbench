@@ -585,7 +585,8 @@ TestSequencer::~TestSequencer() {
 
 void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   opts_ = opts;
-  service_address_ = GetBindAddressFromPort(*opts_.port);
+  service_address_ =
+      GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> creds = MakeServerCredentials();
@@ -594,7 +595,8 @@ void TestSequencer::Initialize(const TestSequencerOpts& opts) {
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
   // Update service_address_ with the newly obtained port
-  service_address_ = GetBindAddressFromPort(*opts_.port);
+  service_address_ =
+      GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
   LOG(INFO) << "TestSequencer server listening on " << service_address_
             << " for " << Hostname();
 }
