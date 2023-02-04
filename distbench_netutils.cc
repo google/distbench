@@ -84,6 +84,9 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
 
   // Exact match
   for (const auto& address : all_addresses) {
+    if (address.isLinkLocal()) {
+      continue;
+    }
     if (address.isIPv4() == prefer_ipv4 && address.netdevice() == netdev) {
       return address;
     }
@@ -91,6 +94,9 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
 
   // Match the device with any IP type
   for (const auto& address : all_addresses) {
+    if (address.isLinkLocal()) {
+      continue;
+    }
     if (address.netdevice() == netdev) {
       LOG(WARNING) << "Using " << address.ToString()
                    << " which is not of the favorite ip type (v4/v6).";
