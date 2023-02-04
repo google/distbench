@@ -104,27 +104,22 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
                      "' (prefer_ipv4=", prefer_ipv4, ")"));
   }
 
-  int score = 0;
+  int score = -1;
   DeviceIpAddress best_match;
   for (const auto& address : all_addresses) {
-    int cur_score = 0;
-    // Skip link-local addresses:
-    if (absl::StartsWith(address.ToString(), "fe80:")) {
+    if (address.isLinkLocal() || address.isLoopback()) {
       continue;
     }
-    if (address.isIPv4() == prefer_ipv4) {
-      cur_score += 2048;
-    }
-    if (address.netdevice() != "lo") {
-      cur_score += 1024;
-    }
+    int cur_score = (address.isIPv4() == prefer_ipv4);
+    // High speed networks in cloudlab are on a private IP range.
+    cur_score += address.isPrivate();
     if (cur_score > score) {
       score = cur_score;
       best_match = address;
     }
   }
 
-  if (score == 0) {
+  if (score < 0) {
     return absl::NotFoundError(absl::StrCat(
         "No address found for any netdev (prefer_ipv4=", prefer_ipv4, ")"));
   }
@@ -133,6 +128,19 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
 }
 
 bool DeviceIpAddress::isIPv4() const { return net_family_ == AF_INET; }
+
+bool DeviceIpAddress::isLoopback() const { return device_ == "lo"; }
+
+bool DeviceIpAddress::isPrivate() const {
+  return absl::StartsWith(ip_, "10.") ||
+         // Technically this should go all the way to 172.31:
+         absl::StartsWith(ip_, "172.16") || absl::StartsWith(ip_, "192.168") ||
+         absl::StartsWith(ip_, "fc00:") || absl::StartsWith(ip_, "fd00:");
+}
+
+bool DeviceIpAddress::isLinkLocal() const {
+  return absl::StartsWith(ip_, "fe80:") || absl::StartsWith(ip_, "169.254.255");
+}
 
 std::string DeviceIpAddress::ToString() const {
   std::string ret = ip_ + " on " + device_ + " ";
@@ -155,7 +163,7 @@ namespace {
 
 bool HasOnlyIPv4(std::string_view netdev) {
   for (const auto& address : GetAllAddresses(netdev)) {
-    if (!address.isIPv4()) return false;
+    if (!address.isIPv4() && !address.isLinkLocal()) return false;
   }
   return true;
 }
