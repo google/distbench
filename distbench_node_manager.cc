@@ -284,6 +284,9 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   SetGrpcClientContextDeadline(&context, /*max_time_s=*/60);
   context.set_wait_for_ready(true);
   absl::MutexLock m(&config_mutex_);
+  LOG(INFO) << "Registering to test sequencer at "
+            << opts_.test_sequencer_service_address;
+  LOG(INFO) << reg.DebugString();
   grpc::Status status =
       test_sequencer_stub->RegisterNode(&context, reg, &config_);
   if (!status.ok()) {
