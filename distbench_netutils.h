@@ -32,6 +32,9 @@ class DeviceIpAddress {
   }
 
   bool isIPv4() const;
+  bool isLoopback() const;
+  bool isLinkLocal() const;
+  bool isPrivate() const;
   int Family() const { return net_family_; }
   std::string ToString() const;
   std::string ToStringForURI() const;
