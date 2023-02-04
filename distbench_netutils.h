@@ -23,11 +23,6 @@
 namespace distbench {
 
 class DeviceIpAddress {
- private:
-  std::string ip_;
-  std::string device_;
-  int net_family_;
-
  public:
   DeviceIpAddress() {}
   DeviceIpAddress(const char* host, const char* devname, int family) {
@@ -42,6 +37,11 @@ class DeviceIpAddress {
   std::string ToStringForURI() const;
   std::string netdevice() const { return device_; }
   std::string ip() const { return ip_; }
+
+ private:
+  std::string ip_;
+  std::string device_;
+  int net_family_;
 };
 
 std::vector<DeviceIpAddress> GetAllAddresses();
