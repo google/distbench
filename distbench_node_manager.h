@@ -75,7 +75,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
     int service_instance;
     int* port;
     std::string_view protocol;
-    std::string_view netdev;
+    std::string_view netdev_name;
   };
 
   absl::StatusOr<ProtocolDriverOptions> GetProtocolDriverOptionsFor(

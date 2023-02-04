@@ -62,7 +62,7 @@ grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
         .service_instance = instance,
         .port = &port,
         .protocol = traffic_config_.default_protocol(),
-        .netdev = opts_.default_data_plane_device};
+        .netdev_name = opts_.default_data_plane_device};
     absl::Status ret = AllocService(service_options);
     if (!ret.ok()) {
       return grpc::Status(
@@ -109,7 +109,7 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::GetProtocolDriverOptionsFor(
   if (!pd_opts.has_protocol_name())
     pd_opts.set_protocol_name(std::string(service_opts.protocol));
   if (!pd_opts.has_netdev_name())
-    pd_opts.set_netdev_name(std::string(service_opts.netdev));
+    pd_opts.set_netdev_name(std::string(service_opts.netdev_name));
 
   return pd_opts;
 }
