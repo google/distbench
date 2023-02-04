@@ -31,16 +31,15 @@
 #include <string>
 #include <vector>
 
+#include "absl/flags/declare.h"
+#include "absl/flags/flag.h"
 #include "absl/strings/match.h"
 #include "glog/logging.h"
 
+ABSL_FLAG(bool, prefer_ipv4, false,
+          "Prefer IPv4 addresses to IPv6 addresses when both are available");
+
 namespace distbench {
-
-static bool use_ipv4_first = false;
-
-void set_use_ipv4_first(bool _use_ipv4_first) {
-  use_ipv4_first = _use_ipv4_first;
-}
 
 std::vector<DeviceIpAddress> GetAllAddresses() {
   struct ifaddrs* ifaddr;
@@ -73,8 +72,12 @@ std::vector<DeviceIpAddress> GetAllAddresses() {
   return result;
 }
 
-absl::StatusOr<DeviceIpAddress> GetBestAddress(bool prefer_ipv4,
-                                               std::string_view netdev) {
+absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev) {
+  return GetBestAddress(netdev, absl::GetFlag(FLAGS_prefer_ipv4));
+}
+
+absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
+                                               bool prefer_ipv4) {
   auto all_addresses = GetAllAddresses();
 
   // Exact match
@@ -163,27 +166,27 @@ std::string GetBindAddressFromPort(int port) {
 absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
                                                    int ip_version) {
   if (ip_version == 4) {
-    auto res = GetBestAddress(true, netdev);
+    auto res = GetBestAddress(netdev, true);
     if (res.ok() && !res.value().isIPv4()) {
       return absl::NotFoundError(
           absl::StrCat("No IPv4 address found for netdev '", netdev, "'"));
     }
     return res;
   } else if (ip_version == 6) {
-    auto res = GetBestAddress(false, netdev);
+    auto res = GetBestAddress(netdev, false);
     if (res.ok() && res.value().isIPv4()) {
       return absl::NotFoundError(
           absl::StrCat("No IPv6 address found for netdev '", netdev, "'"));
     }
     return res;
   } else {
-    return GetBestAddress(use_ipv4_first, netdev);
+    return GetBestAddress(netdev);
   }
 }
 
 absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
                                                    int port) {
-  auto maybe_address = GetBestAddress(use_ipv4_first, netdev);
+  auto maybe_address = GetBestAddress(netdev);
   if (!maybe_address.ok()) return maybe_address.status();
   return SocketAddressForIp(maybe_address.value(), port);
 }
