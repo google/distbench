@@ -38,12 +38,6 @@ ostream& operator<<(ostream& out, grpc::Status const& c) {
 
 namespace distbench {
 
-static bool use_ipv4_first = false;
-
-void set_use_ipv4_first(bool _use_ipv4_first) {
-  use_ipv4_first = _use_ipv4_first;
-}
-
 std::string Hostname() {
   char hostname[4096] = {};
   if (gethostname(hostname, sizeof(hostname)) != 0) {
@@ -80,41 +74,6 @@ void InitLibs(const char* argv0) {
   // Extra library initialization can go here
   ::google::InitGoogleLogging(argv0);
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-}
-
-absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
-                                                   int ip_version) {
-  if (ip_version == 4) {
-    auto res = GetBestAddress(true, netdev);
-    if (res.ok() && !res.value().isIPv4()) {
-      return absl::NotFoundError(
-          absl::StrCat("No IPv4 address found for netdev '", netdev, "'"));
-    }
-    return res;
-  } else if (ip_version == 6) {
-    auto res = GetBestAddress(false, netdev);
-    if (res.ok() && res.value().isIPv4()) {
-      return absl::NotFoundError(
-          absl::StrCat("No IPv6 address found for netdev '", netdev, "'"));
-    }
-    return res;
-  } else {
-    return GetBestAddress(use_ipv4_first, netdev);
-  }
-}
-
-absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
-                                                   int port) {
-  auto maybe_address = GetBestAddress(use_ipv4_first, netdev);
-  if (!maybe_address.ok()) return maybe_address.status();
-  return SocketAddressForIp(maybe_address.value(), port);
-}
-
-std::string SocketAddressForIp(DeviceIpAddress ip, int port) {
-  if (ip.isIPv4()) {
-    return absl::StrCat(ip.ip(), ":", port);
-  }
-  return absl::StrCat("[", ip.ip(), "]:", port);
 }
 
 std::string ServiceInstanceName(std::string_view service_type, int instance) {

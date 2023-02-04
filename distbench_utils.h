@@ -58,16 +58,9 @@ class SafeNotification {
   absl::Notification n;
 };
 
-void set_use_ipv4_first(bool _use_ipv4_first);
-
 grpc::ChannelArguments DistbenchCustomChannelArguments();
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
-absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
-                                                   int ip_version = 0);
-std::string SocketAddressForIp(DeviceIpAddress ip, int port);
-absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
-                                                   int port);
 std::thread RunRegisteredThread(const std::string& thread_name,
                                 std::function<void()> f);
 
