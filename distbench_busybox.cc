@@ -35,8 +35,6 @@ void Usage();
 
 ABSL_FLAG(int, port, 10'000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
-ABSL_FLAG(bool, use_ipv4_first, false,
-          "Prefer IPv4 addresses to IPv6 addresses when both are available");
 ABSL_FLAG(bool, binary_output, false, "Save protobufs in binary mode");
 ABSL_FLAG(std::string, infile, "/dev/stdin", "Input file");
 ABSL_FLAG(std::string, outfile, "/dev/stdout", "Output file");
@@ -52,7 +50,6 @@ ABSL_FLAG(absl::Duration, max_test_duration, absl::Hours(0),
 int main(int argc, char** argv, char** envp) {
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
   distbench::InitLibs(argv[0]);
-  distbench::set_use_ipv4_first(absl::GetFlag(FLAGS_use_ipv4_first));
 
   bool args_ok = AreRemainingArgumentsOK(remaining_arguments, 2,
                                          std::numeric_limits<size_t>::max());

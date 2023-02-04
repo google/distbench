@@ -45,11 +45,10 @@ class DeviceIpAddress {
 };
 
 std::vector<DeviceIpAddress> GetAllAddresses();
-absl::StatusOr<DeviceIpAddress> GetBestAddress(bool prefer_ipv4,
-                                               std::string_view netdev);
+absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev);
+absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
+                                               bool prefer_ipv4);
 bool HasOnlyIPv4();
-
-void set_use_ipv4_first(bool _use_ipv4_first);
 
 std::string GetBindAddressFromPort(int port);
 absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
