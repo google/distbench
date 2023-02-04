@@ -36,6 +36,12 @@
 
 namespace distbench {
 
+static bool use_ipv4_first = false;
+
+void set_use_ipv4_first(bool _use_ipv4_first) {
+  use_ipv4_first = _use_ipv4_first;
+}
+
 std::vector<DeviceIpAddress> GetAllAddresses() {
   struct ifaddrs* ifaddr;
   int family;
@@ -152,6 +158,41 @@ std::string GetBindAddressFromPort(int port) {
     return absl::StrCat("*:", port);
   else
     return absl::StrCat("[::]:", port);
+}
+
+absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
+                                                   int ip_version) {
+  if (ip_version == 4) {
+    auto res = GetBestAddress(true, netdev);
+    if (res.ok() && !res.value().isIPv4()) {
+      return absl::NotFoundError(
+          absl::StrCat("No IPv4 address found for netdev '", netdev, "'"));
+    }
+    return res;
+  } else if (ip_version == 6) {
+    auto res = GetBestAddress(false, netdev);
+    if (res.ok() && res.value().isIPv4()) {
+      return absl::NotFoundError(
+          absl::StrCat("No IPv6 address found for netdev '", netdev, "'"));
+    }
+    return res;
+  } else {
+    return GetBestAddress(use_ipv4_first, netdev);
+  }
+}
+
+absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
+                                                   int port) {
+  auto maybe_address = GetBestAddress(use_ipv4_first, netdev);
+  if (!maybe_address.ok()) return maybe_address.status();
+  return SocketAddressForIp(maybe_address.value(), port);
+}
+
+std::string SocketAddressForIp(DeviceIpAddress ip, int port) {
+  if (ip.isIPv4()) {
+    return absl::StrCat(ip.ip(), ":", port);
+  }
+  return absl::StrCat("[", ip.ip(), "]:", port);
 }
 
 };  // namespace distbench

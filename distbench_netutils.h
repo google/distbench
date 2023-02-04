@@ -48,7 +48,15 @@ std::vector<DeviceIpAddress> GetAllAddresses();
 absl::StatusOr<DeviceIpAddress> GetBestAddress(bool prefer_ipv4,
                                                std::string_view netdev);
 bool HasOnlyIPv4();
+
+void set_use_ipv4_first(bool _use_ipv4_first);
+
 std::string GetBindAddressFromPort(int port);
+absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
+                                                   int ip_version = 0);
+std::string SocketAddressForIp(DeviceIpAddress ip, int port);
+absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
+                                                   int port);
 
 };  // namespace distbench
 
