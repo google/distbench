@@ -38,11 +38,11 @@ ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
 ABSL_FLAG(bool, binary_output, false, "Save protobufs in binary mode");
 ABSL_FLAG(std::string, infile, "/dev/stdin", "Input file");
 ABSL_FLAG(std::string, outfile, "/dev/stdout", "Output file");
-ABSL_FLAG(std::string, control_plane_netdev, "",
-          "netdev to bind to when listening for incoming control connections.");
 ABSL_FLAG(int, local_nodes, 0,
           "The number of node managers to run alongside the test sequencer "
           "(primarily for debugging locally)");
+ABSL_FLAG(std::string, control_plane_device, "",
+          "netdev to bind to when listening for incoming control connections.");
 ABSL_FLAG(std::string, default_data_plane_device, "",
           "Default netdevice to use for the data plane (protocol driver)");
 ABSL_FLAG(absl::Duration, max_test_duration, absl::Hours(0),
@@ -228,7 +228,7 @@ int MainTestSequencer(std::vector<char*>& arguments) {
   if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
   int port = absl::GetFlag(FLAGS_port);
   distbench::TestSequencerOpts opts = {
-      .control_plane_device = absl::GetFlag(FLAGS_control_plane_netdev),
+      .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
       .port = &port,
   };
   distbench::TestSequencer test_sequencer;
@@ -241,7 +241,7 @@ int MainTestSequencer(std::vector<char*>& arguments) {
     const distbench::NodeManagerOpts opts = {
         .test_sequencer_service_address = test_sequencer.service_address(),
         .default_data_plane_device = "",
-        .control_plane_device = absl::GetFlag(FLAGS_control_plane_netdev),
+        .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
         .port = &new_port,
     };
     nodes.push_back(std::make_unique<distbench::NodeManager>());
