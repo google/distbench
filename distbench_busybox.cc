@@ -25,7 +25,7 @@
 #include "google/protobuf/text_format.h"
 
 namespace {
-bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
+bool CheckRemainingArguments(std::vector<char*> remaining_arguments,
                              size_t min_expected, size_t max_expected);
 int MainRunTests(std::vector<char*>& arguments);
 int MainTestSequencer(std::vector<char*>& arguments);
@@ -53,7 +53,7 @@ int main(int argc, char** argv, char** envp) {
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
   distbench::InitLibs(argv[0]);
 
-  bool args_ok = AreRemainingArgumentsOK(remaining_arguments, 2,
+  bool args_ok = CheckRemainingArguments(remaining_arguments, 2,
                                          std::numeric_limits<size_t>::max());
   if (!args_ok) return 1;
 
@@ -80,7 +80,7 @@ int main(int argc, char** argv, char** envp) {
 }
 
 namespace {
-bool AreRemainingArgumentsOK(std::vector<char*> remaining_arguments,
+bool CheckRemainingArguments(std::vector<char*> remaining_arguments,
                              size_t min_expected, size_t max_expected) {
   size_t nb_arguments = remaining_arguments.size();
   if (nb_arguments < min_expected) {
@@ -141,7 +141,7 @@ void SetAllTestTimeoutAttributesTo(distbench::TestSequence* test_sequence,
 }
 
 int MainRunTests(std::vector<char*>& arguments) {
-  if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
+  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
 
   const std::string infile = absl::GetFlag(FLAGS_infile);
   auto test_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
@@ -225,7 +225,7 @@ int MainRunTests(std::vector<char*>& arguments) {
 }
 
 int MainTestSequencer(std::vector<char*>& arguments) {
-  if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
+  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
   int port = absl::GetFlag(FLAGS_port);
   distbench::TestSequencerOpts opts = {
       .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
@@ -260,7 +260,7 @@ int MainTestSequencer(std::vector<char*>& arguments) {
 }
 
 int MainNodeManager(std::vector<char*>& arguments) {
-  if (!AreRemainingArgumentsOK(arguments, 0, 0)) return 1;
+  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
   int port = absl::GetFlag(FLAGS_port);
   const distbench::NodeManagerOpts opts = {
       .test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer),
