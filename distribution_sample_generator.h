@@ -22,7 +22,6 @@
 
 #include "absl/status/statusor.h"
 #include "distribution.pb.h"
-#include "glog/logging.h"
 
 namespace distbench {
 
