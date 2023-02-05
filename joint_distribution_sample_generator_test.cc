@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "distribution_sample_generator.h"
+#include "joint_distribution_sample_generator.h"
 
 #include "gtest/gtest.h"
 

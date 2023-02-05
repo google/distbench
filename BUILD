@@ -302,7 +302,7 @@ cc_binary(
 proto_library(
     name = "traffic_config_proto",
     srcs = ["traffic_config.proto"],
-    deps = [":distribution_proto"],
+    deps = [":joint_distribution_proto"],
 )
 
 cc_proto_library(
@@ -314,7 +314,7 @@ proto_library(
     name = "distbench_proto",
     srcs = ["distbench.proto"],
     deps = [
-        ":distribution_proto",
+        ":joint_distribution_proto",
         ":traffic_config_proto"
     ],
 )
@@ -391,7 +391,7 @@ cc_library(
         ":activity_api",
         ":distbench_cc_grpc_proto",
         ":distbench_utils",
-        ":distribution_sample_generator",
+        ":joint_distribution_sample_generator",
         ":grpc_wrapper",
         ":protocol_driver_api",
         "@com_google_absl//absl/status:statusor",
@@ -529,21 +529,21 @@ cc_library(
 )
 
 proto_library(
-    name = "distribution_proto",
-    srcs = ["distribution.proto"],
+    name = "joint_distribution_proto",
+    srcs = ["joint_distribution.proto"],
 )
 
 cc_proto_library(
-    name = "distribution_cc_proto",
-    deps = [":distribution_proto"],
+    name = "joint_distribution_cc_proto",
+    deps = [":joint_distribution_proto"],
 )
 
 cc_library(
-    name = "distribution_sample_generator",
-    srcs = ["distribution_sample_generator.cc"],
-    hdrs = ["distribution_sample_generator.h"],
+    name = "joint_distribution_sample_generator",
+    srcs = ["joint_distribution_sample_generator.cc"],
+    hdrs = ["joint_distribution_sample_generator.h"],
     deps = [
-        ":distribution_cc_proto",
+        ":joint_distribution_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/random",
@@ -552,10 +552,10 @@ cc_library(
 )
 
 cc_test(
-    name = "distribution_sample_generator_test",
-    srcs = ["distribution_sample_generator_test.cc"],
+    name = "joint_distribution_sample_generator_test",
+    srcs = ["joint_distribution_sample_generator_test.cc"],
     deps = [
-        ":distribution_sample_generator",
+        ":joint_distribution_sample_generator",
         "@com_google_googletest//:gtest_main",
     ],
 )

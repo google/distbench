@@ -21,7 +21,7 @@
 #include "activity.h"
 #include "distbench.grpc.pb.h"
 #include "distbench_utils.h"
-#include "distribution_sample_generator.h"
+#include "joint_distribution_sample_generator.h"
 #include "protocol_driver.h"
 
 namespace distbench {
