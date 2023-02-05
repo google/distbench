@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef DISTBENCH_RANDOMIZATION_RANDOM_SAMPLE_GENERATOR_H_
-#define DISTBENCH_RANDOMIZATION_RANDOM_SAMPLE_GENERATOR_H_
+#ifndef DISTBENCH_JOINT_DISTRIBUTION_SAMPLE_GENERATOR_H_
+#define DISTBENCH_JOINT_DISTRIBUTION_SAMPLE_GENERATOR_H_
 
 #include <array>
 #include <chrono>
@@ -21,7 +21,7 @@
 #include <random>
 
 #include "absl/status/statusor.h"
-#include "distribution.pb.h"
+#include "joint_distribution.pb.h"
 
 namespace distbench {
 
@@ -59,4 +59,4 @@ AllocateSampleGenerator(const DistributionConfig& config);
 
 }  // namespace distbench
 
-#endif  // DISTBENCH_RANDOMIZATION_RANDOM_SAMPLE_GENERATOR_H_
+#endif  // DISTBENCH_JOINT_DISTRIBUTION_SAMPLE_GENERATOR_H_

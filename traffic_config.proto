@@ -16,7 +16,7 @@ syntax = "proto2";
 
 package distbench;
 
-import "distribution.proto";
+import "joint_distribution.proto";
 
 // Specifies how many servers there are of each type.
 // The name of an individual instance is just $name/$intance_number,
