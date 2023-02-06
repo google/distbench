@@ -22,6 +22,7 @@
 namespace distbench {
 
 struct NodeManagerOpts {
+  int preassigned_node_id = -1;
   std::string test_sequencer_service_address;
   std::string default_data_plane_device;
   std::string control_plane_device;
