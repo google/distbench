@@ -54,6 +54,10 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
   for (int i = 0; i < num_nodes; ++i) {
     distbench::NodeManagerOpts nm_opts = {};
     int port = 0;
+    // Flip the order of the last few nodes:
+    if (i >= 2) {
+      nm_opts.preassigned_node_id = num_nodes - i + 1;
+    }
     nm_opts.port = &port;
     nm_opts.test_sequencer_service_address = test_sequencer->service_address();
     nodes[i] = std::make_unique<NodeManager>();
