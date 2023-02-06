@@ -80,31 +80,25 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev) {
 
 absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
                                                bool prefer_ipv4) {
-  auto all_addresses = GetAllAddresses("");
-
-  // Exact match
-  for (const auto& address : all_addresses) {
-    if (address.isLinkLocal()) {
-      continue;
-    }
-    if (address.isIPv4() == prefer_ipv4 && address.netdevice() == netdev) {
-      return address;
-    }
-  }
-
-  // Match the device with any IP type
-  for (const auto& address : all_addresses) {
-    if (address.isLinkLocal()) {
-      continue;
-    }
-    if (address.netdevice() == netdev) {
-      LOG(WARNING) << "Using " << address.ToString()
-                   << " which is not of the favorite ip type (v4/v6).";
-      return address;
-    }
-  }
+  auto all_addresses = GetAllAddresses(netdev);
 
   if (!netdev.empty()) {
+    // Exact match
+    for (const auto& address : all_addresses) {
+      if (!address.isLinkLocal() && address.isIPv4() == prefer_ipv4) {
+        return address;
+      }
+    }
+
+    // Match the device with any IP type
+    for (const auto& address : all_addresses) {
+      if (!address.isLinkLocal()) {
+        LOG(WARNING) << "Using " << address.ToString()
+                     << " which is not of the favorite ip type (v4/v6).";
+        return address;
+      }
+    }
+
     return absl::NotFoundError(
         absl::StrCat("No address found for netdev '", netdev,
                      "' (prefer_ipv4=", prefer_ipv4, ")"));
