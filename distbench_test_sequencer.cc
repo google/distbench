@@ -41,9 +41,20 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
     node_alias = registered_nodes_[node_id].node_alias;
     LOG(INFO) << "got repeated registration for node" << node_id;
   } else {
-    registered_nodes_.emplace_back();
+    if (request->preassigned_node_id() >= 0) {
+      node_id = request->preassigned_node_id();
+    }
+    if ((size_t)node_id >= registered_nodes_.size()) {
+      registered_nodes_.resize(node_id + 1);
+    }
+    if (!registered_nodes_[node_id].still_pending) {
+      LOG(ERROR) << "Conflict for pre-registered node ID " << node_id;
+      return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                          "Invalid Registration");
+    }
     node_alias = absl::StrCat("node", node_id);
-    registered_nodes_.back().node_alias = node_alias;
+    registered_nodes_[node_id].node_alias = node_alias;
+    registered_nodes_[node_id].still_pending = false;
     node_registration_id_map_[registration] = node_id;
     node_alias_id_map_[node_alias] = node_id;
   }
@@ -186,7 +197,9 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   std::set<std::string> unplaced_services;
   std::set<std::string> idle_nodes;
   for (const auto& node : registered_nodes_) {
-    idle_nodes.insert(node.node_alias);
+    if (!node.still_pending) {
+      idle_nodes.insert(node.node_alias);
+    }
   }
 
   int total_services = 0;
@@ -262,7 +275,9 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
 
   // Make sure there is an entry for every registered node:
   for (const auto& node : registered_nodes_) {
-    node_service_map[node.node_alias];
+    if (!node.still_pending) {
+      node_service_map[node.node_alias];
+    }
   }
 
   LOG(INFO) << "Service Placement:";
@@ -540,6 +555,9 @@ void TestSequencer::Shutdown() {
   std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
   int rpc_count = 0;
   for (auto& node : registered_nodes_) {
+    if (node.still_pending) {
+      continue;
+    }
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     rpc_state.node = &node;

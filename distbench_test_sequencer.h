@@ -29,6 +29,7 @@ struct RegisteredNode {
   std::unique_ptr<DistBenchNodeManager::Stub> stub;
   std::string node_alias;
   bool idle = true;
+  bool still_pending = true;
 };
 
 struct TestSequencerOpts {
