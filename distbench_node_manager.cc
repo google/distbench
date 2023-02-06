@@ -243,6 +243,7 @@ NodeManager::~NodeManager() {
 absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   opts_ = opts;
   if (opts_.test_sequencer_service_address.empty()) {
+    Shutdown();
     return absl::InvalidArgumentError(
         "node_manager requires the --test_sequencer flag.");
   }
@@ -268,6 +269,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   service_address_ =
       GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
   if (!grpc_server_) {
+    Shutdown();
     return absl::UnknownError("NodeManager service failed to start");
   }
   LOG(INFO) << "NodeManager server listening on " << service_address_ << " on "
@@ -276,7 +278,10 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   NodeRegistration reg;
   reg.set_hostname(Hostname());
   auto maybe_ip = IpAddressForDevice(opts_.control_plane_device);
-  if (!maybe_ip.ok()) return maybe_ip.status();
+  if (!maybe_ip.ok()) {
+    Shutdown();
+    return maybe_ip.status();
+  }
   reg.set_control_ip(maybe_ip.value().ip());
   reg.set_control_port(*opts_.port);
 
