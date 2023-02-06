@@ -260,9 +260,25 @@ int MainTestSequencer(std::vector<char*>& arguments) {
 }
 
 int MainNodeManager(std::vector<char*>& arguments) {
-  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
+  int preassigned_node_id = -1;
+  if (!arguments.empty()) {
+    if (!strncmp(arguments[0], "node", 4)) {
+      preassigned_node_id = atoi(arguments[0] + 4);
+      if (absl::StrCat("node", preassigned_node_id) != arguments[0] ||
+          preassigned_node_id < 0) {
+        std::cerr << "node_manager expected nodeN as pre-assigned_node_id\n";
+        std::cerr << "where N should be a positive integer.\n";
+        std::cerr << "  Got '" << arguments[0] << "' instead.\n";
+        return 1;
+      }
+    }
+    std::cerr << "pre-assigned node: " << preassigned_node_id << "\n";
+    arguments.erase(arguments.begin());
+  }
+  if (!CheckRemainingArguments(arguments, 0, 0)) return 2;
   int port = absl::GetFlag(FLAGS_port);
   const distbench::NodeManagerOpts opts = {
+      .preassigned_node_id = preassigned_node_id,
       .test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer),
       .default_data_plane_device =
           absl::GetFlag(FLAGS_default_data_plane_device),

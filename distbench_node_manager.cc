@@ -276,6 +276,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
             << Hostname();
 
   NodeRegistration reg;
+  reg.set_preassigned_node_id(opts_.preassigned_node_id);
   reg.set_hostname(Hostname());
   auto maybe_ip = IpAddressForDevice(opts_.control_plane_device);
   if (!maybe_ip.ok()) {

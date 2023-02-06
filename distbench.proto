@@ -150,6 +150,7 @@ message NodeRegistration {
   optional string control_ip = 2;
   optional int32 control_port = 3;
   repeated Attribute attributes = 4;
+  optional int32 preassigned_node_id = 5 [default = -1];
 }
 
 message NodeConfig {
