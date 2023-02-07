@@ -24,6 +24,12 @@
 
 namespace distbench {
 
+std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s) {
+  auto context = std::make_unique<grpc::ClientContext>();
+  SetGrpcClientContextDeadline(context.get(), max_time_s);
+  return context;
+}
+
 struct DistBenchTester {
   ~DistBenchTester();
   absl::Status Initialize(int num_nodes);
@@ -34,10 +40,12 @@ struct DistBenchTester {
 };
 
 DistBenchTester::~DistBenchTester() {
-  test_sequencer->Shutdown();
-  for (size_t i = 0; i < nodes.size(); ++i) {
-    nodes[i]->Shutdown();
-  }
+  TestSequence test_sequence;
+  test_sequence.mutable_tests_setting()->set_shutdown_after_tests(true);
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/1);
+  grpc::Status status = test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
   test_sequencer->Wait();
   for (size_t i = 0; i < nodes.size(); ++i) {
     nodes[i]->Wait();
@@ -71,12 +79,6 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
                                 DistbenchCustomChannelArguments());
   test_sequencer_stub = DistBenchTestSequencer::NewStub(channel);
   return absl::OkStatus();
-}
-
-std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s) {
-  auto context = std::make_unique<grpc::ClientContext>();
-  SetGrpcClientContextDeadline(context.get(), max_time_s);
-  return context;
 }
 
 TEST(DistBenchTestSequencer, Constructor) { TestSequencer test_sequencer; }

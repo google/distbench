@@ -224,6 +224,7 @@ void NodeManager::Shutdown() {
 void NodeManager::Wait() {
   shutdown_requested_.WaitForNotification();
   if (grpc_server_) {
+    grpc_server_->Shutdown();
     grpc_server_->Wait();
   }
 }

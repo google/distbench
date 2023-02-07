@@ -551,20 +551,22 @@ void TestSequencer::Shutdown() {
     RegisteredNode* node;
   };
   grpc::Status status;
-  absl::MutexLock m(&mutex_);
-  std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
   int rpc_count = 0;
-  for (auto& node : registered_nodes_) {
-    if (node.still_pending) {
-      continue;
+  std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
+  {
+    absl::MutexLock m(&mutex_);
+    for (auto& node : registered_nodes_) {
+      if (node.still_pending) {
+        continue;
+      }
+      auto& rpc_state = pending_rpcs[rpc_count];
+      ++rpc_count;
+      rpc_state.node = &node;
+      SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
+      rpc_state.rpc = rpc_state.node->stub->AsyncShutdownNode(
+          &rpc_state.context, rpc_state.request, &cq);
+      rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
     }
-    auto& rpc_state = pending_rpcs[rpc_count];
-    ++rpc_count;
-    rpc_state.node = &node;
-    SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
-    rpc_state.rpc = rpc_state.node->stub->AsyncShutdownNode(
-        &rpc_state.context, rpc_state.request, &cq);
-    rpc_state.rpc->Finish(&rpc_state.response, &rpc_state.status, &rpc_state);
   }
   while (rpc_count) {
     bool ok;
