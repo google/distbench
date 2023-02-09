@@ -182,6 +182,12 @@ function auto_usage() {
   done
 }
 
+function error_handler() {
+  error_code=$?
+  log_stderr -e \\n$(caller): Unexpected error $error_code in \\n$BASH_COMMAND
+  exit $?
+}
+
 ################################################################################
 # Parse/validate explicit flag arguments, and invoke 'process_test_configs' with
 # the remaining arguments that represent the test configurations.
@@ -193,8 +199,9 @@ function auto_usage() {
 ################################################################################
 function main() {
   # Catch as many errors as possible:
-  set -ueo pipefail
+  set -uEeo pipefail
   shopt -s inherit_errexit
+  trap error_handler ERR
 
   # Save the actual invocation for documenting the output proto files:
   local -r INVOCATION="$(printf '%q ' "$@")"
