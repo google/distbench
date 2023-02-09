@@ -304,9 +304,9 @@ absl::StatusOr<TestResult> TestSequencer::DoRunTest(
       maybe_map.value();
 
   ServiceEndpointMap service_map;
-  auto cret = ConfigureNodes(node_service_map, test);
-  if (!cret.ok()) return cret.status();
-  service_map = *cret;
+  auto maybe_service_map = ConfigureNodes(node_service_map, test);
+  if (!maybe_service_map.ok()) return maybe_service_map.status();
+  service_map = *maybe_service_map;
 
   auto ipret = IntroducePeers(node_service_map, service_map);
   LOG(INFO) << "IntroducePeers status: " << ipret;
