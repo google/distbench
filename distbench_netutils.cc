@@ -94,7 +94,7 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
     for (const auto& address : all_addresses) {
       if (!address.isLinkLocal()) {
         LOG(WARNING) << "Using " << address.ToString()
-                     << " which is not of the favorite ip type (v4/v6).";
+                     << " which is not of the preferred ip type (v4/v6).";
         return address;
       }
     }
