@@ -65,9 +65,9 @@ grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
         .netdev_name = opts_.default_data_plane_device};
     absl::Status ret = AllocService(service_options);
     if (!ret.ok()) {
-      return grpc::Status(
-          grpc::StatusCode::UNKNOWN,
-          absl::StrCat("AllocService failure: ", ret.ToString()));
+      std::string err = absl::StrCat("AllocService failure: ", ret.ToString());
+      LOG(ERROR) << err;
+      return grpc::Status(grpc::StatusCode::UNKNOWN, err);
     }
     auto maybe_address =
         SocketAddressForDevice(opts_.default_data_plane_device, port);
