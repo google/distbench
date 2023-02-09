@@ -239,8 +239,10 @@ int MainTestSequencer(std::vector<char*>& arguments) {
   for (int i = 0; i < num_nodes; ++i) {
     int new_port = 0;
     const distbench::NodeManagerOpts opts = {
+        .preassigned_node_id = i,
         .test_sequencer_service_address = test_sequencer.service_address(),
-        .default_data_plane_device = "",
+        .default_data_plane_device =
+            absl::GetFlag(FLAGS_default_data_plane_device),
         .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
         .port = &new_port,
     };
@@ -282,6 +284,7 @@ int MainNodeManager(std::vector<char*>& arguments) {
       .test_sequencer_service_address = absl::GetFlag(FLAGS_test_sequencer),
       .default_data_plane_device =
           absl::GetFlag(FLAGS_default_data_plane_device),
+      .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
       .port = &port,
   };
   distbench::NodeManager node_manager;
