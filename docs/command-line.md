@@ -66,10 +66,14 @@ Display a simple summary of the available commands.
 
 ## Other options
 
-- `--use_ipv4_first`: By default, Distbench will use IPV6 addresses if
-  available, use the `--use_ipv4_first` flags to use IPV4 addresses instead.
+- `--prefer_ipv4`: By default, Distbench will use IPV6 addresses if
+  available, use the `--prefer_ipv4` flags to use IPV4 addresses instead.
 
 - `--default_data_plane_device`: Specify an interface for Distbench to use for
   the data plane (such as eth0). By default or if an empty string is specified,
   Distbench will attempt to guess the most suitable interface. This setting can
   be overridden by the test sequence.
+
+- `--control_plane_device`: Specify an interface for Distbench to use for
+  control RPCs. This may be necessary if the default primary interface is on a
+  slow or congested network.
