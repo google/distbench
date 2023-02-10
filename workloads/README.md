@@ -83,10 +83,10 @@ To run the test, a `test_sequencer` with two node managers are required.
 ```bash
 #(On 1 server node)
 bazel run :distbench -c opt -- test_sequencer --port=10000 &
-bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=9999 &
+bazel run :distbench -c opt -- node_manager --test_sequencer=server1:10000 --port=9999 &
 
 #(On another server node)
-bazel run :distbench -c opt -- node_manager --test_sequencer=localhost:10000 --port=9999 &
+bazel run :distbench -c opt -- node_manager --test_sequencer=server1:10000 --port=9999 &
 
 #(On the client), to inspect the configuration
 ../test_builder/test_builder client_server:client_count=1:server_count=1:parallel_queries=100
