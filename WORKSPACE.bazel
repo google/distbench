@@ -80,13 +80,13 @@ http_archive(
 
 new_local_repository(
     name = "mercury",
-    path = "../opt/mercury-2.0.1",
+    path = "external_repos/opt/mercury",
     build_file = "mercury.BUILD",
 )
 
 new_local_repository(
     name = "libfabric",
-    path = "../opt/libfabric",
+    path = "external_repos/opt/libfabric",
     build_file = "libfabric.BUILD",
 )
 
