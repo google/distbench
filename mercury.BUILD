@@ -6,9 +6,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
       ":mercury_static",
-      ":mercury_hl_static",
       ":mercury_na_static",
-      ":mercury_mchecksum_static",
       ":mercury_util_static",
       # TODO(oserres) visibility issue : "@libfabric//:libfabric_static",
       "@libfabric//:libfabric",
