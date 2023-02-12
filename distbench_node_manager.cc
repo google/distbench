@@ -70,7 +70,7 @@ grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
       return grpc::Status(grpc::StatusCode::UNKNOWN, err);
     }
     auto maybe_address =
-        SocketAddressForDevice(opts_.default_data_plane_device, port);
+        SocketAddressForDevice(opts_.control_plane_device, port);
     if (!maybe_address.ok()) {
       return grpc::Status(grpc::StatusCode::UNKNOWN,
                           absl::StrCat("SocketAddressForDevice failure: ",
