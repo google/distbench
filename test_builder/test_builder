@@ -740,6 +740,40 @@ function grpc_protocol_driver_setup() {
 }
 
 ################################################################################
+# Setup the test config proto for the mercury protocol driver:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function mercury_protocol_driver_setup() {
+  set_parameter_default transport "ofi+tcp" "ofi+tcp something_else"
+  local TRANSPORT="${params_dict[transport]}"
+  case "$TRANSPORT" in
+    ofi+tcp)
+      # __DEVICE__ may work for IPv6
+      HG_INIT_INFO_STRING="ofi+tcp://__DEVICE__"
+      # __SERVER_IP__ works for IPv4
+      HG_INIT_INFO_STRING="ofi+tcp://__SERVER_IP__"
+      ;;
+    *)
+      HG_INIT_INFO_STRING="$TRANSPORT"
+      ;;
+  esac
+  # "ofi+tcp://__SERVER_IP__"
+  params_dict[protocol_alias]="mercury_${TRANSPORT}"
+  params_dict[protocol_driver]="mercury"
+  params_dict[protocol_driver_options_proto]="  default_protocol: 'mercury'
+  protocol_driver_options {
+    name: 'common_options'
+    server_settings {
+      name: 'hg_init_info_string'
+      string_value: '${HG_INIT_INFO_STRING}'
+    }
+  }"
+}
+
+################################################################################
 # Setup the test config proto for the clique traffic pattern:
 # Arguments:
 #   None
