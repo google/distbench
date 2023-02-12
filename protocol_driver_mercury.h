@@ -78,6 +78,8 @@ class ProtocolDriverMercury : public ProtocolDriver {
 
   hg_context_t* hg_context_ = nullptr;
   hg_class_t* hg_class_ = nullptr;
+  static constexpr bool mercury_ipv4_only_ =
+      (HG_VERSION_MAJOR < 2) || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR < 2);
 
   hg_id_t mercury_generic_rpc_id_;
   std::vector<hg_addr_t> remote_addresses_;
