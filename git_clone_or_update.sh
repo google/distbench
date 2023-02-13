@@ -83,6 +83,7 @@ function git_clone_or_update() {
     fi
     mkdir -p "${GITDIR}"
     git -C "${GITDIR}" init
+    git -C "${GITDIR}" config --local checkout.defaultRemote origin
     git -C "${GITDIR}" remote add origin "${REMOTE_URL}"
   fi
   if [[ -d "${WORKTREE}" ]]
