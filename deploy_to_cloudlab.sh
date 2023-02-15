@@ -18,11 +18,11 @@
 # A script to automate setting up distbench experiments in cloudlab.
 #
 # To start, visit the following URL to startup a cluster in cloudlab:
-# https://tinyurl.com/yeyuxs6y
+# https://tinyurl.com/36ypzsvh
 # (hint: add this to your bookmarks)
 #
 # You can use a different experiment profile, but the machines must be named
-# nodeN with N starting at 0, and should be of the same hardware model.
+# nodeN with N starting at 0, and should be of a single hardware model.
 #
 # After the cluster is up and running, execute this script to download,
 # build, deploy, and run distbench on the experiment cluster. The logs for
@@ -42,12 +42,16 @@
 # the git repositories in the cloudlab hosts' distbench_repo/ or (if applicable)
 # distbench_mirror_of_local/ directories, as they will likely be overwritten
 # by a subsequent run of this script, making you very sad.
-# Please submit your changes to a github or local branch instead.
+# Please submit your changes to github or a local branch instead.
 #
 # This script takes 5 optional arguments
 # 1) The DNS domain name (not hostname) of the experiment cluster.
+#    If you are not sure, try the real hostname of one of the nodes, or
+#    run "hostname" on one of the nodes.
 # 2) The git repository URL to fetch from, or "local" to push the local
-#    git repository to the cloudlab hosts
+#    git repository to the cloudlab hosts. When specifying local the
+#    repository will be checked to make sure that there are no uncommited
+#    changes. This check can be skipped by specifying localnocheck.
 # 3) The name of the git branch to use when building distbench.
 # 4) The number of nodes to use within the cluster.
 #    If this argument is omitted DNS is queried to find out
@@ -71,6 +75,24 @@ shopt -s inherit_errexit
 ECHODELAY=0.005 source common_status.sh
 
 function clssh() { ssh -o 'StrictHostKeyChecking no' "${@}"; }
+
+sh_files=(common_status.sh git_clone_or_update.sh)
+
+ALL_FILES_PRESENT=true
+for file in "${sh_files[@]}"
+do
+  if [[ ! -f "$file" ]]
+  then
+    echo "Missing required file: $file"
+    ALL_FILES_PRESENT=false
+  fi
+done
+
+if [[ "$ALL_FILES_PRESENT" != "true" ]]
+then
+  echo "This script is expected to run from a complete git repository."
+  exit 1
+fi
 
 if [[ $# -gt 5 ]]
 then
@@ -97,6 +119,14 @@ then
     exit 1
   )
   echo
+fi
+
+if ping -c 1 "${CLUSTER_DOMAINNAME}" &> /dev/null
+then
+  echo_green "It looks like ${CLUSTER_DOMAINNAME} is a hostname."
+  echo_green "  Attempting to convert it to a domainname..."
+  CLUSTER_DOMAINNAME="$(clssh ${CLUSTER_DOMAINNAME} hostname |cut -f 2- -d.)"
+  echo_green "    Using cluster name ${CLUSTER_DOMAINNAME}\n"
 fi
 
 echo_green "Setting up experiment cluster ${CLUSTER_DOMAINNAME} ..."
@@ -223,7 +253,6 @@ function launch_remote() {
     "${TRAFFIC_NETDEV}"
 }
 
-sh_files=(common_status.sh git_clone_or_update.sh)
 (cat ${sh_files[@]} /dev/stdin | launch_remote) << 'EOF'
 ######################## REMOTE SCRIPT BEGINS HERE #############################
 # We must enclose the contents in () to force bash to read the entire script
