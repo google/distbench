@@ -22,8 +22,8 @@
 function git_clone_or_update() {
   if [[ $# != "4" ]]
   then
-    echo_magenta "git_clone_or_update needs exactly 4 arguments to proceed"
-   return 1
+    echo_error red "git_clone_or_update needs exactly 4 arguments to proceed"
+    return 1
   fi
   REMOTE_URL="${1}"
   TAGBRANCH="${2}"
@@ -36,7 +36,7 @@ function git_clone_or_update() {
       # echo_magenta "git_clone_or_update output dir is within current dir :-)"
       ;;
     *)
-      echo_red "\\nError: git_clone_or_update output dir must be within current"
+      echo_error red  "\\nError: git_clone_or_update output dir must be within current"
       return 2
       ;;
   esac
@@ -45,25 +45,25 @@ function git_clone_or_update() {
       # echo_magenta "git_clone_or_update worktree dir is within GITDIR :-)"
       ;;
     *)
-      echo_red "\\nError: git_clone_or_update worktree must be within GITDIR"
+      echo_error red  "\\nError: git_clone_or_update worktree must be within GITDIR"
       return 3
       ;;
   esac
   TOP_LEVEL_URL="$(git remote get-url origin 2> /dev/null || true)"
   if [[ "${TOP_LEVEL_URL}" == "${REMOTE_URL}" ]]
   then
-    echo_red "\\nError: looks like we are trying to nest a repo inside itself."
+    echo_error red  "\\nError: looks like we are trying to nest a repo inside itself."
     return 4
   fi
 
   OLD_URL="$(git -C "${GITDIR}" remote get-url origin 2> /dev/null || true)"
   if [[ -n "${OLD_URL}" && -n $(git -C "${GITDIR}" rev-parse --show-cdup) ]]
   then
-    echo_red "\\nLocal git repo may be corrupted!!!"
-    echo_red "  Refusing to overwrite anything..."
-    echo_red "  You might try running the follwoing command on $(hostname -f)"
-    echo_blue "  [remove command] -rf $GITDIR"
-    echo_red "  and trying again if you are sure that this is safe."
+    echo_error red  "\\nLocal git repo may be corrupted!!!"
+    echo_error red  "  Refusing to overwrite anything..."
+    echo_error red  "  You might try running the follwoing command on $(hostname -f)"
+    echo_error blue "  [remove command] -rf $GITDIR"
+    echo_error red  "  and trying again if you are sure that this is safe."
     return 5
   fi
 
@@ -95,19 +95,19 @@ function git_clone_or_update() {
           [[ "$(git rev-parse --git-dir)" != \
               "${GITDIR}/.git/worktrees/${TAGBRANCH}" ]]
     then
-      echo_red "\\nLocal git worktree may be corrupted!!!"
-      echo_red "  Refusing to overwrite anything..."
-      echo_red "  You might try running the follwoing command on $(hostname -f)"
-      echo_blue "  [remove command] -rf $GITDIR"
-      echo_red "  and trying again if you are sure that this is safe."
+      echo_error red "\\nLocal git worktree may be corrupted!!!"
+      echo_error red "  Refusing to overwrite anything..."
+      echo_error red "  You might try running the follwoing command on $(hostname -f)"
+      echo_error blue "  [remove command] -rf $GITDIR"
+      echo_error red "  and trying again if you are sure that this is safe."
       return 7
     fi
 
     # Make sure worktree does not contain uncommited modifications.
     if ! git diff --stat --exit-code HEAD
     then
-      echo_red "\\nThere may be modifications to your worktree files."
-      echo_red "Refusing to overwrite anything..."
+      echo_error red "\\nThere may be modifications to your worktree files."
+      echo_error red "Refusing to overwrite anything..."
       return 8
     fi
     # Make sure working tree is a commit that existed in a remote branch
@@ -116,9 +116,9 @@ function git_clone_or_update() {
     # force pushing they must want to delete history here too.
     if [[ -z "$(git branch -r --contains HEAD ; git tag --contains HEAD)" ]]
     then
-      echo_red "\\nThe local git worktree no longer matches anything upstream."
-      echo_red "This probably means you made local changes and commited them."
-      echo_red "Refusing to overwrite anything..."
+      echo_error red "\\nThe local git worktree no longer matches anything upstream."
+      echo_error red "This probably means you made local changes and commited them."
+      echo_error red "Refusing to overwrite anything..."
       return 9
     fi
     popd

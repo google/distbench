@@ -37,7 +37,7 @@ MERCURY_VERSION=${2:-2.2.0}
 
 if [[ $# -gt 2 ]]
 then
-  echo_red "$0 takes at most 2 arguments"
+  echo_error red "$0 takes at most 2 arguments"
   exit 1
 fi
 

@@ -45,3 +45,4 @@ function echo_blue() { bash -c "$echo_in_color" 4 "${@}"; }
 function echo_magenta() { bash -c "$echo_in_color" 5 "${@}"; }
 function echo_cyan() { bash -c "$echo_in_color" 6 "${@}"; }
 function echo_white() { bash -c "$echo_in_color" 7 "${@}"; }
+function echo_error() { local c="$1"; shift; echo_$c "${@}" 1>&2 ; }

@@ -96,7 +96,7 @@ fi
 
 if [[ $# -gt 5 ]]
 then
-  echo_red "$0 takes at most 5 arguments"
+  echo_error red "$0 takes at most 5 arguments"
   exit 1
 fi
 
@@ -113,8 +113,8 @@ elif [[ "${GIT_REPO}" == "local" ]]
 then
   echo_green "Checking that the local git tree is checked-in..."
   git diff --stat --exit-code || (
-    echo_red "  You need to run git commit before $0."
-    echo_red "  If you are just hacking you can do"
+    echo_error red "  You need to run git commit before $0."
+    echo_error red "  If you are just hacking you can do"
     echo_blue "  git commit -a -m hacking"
     exit 1
   )
@@ -143,13 +143,13 @@ then
   echo_green "  Counted $NUM_NODES nodes in experiment cluster."
   if [[ "${NUM_NODES}" == "0" ]]
   then
-    echo_red "  Experiment cluster may not be ready yet, or nonexistent."
+    echo_error red "  Experiment cluster may not be ready yet, or nonexistent."
     exit 1
   fi
 else
   if ! ping -c 1 node$((NUM_NODES-1)).${CLUSTER_DOMAINNAME} > /dev/null
   then
-    echo_red "  Experiment cluster may not be ready yet, or undersized."
+    echo_error red "  Experiment cluster may not be ready yet, or undersized."
     exit 1
   fi
   echo_green "\\nUsing $NUM_NODES nodes in experiment cluster."
@@ -192,7 +192,7 @@ else
                    cut -f1 -d " "))
   if [[ ${#netdev_list[@]} -eq 0 ]]
   then
-    echo_red "\\nNo netdevs returned"
+    echo_error red "\\nNo netdevs returned"
     exit 1
   fi
   for netdev in "${netdev_list[@]}"
@@ -264,7 +264,7 @@ shopt -s inherit_errexit
 
 if [[ $# != 7 ]]
 then
-  echo_red "Remote script needs exactly 7 arguments to proceed"
+  echo_error red "Remote script needs exactly 7 arguments to proceed"
   exit 1
 fi
 
@@ -281,8 +281,8 @@ function cloudlab_ssh() { sudo ssh -o 'StrictHostKeyChecking no' "${@}"; }
 function cloudlab_scp() { sudo scp -o 'StrictHostKeyChecking no' "${@}"; }
 
 function unknown_error_shutdown() {
-  echo_red "\\nError, unknown_error_shutdown invoked status = $?"
-  echo_red "\\n  Failed command:\n  $BASH_COMMAND"
+  echo_error red "\\nError, unknown_error_shutdown invoked status = $?"
+  echo_error red "\\n  Failed command:\n  $BASH_COMMAND"
   jobs
   exit
 }
@@ -296,8 +296,8 @@ CLUSTER_DOMAINNAME=${HOSTNAME#node[0-9].}
 NODE0=node0.${CLUSTER_DOMAINNAME}
 if [[ "${HOSTNAME}" != "${NODE0}" ]]
 then
-  echo_red "Hostname '${HOSTNAME}' does not follow expected format." \
-           "\\nshould be ${NODE0}"
+  echo_error red "Hostname '${HOSTNAME}' does not follow expected format." \
+                 "\\nshould be ${NODE0}"
   exit 1
 fi
 
