@@ -75,7 +75,7 @@ set -uEeo pipefail
 shopt -s inherit_errexit
 
 function unknown_error_shutdown() {
-  echo_error red "\\nError, unknown_error_shutdown invoked status = $?"
+  echo_error red "\\nError, Local unknown_error_shutdown invoked status = $?"
   echo_error red "\\n  Failed command:\n  $BASH_COMMAND"
   jobs
   exit
@@ -281,14 +281,14 @@ echo_green "\\nUsing ${SEQUENCER_IP} for sequencer IP"
 SEQUENCER_PORT=10000
 
 function launch_remote() {
-  echo_green "\\nExecuting bootstrap script on main node..."
+  echo_green "\\nLaunching bootstrap script on main node..."
 
   # For debugability change the clsh command to be
   # "export TERM=$TERM; tee debug.sh | bash /dev/stdin"
   # (include the quotes)
   # The double -t sends SIGHUP to the remote processes when the local ssh client
   # is killed by e.g. SIGTERM.
-  clssh -t -t -L 11000:${SEQUENCER_IP}:${SEQUENCER_PORT} ${NODE0} \
+  ! clssh -t -t -L 11000:${SEQUENCER_IP}:${SEQUENCER_PORT} ${NODE0} \
     "export TERM=$TERM; stty -echo ; bash /dev/stdin" \
     "${NUM_NODES}" \
     "${GIT_REPO}" \
@@ -327,7 +327,7 @@ function cloudlab_ssh() { sudo ssh -o 'StrictHostKeyChecking no' "${@}"; }
 function cloudlab_scp() { sudo scp -o 'StrictHostKeyChecking no' "${@}"; }
 
 function unknown_error_shutdown() {
-  echo_error red "\\nError, unknown_error_shutdown invoked status = $?"
+  echo_error red "\\nError, Remote unknown_error_shutdown invoked status = $?"
   echo_error red "\\n  Failed command:\n  $BASH_COMMAND"
   jobs
   exit
@@ -419,10 +419,12 @@ NODE_MANAGER_ARGS=(
 
 echo_blue "\\nStarting Test Sequencer on ${SEQUENCER} ..."
 echo_blue "  Debug logs can be found in test_sequencer.log"
-GLOG_logtostderr=1 ${HOME}/distbench_exe test_sequencer \
+( GLOG_logtostderr=1 ${HOME}/distbench_exe test_sequencer \
   ${TEST_SEQUENCER_ARGS[@]} \
-  2>&1 | tee distbench_test_sequencer.log &
-sleep 5
+  2>&1 | tee distbench_test_sequencer.log
+  echo_error red "Test sequencer terminated..."
+) &
+sleep 2
 
 # This is the starting port for node managers. For debuggability this will be
 # incremented so that each instance runs on a unique port.
@@ -451,6 +453,7 @@ echo_cyan "  'test_builder client_server -s localhost:11000 -o my_data_dir'"
 echo_yellow "Debug logs can be fetched via"
 echo_cyan "  'scp ${NODE0}:distbench*.log my_log_dir'"
 
+jobs &> /dev/null # this /should/ not be necessary, but wait -n is buggy
 wait -n
 echo_error red "\\nA distbench process terminated early."
 echo_error red "  Look for errors in the log"
