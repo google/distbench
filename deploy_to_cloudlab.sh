@@ -59,11 +59,13 @@
 # 5) The name of the netdev to use for distbench traffic.
 #    If this argument is omitted it is automatically determinied.
 #
-# For convenience feel free to edit the following 3 lines.
+# For convenience feel free to edit the following 5 lines.
 
 DEFAULT_CLUSTER_DOMAINNAME=distbench.uic-dcs-pg0.utah.cloudlab.us
 DEFAULT_GIT_REPO=https://github.com/google/distbench.git
 DEFAULT_GIT_BRANCH=main
+DEFAULT_NUM_NODES=0
+DEFAULT_PRIVATE_NETDEV=""
 
 ################################################################################
 # GIANT WARNING! GIANT WARNING! GIANT WARNING! GIANT WARNING! GIANT WARNING!
@@ -112,8 +114,8 @@ fi
 CLUSTER_DOMAINNAME=${1:-${DEFAULT_CLUSTER_DOMAINNAME}}
 GIT_REPO=${2:-${DEFAULT_GIT_REPO}}
 GIT_BRANCH=${3:-${DEFAULT_GIT_BRANCH}}
-declare -i NUM_NODES=${4:-0}
-PRIVATE_NETDEV=${5:-}
+declare -i NUM_NODES=${4:-${DEFAULT_NUM_NODES}}
+PRIVATE_NETDEV=${5:-${DEFAULT_PRIVATE_NETDEV}}
 
 if [[ "${GIT_REPO}" == "localnocheck" ]]
 then
