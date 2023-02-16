@@ -171,11 +171,10 @@ bool HasOnlyIPv4(std::string_view netdev) {
 }  // namespace
 
 std::string GetBindAddressFromPort(std::string_view netdev, int port) {
-  const bool only_ipv4 = HasOnlyIPv4(netdev);
   absl::StatusOr<DeviceIpAddress> addr = GetBestAddress(netdev);
 
   if (netdev.empty() || !addr.ok()) {
-    if (only_ipv4)
+    if (HasOnlyIPv4(netdev) || absl::GetFlag(FLAGS_prefer_ipv4))
       return absl::StrCat("0.0.0.0:", port);
     else
       return absl::StrCat("[::]:", port);
