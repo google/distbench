@@ -72,6 +72,15 @@ DEFAULT_GIT_BRANCH=main
 set -uEeo pipefail
 shopt -s inherit_errexit
 
+function unknown_error_shutdown() {
+  echo_error red "\\nError, unknown_error_shutdown invoked status = $?"
+  echo_error red "\\n  Failed command:\n  $BASH_COMMAND"
+  jobs
+  exit
+}
+
+trap unknown_error_shutdown ERR
+
 ECHODELAY=0.005 source common_status.sh
 
 function clssh() { ssh -o 'StrictHostKeyChecking no' "${@}"; }
@@ -168,8 +177,8 @@ then
     clssh ${NODE0} \
       "rm -rf distbench_mirror_of_local &&
        git clone --bare ${UPSTREAM_URL} distbench_mirror_of_local"
+    echo_green "  Incrementally updating with local commits..."
   fi
-  echo_green "  Incrementally overwriting with local contents..."
   ! git remote remove mirror_of_local &> /dev/null
   git remote add mirror_of_local \
     ssh://${USER}@${NODE0}/users/${USER}/distbench_mirror_of_local
@@ -214,14 +223,30 @@ CONTROL_NETDEV=${PRIVATE_NETDEV}
 TRAFFIC_NETDEV=${PRIVATE_NETDEV}
 
 CONTROL_IP4=$(
-    clssh ${NODE0} ip -br -4 address show dev ${CONTROL_NETDEV} |
-      (IFS=" /" ;read a b c d; echo $c)
+  addr_line=$(clssh ${NODE0} ip -br -4 address show dev ${CONTROL_NETDEV})
+  if [[ -z "${addr_line}" ]]
+  then
+    echo_error yellow "  No IPv4 address associated with ${CONTROL_NETDEV}"
+  else
+    echo "${addr_line}" | (IFS=" /" ;read a b c d; echo $c)
+  fi
 )
 
 CONTROL_IP6=$(
-    clssh ${NODE0} ip -br -6 address show dev ${CONTROL_NETDEV} |
-      (IFS=" /" ;read a b c d; echo $c)
+  addr_line=$(clssh ${NODE0} ip -br -6 address show dev ${CONTROL_NETDEV})
+  if [[ -z "${addr_line}" ]]
+  then
+    echo_error yellow "  No IPv6 address associated with ${CONTROL_NETDEV}"
+  else
+    echo "${addr_line}" | (IFS=" /" ;read a b c d; echo $c)
+  fi
 )
+
+if [[ -z "$CONTROL_IP4" && -z "$CONTROL_IP6" ]]
+then
+  echo_error red "  No IP address associated with ${CONTROL_NETDEV}"
+  exit 1
+fi
 
 if [[ "${CONTROL_IP6:0:4}" == "fe80" || -z "$CONTROL_IP6" ]]
 then
@@ -388,11 +413,13 @@ do
   echo_blue "\\nStarting node${i} Node Manager..."
   echo_blue "  Debug logs can be found in node${i}.log"
   # The double -t propgates SIGHUP to all node managers.
-  cloudlab_ssh -t -t node${i}.${CLUSTER_DOMAINNAME} \
+  ( ! cloudlab_ssh -t -t node${i}.${CLUSTER_DOMAINNAME} \
     env GLOG_logtostderr=1 sudo -u $USER ${HOME}/distbench_exe node_manager \
         node${i} \
         --port=${NODE_MANAGER_PORT} \
-        ${NODE_MANAGER_ARGS[@]} 2>&1 | tee distbench_node_manager${i}.log &
+        ${NODE_MANAGER_ARGS[@]} 2>&1 | tee distbench_node_manager${i}.log
+    echo_error red "Node manager for node${i} terminated..."
+  ) &
   NODE_MANAGER_PORT+=1
   sleep 0.5
 done
@@ -404,6 +431,8 @@ echo_cyan "  'test_builder client_server -s localhost:11000 -o my_data_dir'"
 echo_yellow "Debug logs can be fetched via"
 echo_cyan "  'scp ${NODE0}:distbench*.log my_log_dir'"
 
-wait
+wait -n
+echo_error red "\\nA distbench process terminated early."
+echo_error red "  Look for errors in the log"
 ) < /dev/null | tee deploy_to_cloudlab.log
 EOF
