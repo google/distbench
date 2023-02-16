@@ -252,7 +252,7 @@ if [[ "${CONTROL_IP6:0:4}" == "fe80" || -z "$CONTROL_IP6" ]]
 then
   SEQUENCER_IP=${CONTROL_IP4}
 else
-  SEQUENCER_IP=${CONTROL_IP6}
+  SEQUENCER_IP=[${CONTROL_IP6}]
 fi
 
 echo_green "\\nUsing ${SEQUENCER_IP} for sequencer IP"
@@ -384,7 +384,6 @@ done
 wait
 
 COMMON_ARGS=(
-  --prefer_ipv4=true
   --control_plane_device=${CONTROL_NETDEV}
 )
 TEST_SEQUENCER_ARGS=(
