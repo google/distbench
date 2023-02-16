@@ -22,7 +22,7 @@
 function git_clone_or_update() {
   if [[ $# != "4" ]]
   then
-    echo_error red "git_clone_or_update needs exactly 4 arguments to proceed"
+    echo_error red "${FUNCNAME[0]} needs exactly 4 arguments to proceed"
     return 1
   fi
   REMOTE_URL="${1}"
@@ -33,37 +33,37 @@ function git_clone_or_update() {
   echo_magenta "\\nUpdating to branch ${TAGBRANCH} of ${REMOTE_URL} ..."
   case "${GITDIR}" in
     ${REALPWD}/*)
-      # echo_magenta "git_clone_or_update output dir is within current dir :-)"
+      # echo_magenta "${FUNCNAME[0]} output dir is within current dir :-)"
       ;;
     *)
-      echo_error red  "\\nError: git_clone_or_update output dir must be within current"
+      echo_error red "\\nError: ${FUNCNAME[0]} GITDIR must be within current"
       return 2
       ;;
   esac
   case "${WORKTREE}" in
     ${GITDIR}/*)
-      # echo_magenta "git_clone_or_update worktree dir is within GITDIR :-)"
+      # echo_magenta "${FUNCNAME[0]} worktree dir is within GITDIR :-)"
       ;;
     *)
-      echo_error red  "\\nError: git_clone_or_update worktree must be within GITDIR"
+      echo_error red "\\nError: ${FUNCNAME[0]} worktree must be within GITDIR"
       return 3
       ;;
   esac
   TOP_LEVEL_URL="$(git remote get-url origin 2> /dev/null || true)"
   if [[ "${TOP_LEVEL_URL}" == "${REMOTE_URL}" ]]
   then
-    echo_error red  "\\nError: looks like we are trying to nest a repo inside itself."
+    echo_error red "\\nError: Refusing to create recursive repository".
     return 4
   fi
 
   OLD_URL="$(git -C "${GITDIR}" remote get-url origin 2> /dev/null || true)"
   if [[ -n "${OLD_URL}" && -n $(git -C "${GITDIR}" rev-parse --show-cdup) ]]
   then
-    echo_error red  "\\nLocal git repo may be corrupted!!!"
-    echo_error red  "  Refusing to overwrite anything..."
-    echo_error red  "  You might try running the follwoing command on $(hostname -f)"
+    echo_error red "\\nLocal git repo may be corrupted!!!"
+    echo_error red "  Refusing to overwrite anything..."
+    echo_error red "  You might try the following command on $(hostname -f)"
     echo_error blue "  [remove command] -rf $GITDIR"
-    echo_error red  "  and trying again if you are sure that this is safe."
+    echo_error red "  and trying again if you are sure that this is safe."
     return 5
   fi
 
@@ -97,7 +97,7 @@ function git_clone_or_update() {
     then
       echo_error red "\\nLocal git worktree may be corrupted!!!"
       echo_error red "  Refusing to overwrite anything..."
-      echo_error red "  You might try running the follwoing command on $(hostname -f)"
+      echo_error red "  You might try the following command on $(hostname -f)"
       echo_error blue "  [remove command] -rf $GITDIR"
       echo_error red "  and trying again if you are sure that this is safe."
       return 7
