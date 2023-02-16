@@ -132,6 +132,14 @@ then
   echo
 fi
 
+SCRIPT_HOST="$(hostname -f)"
+if [[ ${SCRIPT_HOST: -12} == ".cloudlab.us" ]]
+then
+  echo_error yellow "This script is meant to run on your local machine, not on"
+  echo_error yellow "the cloudlab hosts. It wil probably work, but you are not"
+  echo_error yellow "utilizing the best workflow."
+fi
+
 # The dig, nslookup, and host commands all return success if the domain exists
 # but the host doesn't. So we are stuck using ping to test if the name
 # given is even a valid host or not. If it's not valid ping returns errorcode 2
