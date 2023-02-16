@@ -132,11 +132,22 @@ then
   echo
 fi
 
-if ping -c 1 "${CLUSTER_DOMAINNAME}" &> /dev/null
+# The dig, nslookup, and host commands all return success if the domain exists
+# but the host doesn't. So we are stuck using ping to test if the name
+# given is even a valid host or not. If it's not valid ping returns errorcode 2
+# If the host fails to respond ping returns errorcode 1
+FAILURE=0
+ping -w 1 -c 1 "${CLUSTER_DOMAINNAME}" &> /dev/null || FAILURE=$?
+if [[ "$FAILURE" != 2 ]]
 then
   echo_green "It looks like ${CLUSTER_DOMAINNAME} is a hostname."
-  echo_green "  Attempting to convert it to a domainname..."
-  CLUSTER_DOMAINNAME="$(clssh ${CLUSTER_DOMAINNAME} hostname |cut -f 2- -d.)"
+  echo_green "  Attempting to convert it to an experiment domainname..."
+  CLUSTER_DOMAINNAME="$(clssh ${CLUSTER_DOMAINNAME} hostname | cut -f 2- -d.)"
+  if [[ -z "${CLUSTER_DOMAINNAME}" ]]
+  then
+    echo_error red "  Could not convert ${CLUSTER_DOMAINNAME} to an experiment"
+    exit 1
+  fi
   echo_green "    Using cluster name ${CLUSTER_DOMAINNAME}\n"
 fi
 
