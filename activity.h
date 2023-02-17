@@ -17,10 +17,7 @@
 #include <random>
 
 #include "absl/status/statusor.h"
-#include "activity.h"
 #include "distbench.pb.h"
-#include "distbench_utils.h"
-#include "traffic_config.pb.h"
 
 namespace distbench {
 

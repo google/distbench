@@ -15,6 +15,7 @@
 #include "activity.h"
 
 #include "boost/preprocessor/repetition/repeat.hpp"
+#include "distbench_utils.h"
 #include "glog/logging.h"
 
 namespace distbench {
