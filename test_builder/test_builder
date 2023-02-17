@@ -793,6 +793,24 @@ function mercury_protocol_driver_setup() {
 }
 
 ################################################################################
+# Setup the test config proto for the homa protocol driver:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   params_dict (associative array)
+################################################################################
+function homa_protocol_driver_setup() {
+  params_dict[protocol_alias]="homa"
+  if [[ -v params_dict[ip_version] ]]
+   then params_dict[protocol_alias]+="_ipv${params_dict[ip_version]}"
+  fi
+  params_dict[protocol_driver]="homa"
+  params_dict[protocol_driver_options_proto]="  default_protocol: 'homa'
+  protocol_driver_options {
+    name: 'common_options'$(maybe_emit_ip_version)
+  }"
+}
+################################################################################
 # Setup the test config proto for the clique traffic pattern:
 # Arguments:
 #   None
