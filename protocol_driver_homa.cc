@@ -22,22 +22,8 @@ absl::Status ProtocolDriverHoma::Initialize(
   }
 
   for (const auto& setting : pd_opts.server_settings()) {
-    if (setting.name() == "client_threads") {
-      client_run_threads_ = setting.int64_value();
-      if (client_run_threads_ < 1) {
-        return absl::InvalidArgumentError(
-            "client_threads int64_value field must be positive ");
-      }
-    } else if (setting.name() == "server_threads") {
-      server_run_threads_ = setting.int64_value();
-      if (server_run_threads_ < 1) {
-        return absl::InvalidArgumentError(
-            "server_threads int64_value field must be positive ");
-      }
-    } else {
-      return absl::InvalidArgumentError(
-          absl::StrCat("unknown protocol driver option: ", setting.name()));
-    }
+    return absl::InvalidArgumentError(
+        absl::StrCat("unknown protocol driver option: ", setting.name()));
   }
 
   auto maybe_ip = IpAddressForDevice(netdev_name_, pd_opts.ip_version());
