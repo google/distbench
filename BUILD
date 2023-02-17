@@ -521,7 +521,7 @@ cc_library(
     deps = [
         ":distbench_cc_proto",
         ":distbench_utils",
-        ":traffic_config_cc_proto",
+        "@com_github_google_glog//:glog",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/random",
