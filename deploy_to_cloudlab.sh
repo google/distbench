@@ -209,6 +209,8 @@ then
 fi
 
 # TODO(danmanj) rewrite all this using the jq tool:
+# TODO(danmanj) Handle netdev names like "vlan386@ens1f1np1" which need
+#               to be converted to just "vlan386" to be used.
 if [[ -n "${PRIVATE_NETDEV}" ]]
 then
   echo_green "\\nUsing netdev ${PRIVATE_NETDEV} ..."
