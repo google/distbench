@@ -61,11 +61,7 @@ class ProtocolDriverHoma : public ProtocolDriver {
   DeviceIpAddress server_ip_address_;
   std::string my_server_socket_address_;
 
-  // Homa RPC Server.
-  int server_run_threads_ = 1;
-
   // Homa RPC Client.
-  int client_run_threads_ = 1;
   std::atomic<int> pending_rpcs_ = 0;
 
   std::string netdev_name_;
