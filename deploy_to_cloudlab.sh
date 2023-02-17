@@ -239,7 +239,7 @@ function dev_is_usable() {
   local V6ADDR=$(get_ipv6 "${1}")
   if [[ "${V6ADDR:0:4}" == "fe80" ]]
   then
-    echo_error yellow "  IPv6 address is link-local, ignoring ${1}."
+    echo_error yellow "    IPv6 address for ${1} is link-local, ignoring it."
     V6ADDR=
   fi
   if [[ -z "$V4ADDR" && -z "$V6ADDR" ]]
@@ -288,6 +288,7 @@ else
       if SEQUENCER_IP=$(dev_is_usable "${netdev}")
       then
         PRIVATE_NETDEV=${netdev}
+        echo_green "    Using netdev ${PRIVATE_NETDEV} IP ${SEQUENCER_IP}"
         break
       fi
     fi
