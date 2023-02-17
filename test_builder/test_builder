@@ -472,12 +472,25 @@ function parse_params_dict_from_config_string() {
         params_dict[protocol_driver]="${part}"
       elif declare -F "${possible_pattern}" > /dev/null ; then
         params_dict[traffic_pattern]="${part}"
+      elif [[ "${part}" == "ipv6" ]] ; then
+        params_dict[ip_version]=6
+        params_dict[ip_version_string]=ipv6
+      elif [[ "${part}" == "ipv4" ]] ; then
+        params_dict[ip_version]=4
+        params_dict[ip_version_string]=ipv4
       else
         log_stderr "Unrecognized configuration component: '${part}' in '$1'"
         exit 11
       fi
     fi
   done
+}
+
+function maybe_emit_ip_version() {
+  if [[ -v params_dict[ip_version] ]]
+  then
+    echo $'\n    ip_version: '${params_dict[ip_version]:-}
+  fi
 }
 
 ################################################################################
@@ -711,6 +724,9 @@ function grpc_protocol_driver_setup() {
   local SERVER_TYPE="${params_dict[server_type]}"
   local THREADPOOL_SIZE="${params_dict[threadpool_size]}"
   params_dict[protocol_alias]="grpc_${CLIENT_TYPE}_${SERVER_TYPE}"
+  if [[ -v params_dict[ip_version] ]]
+   then params_dict[protocol_alias]+="_ipv${params_dict[ip_version]}"
+  fi
   params_dict[protocol_driver]="grpc"
   params_dict[protocol_driver_options_proto]="  default_protocol: 'grpc'
   protocol_driver_options {
@@ -735,7 +751,7 @@ function grpc_protocol_driver_setup() {
     client_settings {
       name: 'client_type'
       string_value: '${CLIENT_TYPE}'
-    }
+    }$(maybe_emit_ip_version)
   }"
 }
 
@@ -762,6 +778,9 @@ function mercury_protocol_driver_setup() {
   esac
   # "ofi+tcp://__SERVER_IP__"
   params_dict[protocol_alias]="mercury_${TRANSPORT}"
+  if [[ -v params_dict[ip_version] ]]
+   then params_dict[protocol_alias]+="_ipv${params_dict[ip_version]}"
+  fi
   params_dict[protocol_driver]="mercury"
   params_dict[protocol_driver_options_proto]="  default_protocol: 'mercury'
   protocol_driver_options {
@@ -769,7 +788,7 @@ function mercury_protocol_driver_setup() {
     server_settings {
       name: 'hg_init_info_string'
       string_value: '${HG_INIT_INFO_STRING}'
-    }
+    }$(maybe_emit_ip_version)
   }"
 }
 
