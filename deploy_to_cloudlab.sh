@@ -140,6 +140,12 @@ then
   echo_error yellow "utilizing the best workflow."
 fi
 
+if uname | grep -i CYGWIN
+then
+  echo_error red "This script will not work in CYGWIN, sorry."
+  exit 1
+fi
+
 # The dig, nslookup, and host commands all return success if the domain exists
 # but the host doesn't. So we are stuck using ping to test if the name
 # given is even a valid host or not. If it's not valid ping returns errorcode 2
