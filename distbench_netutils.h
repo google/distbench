@@ -53,7 +53,7 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
                                                bool prefer_ipv4);
 std::string GetBindAddressFromPort(std::string_view netdev, int port);
 absl::StatusOr<DeviceIpAddress> IpAddressForDevice(std::string_view netdev,
-                                                   int ip_version = 0);
+                                                   int ip_version);
 std::string SocketAddressForIp(DeviceIpAddress ip, int port);
 absl::StatusOr<std::string> SocketAddressForDevice(std::string_view netdev,
                                                    int port);
