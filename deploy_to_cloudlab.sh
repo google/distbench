@@ -208,9 +208,50 @@ then
   GIT_REPO="${MIRROR_GIT}"
 fi
 
+function get_ipv4() {
+  addr_line=$(clssh ${NODE0} ip -br -4 address show dev ${1})
+  if [[ -z "${addr_line}" ]]
+  then
+    echo_error yellow "  No IPv4 address associated with ${1}"
+  else
+    echo "${addr_line}" | (IFS=" /" ;read a b c d; echo $c)
+  fi
+}
+
+function get_ipv6() {
+  addr_line=$(clssh ${NODE0} ip -br -6 address show dev ${1})
+  if [[ -z "${addr_line}" ]]
+  then
+    echo_error yellow "  No IPv6 address associated with ${1}"
+  else
+    echo "${addr_line}" | (IFS=" /" ;read a b c d; echo $c)
+  fi
+}
+
+function dev_is_usable() {
+  local V4ADDR=$(get_ipv4 "${1}")
+  local V6ADDR=$(get_ipv6 "${1}")
+  if [[ "${V6ADDR:0:4}" == "fe80" ]]
+  then
+    echo_error yellow "  IPv6 address is link-local, ignoring ${1}."
+    V6ADDR=
+  fi
+  if [[ -z "$V4ADDR" && -z "$V6ADDR" ]]
+  then
+    echo_error red "  No usable IP address associated with ${1}"
+    return 1
+  fi
+
+  if [[ -z "$V6ADDR" ]]
+  then
+    echo -n "${V4ADDR}"
+  else
+    echo -n "[${V6ADDR}]"
+  fi
+  return 0
+}
+
 # TODO(danmanj) rewrite all this using the jq tool:
-# TODO(danmanj) Handle netdev names like "vlan386@ens1f1np1" which need
-#               to be converted to just "vlan386" to be used.
 if [[ -n "${PRIVATE_NETDEV}" ]]
 then
   echo_green "\\nUsing netdev ${PRIVATE_NETDEV} ..."
@@ -229,6 +270,8 @@ else
   fi
   for netdev in "${netdev_list[@]}"
   do
+    #strip any suffix, so that e.g. vlan384@dev becomes vlan384
+    netdev=${netdev%@*}
     echo_green "  Trying netdev $netdev..."
     if clssh ${NODE0} ip address show dev $netdev | grep $PUBLIC_IP &> /dev/null
     then
@@ -236,8 +279,11 @@ else
       PUBLIC_NETDEV=${netdev}
     else
       echo_green "    Netdev ${netdev} is a private interface."
-      PRIVATE_NETDEV=${netdev}
-      break
+      if SEQUENCER_IP=$(dev_is_usable "${netdev}")
+      then
+        PRIVATE_NETDEV=${netdev}
+        break
+      fi
     fi
   done
 fi
@@ -245,37 +291,10 @@ fi
 CONTROL_NETDEV=${PRIVATE_NETDEV}
 TRAFFIC_NETDEV=${PRIVATE_NETDEV}
 
-CONTROL_IP4=$(
-  addr_line=$(clssh ${NODE0} ip -br -4 address show dev ${CONTROL_NETDEV})
-  if [[ -z "${addr_line}" ]]
-  then
-    echo_error yellow "  No IPv4 address associated with ${CONTROL_NETDEV}"
-  else
-    echo "${addr_line}" | (IFS=" /" ;read a b c d; echo $c)
-  fi
-)
-
-CONTROL_IP6=$(
-  addr_line=$(clssh ${NODE0} ip -br -6 address show dev ${CONTROL_NETDEV})
-  if [[ -z "${addr_line}" ]]
-  then
-    echo_error yellow "  No IPv6 address associated with ${CONTROL_NETDEV}"
-  else
-    echo "${addr_line}" | (IFS=" /" ;read a b c d; echo $c)
-  fi
-)
-
-if [[ -z "$CONTROL_IP4" && -z "$CONTROL_IP6" ]]
+if [[ -z "${SEQUENCER_IP}" ]]
 then
-  echo_error red "  No IP address associated with ${CONTROL_NETDEV}"
+  echo_error red "Could not determine IP to use for sequencer."
   exit 1
-fi
-
-if [[ "${CONTROL_IP6:0:4}" == "fe80" || -z "$CONTROL_IP6" ]]
-then
-  SEQUENCER_IP=${CONTROL_IP4}
-else
-  SEQUENCER_IP=[${CONTROL_IP6}]
 fi
 
 echo_green "\\nUsing ${SEQUENCER_IP} for sequencer IP"
