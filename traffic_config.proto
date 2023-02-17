@@ -101,6 +101,7 @@ message ProtocolDriverOptions {
   optional string netdev_name = 3;
   repeated NamedSetting server_settings = 4;
   repeated NamedSetting client_settings = 5;
+  optional int32 ip_version = 6 [default = 0];
 }
 
 message DistributedSystemDescription {

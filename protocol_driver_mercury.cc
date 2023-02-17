@@ -35,8 +35,13 @@ ProtocolDriverMercury::ProtocolDriverMercury() {}
 
 absl::Status ProtocolDriverMercury::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
+  if (mercury_ipv4_only_ && pd_opts.ip_version() && pd_opts.ip_version() != 4) {
+    return absl::UnimplementedError(
+        "The compiled-in version of mercury only supports IPv4");
+  }
   std::string netdev_name = pd_opts.netdev_name();
-  auto maybe_ip = IpAddressForDevice(netdev_name, mercury_ipv4_only_ ? 4 : 0);
+  auto maybe_ip = IpAddressForDevice(
+      netdev_name, mercury_ipv4_only_ ? 4 : pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);

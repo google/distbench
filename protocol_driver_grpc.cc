@@ -210,7 +210,7 @@ absl::Status GrpcInlineServerDriver::Initialize(
   std::string netdev_name = pd_opts.netdev_name();
   transport_ =
       GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
-  auto maybe_ip = IpAddressForDevice(netdev_name);
+  auto maybe_ip = IpAddressForDevice(netdev_name, pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
@@ -487,7 +487,7 @@ absl::Status GrpcHandoffServerDriver::Initialize(
   std::string netdev_name = pd_opts.netdev_name();
   transport_ =
       GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
-  auto maybe_ip = IpAddressForDevice(netdev_name);
+  auto maybe_ip = IpAddressForDevice(netdev_name, pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
@@ -645,7 +645,7 @@ absl::Status GrpcPollingServerDriver::Initialize(
   std::string netdev_name = pd_opts.netdev_name();
   transport_ =
       GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
-  auto maybe_ip = IpAddressForDevice(netdev_name);
+  auto maybe_ip = IpAddressForDevice(netdev_name, pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);

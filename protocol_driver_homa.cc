@@ -40,7 +40,7 @@ absl::Status ProtocolDriverHoma::Initialize(
     }
   }
 
-  auto maybe_ip = IpAddressForDevice(netdev_name_);
+  auto maybe_ip = IpAddressForDevice(netdev_name_, pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
   int af = server_ip_address_.Family();

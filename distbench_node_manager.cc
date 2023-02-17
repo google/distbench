@@ -279,12 +279,13 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   NodeRegistration reg;
   reg.set_preassigned_node_id(opts_.preassigned_node_id);
   reg.set_hostname(Hostname());
-  auto maybe_ip = IpAddressForDevice(opts_.control_plane_device);
-  if (!maybe_ip.ok()) {
-    Shutdown();
-    return maybe_ip.status();
+  std::string ip = service_address_;
+  if (ip.data()[0] == '[') {
+    ip = ip.substr(1, ip.find(']') - 1);
+  } else {
+    ip = ip.substr(0, ip.find(':'));
   }
-  reg.set_control_ip(maybe_ip.value().ip());
+  reg.set_control_ip(ip);
   reg.set_control_port(*opts_.port);
 
   grpc::ClientContext context;
