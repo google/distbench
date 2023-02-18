@@ -33,31 +33,43 @@ namespace distbench {
 
 namespace {
 
-std::shared_ptr<grpc::Channel> CreateClientChannel(
+absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
     const std::string& socket_address, std::string_view transport) {
   if (transport == "homa") {
 #if WITH_HOMA_GRPC
     return HomaClient::createInsecureChannel(socket_address.data());
 #else
-    return {};
+    LOG(ERROR) << "Homa transport not compiled in";
+    LOG(ERROR) << "You must build with bazel build --//:with-homa-grpc";
+    return absl::UnimplementedError("Homa transport not compiled in");
 #endif
-  } else {
+  } else if (transport.empty() || transport == "tcp") {
     std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
     return grpc::CreateCustomChannel(socket_address, creds,
                                      DistbenchCustomChannelArguments());
+  } else {
+    LOG(ERROR) << "protocol_driver_grpc: unknown transport: " << transport;
+    return absl::UnimplementedError(
+        absl::StrCat("unknown transport: ", transport));
   }
 }
 
-std::shared_ptr<grpc::ServerCredentials> CreateServerCreds(
+absl::StatusOr<std::shared_ptr<grpc::ServerCredentials>> CreateServerCreds(
     std::string_view transport) {
   if (transport == "homa") {
 #if WITH_HOMA_GRPC
     return HomaListener::insecureCredentials();
 #else
-    return {};
+    LOG(ERROR) << "Homa transport not compiled in";
+    LOG(ERROR) << "You must build with bazel build --//:with-homa-grpc";
+    return absl::UnimplementedError("Homa transport not compiled in");
 #endif
-  } else {
+  } else if (transport.empty() || transport == "tcp") {
     return MakeServerCredentials();
+  } else {
+    LOG(ERROR) << "protocol_driver_grpc: unknown transport: " << transport;
+    return absl::UnimplementedError(
+        absl::StrCat("unknown transport: ", transport));
   }
 }
 
@@ -85,9 +97,11 @@ absl::Status GrpcPollingClientDriver::HandleConnect(
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
-  std::shared_ptr<grpc::Channel> channel =
-      CreateClientChannel(addr.socket_address(), transport_);
-  grpc_client_stubs_[peer] = Traffic::NewStub(channel);
+  auto maybe_channel = CreateClientChannel(addr.socket_address(), transport_);
+  if (!maybe_channel.ok()) {
+    return maybe_channel.status();
+  }
+  grpc_client_stubs_[peer] = Traffic::NewStub(maybe_channel.value());
   return absl::OkStatus();
 }
 
@@ -217,9 +231,12 @@ absl::Status GrpcInlineServerDriver::Initialize(
   traffic_service_ = std::make_unique<TrafficService>();
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
-  std::shared_ptr<grpc::ServerCredentials> server_creds =
-      CreateServerCreds(transport_);
-  builder.AddListeningPort(server_socket_address_, server_creds, port);
+  auto maybe_server_creds = CreateServerCreds(transport_);
+  if (!maybe_server_creds.ok()) {
+    return maybe_server_creds.status();
+  }
+  builder.AddListeningPort(server_socket_address_, maybe_server_creds.value(),
+                           port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
@@ -385,9 +402,11 @@ absl::Status GrpcCallbackClientDriver::HandleConnect(
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
-  std::shared_ptr<grpc::Channel> channel =
-      CreateClientChannel(addr.socket_address(), transport_);
-  grpc_client_stubs_[peer] = Traffic::NewStub(channel);
+  auto maybe_channel = CreateClientChannel(addr.socket_address(), transport_);
+  if (!maybe_channel.ok()) {
+    return maybe_channel.status();
+  }
+  grpc_client_stubs_[peer] = Traffic::NewStub(maybe_channel.value());
   return absl::OkStatus();
 }
 
@@ -497,9 +516,12 @@ absl::Status GrpcHandoffServerDriver::Initialize(
       std::make_unique<TrafficServiceAsyncCallback>(threadpool_size);
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
-  std::shared_ptr<grpc::ServerCredentials> server_creds =
-      CreateServerCreds(transport_);
-  builder.AddListeningPort(server_socket_address_, server_creds, port);
+  auto maybe_server_creds = CreateServerCreds(transport_);
+  if (!maybe_server_creds.ok()) {
+    return maybe_server_creds.status();
+  }
+  builder.AddListeningPort(server_socket_address_, maybe_server_creds.value(),
+                           port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
@@ -652,9 +674,12 @@ absl::Status GrpcPollingServerDriver::Initialize(
   traffic_async_service_ = std::make_unique<Traffic::AsyncService>();
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
-  std::shared_ptr<grpc::ServerCredentials> server_creds =
-      CreateServerCreds(transport_);
-  builder.AddListeningPort(server_socket_address_, server_creds, port);
+  auto maybe_server_creds = CreateServerCreds(transport_);
+  if (!maybe_server_creds.ok()) {
+    return maybe_server_creds.status();
+  }
+  builder.AddListeningPort(server_socket_address_, maybe_server_creds.value(),
+                           port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_async_service_.get());
