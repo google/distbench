@@ -641,9 +641,10 @@ function run_all_tests() {
   which "${DISTBENCH}" > /dev/null ||
     DISTBENCH="$(dirname "$(which $0)")/${RELPATH}"
   which "${DISTBENCH}" > /dev/null || {
-    log_stderr "Could not locate the 'distbench' binary needed to run tests."
+    log_stderr "\nCould not locate the 'distbench' binary needed to run tests."
     log_stderr "(Tried 'distbench' and '${DISTBENCH}')"
-    log_stderr 'Make sure distbench is in your $PATH, or has been built in-tree'
+    log_stderr "Make sure distbench is in your PATH, or has been built in-tree"
+    log_stderr "The command 'bazel build :distbench' will attempt to build it."
     exit 13
   }
 
