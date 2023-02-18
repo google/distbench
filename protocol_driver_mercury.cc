@@ -198,6 +198,7 @@ void ProtocolDriverMercury::InitiateRpc(
   hg_ret = HG_Create(hg_context_, remote_addresses_[peer_index],
                      mercury_generic_rpc_id_, &target_handle);
   if (hg_ret != HG_SUCCESS) {
+    --pending_rpcs_;
     LOG(ERROR) << "HG_Create: failed";
     return;
   }
@@ -214,6 +215,7 @@ void ProtocolDriverMercury::InitiateRpc(
   hg_ret = HG_Forward(target_handle, StaticClientCallback, new_rpc,
                       &new_rpc->encoded_request);
   if (hg_ret != HG_SUCCESS) {
+    --pending_rpcs_;
     LOG(ERROR) << " HG_Forward: failed";
   }
 }
@@ -362,6 +364,7 @@ hg_return_t ProtocolDriverMercury::RpcClientCallback(
   mercury_generic_rpc_string_t result;
   hg_return_t hg_ret = HG_Get_output(rpc->hg_handle, &result);
   if (hg_ret != HG_SUCCESS) {
+    --pending_rpcs_;
     LOG(ERROR) << "HG_Get_output: failed";
     return hg_ret;
   }
