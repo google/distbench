@@ -680,7 +680,12 @@ function maybe_run_test_sequence() {
                  --binary_output \
                  <<< "${TEST_SEQUENCE_PROTO}"
 
-  pigz "${OUTPUT_FILE}"
+  if which pigz &> /dev/null
+  then
+    pigz "${OUTPUT_FILE}"
+  else
+    gzip "${OUTPUT_FILE}"
+  fi
 }
 
 ################################################################################
