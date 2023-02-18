@@ -1218,29 +1218,26 @@ void DistBenchEngine::FinishIteration(
   ActionState* state = iteration_state->action_state;
   bool open_loop =
       state->action->proto.iterations().has_open_loop_interval_ns();
-  bool start_another_iteration = !open_loop;
   bool done = canceled_.HasBeenNotified();
   state->iteration_mutex.Lock();
   ++state->finished_iterations;
   if (state->next_iteration == state->iteration_limit) {
     done = true;
-    start_another_iteration = false;
   } else if (!open_loop) {
     // Closed loop iteration:
     if (state->time_limit != absl::InfiniteFuture()) {
       if (clock_->Now() > state->time_limit) {
         done = true;
-        start_another_iteration = false;
       }
     }
   } else {
     // Open loop (possibly sync_burst) iteration:
     if (state->next_iteration_time > state->time_limit) {
       done = true;
-      start_another_iteration = false;
     }
   }
-  if (start_another_iteration && !done) {
+  const bool start_another_iteration = !done && !open_loop;
+  if (start_another_iteration) {
     iteration_state->iteration_number = state->next_iteration++;
   }
   int pending_iterations = state->next_iteration - state->finished_iterations;
