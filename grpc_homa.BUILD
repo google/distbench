@@ -146,6 +146,9 @@ cc_library(
         ":homa_stream_lib",
         "@com_github_grpc_grpc//:grpc++",
         "@homa_module//:homa_api",
+    ],
+    defines = [
+        "WITH_HOMA_GRPC",
     ]
 )
 

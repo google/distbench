@@ -158,16 +158,6 @@ cc_library(
     srcs = [
         "protocol_driver_allocator.cc",
     ],
-    copts = select({
-        ":with_mercury": ["-DWITH_MERCURY=1"],
-        "//conditions:default": [],
-    }) + select({
-        ":with_homa": ["-DWITH_HOMA=1"],
-        "//conditions:default": [],
-    }) + select({
-        ":with_homa_grpc": ["-DWITH_HOMA_GRPC=1"],
-        "//conditions:default": [],
-    }),
     deps = [
         ":composable_rpc_counter",
         ":distbench_cc_proto",
@@ -192,10 +182,6 @@ cc_library(
     hdrs = [
         "protocol_driver_grpc.h",
     ],
-    copts = select({
-        ":with_homa_grpc": ["-DWITH_HOMA_GRPC=1"],
-        "//conditions:default": [],
-    }),
     deps = [
         ":distbench_cc_grpc_proto",
         ":distbench_threadpool_lib",
@@ -235,6 +221,9 @@ cc_library(
     hdrs = [
         "protocol_driver_homa.h",
     ],
+    defines = [
+        "WITH_HOMA",
+    ],
     tags = [
         "manual",
     ],
@@ -258,16 +247,6 @@ cc_test(
     name = "protocol_driver_test",
     size = "medium",
     srcs = ["protocol_driver_test.cc"],
-    copts = select({
-        ":with_mercury": ["-DWITH_MERCURY=1"],
-        "//conditions:default": [],
-    }) + select({
-        ":with_homa": ["-DWITH_HOMA=1"],
-        "//conditions:default": [],
-    }) + select({
-        ":with_homa_grpc": ["-DWITH_HOMA_GRPC=1"],
-        "//conditions:default": [],
-    }),
     shard_count = 8,
     deps = [
         ":distbench_utils",
@@ -347,13 +326,6 @@ cc_test(
     name = "distbench_test_sequencer_test",
     size = "medium",
     srcs = ["distbench_test_sequencer_test.cc"],
-    copts = select({
-        ":with_mercury": ["-DWITH_MERCURY=1"],
-        "//conditions:default": [],
-    }) + select({
-        ":with_homa": ["-DWITH_HOMA=1"],
-        "//conditions:default": [],
-    }),
     shard_count = 8,
     deps = [
         ":distbench_node_manager_lib",
@@ -410,7 +382,7 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/strings",
         "@com_github_cthreadpool//:thpool"
-    ],
+    ]
 )
 
 cc_test(
