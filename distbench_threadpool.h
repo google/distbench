@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "absl/synchronization/notification.h"
-#include "distbench_utils.h"
+#include "distbench_thread_support.h"
 
 #ifndef USE_DISTBENCH_THREADPOOL
 #include "thpool.h"

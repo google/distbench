@@ -61,8 +61,6 @@ class SafeNotification {
 grpc::ChannelArguments DistbenchCustomChannelArguments();
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
-std::thread RunRegisteredThread(const std::string& thread_name,
-                                std::function<void()> f);
 
 std::string ServiceInstanceName(std::string_view service_type, int instance);
 std::map<std::string, int> EnumerateServiceSizes(

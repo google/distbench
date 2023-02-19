@@ -65,11 +65,6 @@ std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials() {
   return grpc::InsecureServerCredentials();
 }
 
-std::thread RunRegisteredThread(const std::string& thread_name,
-                                std::function<void()> f) {
-  return std::thread([=]() { f(); });
-}
-
 void InitLibs(const char* argv0) {
   // Extra library initialization can go here
   ::google::InitGoogleLogging(argv0);
