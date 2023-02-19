@@ -41,7 +41,7 @@ absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
     LOG(ERROR) << "You must build with bazel build --//:with-homa-grpc";
     return absl::UnimplementedError("Homa transport not compiled in");
 #endif
-  } else if (transport.empty() || transport == "tcp") {
+  } else if (transport == "tcp") {
     std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
     return grpc::CreateCustomChannel(socket_address, creds,
                                      DistbenchCustomChannelArguments());
@@ -62,7 +62,7 @@ absl::StatusOr<std::shared_ptr<grpc::ServerCredentials>> CreateServerCreds(
     LOG(ERROR) << "You must build with bazel build --//:with-homa-grpc";
     return absl::UnimplementedError("Homa transport not compiled in");
 #endif
-  } else if (transport.empty() || transport == "tcp") {
+  } else if (transport == "tcp") {
     return MakeServerCredentials();
   } else {
     LOG(ERROR) << "protocol_driver_grpc: unknown transport: " << transport;
