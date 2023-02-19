@@ -63,6 +63,11 @@ TEST_P(ThreadpoolTest, ParallelAddTest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(ThreadpoolTests, ThreadpoolTest,
-                         testing::Values("", "simple", "cthread"));
+                         testing::Values("", "simple", "cthread"
+#ifdef WITH_MERCURY
+                                         ,
+                                         "mercury"
+#endif
+                                         ));
 
 }  // namespace
