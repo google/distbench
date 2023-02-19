@@ -22,6 +22,10 @@
 #include "glog/logging.h"
 #include "thpool.h"
 
+#ifdef WITH_MERCURY
+#include <mercury_thread_pool.h>
+#endif
+
 namespace distbench {
 
 namespace {
@@ -109,6 +113,53 @@ void CThreadpool::Trampoline(void* function) {
   delete f;
 }
 
+#ifdef WITH_MERCURY
+class MercuryThreadpool : public AbstractThreadpool {
+ public:
+  MercuryThreadpool(int nb_threads);
+  virtual ~MercuryThreadpool();
+  virtual void AddWork(std::function<void()> function);
+
+ private:
+  struct heaper {
+    struct hg_thread_work work_item; /* Must be first! */
+    std::function<void()> function;
+  };
+  static void* Trampoline(void* function);
+  std::unique_ptr<hg_thread_pool_t> thread_pool_;
+};
+
+MercuryThreadpool::MercuryThreadpool(int nb_threads) {
+  hg_thread_pool_t* tmp;
+  int error = hg_thread_pool_init(nb_threads, &tmp);
+  thread_pool_.reset(tmp);
+  if (error) {
+    LOG(INFO) << "some kinda error: " << error;
+  }
+}
+
+MercuryThreadpool::~MercuryThreadpool() {
+  hg_thread_pool_destroy(thread_pool_.release());
+}
+
+void MercuryThreadpool::AddWork(std::function<void()> function) {
+  // Copy the functor object to the heap, and pass the address of the heap
+  // object to the thread pool:
+  auto* hpointer = new heaper;
+  hpointer->work_item.func = Trampoline;
+  hpointer->work_item.args = hpointer;
+  hpointer->function = function;
+  hg_thread_pool_post(thread_pool_.get(), &hpointer->work_item);
+}
+
+void* MercuryThreadpool::Trampoline(void* heap_object) {
+  // Execute and delete the heap allocated copy of the functor object:
+  auto h = reinterpret_cast<heaper*>(heap_object);
+  h->function();
+  delete h;
+  return 0;
+}
+#endif  // WITH_MERCURY
 }  // anonymous namespace
 
 std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
@@ -117,6 +168,10 @@ std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
     return std::make_unique<SimpleThreadpool>(size);
   } else if (name == "cthread") {
     return std::make_unique<CThreadpool>(size);
+#ifdef WITH_MERCURY
+  } else if (name == "mercury") {
+    return std::make_unique<MercuryThreadpool>(size);
+#endif
   } else {
     return {};
   }
