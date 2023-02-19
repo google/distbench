@@ -14,39 +14,55 @@
 
 #include "distbench_threadpool.h"
 
+#include <atomic>
+
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 
 namespace {
 
-TEST(DistBenchThreadPool, Constructor) {
-  distbench::DistbenchThreadpool dtp{4};
+using distbench::CreateThreadpool;
+
+class ThreadpoolTest : public testing::TestWithParam<std::string> {};
+
+TEST(ThreadpoolTest, BadType) {
+  auto atp = CreateThreadpool("bad_type", 4);
+  EXPECT_TRUE(atp == nullptr);
 };
 
-TEST(DistBenchThreadPool, PerformSimpleWork) {
+TEST_P(ThreadpoolTest, Constructor) {
+  auto atp = CreateThreadpool(GetParam(), 4);
+};
+
+TEST_P(ThreadpoolTest, PerformSimpleWork) {
+  const int iterations = 1000;
   std::atomic<int> work_counter = 0;
   {
-    distbench::DistbenchThreadpool dtp{4};
-    for (int i = 0; i < 1000; i++) {
-      dtp.AddWork([&]() { ++work_counter; });
+    auto atp = CreateThreadpool(GetParam(), 4);
+    for (int i = 0; i < iterations; i++) {
+      atp->AddWork([&]() { ++work_counter; });
     }
-  }  // Complete the work of dtp.
-  ASSERT_EQ(work_counter, 1000);
+  }  // Complete the work of atp.
+  ASSERT_EQ(work_counter, iterations);
 };
 
-TEST(DistBenchThreadPool, ParallelAddTest) {
+TEST_P(ThreadpoolTest, ParallelAddTest) {
+  const int iterations = 1000;
   std::atomic<int> work_counter = 0;
   {
-    distbench::DistbenchThreadpool dtp_work_performer{4};
+    auto atp_work_performer = CreateThreadpool(GetParam(), 4);
     {
-      distbench::DistbenchThreadpool dtp_work_generator{4};
-      for (int i = 0; i < 1000; i++) {
-        dtp_work_generator.AddWork(
-            [&]() { dtp_work_performer.AddWork([&]() { ++work_counter; }); });
+      auto atp_work_generator = CreateThreadpool(GetParam(), 4);
+      for (int i = 0; i < iterations; i++) {
+        atp_work_generator->AddWork(
+            [&]() { atp_work_performer->AddWork([&]() { ++work_counter; }); });
       }
-    }  // Complete the work of dtp_work_generator.
-  }    // Complete the work of dtp_work_performer.
-  ASSERT_EQ(work_counter, 1000);
+    }  // Complete the work of atp_work_generator.
+  }    // Complete the work of atp_work_performer.
+  ASSERT_EQ(work_counter, iterations);
 }
+
+INSTANTIATE_TEST_SUITE_P(ThreadpoolTests, ThreadpoolTest,
+                         testing::Values("", "simple", "cthread"));
 
 }  // namespace

@@ -15,37 +15,20 @@
 #ifndef DISTBENCH_DISTBENCH_THREADPOOL_H_
 #define DISTBENCH_DISTBENCH_THREADPOOL_H_
 
-#include <queue>
-#include <thread>
-#include <vector>
-
-#include "absl/synchronization/notification.h"
-#include "distbench_thread_support.h"
-
-#ifndef USE_DISTBENCH_THREADPOOL
-#include "thpool.h"
-#endif
+#include <functional>
+#include <memory>
+#include <string_view>
 
 namespace distbench {
 
-class DistbenchThreadpool {
+class AbstractThreadpool {
  public:
-  DistbenchThreadpool(int nb_threads);
-  ~DistbenchThreadpool();
-  void AddWork(std::function<void()> function);
-
- private:
-  mutable absl::Mutex mutex_;
-  absl::Notification shutdown_;
-  std::vector<std::thread> threads_;
-  std::queue<std::function<void()> > work_queue_;
-
-#ifndef USE_DISTBENCH_THREADPOOL
-  // This is the C-Threadpool from an external library.
-  // https://github.com/Pithikos/C-Thread-Pool
-  threadpool thpool_;
-#endif
+  virtual ~AbstractThreadpool() = default;
+  virtual void AddWork(std::function<void()> function) = 0;
 };
+
+std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
+                                                     int size);
 
 }  // namespace distbench
 

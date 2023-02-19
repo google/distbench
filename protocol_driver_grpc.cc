@@ -314,8 +314,10 @@ absl::Status ProtocolDriverGrpc::Initialize(
   } else if (server_type == "polling") {
     auto threadpool_size = GetNamedServerSettingInt64(
         pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
+    auto threadpool_type =
+        GetNamedServerSettingString(pd_opts, "threadpool_type", "");
     server_ = std::unique_ptr<ProtocolDriverServer>(
-        new GrpcPollingServerDriver(threadpool_size));
+        new GrpcPollingServerDriver(threadpool_type, threadpool_size));
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
@@ -460,8 +462,9 @@ namespace {
 class TrafficServiceAsyncCallback
     : public Traffic::ExperimentalCallbackService {
  public:
-  TrafficServiceAsyncCallback(int threadpool_size)
-      : thread_pool_(threadpool_size) {}
+  TrafficServiceAsyncCallback(std::string_view threadpool_type,
+                              int threadpool_size)
+      : thread_pool_(CreateThreadpool(threadpool_type, threadpool_size)) {}
   ~TrafficServiceAsyncCallback() override { handler_set_.TryToNotify(); }
 
   void SetHandler(
@@ -485,7 +488,7 @@ class TrafficServiceAsyncCallback
     if (handler_) {
       auto remaining_work = handler_(rpc_state);
       if (remaining_work) {
-        thread_pool_.AddWork(remaining_work);
+        thread_pool_->AddWork(remaining_work);
       }
     }
     return reactor;
@@ -494,7 +497,7 @@ class TrafficServiceAsyncCallback
  private:
   SafeNotification handler_set_;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
-  distbench::DistbenchThreadpool thread_pool_;
+  std::unique_ptr<AbstractThreadpool> thread_pool_;
 };
 }  // anonymous namespace
 
@@ -512,8 +515,10 @@ absl::Status GrpcHandoffServerDriver::Initialize(
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
   auto threadpool_size = GetNamedServerSettingInt64(
       pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
-  traffic_service_ =
-      std::make_unique<TrafficServiceAsyncCallback>(threadpool_size);
+  auto threadpool_type =
+      GetNamedServerSettingString(pd_opts, "threadpool_type", "");
+  traffic_service_ = std::make_unique<TrafficServiceAsyncCallback>(
+      threadpool_type, threadpool_size);
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   auto maybe_server_creds = CreateServerCreds(transport_);
@@ -573,7 +578,7 @@ class PollingRpcHandlerFsm {
   PollingRpcHandlerFsm(
       Traffic::AsyncService* service, grpc::ServerCompletionQueue* cq,
       std::function<std::function<void()>(ServerRpcState* state)>* handler,
-      DistbenchThreadpool* thread_pool)
+      AbstractThreadpool* thread_pool)
       : service_(service),
         cq_(cq),
         handler_(handler),
@@ -649,7 +654,7 @@ class PollingRpcHandlerFsm {
   std::function<std::function<void()>(ServerRpcState* state)>* handler_;
   grpc::ServerAsyncResponseWriter<GenericResponse> responder_;
   grpc::ServerContext ctx_;
-  DistbenchThreadpool* thread_pool_;
+  AbstractThreadpool* thread_pool_;
   CallState state_;
   ServerRpcState rpc_state_;
   std::atomic<int> refcnt_ = 1;
@@ -657,8 +662,9 @@ class PollingRpcHandlerFsm {
 }  // anonymous namespace
 
 // Server =====================================================================
-GrpcPollingServerDriver::GrpcPollingServerDriver(int threadpool_size)
-    : thread_pool_(threadpool_size) {}
+GrpcPollingServerDriver::GrpcPollingServerDriver(
+    std::string_view threadpool_type, int threadpool_size)
+    : thread_pool_(CreateThreadpool(threadpool_type, threadpool_size)) {}
 
 GrpcPollingServerDriver::~GrpcPollingServerDriver() { ShutdownServer(); }
 
@@ -738,7 +744,7 @@ std::vector<TransportStat> GrpcPollingServerDriver::GetTransportStats() {
 
 void GrpcPollingServerDriver::HandleRpcs() {
   new PollingRpcHandlerFsm(traffic_async_service_.get(), server_cq_.get(),
-                           &handler_, &thread_pool_);
+                           &handler_, thread_pool_.get());
   // Make sure the completion queue is nonempty before allowing Initialize
   // to return:
   handle_rpcs_started_.Notify();
