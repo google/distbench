@@ -177,7 +177,8 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
 class GrpcPollingServerDriver : public ProtocolDriverServer {
  public:
   // TODO: Add a struct of threadpool options in future.
-  GrpcPollingServerDriver(int threadpool_size);
+  GrpcPollingServerDriver(std::string_view threadpool_type,
+                          int threadpool_size);
   ~GrpcPollingServerDriver() override;
 
   absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
@@ -204,7 +205,7 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   std::unique_ptr<Traffic::AsyncService> traffic_async_service_;
   grpc::ServerContext context;
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
-  DistbenchThreadpool thread_pool_;
+  std::unique_ptr<AbstractThreadpool> thread_pool_;
   SafeNotification server_shutdown_detected_;
   absl::Notification handle_rpcs_started_;
   SafeNotification handler_set_;

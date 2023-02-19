@@ -24,12 +24,6 @@ bool_flag(
     build_setting_default = False,
 )
 
-# TODO: Make the threadpool run-time configurable.
-bool_flag(
-    name = "use-distbench-threadpool",
-    build_setting_default = True,
-)
-
 # Declare build settings that propgate flags values to build rules:
 config_setting(
     name = "with_mercury",
@@ -44,11 +38,6 @@ config_setting(
 config_setting(
     name = "with_homa_grpc",
     flag_values = {":with-homa-grpc": "True"},
-)
-
-config_setting(
-    name = "use_distbench_threadpool",
-    flag_values = {":use-distbench-threadpool": "True"},
 )
 
 cc_library(
@@ -414,12 +403,9 @@ cc_library(
     name = "distbench_threadpool_lib",
     srcs = ["distbench_threadpool.cc"],
     hdrs = ["distbench_threadpool.h"],
-    defines = select({
-        ":use_distbench_threadpool": ["USE_DISTBENCH_THREADPOOL=1"],
-        "//conditions:default":[],
-    }),
     deps = [
         ":distbench_thread_support",
+        "@com_github_google_glog//:glog",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/strings",
