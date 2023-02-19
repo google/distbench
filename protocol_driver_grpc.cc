@@ -316,8 +316,13 @@ absl::Status ProtocolDriverGrpc::Initialize(
         pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
     auto threadpool_type =
         GetNamedServerSettingString(pd_opts, "threadpool_type", "");
+    auto tp = CreateThreadpool(threadpool_type, threadpool_size);
+    if (!tp) {
+      return absl::UnknownError(absl::StrCat(
+          "Could not allocate threadpool of type '", threadpool_type, "'"));
+    }
     server_ = std::unique_ptr<ProtocolDriverServer>(
-        new GrpcPollingServerDriver(threadpool_type, threadpool_size));
+        new GrpcPollingServerDriver(std::move(tp)));
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
@@ -462,9 +467,8 @@ namespace {
 class TrafficServiceAsyncCallback
     : public Traffic::ExperimentalCallbackService {
  public:
-  TrafficServiceAsyncCallback(std::string_view threadpool_type,
-                              int threadpool_size)
-      : thread_pool_(CreateThreadpool(threadpool_type, threadpool_size)) {}
+  TrafficServiceAsyncCallback(std::unique_ptr<AbstractThreadpool> tp)
+      : thread_pool_(std::move(tp)) {}
   ~TrafficServiceAsyncCallback() override { handler_set_.TryToNotify(); }
 
   void SetHandler(
@@ -517,8 +521,14 @@ absl::Status GrpcHandoffServerDriver::Initialize(
       pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
   auto threadpool_type =
       GetNamedServerSettingString(pd_opts, "threadpool_type", "");
-  traffic_service_ = std::make_unique<TrafficServiceAsyncCallback>(
-      threadpool_type, threadpool_size);
+
+  auto tp = CreateThreadpool(threadpool_type, threadpool_size);
+  if (!tp) {
+    return absl::UnknownError(absl::StrCat(
+        "Could not allocate threadpool of type '", threadpool_type, "'"));
+  }
+  traffic_service_ =
+      std::make_unique<TrafficServiceAsyncCallback>(std::move(tp));
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   auto maybe_server_creds = CreateServerCreds(transport_);
@@ -663,8 +673,8 @@ class PollingRpcHandlerFsm {
 
 // Server =====================================================================
 GrpcPollingServerDriver::GrpcPollingServerDriver(
-    std::string_view threadpool_type, int threadpool_size)
-    : thread_pool_(CreateThreadpool(threadpool_type, threadpool_size)) {}
+    std::unique_ptr<AbstractThreadpool> tp)
+    : thread_pool_(std::move(tp)) {}
 
 GrpcPollingServerDriver::~GrpcPollingServerDriver() { ShutdownServer(); }
 

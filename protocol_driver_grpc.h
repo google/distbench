@@ -176,9 +176,7 @@ class GrpcHandoffServerDriver : public ProtocolDriverServer {
 
 class GrpcPollingServerDriver : public ProtocolDriverServer {
  public:
-  // TODO: Add a struct of threadpool options in future.
-  GrpcPollingServerDriver(std::string_view threadpool_type,
-                          int threadpool_size);
+  GrpcPollingServerDriver(std::unique_ptr<AbstractThreadpool> tp);
   ~GrpcPollingServerDriver() override;
 
   absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
