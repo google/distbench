@@ -22,7 +22,7 @@
 #include "absl/base/const_init.h"
 #include "absl/strings/str_replace.h"
 #include "absl/synchronization/mutex.h"
-#include "distbench_utils.h"
+#include "distbench_thread_support.h"
 #include "glog/logging.h"
 
 namespace {

@@ -107,6 +107,16 @@ cc_library(
 )
 
 cc_library(
+    name = "distbench_thread_support",
+    srcs = [
+        "distbench_thread_support.cc",
+    ],
+    hdrs = [
+        "distbench_thread_support.h",
+    ],
+)
+
+cc_library(
     name = "distbench_utils",
     srcs = [
         "distbench_utils.cc",
@@ -200,7 +210,6 @@ cc_library(
     deps = [
         ":distbench_cc_grpc_proto",
         ":distbench_threadpool_lib",
-        ":distbench_utils",
         ":grpc_wrapper",
         ":protocol_driver_api",
     ] + select({
@@ -222,7 +231,7 @@ cc_library(
     ],
     deps = [
         ":distbench_cc_grpc_proto",
-        ":distbench_utils",
+        ":distbench_thread_support",
         ":protocol_driver_api",
         "@mercury//:mercury",
         "@com_google_absl//absl/strings",
@@ -241,7 +250,7 @@ cc_library(
         "manual",
     ],
     deps = [
-        ":distbench_utils",
+        ":distbench_thread_support",
         ":protocol_driver_api",
         "@homa_module//:homa_api",
         "@homa_module//:homa_receiver",
@@ -391,7 +400,7 @@ cc_library(
     deps = [
         ":activity_api",
         ":distbench_cc_grpc_proto",
-        ":distbench_utils",
+        ":distbench_thread_support",
         ":joint_distribution_sample_generator",
         ":grpc_wrapper",
         ":protocol_driver_api",
@@ -410,7 +419,7 @@ cc_library(
         "//conditions:default":[],
     }),
     deps = [
-        ":distbench_utils",
+        ":distbench_thread_support",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/strings",
