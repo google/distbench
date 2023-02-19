@@ -103,7 +103,7 @@ function install_mercury() {
       mkdir -p build
       cd build
       cmake \
-        DCMAKE_-BUILD_TYPE=Debug \
+        DCMAKE_-BUILD_TYPE=RelWithDebInfo \
         -DNA_USE_SM=OFF \
         -DNA_USE_OFI=ON \
         -DOFI_INCLUDE_DIR=$LIBFABRIC_INSTALL_DIR/include \
