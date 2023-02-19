@@ -725,10 +725,12 @@ function set_parameter_default() {
 function grpc_protocol_driver_setup() {
   set_parameter_default client_type "polling" "callback polling"
   set_parameter_default server_type "inline" "handoff inline polling"
+  set_parameter_default threadpool_type "" "simple, cthread, or nullstring."
   set_parameter_default threadpool_size "0" "1, 2, 3, etc. and 0 for NumCPUs() threads."
   set_parameter_default transport "" "tcp, homa, or nullstring for default."
   local CLIENT_TYPE="${params_dict[client_type]}"
   local SERVER_TYPE="${params_dict[server_type]}"
+  local THREADPOOL_TYPE="${params_dict[threadpool_type]:-}"
   local THREADPOOL_SIZE="${params_dict[threadpool_size]}"
   local TRANSPORT="${params_dict[transport]:-}"
   params_dict[protocol_alias]="grpc_${CLIENT_TYPE}_${SERVER_TYPE}"
@@ -744,15 +746,26 @@ function grpc_protocol_driver_setup() {
       string_value: '${SERVER_TYPE}'
     }"
 
-  if [[ $SERVER_TYPE != "inline" ]] &&
-    [[ $THREADPOOL_SIZE != "0" ]] ;
+  if [[ "${SERVER_TYPE}" != "inline" ]]
   then
-    params_dict[protocol_alias]+="_${THREADPOOL_SIZE}"
-    params_dict[protocol_driver_options_proto]+="
+    if [[ -n "${THREADPOOL_TYPE}" ]]
+    then
+      params_dict[protocol_alias]+="_${THREADPOOL_TYPE}"
+      params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'threadpool_type'
+      string_value: '${THREADPOOL_TYPE}'
+    }"
+    fi
+    if [[ "${THREADPOOL_SIZE}" != "0" ]]
+    then
+      params_dict[protocol_alias]+="_${THREADPOOL_SIZE}"
+      params_dict[protocol_driver_options_proto]+="
     server_settings {
       name: 'threadpool_size'
       int64_value: ${THREADPOOL_SIZE}
     }"
+    fi
   fi
 
   if [[ -n "${TRANSPORT}" ]]
