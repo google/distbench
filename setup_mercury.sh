@@ -42,12 +42,12 @@ then
 fi
 
 function install_libfabric() {
-  VERSION_TAG=v${LIBFABRIC_VERSION}
+  LIBFABRIC_VERSION_TAG=v${LIBFABRIC_VERSION}
   LIBFABRIC_REPO_DIR=${PWD}/libfabric_repo
-  LIBFABRIC_BUILD_DIR=${LIBFABRIC_REPO_DIR}/${LIBFABRIC_VERSION}
+  LIBFABRIC_BUILD_DIR=${LIBFABRIC_REPO_DIR}/${LIBFABRIC_VERSION_TAG}
   git_clone_or_update \
     https://github.com/ofiwg/libfabric.git \
-    ${VERSION_TAG} \
+    ${LIBFABRIC_VERSION_TAG} \
     ${LIBFABRIC_REPO_DIR} \
     ${LIBFABRIC_BUILD_DIR}
   rm -rf ${LIBFABRIC_INSTALL_DIR} opt/libfabric
@@ -82,12 +82,12 @@ function install_mercury() {
     LD_LIBRARY_PATH=$MERCURY_INSTALL_DIR/lib
   fi
 
-  VERSION_TAG=v${MERCURY_VERSION}
+  MERCURY_VERSION_TAG=v${MERCURY_VERSION}
   MERCURY_REPO_DIR=${PWD}/mercury_repo
-  MERCURY_BUILD_DIR=${MERCURY_REPO_DIR}/${MERCURY_VERSION}
+  MERCURY_BUILD_DIR=${MERCURY_REPO_DIR}/${MERCURY_VERSION_TAG}
   git_clone_or_update \
     https://github.com/mercury-hpc/mercury.git \
-    ${VERSION_TAG} \
+    ${MERCURY_VERSION_TAG} \
     ${MERCURY_REPO_DIR} \
     ${MERCURY_BUILD_DIR}
   rm -rf ${MERCURY_INSTALL_DIR} opt/mercury
