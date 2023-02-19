@@ -11,6 +11,9 @@ cc_library(
       # TODO(oserres) visibility issue : "@libfabric//:libfabric_static",
       "@libfabric//:libfabric",
     ],
+    defines = [
+        "WITH_MERCURY",
+    ],
     linkopts = ["-lm","-lpthread"],
 )
 
