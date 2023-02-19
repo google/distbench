@@ -25,13 +25,11 @@
 #include "homa_listener.h"
 #endif
 
-#ifndef DEFAULT_TRANSPORT
-#define DEFAULT_TRANSPORT "tcp"
-#endif
-
 namespace distbench {
 
 namespace {
+
+const char* kDefaultTransport = "tcp";
 
 absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
     const std::string& socket_address, std::string_view transport) {
@@ -83,7 +81,7 @@ absl::Status GrpcPollingClientDriver::Initialize(
     const ProtocolDriverOptions& pd_opts) {
   cq_poller_ = std::thread(&GrpcPollingClientDriver::RpcCompletionThread, this);
   transport_ =
-      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
+      GetNamedServerSettingString(pd_opts, "transport", kDefaultTransport);
   return absl::OkStatus();
 }
 
@@ -223,7 +221,7 @@ absl::Status GrpcInlineServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   transport_ =
-      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
+      GetNamedServerSettingString(pd_opts, "transport", kDefaultTransport);
   auto maybe_ip = IpAddressForDevice(netdev_name, pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
@@ -395,7 +393,7 @@ GrpcCallbackClientDriver::~GrpcCallbackClientDriver() { ShutdownClient(); }
 absl::Status GrpcCallbackClientDriver::Initialize(
     const ProtocolDriverOptions& pd_opts) {
   transport_ =
-      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
+      GetNamedServerSettingString(pd_opts, "transport", kDefaultTransport);
   return absl::OkStatus();
 }
 
@@ -512,7 +510,7 @@ absl::Status GrpcHandoffServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   transport_ =
-      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
+      GetNamedServerSettingString(pd_opts, "transport", kDefaultTransport);
   auto maybe_ip = IpAddressForDevice(netdev_name, pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
@@ -682,7 +680,7 @@ absl::Status GrpcPollingServerDriver::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
   std::string netdev_name = pd_opts.netdev_name();
   transport_ =
-      GetNamedServerSettingString(pd_opts, "transport", DEFAULT_TRANSPORT);
+      GetNamedServerSettingString(pd_opts, "transport", kDefaultTransport);
   auto maybe_ip = IpAddressForDevice(netdev_name, pd_opts.ip_version());
   if (!maybe_ip.ok()) return maybe_ip.status();
   server_ip_address_ = maybe_ip.value();
