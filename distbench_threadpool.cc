@@ -88,7 +88,7 @@ class CThreadpool : public AbstractThreadpool {
   virtual void AddWork(std::function<void()> function);
 
  private:
-  static void Trampoline(void* function);
+  static void Trampoline(void* heap_object_pointer);
   threadpool thpool_;
 };
 
@@ -106,9 +106,9 @@ void CThreadpool::AddWork(std::function<void()> function) {
   thpool_add_work(thpool_, Trampoline, fpointer);
 }
 
-void CThreadpool::Trampoline(void* function) {
+void CThreadpool::Trampoline(void* heap_object_pointer) {
   // Execute and delete the heap allocated copy of the functor object:
-  auto f = reinterpret_cast<std::function<void()>*>(function);
+  auto f = reinterpret_cast<std::function<void()>*>(heap_object_pointer);
   (*f)();
   delete f;
 }
@@ -121,11 +121,11 @@ class MercuryThreadpool : public AbstractThreadpool {
   virtual void AddWork(std::function<void()> function);
 
  private:
-  struct heaper {
+  struct HeapObject {
     struct hg_thread_work work_item; /* Must be first! */
     std::function<void()> function;
   };
-  static void* Trampoline(void* function);
+  static void* Trampoline(void* heap_object_pointer);
   std::unique_ptr<hg_thread_pool_t> thread_pool_;
 };
 
@@ -145,18 +145,18 @@ MercuryThreadpool::~MercuryThreadpool() {
 void MercuryThreadpool::AddWork(std::function<void()> function) {
   // Copy the functor object to the heap, and pass the address of the heap
   // object to the thread pool:
-  auto* hpointer = new heaper;
-  hpointer->work_item.func = Trampoline;
-  hpointer->work_item.args = hpointer;
-  hpointer->function = function;
-  hg_thread_pool_post(thread_pool_.get(), &hpointer->work_item);
+  auto* heap_object = new HeapObject;
+  heap_object->work_item.func = Trampoline;
+  heap_object->work_item.args = heap_object;
+  heap_object->function = function;
+  hg_thread_pool_post(thread_pool_.get(), &heap_object->work_item);
 }
 
-void* MercuryThreadpool::Trampoline(void* heap_object) {
+void* MercuryThreadpool::Trampoline(void* heap_object_pointer) {
   // Execute and delete the heap allocated copy of the functor object:
-  auto h = reinterpret_cast<heaper*>(heap_object);
-  h->function();
-  delete h;
+  auto heap_object = reinterpret_cast<HeapObject*>(heap_object_pointer);
+  heap_object->function();
+  delete heap_object;
   return 0;
 }
 #endif  // WITH_MERCURY
