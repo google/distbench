@@ -52,7 +52,6 @@ cc_library(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
         "@com_github_google_glog//:glog"
     ],
 )
@@ -254,7 +253,6 @@ cc_test(
     deps = [
         ":distbench_utils",
         ":gtest_utils",
-        ":grpc_wrapper",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
         "@com_google_googletest//:gtest_main",
@@ -271,7 +269,6 @@ cc_binary(
     srcs = ["protocol_driver_test.cc"],
     deps = [
         ":distbench_utils",
-        ":grpc_wrapper",
         ":gtest_utils",
         ":protocol_driver_allocator",
         "@com_google_googletest//:gtest",
@@ -296,7 +293,7 @@ proto_library(
     srcs = ["distbench.proto"],
     deps = [
         ":joint_distribution_proto",
-        ":traffic_config_proto"
+        ":traffic_config_proto",
     ],
 )
 
@@ -479,7 +476,6 @@ cc_test(
     shard_count = 8,
     deps = [
         ":distbench_utils",
-        ":grpc_wrapper",
         ":gtest_utils",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
