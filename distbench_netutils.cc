@@ -107,12 +107,16 @@ absl::StatusOr<DeviceIpAddress> GetBestAddress(std::string_view netdev,
   int score = -1;
   DeviceIpAddress best_match;
   for (const auto& address : all_addresses) {
-    if (address.isLinkLocal() || address.isLoopback()) {
+    if (address.isLinkLocal()) {
       continue;
     }
     int cur_score = (address.isIPv4() == prefer_ipv4);
     // High speed networks in cloudlab are on a private IP range.
     cur_score += address.isPrivate();
+    if (!address.isLoopback()) {
+      // Ensure that loopback device addresses rank below all others:
+      cur_score += 2;
+    }
     if (cur_score > score) {
       score = cur_score;
       best_match = address;
