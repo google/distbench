@@ -18,12 +18,10 @@
 #include <sys/resource.h>
 
 #include <memory>
-#include <thread>
 
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
 #include "distbench.pb.h"
-#include "distbench_netutils.h"
 #include "google/protobuf/stubs/status_macros.h"
 #include "grpc_wrapper.h"
 #include "traffic_config.pb.h"

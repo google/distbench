@@ -16,8 +16,8 @@
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
+#include "distbench_netutils.h"
 #include "distbench_summary.h"
-#include "distbench_utils.h"
 #include "glog/logging.h"
 
 namespace distbench {

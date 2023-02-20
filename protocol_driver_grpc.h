@@ -15,7 +15,10 @@
 #ifndef DISTBENCH_PROTOCOL_DRIVER_GRPC_H_
 #define DISTBENCH_PROTOCOL_DRIVER_GRPC_H_
 
+#include <thread>
+
 #include "distbench.grpc.pb.h"
+#include "distbench_netutils.h"
 #include "distbench_threadpool.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"

@@ -15,7 +15,7 @@
 #include "distbench_node_manager.h"
 
 #include "absl/strings/str_split.h"
-#include "distbench_utils.h"
+#include "distbench_netutils.h"
 #include "glog/logging.h"
 #include "protocol_driver_allocator.h"
 
