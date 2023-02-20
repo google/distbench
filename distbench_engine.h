@@ -15,6 +15,7 @@
 #ifndef DISTBENCH_DISTBENCH_ENGINE_H_
 #define DISTBENCH_DISTBENCH_ENGINE_H_
 
+#include <thread>
 #include <unordered_set>
 
 #include "absl/random/random.h"

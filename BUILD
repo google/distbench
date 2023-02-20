@@ -115,7 +115,6 @@ cc_library(
     ],
     deps = [
         ":distbench_cc_proto",
-        ":distbench_netutils",
         ":grpc_wrapper",
         ":interface_lookup",
         ":traffic_config_cc_proto",
@@ -184,6 +183,7 @@ cc_library(
     ],
     deps = [
         ":distbench_cc_grpc_proto",
+        ":distbench_netutils",
         ":distbench_threadpool_lib",
         ":grpc_wrapper",
         ":protocol_driver_api",
@@ -206,6 +206,7 @@ cc_library(
     ],
     deps = [
         ":distbench_cc_grpc_proto",
+        ":distbench_netutils",
         ":distbench_thread_support",
         ":protocol_driver_api",
         "@mercury//:mercury",
@@ -228,7 +229,9 @@ cc_library(
         "manual",
     ],
     deps = [
+        ":distbench_netutils",
         ":distbench_thread_support",
+        ":distbench_utils",
         ":protocol_driver_api",
         "@homa_module//:homa_api",
         "@homa_module//:homa_receiver",
@@ -316,6 +319,7 @@ cc_library(
     deps = [
         ":distbench_cc_grpc_proto",
         ":distbench_summary",
+        ":distbench_netutils",
         ":distbench_utils",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
@@ -345,7 +349,7 @@ cc_library(
     deps = [
         ":distbench_cc_grpc_proto",
         ":distbench_engine_lib",
-        ":distbench_utils",
+        ":distbench_netutils",
         ":grpc_wrapper",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
@@ -361,6 +365,7 @@ cc_library(
     deps = [
         ":activity_api",
         ":distbench_cc_grpc_proto",
+        ":distbench_netutils",
         ":distbench_thread_support",
         ":joint_distribution_sample_generator",
         ":grpc_wrapper",

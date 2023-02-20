@@ -20,6 +20,9 @@
 #include <mercury_macros.h>
 #include <mercury_proc_string.h>
 
+#include <thread>
+
+#include "distbench_netutils.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
 
