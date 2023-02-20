@@ -39,7 +39,7 @@ TEST(DistBenchEngineTest, Initialization) {
   DistBenchEngine dbe(
       AllocateProtocolDriver(grpc_pd_opts(), &driver_port).value());
   int engine_port = 0;
-  ASSERT_OK(dbe.Initialize(desc, "lo", "test_service", 0, &engine_port));
+  ASSERT_OK(dbe.Initialize(desc, "", "test_service", 0, &engine_port));
 }
 
 }  // namespace distbench
