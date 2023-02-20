@@ -16,7 +16,7 @@
 ################################################################################
 #
 # setup_mercury.sh
-# Script for setting up libfabric and themercury RPC framework for use with
+# Script for setting up libfabric and the mercury RPC framework for use with
 # distbench.
 #
 # Homepages:
