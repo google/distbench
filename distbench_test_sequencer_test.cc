@@ -43,9 +43,13 @@ DistBenchTester::~DistBenchTester() {
   TestSequence test_sequence;
   test_sequence.mutable_tests_setting()->set_shutdown_after_tests(true);
   TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/1);
+  auto context = CreateContextWithDeadline(/*max_time_s=*/10);
   grpc::Status status = test_sequencer_stub->RunTestSequence(
       context.get(), test_sequence, &results);
+  if (!status.ok()) {
+    ADD_FAILURE() << "RunTestSequence RPC failed " << status;
+    test_sequencer->Shutdown();
+  }
   test_sequencer->Wait();
   for (size_t i = 0; i < nodes.size(); ++i) {
     nodes[i]->Wait();
