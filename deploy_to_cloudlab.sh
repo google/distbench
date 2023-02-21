@@ -75,10 +75,11 @@ set -uEeo pipefail
 shopt -s inherit_errexit
 
 function unknown_error_shutdown() {
-  echo_error red "\\nError, Local unknown_error_shutdown invoked status = $?"
+  err=$?
+  echo_error red "\\nError, Local unknown_error_shutdown invoked status = $err"
   echo_error red "\\n  Failed command:\n  $BASH_COMMAND"
   jobs
-  exit
+  exit $err
 }
 
 trap unknown_error_shutdown ERR
@@ -355,10 +356,11 @@ function cloudlab_ssh() { sudo ssh -o 'StrictHostKeyChecking no' "${@}"; }
 function cloudlab_scp() { sudo scp -o 'StrictHostKeyChecking no' "${@}"; }
 
 function unknown_error_shutdown() {
-  echo_error red "\\nError, Remote unknown_error_shutdown invoked status = $?"
+  err=$?
+  echo_error red "\\nError, Remote unknown_error_shutdown invoked status = $err"
   echo_error red "\\n  Failed command:\n  $BASH_COMMAND"
   jobs
-  exit
+  exit $err
 }
 
 trap unknown_error_shutdown ERR
