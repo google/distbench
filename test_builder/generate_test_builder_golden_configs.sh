@@ -9,6 +9,8 @@ test_builder -o . clique
 test_builder -o . clique:test_duration=45
 
 test_builder -o . clique:grpc
+test_builder -o . clique:grpc:transport=homa
+test_builder -o . clique:grpc:transport=tcp
 
 test_builder -o . clique:grpc:client_type=callback:server_type=handoff
 test_builder -o . clique:grpc:client_type=callback:server_type=inline
@@ -33,6 +35,21 @@ test_builder -o . tripartite
 test_builder -o . tripartite:client_count=2
 test_builder -o . tripartite:index_count=2
 test_builder -o . tripartite:data_count=12
+
+test_builder -o . client_server:ipv4
+test_builder -o . client_server:ipv6
+test_builder -o . clique:ipv4
+test_builder -o . clique:ipv6
+test_builder -o . multi_level_rpc:ipv4
+test_builder -o . multi_level_rpc:ipv6
+test_builder -o . tripartite:ipv4
+test_builder -o . tripartite:ipv6
+
+test_builder -o . clique:grpc
+test_builder -o . clique:homa
+test_builder -o . clique:mercury
+test_builder -o . clique:mercury:transport=ofi+tcp
+test_builder -o . clique:mercury:transport=custom_transport
 
 # Generate a parameter sweep:
 test_builder -o - parameter_sweep rpc_interval_us 4000 1000 8000 clique \
