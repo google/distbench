@@ -25,8 +25,9 @@ namespace distbench {
 grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
                                          const NodeRegistration* request,
                                          NodeConfig* response) {
-  if (request->hostname().empty() || request->control_ip().empty() ||
-      request->control_port() <= 0) {
+  if (request->hostname().empty() ||
+      request->control_port() <= 0 ||
+      request->control_port() > 65535) {
     return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
                         "Invalid Registration");
   }
@@ -61,7 +62,10 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
 
   std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
   std::string node_service;
-  if (absl::StrContains(request->control_ip(), ":")) {
+  if (request->control_ip().empty()) {
+    node_service = absl::StrCat("dns:///", request->hostname(),
+                                ":", request->control_port());
+  } else if (absl::StrContains(request->control_ip(), ":")) {
     node_service = absl::StrCat("ipv6:///[", request->control_ip(),
                                 "]:", request->control_port());
   } else {

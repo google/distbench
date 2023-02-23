@@ -282,10 +282,18 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   std::string ip = service_address_;
   if (ip.data()[0] == '[') {
     ip = ip.substr(1, ip.find(']') - 1);
+    if (ip == "::") {
+      ip.clear();
+    }
   } else {
     ip = ip.substr(0, ip.find(':'));
+    if (ip == "0.0.0.0") {
+      ip.clear();
+    }
   }
-  reg.set_control_ip(ip);
+  if (!ip.empty()) {
+    reg.set_control_ip(ip);
+  }
   reg.set_control_port(*opts_.port);
 
   grpc::ClientContext context;
