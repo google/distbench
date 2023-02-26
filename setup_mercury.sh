@@ -62,6 +62,7 @@ function install_libfabric() {
       ./configure \
       --prefix $LIBFABRIC_INSTALL_DIR \
       --enable-verbs=no \
+      --without-cuda \
       --enable-efa=no \
       --disable-usnic \
       --enable-psm3-verbs=no || rm config.status
