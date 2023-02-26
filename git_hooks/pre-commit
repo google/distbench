@@ -1,10 +1,14 @@
 #!/bin/sh
 
 check_all_files() {
+  if ! which clang-format &> /dev/null; then
+    echo -e "\n\n clang-format was not found in your PATH"
+    exit 1
+  fi
   format_valid=true
-  for file in `git diff-index --cached --name-only HEAD | grep -iE '\.(cc|h)'` ; do
-    if [ -f $file ]; then
-      diff=`clang-format -style=file ${file} | diff -u "$file" -`
+  for file in $(git diff-index --cached --name-only HEAD | grep -iE '\.(cc|h)') ; do
+    if [[ -f "$file" ]]; then
+      diff=$(clang-format -style=file ${file} | diff -u "$file" -)
       if [ $? -ne 0 ]; then
         echo "Invalid clang-format for $file:"
         echo
@@ -35,4 +39,3 @@ case "${1}" in
    ;;
 esac
 # Clang Format Hook - End
-
