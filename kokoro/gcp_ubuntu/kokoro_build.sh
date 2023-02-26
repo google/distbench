@@ -1,8 +1,4 @@
 #!/bin/bash
-
-# Fail on any error.
-set -e
-
 # Display commands being run.
 # WARNING: please only enable 'set -x' if necessary for debugging, and be very
 #  careful if you handle credentials (e.g. from Keystore) with 'set -x':
@@ -16,80 +12,104 @@ set -e
 # The final directory name in this path is determined by the scm name specified
 # in the job configuration.
 
-export BAZEL_VERSION=4.2.1
+set -uEeo pipefail
+shopt -s inherit_errexit
 
-function print_and_run {
+function unknown_error_shutdown() {
+  echo -e "\\nError, unknown_error_shutdown invoked status = $?" 1>&2
+  echo -e "\\n$BASH_COMMAND" 1>&2
+  exit 1
+}
+
+trap unknown_error_shutdown ERR
+
+function print_header_and_run {
+  echo
+  echo '\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'
+  echo "        $1"...
+  echo '///////////////////////////////////////////////////////////////////////'
+  shift
   echo "\$ $*"
   "$@"
 }
 
+#This is a band-aid, should fix root cause.....
 function run_with_retries {
-  MAX_TRIES=3
-  DELAY=5
+  local MAX_TRIES=3
+  local DELAY=5
   for i in $(seq 1 $MAX_TRIES); do
     echo "\$ $*"
     "$@" && break
 
-    echo Command failed with errcode $? - try $i / $MAX_TRIES - sleeping $DELAY before retrying...
+    echo -n "Command failed with errcode $? -"
+    echo "try $i / $MAX_TRIES - sleeping $DELAY before retrying..."
     sleep $DELAY
     DELAY=$(( DELAY * 2 ))
   done
 }
 
 function bazel_install {
-  echo
-  echo Downloading and installing Bazel version $BAZEL_VERSION
-  echo
-
-  rm -rf ~/bazel_install
-  mkdir ~/bazel_install
-  cd ~/bazel_install
-
-  run_with_retries wget --no-verbose https://github.com/bazelbuild/bazel/releases/download/"${BAZEL_VERSION}"/bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
-
-  chmod +x bazel-*.sh
-  ./bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh --user
-  rm bazel-"${BAZEL_VERSION}"-installer-linux-x86_64.sh
-  cd ~/
-
   # Remove the cache has sometime they conflict between versions
   rm -rf  ~/.cache/bazel
+
+  local BAZEL_FILE="bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh"
+  local BAZEL_URL="https://github.com/bazelbuild/bazel/releases/download/"
+  BAZEL_URL+="${BAZEL_VERSION}/${BAZEL_FILE}"
+  run_with_retries wget --no-verbose "${BAZEL_URL}" -O "/tmp/${BAZEL_FILE}"
+  bash "/tmp/${BAZEL_FILE}" --user
 }
 
 export CXX=g++
 export CC=gcc
+BAZEL_VERSION=5.4.0
+PATH="$HOME/bin:$PATH"
 
-bazel_install
-export PATH="$HOME/bin:$PATH"
-
-echo
-echo Tool versions
-echo
-$CC --version
-bazel --version
-
-echo
-echo Running Bazel fetch
-echo
 cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
-print_and_run run_with_retries bazel fetch :all
 
-echo
-echo Running Bazel build
-echo
-print_and_run bazel build :all
+print_header_and_run "Downloading and installing Bazel version $BAZEL_VERSION" \
+  bazel_install
 
-echo
-echo Running Bazel test
-echo
-print_and_run bazel test --test_output=errors :all
+print_header_and_run "Installing libnum-dev" \
+  apt-get install libnuma-dev -y
 
-echo
-echo Running Bazel test - ASAN
-echo
-print_and_run bazel test --config=asan --test_output=errors :all
+print_header_and_run "Logging host lsb version" \
+  lsb_release -a
 
-echo
-echo End of the tests
-print_and_run bazel shutdown
+print_header_and_run "Logging host kernel version" \
+  uname -a
 
+print_header_and_run "Logging host ip addresses" \
+  ip address
+
+print_header_and_run "Logging $CC version" \
+  $CC --version
+
+print_header_and_run "Logging $CXX version" \
+  $CXX --version
+
+print_header_and_run "Logging Bazel version" \
+  bazel --version
+
+print_header_and_run "Installing libfabric and mercury" \
+  ./setup_mercury.sh
+
+print_header_and_run "Bazel fetch" \
+  run_with_retries bazel fetch :all
+
+print_header_and_run "Bazel test test_builder" \
+  bazel test test_builder:all
+
+print_header_and_run "Bazel build" \
+  bazel build :all --//:with-mercury
+
+print_header_and_run "Bazel test" \
+  bazel test --test_output=errors :all --//:with-mercury
+
+print_header_and_run "Bazel test - ASAN" \
+  bazel test --test_output=errors :all --//:with-mercury --config=asan
+
+print_header_and_run "Bazel test - TSAN" \
+  bazel test --test_output=errors :all --//:with-mercury --config=tsan
+
+print_header_and_run "Bazel shutdown" \
+  bazel shutdown
