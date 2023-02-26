@@ -485,6 +485,22 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "activity_test",
+    size = "medium",
+    srcs = ["activity_test.cc"],
+    shard_count = 8,
+    deps = [
+        ":distbench_node_manager_lib",
+        ":distbench_test_sequencer_lib",
+        ":distbench_utils",
+        ":grpc_wrapper",
+        ":gtest_utils",
+        ":protocol_driver_allocator_api",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "activity_api",
     srcs = ["activity.cc"],
