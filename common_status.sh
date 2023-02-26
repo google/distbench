@@ -25,11 +25,16 @@
 # once-and-for-all and cannot be adjusted later.
 
 function build_command() {
-  echo_in_color="(tput bold; tput setaf \${0}; echo -e \"\${@}\"; tput sgr0)"
-  local DELAY="${ECHODELAY:-0.003}"
-  if [[ "${DELAY}" != 0 ]]
+  if [[ ! -v TERM || -z "${TERM}" || "${TERM}" == "dumb" ]]
   then
-    echo_in_color+=" | while read -N1 c; do sleep $DELAY; echo -n \"\$c\"; done"
+    echo_in_color="echo -e \"\${@}\""
+  else
+    echo_in_color="(tput bold; tput setaf \${0}; echo -e \"\${@}\"; tput sgr0)"
+    local DELAY="${ECHODELAY:-0.003}"
+    if [[ "${DELAY}" != 0 ]]
+    then
+      echo_in_color+="|while read -N1 c; do sleep $DELAY; echo -n \"\$c\"; done"
+    fi
   fi
   readonly echo_in_color
 }
