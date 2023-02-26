@@ -392,7 +392,7 @@ cc_library(
 
 cc_test(
     name = "distbench_threadpool_test",
-    size = "medium",
+    size = "small",
     srcs = ["distbench_threadpool_test.cc"],
     deps = [
         ":distbench_threadpool_lib",
