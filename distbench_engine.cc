@@ -14,6 +14,7 @@
 
 #include "distbench_engine.h"
 
+#include "absl/base/internal/sysinfo.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
@@ -454,6 +455,7 @@ absl::Status DistBenchEngine::Initialize(
   service_spec_ = maybe_service_spec.value();
   service_instance_ = service_instance;
   engine_name_ = absl::StrCat(service_name_, "/", service_instance_);
+  thread_pool_ = CreateThreadpool("elastic", absl::base_internal::NumCPUs());
 
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
@@ -1091,15 +1093,13 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           copied_server_rpc_state->have_dedicated_thread = true;
           copied_server_rpc_state->SetFreeStateFunction(
               [=] { delete copied_server_rpc_state; });
-          RunRegisteredThread(
-              "ActionListThread",
-              [this, action_list_index, iteration_state, copied_request,
-               copied_server_rpc_state]() mutable {
-                RunActionList(action_list_index, copied_server_rpc_state,
-                              iteration_state->warmup);
-                FinishIteration(iteration_state);
-              })
-              .detach();
+          thread_pool_->AddWork([this, action_list_index, iteration_state,
+                                 copied_request,
+                                 copied_server_rpc_state]() mutable {
+            RunActionList(action_list_index, copied_server_rpc_state,
+                          iteration_state->warmup);
+            FinishIteration(iteration_state);
+          });
         };
   } else if (action.rpc_service_index >= 0) {
     CHECK_LT(static_cast<size_t>(action.rpc_service_index), peers_.size());
