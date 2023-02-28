@@ -27,11 +27,12 @@ class ThreadpoolTest : public testing::TestWithParam<std::string> {};
 
 TEST(ThreadpoolTest, BadType) {
   auto atp = CreateThreadpool("bad_type", 4);
-  EXPECT_TRUE(atp == nullptr);
+  ASSERT_EQ(atp, nullptr);
 };
 
 TEST_P(ThreadpoolTest, Constructor) {
   auto atp = CreateThreadpool(GetParam(), 4);
+  ASSERT_NE(atp, nullptr);
 };
 
 TEST_P(ThreadpoolTest, PerformSimpleWork) {
@@ -39,6 +40,7 @@ TEST_P(ThreadpoolTest, PerformSimpleWork) {
   std::atomic<int> work_counter = 0;
   {
     auto atp = CreateThreadpool(GetParam(), 4);
+    ASSERT_NE(atp, nullptr);
     for (int i = 0; i < iterations; i++) {
       atp->AddWork([&]() { ++work_counter; });
     }
@@ -51,8 +53,10 @@ TEST_P(ThreadpoolTest, ParallelAddTest) {
   std::atomic<int> work_counter = 0;
   {
     auto atp_work_performer = CreateThreadpool(GetParam(), 4);
+    ASSERT_NE(atp_work_performer, nullptr);
     {
       auto atp_work_generator = CreateThreadpool(GetParam(), 4);
+      ASSERT_NE(atp_work_generator, nullptr);
       for (int i = 0; i < iterations; i++) {
         atp_work_generator->AddWork(
             [&]() { atp_work_performer->AddWork([&]() { ++work_counter; }); });
