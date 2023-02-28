@@ -374,6 +374,7 @@ cc_library(
         ":distbench_cc_grpc_proto",
         ":distbench_netutils",
         ":distbench_thread_support",
+        ":distbench_threadpool_lib",
         ":joint_distribution_sample_generator",
         ":grpc_wrapper",
         ":protocol_driver_api",

@@ -21,6 +21,7 @@
 #include "absl/random/random.h"
 #include "activity.h"
 #include "distbench.grpc.pb.h"
+#include "distbench_threadpool.h"
 #include "distbench_utils.h"
 #include "joint_distribution_sample_generator.h"
 #include "protocol_driver.h"
@@ -307,6 +308,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   // Get the index of the sample generator in sample_generator_array_
   int GetSampleGeneratorIndex(const std::string& name);
+
+  std::unique_ptr<AbstractThreadpool> thread_pool_;
 };
 
 }  // namespace distbench
