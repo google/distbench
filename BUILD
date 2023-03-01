@@ -240,8 +240,13 @@ cc_library(
 
 cc_library(
     name = "gtest_utils",
+    srcs = ["gtest_utils.cc"],
     hdrs = [
         "gtest_utils.h",
+    ],
+    deps = [
+        "@com_google_googletest//:gtest",
+        "@com_github_google_glog//:glog"
     ],
 )
 
@@ -255,7 +260,6 @@ cc_test(
         ":gtest_utils",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
-        "@com_google_googletest//:gtest_main",
         "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog"
     ] + select({
@@ -335,7 +339,6 @@ cc_test(
         ":grpc_wrapper",
         ":gtest_utils",
         ":protocol_driver_allocator_api",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -397,7 +400,6 @@ cc_test(
     deps = [
         ":distbench_threadpool_lib",
         ":gtest_utils",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -410,7 +412,6 @@ cc_test(
         ":distbench_utils",
         ":gtest_utils",
         ":protocol_driver_allocator",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -423,7 +424,6 @@ cc_test(
         ":distbench_utils",
         ":gtest_utils",
         ":protocol_driver_allocator_api",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -479,7 +479,6 @@ cc_test(
         ":gtest_utils",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
-        "@com_google_googletest//:gtest_main",
         "@com_github_google_glog//:glog"
     ],
 )
@@ -496,7 +495,6 @@ cc_test(
         ":grpc_wrapper",
         ":gtest_utils",
         ":protocol_driver_allocator_api",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -543,6 +541,6 @@ cc_test(
     srcs = ["joint_distribution_sample_generator_test.cc"],
     deps = [
         ":joint_distribution_sample_generator",
-        "@com_google_googletest//:gtest_main",
+        ":gtest_utils",
     ],
 )
