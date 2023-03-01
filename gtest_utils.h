@@ -15,6 +15,8 @@
 #ifndef DISTBENCH_GTEST_UTILS_H_
 #define DISTBENCH_GTEST_UTILS_H_
 
+#include "gtest/gtest.h"
+
 using ::testing::Test;
 #define ASSERT_OK(s)     \
   {                      \
