@@ -480,7 +480,6 @@ cc_test(
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
         "@com_google_googletest//:gtest_main",
-        "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog"
     ],
 )

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "benchmark/benchmark.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
