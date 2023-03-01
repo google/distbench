@@ -35,6 +35,7 @@ class NullThreadpool : public AbstractThreadpool {
   NullThreadpool(int nb_threads);
   ~NullThreadpool() override;
   void AddWork(std::function<void()> function) override;
+  std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   mutable absl::Mutex mutex_;
@@ -62,11 +63,14 @@ void NullThreadpool::AddWork(std::function<void()> function) {
   RunRegisteredThread("NullThreadPool", function_wrapper).detach();
 }
 
+std::vector<ThreadpoolStat> NullThreadpool::GetStats() { return {}; }
+
 class SimpleThreadpool : public AbstractThreadpool {
  public:
   SimpleThreadpool(int nb_threads);
   ~SimpleThreadpool() override;
   void AddWork(std::function<void()> function) override;
+  std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   mutable absl::Mutex mutex_;
@@ -109,6 +113,8 @@ SimpleThreadpool::~SimpleThreadpool() {
   mutex_.Await(absl::Condition(&all_threads_done));
 }
 
+std::vector<ThreadpoolStat> SimpleThreadpool::GetStats() { return {}; }
+
 void SimpleThreadpool::AddWork(std::function<void()> function) {
   absl::MutexLock m(&mutex_);
   work_queue_.push(function);
@@ -119,6 +125,7 @@ class ElasticThreadpool : public AbstractThreadpool {
   ElasticThreadpool(int nb_threads);
   ~ElasticThreadpool() override;
   void AddWork(std::function<void()> function) override;
+  std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   void TaskRunner(std::function<void()> task);
@@ -232,6 +239,17 @@ void ElasticThreadpool::TaskRunner(std::function<void()> task) {
   }
 }
 
+std::vector<ThreadpoolStat> ElasticThreadpool::GetStats() {
+  std::vector<ThreadpoolStat> ret;
+  ret.resize(2);
+  absl::MutexLock m(&work_mutex_);
+  ret[0].name = "threads_launched";
+  ret[0].value = threads_launched_;
+  ret[1].name = "tasks_processed";
+  ret[1].value = work_count_;
+  return ret;
+}
+
 ElasticThreadpool::~ElasticThreadpool() {
   shutdown_.Notify();
   auto all_threads_done = [this]() { return active_threads_ == 0; };
@@ -250,6 +268,7 @@ class CThreadpool : public AbstractThreadpool {
   CThreadpool(int nb_threads);
   ~CThreadpool() override;
   void AddWork(std::function<void()> function) override;
+  std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   static void Trampoline(void* heap_object_pointer);
@@ -277,12 +296,15 @@ void CThreadpool::Trampoline(void* heap_object_pointer) {
   delete f;
 }
 
+std::vector<ThreadpoolStat> CThreadpool::GetStats() { return {}; }
+
 #ifdef WITH_MERCURY
 class MercuryThreadpool : public AbstractThreadpool {
  public:
   MercuryThreadpool(int nb_threads);
   ~MercuryThreadpool() override;
   void AddWork(std::function<void()> function) override;
+  std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   struct HeapObject {
@@ -324,6 +346,7 @@ void* MercuryThreadpool::Trampoline(void* heap_object_pointer) {
   return 0;
 }
 
+std::vector<ThreadpoolStat> MercuryThreadpool::GetStats() { return {}; }
 #endif  // WITH_MERCURY
 
 }  // anonymous namespace

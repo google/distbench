@@ -17,14 +17,21 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <string_view>
 
 namespace distbench {
+
+struct ThreadpoolStat {
+  std::string name;
+  int64_t value;
+};
 
 class AbstractThreadpool {
  public:
   virtual ~AbstractThreadpool() = default;
   virtual void AddWork(std::function<void()> function) = 0;
+  virtual std::vector<ThreadpoolStat> GetStats() = 0;
 };
 
 std::unique_ptr<AbstractThreadpool> CreateThreadpool(
