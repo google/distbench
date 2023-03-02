@@ -423,6 +423,13 @@ absl::Status SaveResultProtoToFileBinary(
   return absl::OkStatus();
 }
 
+void AddServerInt64OptionTo(ProtocolDriverOptions& pdo, std::string option_name,
+                            int64_t value) {
+  auto* ns = pdo.add_server_settings();
+  ns->set_name(option_name);
+  ns->set_int64_value(value);
+}
+
 void AddServerStringOptionTo(ProtocolDriverOptions& pdo,
                              std::string option_name, std::string value) {
   auto* ns = pdo.add_server_settings();
