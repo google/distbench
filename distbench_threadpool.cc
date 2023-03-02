@@ -33,29 +33,32 @@ namespace {
 class SimpleThreadpool : public AbstractThreadpool {
  public:
   SimpleThreadpool(int nb_threads);
-  virtual ~SimpleThreadpool();
-  virtual void AddWork(std::function<void()> function);
+  ~SimpleThreadpool() override;
+  void AddWork(std::function<void()> function) override;
 
  private:
   mutable absl::Mutex mutex_;
   absl::Notification shutdown_;
-  std::vector<std::thread> threads_;
+  int active_threads_ = 0;
   std::queue<std::function<void()> > work_queue_;
 };
 
 SimpleThreadpool::SimpleThreadpool(int nb_threads) {
+  active_threads_ = nb_threads;
   for (int i = 0; i < nb_threads; i++) {
-    auto task_runner = [&, i]() {
+    auto task_runner = [this]() {
+      auto work_available = [this]() {
+        return !work_queue_.empty() || shutdown_.HasBeenNotified();
+      };
+      auto working_conditions = absl::Condition(&work_available);
       do {
         std::function<void()> task;
         {
           absl::MutexLock m(&mutex_);
+          mutex_.Await(working_conditions);
           if (work_queue_.empty()) {
-            // All threads except thread-0 relinquish CPU
-            // if there is no work.
-            if (i != 0) sched_yield();
-            if (shutdown_.HasBeenNotified()) return;
-            continue;
+            --active_threads_;
+            return;
           }
           task = work_queue_.front();
           work_queue_.pop();
@@ -63,15 +66,15 @@ SimpleThreadpool::SimpleThreadpool(int nb_threads) {
         task();
       } while (true);
     };
-    threads_.push_back(RunRegisteredThread("ThreadPool", task_runner));
+    RunRegisteredThread("SimpleThreadPool", task_runner).detach();
   }
 }
 
 SimpleThreadpool::~SimpleThreadpool() {
   shutdown_.Notify();
-  for (auto& thread : threads_) {
-    thread.join();
-  }
+  auto all_threads_done = [this]() { return active_threads_ == 0; };
+  absl::MutexLock m(&mutex_);
+  mutex_.Await(absl::Condition(&all_threads_done));
 }
 
 void SimpleThreadpool::AddWork(std::function<void()> function) {
