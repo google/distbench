@@ -178,10 +178,11 @@ TEST_P(ProtocolDriverTest, Echo) {
   pd2->SetNumPeers(1);
   pd2->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
-    s->response.set_payload(s->request->payload());
-    s->SendResponseIfSet();
-    s->FreeStateIfSet();
-    return std::function<void()>();
+    return [s]() {
+      s->response.set_payload(s->request->payload());
+      s->SendResponseIfSet();
+      s->FreeStateIfSet();
+    };
   });
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState* s) {
@@ -222,10 +223,11 @@ void Echo(benchmark::State& state, std::string opts_string) {
   pd2->SetNumPeers(1);
   pd2->SetHandler([&](ServerRpcState* s) {
     ++server_rpc_count;
-    s->response.set_payload(s->request->payload());
-    s->SendResponseIfSet();
-    s->FreeStateIfSet();
-    return std::function<void()>();
+    return [s]() {
+      s->response.set_payload(s->request->payload());
+      s->SendResponseIfSet();
+      s->FreeStateIfSet();
+    };
   });
   pd1->SetNumPeers(1);
   pd1->SetHandler([&](ServerRpcState* s) {
