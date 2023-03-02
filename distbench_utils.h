@@ -138,6 +138,9 @@ absl::Status SaveResultProtoToFile(
 absl::Status SaveResultProtoToFileBinary(
     const std::string& filename, const distbench::TestSequenceResults& result);
 
+void AddServerInt64OptionTo(ProtocolDriverOptions& pdo, std::string option_name,
+                            int64_t value);
+
 void AddServerStringOptionTo(ProtocolDriverOptions& pdo,
                              std::string option_name, std::string value);
 
