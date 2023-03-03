@@ -8,8 +8,9 @@ check_all_files() {
   format_valid=true
   for file in $(git diff-index --cached --name-only HEAD | grep -iE '\.(cc|h)') ; do
     if [[ -f "$file" ]]; then
-      diff=$(clang-format -style=file ${file} | diff -u "$file" -)
-      if [ $? -ne 0 ]; then
+      diff=$(clang-format -style=file ${file} | diff -u ${file} -)
+      diff2=$(clang-format -style=file <(git show :${file}) | diff -u <(git show :${file}) -)
+      if [[ -n "$diff" && -n "$diff2" ]]; then
         echo "Invalid clang-format for $file:"
         echo
         echo "$diff"
