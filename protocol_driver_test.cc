@@ -283,6 +283,32 @@ std::string GrpcPollingClientHandoffServer() {
   return pdo.DebugString();
 }
 
+std::string GrpcPollingClientHandoffSimpleServer() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc");
+  AddClientStringOptionTo(pdo, "client_type", "polling");
+  AddServerStringOptionTo(pdo, "server_type", "handoff");
+  AddServerStringOptionTo(pdo, "threadpool_type", "simple");
+  return pdo.DebugString();
+}
+
+std::string GrpcPollingClientHandoffCThreadServer() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc");
+  AddClientStringOptionTo(pdo, "client_type", "polling");
+  AddServerStringOptionTo(pdo, "server_type", "handoff");
+  AddServerStringOptionTo(pdo, "threadpool_type", "cthread");
+  return pdo.DebugString();
+}
+std::string GrpcPollingClientHandoffMercuryServer() {
+  ProtocolDriverOptions pdo;
+  pdo.set_protocol_name("grpc");
+  AddClientStringOptionTo(pdo, "client_type", "polling");
+  AddServerStringOptionTo(pdo, "server_type", "handoff");
+  AddServerStringOptionTo(pdo, "threadpool_type", "mercury");
+  return pdo.DebugString();
+}
+
 std::string GrpcPollingClientPollingServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
@@ -325,8 +351,30 @@ void BM_GrpcCallbackEcho(benchmark::State& state) {
   Echo(state, GrpcAsynCallbackOptions());
 }
 
+void BM_GrpcHandoffEcho(benchmark::State& state) {
+  Echo(state, GrpcPollingClientHandoffServer());
+}
+
+void BM_GrpcHandoffEchoSimple(benchmark::State& state) {
+  Echo(state, GrpcPollingClientHandoffSimpleServer());
+}
+
+void BM_GrpcHandoffEchoMercury(benchmark::State& state) {
+  Echo(state, GrpcPollingClientHandoffMercuryServer());
+}
+
+void BM_GrpcHandoffEchoCThread(benchmark::State& state) {
+  Echo(state, GrpcPollingClientHandoffCThreadServer());
+}
+
 BENCHMARK(BM_GrpcEcho);
 BENCHMARK(BM_GrpcCallbackEcho);
+BENCHMARK(BM_GrpcHandoffEcho);
+BENCHMARK(BM_GrpcHandoffEchoSimple);
+#ifdef WITH_MERCURY
+BENCHMARK(BM_GrpcHandoffEchoMercury);
+#endif
+BENCHMARK(BM_GrpcHandoffEchoCThread);
 
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
