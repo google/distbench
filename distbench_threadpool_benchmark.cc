@@ -14,6 +14,8 @@
 
 #include <atomic>
 
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "benchmark/benchmark.h"
 #include "distbench_threadpool.h"
 #include "glog/logging.h"
@@ -21,6 +23,22 @@
 namespace {
 
 using distbench::CreateThreadpool;
+
+void busy_wait(int usecs) {
+  absl::Time start = absl::Now();
+  while ((absl::Now() - start) < absl::Microseconds(usecs))
+    ;
+}
+
+void ConsumeCpu(int size) {
+  int sum = 0;
+  std::vector<int> rand_array;
+  rand_array.resize(size);
+  std::srand(time(0));
+  std::generate(rand_array.begin(), rand_array.end(), std::rand);
+  std::sort(rand_array.begin(), rand_array.end());
+  for (auto num : rand_array) benchmark::DoNotOptimize(sum += num);
+}
 
 void threadpool_test(std::string_view type, benchmark::State& state) {
   int n = state.range(0);

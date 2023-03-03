@@ -26,6 +26,16 @@ ProtocolDriverOptions PdoFromString(const std::string& s) {
   return pdo;
 }
 
+void ConsumeCpu() {
+  int sum = 0;
+  std::vector<int> rand_array;
+  rand_array.resize(4096);
+  std::srand(time(0));
+  std::generate(rand_array.begin(), rand_array.end(), std::rand);
+  std::sort(rand_array.begin(), rand_array.end());
+  for (auto num : rand_array) benchmark::DoNotOptimize(sum += num);
+}
+
 void Echo(benchmark::State& state, std::string opts_string) {
   ProtocolDriverOptions opts = PdoFromString(opts_string);
   int port1 = 0;
@@ -88,11 +98,15 @@ std::string GrpcAsynCallbackOptions() {
   return pdo.DebugString();
 }
 
+const int num_threads = 8;
+
 std::string GrpcPollingClientHandoffElasticServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
+  AddServerStringOptionTo(pdo, "threadpool_type", "elastic");
+  AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
   return pdo.DebugString();
 }
 
@@ -102,6 +116,7 @@ std::string GrpcPollingClientHandoffSimpleServer() {
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "simple");
+  AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
   return pdo.DebugString();
 }
 
@@ -120,6 +135,7 @@ std::string GrpcPollingClientHandoffNullServer() {
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "null");
+  AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
   return pdo.DebugString();
 }
 
@@ -129,6 +145,7 @@ std::string GrpcPollingClientHandoffMercuryServer() {
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "mercury");
+  AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
   return pdo.DebugString();
 }
 
