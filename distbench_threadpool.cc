@@ -30,6 +30,38 @@ namespace distbench {
 
 namespace {
 
+class NullThreadpool : public AbstractThreadpool {
+ public:
+  NullThreadpool(int nb_threads);
+  ~NullThreadpool() override;
+  void AddWork(std::function<void()> function) override;
+
+ private:
+  mutable absl::Mutex mutex_;
+  int active_threads_ = 0;
+};
+
+NullThreadpool::NullThreadpool(int nb_threads) {}
+
+NullThreadpool::~NullThreadpool() {
+  auto all_threads_done = [this]() { return active_threads_ == 0; };
+  absl::MutexLock m(&mutex_);
+  mutex_.Await(absl::Condition(&all_threads_done));
+}
+
+void NullThreadpool::AddWork(std::function<void()> function) {
+  {
+    absl::MutexLock m(&mutex_);
+    ++active_threads_;
+  }
+  auto function_wrapper = [this, function]() {
+    function();
+    absl::MutexLock m(&mutex_);
+    --active_threads_;
+  };
+  RunRegisteredThread("NullThreadPool", function_wrapper).detach();
+}
+
 class SimpleThreadpool : public AbstractThreadpool {
  public:
   SimpleThreadpool(int nb_threads);
@@ -80,6 +112,135 @@ SimpleThreadpool::~SimpleThreadpool() {
 void SimpleThreadpool::AddWork(std::function<void()> function) {
   absl::MutexLock m(&mutex_);
   work_queue_.push(function);
+}
+
+class ElasticThreadpool : public AbstractThreadpool {
+ public:
+  ElasticThreadpool(int nb_threads);
+  ~ElasticThreadpool() override;
+  void AddWork(std::function<void()> function) override;
+
+ private:
+  void TaskRunner(std::function<void()> task);
+  bool WaitForTask() ABSL_EXCLUSIVE_LOCKS_REQUIRED(work_mutex_);
+
+  const size_t max_idle_threads_ = 0;
+  size_t work_count_ = 0;
+  size_t idle_threads_ = 0;
+  size_t threads_launched_ = 0;
+  size_t active_threads_ = 0;
+  mutable absl::Mutex work_mutex_;
+  absl::Notification shutdown_;
+  std::queue<std::function<void()> > work_queue_ ABSL_GUARDED_BY(work_mutex_);
+};
+
+ElasticThreadpool::ElasticThreadpool(int nb_threads)
+    : max_idle_threads_(nb_threads) {}
+
+void ElasticThreadpool::AddWork(std::function<void()> task) {
+  auto ok_to_add = [this]() {
+    return (work_queue_.size() + 1) <= max_idle_threads_;
+  };
+  auto ok_conditions = absl::Condition(&ok_to_add);
+
+  work_mutex_.Lock();
+  work_mutex_.Await(ok_conditions);
+  work_queue_.push(std::move(task));
+  bool need_to_grow_threadpool =
+      (idle_threads_ == 0) || (active_threads_ < max_idle_threads_ &&
+                               work_queue_.size() > idle_threads_);
+  if (need_to_grow_threadpool) {
+    ++threads_launched_;
+    ++active_threads_;
+    task = std::move(work_queue_.front());
+    work_queue_.pop();
+  }
+  work_mutex_.Unlock();
+  if (need_to_grow_threadpool) {
+    auto elastic_runner = [this, task = std::move(task)]() {
+      TaskRunner(std::move(task));
+    };
+    RunRegisteredThread("ElasticThreadPool", elastic_runner).detach();
+  }
+}
+
+bool ElasticThreadpool::WaitForTask() {
+  auto work_available = [this]() {
+    return !work_queue_.empty() || shutdown_.HasBeenNotified();
+  };
+  auto working_conditions = absl::Condition(&work_available);
+  idle_threads_++;
+  absl::Duration timeout = (idle_threads_ > max_idle_threads_)
+                               ? absl::Seconds(1)
+                               : absl::InfiniteDuration();
+  bool ret = work_mutex_.AwaitWithTimeout(working_conditions, timeout);
+  idle_threads_--;
+  return ret;
+}
+
+void ElasticThreadpool::TaskRunner(std::function<void()> task) {
+  bool need_to_grow_threadpool = false;
+  std::function<void()> task2;
+  bool did_work = false;
+  while (1) {
+    if (task) {
+      task();
+      task = nullptr;
+      did_work = true;
+    }
+    work_mutex_.Lock();
+    if (did_work) {
+      ++work_count_;
+      did_work = false;
+    }
+    if (WaitForTask()) {
+      // A task is available, or we are shutting down:
+      if (work_queue_.empty()) {
+        // The queue is empty and we are shutting down:
+        --active_threads_;
+        work_mutex_.Unlock();
+        return;
+      }
+      // A task is available....
+      task = std::move(work_queue_.front());
+      work_queue_.pop();
+      need_to_grow_threadpool = (idle_threads_ == 0 && !work_queue_.empty());
+      if (need_to_grow_threadpool) {
+        ++threads_launched_;
+        ++active_threads_;
+        task2 = std::move(work_queue_.front());
+        work_queue_.pop();
+      }
+      work_mutex_.Unlock();
+      if (need_to_grow_threadpool) {
+        auto elastic_runner = [this, task2 = std::move(task2)]() {
+          TaskRunner(std::move(task2));
+        };
+        RunRegisteredThread("ElasticThreadPool", elastic_runner).detach();
+      }
+    } else {
+      // Timed out waiting for a task; maybe need to retire this thread:
+      bool need_to_shrink_threadpool = idle_threads_ >= max_idle_threads_;
+      if (need_to_shrink_threadpool) {
+        --active_threads_;
+      }
+      work_mutex_.Unlock();
+      if (need_to_shrink_threadpool) {
+        return;
+      }
+    }
+  }
+}
+
+ElasticThreadpool::~ElasticThreadpool() {
+  shutdown_.Notify();
+  auto all_threads_done = [this]() { return active_threads_ == 0; };
+  absl::MutexLock m(&work_mutex_);
+  work_mutex_.Await(absl::Condition(&all_threads_done));
+  if (0) {
+    LOG(ERROR) << "we launched " << threads_launched_ << " threads";
+    LOG(ERROR) << "we worked " << work_count_ << " times";
+  }
 }
 
 // This is the C-Threadpool from an external library.
@@ -167,8 +328,12 @@ void* MercuryThreadpool::Trampoline(void* heap_object_pointer) {
 
 std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
                                                      int size) {
-  if (name.empty() || name == "simple") {
+  if (name == "simple") {
     return std::make_unique<SimpleThreadpool>(size);
+  } else if (name.empty() || name == "elastic") {
+    return std::make_unique<ElasticThreadpool>(size);
+  } else if (name == "null") {
+    return std::make_unique<NullThreadpool>(size);
   } else if (name == "cthread") {
     return std::make_unique<CThreadpool>(size);
 #ifdef WITH_MERCURY
