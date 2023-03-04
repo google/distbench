@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "benchmark/benchmark.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
@@ -209,54 +208,6 @@ TEST_P(ProtocolDriverTest, Echo) {
   EXPECT_EQ(client_rpc_count, 1);
 }
 
-void Echo(benchmark::State& state, std::string opts_string) {
-  ProtocolDriverOptions opts = PdoFromString(opts_string);
-  int port1 = 0;
-  auto maybe_pd1 = AllocateProtocolDriver(opts, &port1);
-  ASSERT_OK(maybe_pd1.status());
-  auto& pd1 = maybe_pd1.value();
-  int port2 = 0;
-  auto maybe_pd2 = AllocateProtocolDriver(opts, &port2);
-  ASSERT_OK(maybe_pd2.status());
-  auto& pd2 = maybe_pd2.value();
-  std::atomic<int> server_rpc_count = 0;
-  pd2->SetNumPeers(1);
-  pd2->SetHandler([&](ServerRpcState* s) {
-    ++server_rpc_count;
-    return [s]() {
-      s->response.set_payload(s->request->payload());
-      s->SendResponseIfSet();
-      s->FreeStateIfSet();
-    };
-  });
-  pd1->SetNumPeers(1);
-  pd1->SetHandler([&](ServerRpcState* s) {
-    ADD_FAILURE() << "should not get here";
-    s->SendResponseIfSet();
-    s->FreeStateIfSet();
-    return std::function<void()>();
-  });
-  std::string addr1 = pd1->HandlePreConnect("", 0).value();
-  std::string addr2 = pd2->HandlePreConnect("", 0).value();
-  ASSERT_OK(pd1->HandleConnect(addr2, 0));
-  ASSERT_OK(pd2->HandleConnect(addr1, 0));
-
-  std::atomic<int> client_rpc_count = 0;
-  ClientRpcState rpc_state;
-  rpc_state.request.set_payload("ping!");
-  for (auto s : state) {
-    client_rpc_count = 1;
-    pd1->InitiateRpc(0, &rpc_state, [&]() {
-      EXPECT_EQ(rpc_state.request.payload(), rpc_state.response.payload());
-      EXPECT_EQ(rpc_state.response.payload(), "ping!");
-      client_rpc_count = 0;
-    });
-    while (client_rpc_count)
-      ;
-  }
-  pd1->ShutdownClient();
-}
-
 std::string GrpcOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
@@ -347,37 +298,6 @@ std::string MercuryOptions() {
   pdo.set_protocol_name("mercury");
   return pdo.DebugString();
 }
-
-void BM_GrpcEcho(benchmark::State& state) { Echo(state, GrpcOptions()); }
-
-void BM_GrpcCallbackEcho(benchmark::State& state) {
-  Echo(state, GrpcAsynCallbackOptions());
-}
-
-void BM_GrpcHandoffEcho(benchmark::State& state) {
-  Echo(state, GrpcPollingClientHandoffServer());
-}
-
-void BM_GrpcHandoffEchoSimple(benchmark::State& state) {
-  Echo(state, GrpcPollingClientHandoffSimpleServer());
-}
-
-void BM_GrpcHandoffEchoMercury(benchmark::State& state) {
-  Echo(state, GrpcPollingClientHandoffMercuryServer());
-}
-
-void BM_GrpcHandoffEchoCThread(benchmark::State& state) {
-  Echo(state, GrpcPollingClientHandoffCThreadServer());
-}
-
-BENCHMARK(BM_GrpcEcho);
-BENCHMARK(BM_GrpcCallbackEcho);
-BENCHMARK(BM_GrpcHandoffEcho);
-BENCHMARK(BM_GrpcHandoffEchoSimple);
-#ifdef WITH_MERCURY
-BENCHMARK(BM_GrpcHandoffEchoMercury);
-#endif
-BENCHMARK(BM_GrpcHandoffEchoCThread);
 
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
