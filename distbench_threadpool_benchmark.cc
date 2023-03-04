@@ -54,7 +54,6 @@ void threadpool_test(std::string_view type, benchmark::State& state) {
 void BM_Elastic(benchmark::State& state) { threadpool_test("elastic", state); }
 void BM_Simple(benchmark::State& state) { threadpool_test("simple", state); }
 void BM_Mercury(benchmark::State& state) { threadpool_test("mercury", state); }
-void BM_CThread(benchmark::State& state) { threadpool_test("cthread", state); }
 void BM_Null(benchmark::State& state) { threadpool_test("null", state); }
 
 BENCHMARK(BM_Null)->Range(1, 16384);
@@ -63,6 +62,5 @@ BENCHMARK(BM_Simple)->Range(1, 16384);
 #ifdef WITH_MERCURY
 BENCHMARK(BM_Mercury)->Range(1, 16384);
 #endif
-BENCHMARK(BM_CThread)->Range(1, 16384);
 
 }  // namespace

@@ -20,7 +20,6 @@
 #include "absl/synchronization/notification.h"
 #include "distbench_thread_support.h"
 #include "glog/logging.h"
-#include "thpool.h"
 
 #ifdef WITH_MERCURY
 #include <mercury_thread_pool.h>
@@ -261,43 +260,6 @@ ElasticThreadpool::~ElasticThreadpool() {
   }
 }
 
-// This is the C-Threadpool from an external library.
-// https://github.com/Pithikos/C-Thread-Pool
-class CThreadpool : public AbstractThreadpool {
- public:
-  CThreadpool(int nb_threads);
-  ~CThreadpool() override;
-  void AddWork(std::function<void()> task) override;
-  std::vector<ThreadpoolStat> GetStats() override;
-
- private:
-  static void Trampoline(void* heap_object_pointer);
-  threadpool thpool_;
-};
-
-CThreadpool::CThreadpool(int nb_threads) { thpool_ = thpool_init(nb_threads); }
-
-CThreadpool::~CThreadpool() {
-  thpool_wait(thpool_);
-  thpool_destroy(thpool_);
-}
-
-void CThreadpool::AddWork(std::function<void()> task) {
-  // Copy the functor object to the heap, and pass the address of the heap
-  // object to the thread pool:
-  auto* fpointer = new std::function<void()>(std::move(task));
-  thpool_add_work(thpool_, Trampoline, fpointer);
-}
-
-void CThreadpool::Trampoline(void* heap_object_pointer) {
-  // Execute and delete the heap allocated copy of the functor object:
-  auto f = reinterpret_cast<std::function<void()>*>(heap_object_pointer);
-  (*f)();
-  delete f;
-}
-
-std::vector<ThreadpoolStat> CThreadpool::GetStats() { return {}; }
-
 #ifdef WITH_MERCURY
 class MercuryThreadpool : public AbstractThreadpool {
  public:
@@ -359,8 +321,6 @@ std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
     return std::make_unique<ElasticThreadpool>(size);
   } else if (name == "null") {
     return std::make_unique<NullThreadpool>(size);
-  } else if (name == "cthread") {
-    return std::make_unique<CThreadpool>(size);
 #ifdef WITH_MERCURY
   } else if (name == "mercury") {
     return std::make_unique<MercuryThreadpool>(size);
