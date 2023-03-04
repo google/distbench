@@ -27,8 +27,8 @@ class AbstractThreadpool {
   virtual void AddWork(std::function<void()> function) = 0;
 };
 
-std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
-                                                     int size);
+std::unique_ptr<AbstractThreadpool> CreateThreadpool(
+    std::string_view threadpool_type, int size);
 
 }  // namespace distbench
 

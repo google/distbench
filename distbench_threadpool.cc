@@ -248,8 +248,8 @@ ElasticThreadpool::~ElasticThreadpool() {
 class CThreadpool : public AbstractThreadpool {
  public:
   CThreadpool(int nb_threads);
-  virtual ~CThreadpool();
-  virtual void AddWork(std::function<void()> function);
+  ~CThreadpool() override;
+  void AddWork(std::function<void()> function) override;
 
  private:
   static void Trampoline(void* heap_object_pointer);
@@ -281,8 +281,8 @@ void CThreadpool::Trampoline(void* heap_object_pointer) {
 class MercuryThreadpool : public AbstractThreadpool {
  public:
   MercuryThreadpool(int nb_threads);
-  virtual ~MercuryThreadpool();
-  virtual void AddWork(std::function<void()> function);
+  ~MercuryThreadpool() override;
+  void AddWork(std::function<void()> function) override;
 
  private:
   struct HeapObject {
@@ -298,7 +298,7 @@ MercuryThreadpool::MercuryThreadpool(int nb_threads) {
   int error = hg_thread_pool_init(nb_threads, &tmp);
   thread_pool_.reset(tmp);
   if (error) {
-    LOG(INFO) << "some kinda error: " << error;
+    LOG(ERROR) << "some kinda error: " << error;
   }
 }
 
@@ -323,7 +323,9 @@ void* MercuryThreadpool::Trampoline(void* heap_object_pointer) {
   delete heap_object;
   return 0;
 }
+
 #endif  // WITH_MERCURY
+
 }  // anonymous namespace
 
 std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
