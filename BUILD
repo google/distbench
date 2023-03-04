@@ -250,6 +250,15 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "benchmark_utils",
+    srcs = ["benchmark_utils.cc"],
+    deps = [
+        "@com_google_benchmark//:benchmark",
+        "@com_github_google_glog//:glog"
+    ],
+)
+
 cc_test(
     name = "protocol_driver_test",
     size = "medium",
@@ -260,7 +269,6 @@ cc_test(
         ":gtest_utils",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
-        "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog"
     ] + select({
         ":with_homa": [":protocol_driver_homa"],
@@ -270,13 +278,12 @@ cc_test(
 
 cc_binary(
     name = "protocol_driver_benchmark",
-    srcs = ["protocol_driver_test.cc"],
+    srcs = ["protocol_driver_benchmark.cc"],
     deps = [
         ":distbench_utils",
-        ":gtest_utils",
+        ":benchmark_utils",
         ":protocol_driver_allocator",
         "@com_google_googletest//:gtest",
-        "@com_google_benchmark//:benchmark_main",
         "@com_github_google_glog//:glog"
     ],
 )
@@ -400,6 +407,15 @@ cc_test(
     deps = [
         ":distbench_threadpool_lib",
         ":gtest_utils",
+    ],
+)
+
+cc_binary(
+    name = "distbench_threadpool_benchmark",
+    srcs = ["distbench_threadpool_benchmark.cc"],
+    deps = [
+        ":distbench_threadpool_lib",
+        ":benchmark_utils",
     ],
 )
 

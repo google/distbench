@@ -16,7 +16,6 @@
 
 #include <atomic>
 
-#include "benchmark/benchmark.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
@@ -75,31 +74,5 @@ INSTANTIATE_TEST_SUITE_P(ThreadpoolTests, ThreadpoolTest,
                                          "mercury"
 #endif
                                          ));
-
-void threadpool_test(std::string_view type, benchmark::State& state) {
-  int n = state.range(0);
-  std::atomic<int> work_counter = 0;
-  for (auto s : state) {
-    auto atp = CreateThreadpool(type, 8);
-    ASSERT_NE(atp, nullptr);
-    for (int i = 0; i < n; i++) {
-      atp->AddWork([&]() { ++work_counter; });
-    }
-  }  // Complete the work of atp.
-}
-
-void BM_Elastic(benchmark::State& state) { threadpool_test("elastic", state); }
-void BM_Simple(benchmark::State& state) { threadpool_test("simple", state); }
-void BM_Mercury(benchmark::State& state) { threadpool_test("mercury", state); }
-void BM_CThread(benchmark::State& state) { threadpool_test("cthread", state); }
-void BM_Null(benchmark::State& state) { threadpool_test("null", state); }
-
-BENCHMARK(BM_Elastic)->Range(1, 16384);
-BENCHMARK(BM_Simple)->Range(1, 16384);
-#ifdef WITH_MERCURY
-BENCHMARK(BM_Mercury)->Range(1, 16384);
-#endif
-BENCHMARK(BM_CThread)->Range(1, 16384);
-BENCHMARK(BM_Null)->Range(1, 16384);
 
 }  // namespace
