@@ -313,8 +313,8 @@ std::vector<ThreadpoolStat> MercuryThreadpool::GetStats() { return {}; }
 
 }  // anonymous namespace
 
-std::unique_ptr<AbstractThreadpool> CreateThreadpool(std::string_view name,
-                                                     int size) {
+std::unique_ptr<AbstractThreadpool> CreateThreadpool(
+    std::string_view threadpool_type, int size) {
   if (name == "simple") {
     return std::make_unique<SimpleThreadpool>(size);
   } else if (name.empty() || name == "elastic") {
