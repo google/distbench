@@ -4,6 +4,22 @@ build --cxxopt='-std=c++17'
 build --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-lm
 build --action_env=BAZEL_LINKOPTS=-static-libgcc
 
+build:ubsan --strip=never
+build:ubsan --copt=-fsanitize=undefined
+build:ubsan --copt=-DUNDEFINED_SANITIZER
+build:ubsan --copt=-O1
+build:ubsan --copt=-g
+build:ubsan --copt=-fno-omit-frame-pointer
+build:ubsan --linkopt=-fsanitize=undefined
+
+build:msan --strip=never
+build:msan --copt=-fsanitize=memory
+build:msan --copt=-DMEMORY_SANITIZER
+build:msan --copt=-O1
+build:msan --copt=-g
+build:msan --copt=-fno-omit-frame-pointer
+build:msan --linkopt=-fsanitize=memory
+
 build:asan --strip=never
 build:asan --copt=-fsanitize=address
 build:asan --copt=-DADDRESS_SANITIZER
