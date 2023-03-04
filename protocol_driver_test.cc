@@ -245,13 +245,16 @@ void Echo(benchmark::State& state, std::string opts_string) {
   ClientRpcState rpc_state;
   rpc_state.request.set_payload("ping!");
   for (auto s : state) {
+    client_rpc_count = 1;
     pd1->InitiateRpc(0, &rpc_state, [&]() {
-      ++client_rpc_count;
       EXPECT_EQ(rpc_state.request.payload(), rpc_state.response.payload());
       EXPECT_EQ(rpc_state.response.payload(), "ping!");
+      client_rpc_count = 0;
     });
-    pd1->ShutdownClient();
+    while (client_rpc_count)
+      ;
   }
+  pd1->ShutdownClient();
 }
 
 std::string GrpcOptions() {
