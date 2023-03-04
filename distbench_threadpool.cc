@@ -144,7 +144,7 @@ ElasticThreadpool::ElasticThreadpool(int nb_threads)
     : max_idle_threads_(nb_threads) {}
 
 void ElasticThreadpool::AddWork(std::function<void()> task) {
-  auto ok_to_add = [this]() {
+  auto ok_to_add = [this]() ABSL_EXCLUSIVE_LOCKS_REQUIRED(work_mutex_) {
     return (work_queue_.size() + 1) <= max_idle_threads_;
   };
   auto ok_conditions = absl::Condition(&ok_to_add);
@@ -171,7 +171,7 @@ void ElasticThreadpool::AddWork(std::function<void()> task) {
 }
 
 bool ElasticThreadpool::WaitForTask() {
-  auto work_available = [this]() {
+  auto work_available = [this]() ABSL_EXCLUSIVE_LOCKS_REQUIRED(work_mutex_) {
     return !work_queue_.empty() || shutdown_.HasBeenNotified();
   };
   auto working_conditions = absl::Condition(&work_available);
