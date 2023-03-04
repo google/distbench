@@ -34,7 +34,7 @@ class NullThreadpool : public AbstractThreadpool {
  public:
   NullThreadpool(int nb_threads);
   ~NullThreadpool() override;
-  void AddWork(std::function<void()> function) override;
+  void AddWork(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
@@ -50,13 +50,13 @@ NullThreadpool::~NullThreadpool() {
   mutex_.Await(absl::Condition(&all_threads_done));
 }
 
-void NullThreadpool::AddWork(std::function<void()> function) {
+void NullThreadpool::AddWork(std::function<void()> task) {
   {
     absl::MutexLock m(&mutex_);
     ++active_threads_;
   }
-  auto function_wrapper = [this, function]() {
-    function();
+  auto function_wrapper = [this, task = std::move(task)]() {
+    task();
     absl::MutexLock m(&mutex_);
     --active_threads_;
   };
@@ -69,7 +69,7 @@ class SimpleThreadpool : public AbstractThreadpool {
  public:
   SimpleThreadpool(int nb_threads);
   ~SimpleThreadpool() override;
-  void AddWork(std::function<void()> function) override;
+  void AddWork(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
@@ -96,7 +96,7 @@ SimpleThreadpool::SimpleThreadpool(int nb_threads) {
             --active_threads_;
             return;
           }
-          task = work_queue_.front();
+          task = std::move(work_queue_.front());
           work_queue_.pop();
         }
         task();
@@ -115,16 +115,16 @@ SimpleThreadpool::~SimpleThreadpool() {
 
 std::vector<ThreadpoolStat> SimpleThreadpool::GetStats() { return {}; }
 
-void SimpleThreadpool::AddWork(std::function<void()> function) {
+void SimpleThreadpool::AddWork(std::function<void()> task) {
   absl::MutexLock m(&mutex_);
-  work_queue_.push(function);
+  work_queue_.push(std::move(task));
 }
 
 class ElasticThreadpool : public AbstractThreadpool {
  public:
   ElasticThreadpool(int nb_threads);
   ~ElasticThreadpool() override;
-  void AddWork(std::function<void()> function) override;
+  void AddWork(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
@@ -267,7 +267,7 @@ class CThreadpool : public AbstractThreadpool {
  public:
   CThreadpool(int nb_threads);
   ~CThreadpool() override;
-  void AddWork(std::function<void()> function) override;
+  void AddWork(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
@@ -282,10 +282,10 @@ CThreadpool::~CThreadpool() {
   thpool_destroy(thpool_);
 }
 
-void CThreadpool::AddWork(std::function<void()> function) {
+void CThreadpool::AddWork(std::function<void()> task) {
   // Copy the functor object to the heap, and pass the address of the heap
   // object to the thread pool:
-  auto* fpointer = new std::function<void()>(function);
+  auto* fpointer = new std::function<void()>(std::move(task));
   thpool_add_work(thpool_, Trampoline, fpointer);
 }
 
@@ -303,13 +303,13 @@ class MercuryThreadpool : public AbstractThreadpool {
  public:
   MercuryThreadpool(int nb_threads);
   ~MercuryThreadpool() override;
-  void AddWork(std::function<void()> function) override;
+  void AddWork(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   struct HeapObject {
     struct hg_thread_work work_item; /* Must be first! */
-    std::function<void()> function;
+    std::function<void()> task;
   };
   static void* Trampoline(void* heap_object_pointer);
   std::unique_ptr<hg_thread_pool_t> thread_pool_;
@@ -328,20 +328,20 @@ MercuryThreadpool::~MercuryThreadpool() {
   hg_thread_pool_destroy(thread_pool_.release());
 }
 
-void MercuryThreadpool::AddWork(std::function<void()> function) {
+void MercuryThreadpool::AddWork(std::function<void()> task) {
   // Copy the functor object to the heap, and pass the address of the heap
   // object to the thread pool:
   auto* heap_object = new HeapObject;
   heap_object->work_item.func = Trampoline;
   heap_object->work_item.args = heap_object;
-  heap_object->function = function;
+  heap_object->task = std::move(task);
   hg_thread_pool_post(thread_pool_.get(), &heap_object->work_item);
 }
 
 void* MercuryThreadpool::Trampoline(void* heap_object_pointer) {
   // Execute and delete the heap allocated copy of the functor object:
   auto heap_object = reinterpret_cast<HeapObject*>(heap_object_pointer);
-  heap_object->function();
+  heap_object->task();
   delete heap_object;
   return 0;
 }
