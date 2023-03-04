@@ -120,15 +120,6 @@ std::string GrpcPollingClientHandoffSimpleServer() {
   return pdo.DebugString();
 }
 
-std::string GrpcPollingClientHandoffCThreadServer() {
-  ProtocolDriverOptions pdo;
-  pdo.set_protocol_name("grpc");
-  AddClientStringOptionTo(pdo, "client_type", "polling");
-  AddServerStringOptionTo(pdo, "server_type", "handoff");
-  AddServerStringOptionTo(pdo, "threadpool_type", "cthread");
-  return pdo.DebugString();
-}
-
 std::string GrpcPollingClientHandoffNullServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
@@ -167,10 +158,6 @@ void BM_GrpcHandoffEchoMercury(benchmark::State& state) {
   Echo(state, GrpcPollingClientHandoffMercuryServer());
 }
 
-void BM_GrpcHandoffEchoCThread(benchmark::State& state) {
-  Echo(state, GrpcPollingClientHandoffCThreadServer());
-}
-
 void BM_GrpcHandoffEchoNull(benchmark::State& state) {
   Echo(state, GrpcPollingClientHandoffNullServer());
 }
@@ -183,6 +170,5 @@ BENCHMARK(BM_GrpcHandoffEchoSimple);
 #ifdef WITH_MERCURY
 BENCHMARK(BM_GrpcHandoffEchoMercury);
 #endif
-BENCHMARK(BM_GrpcHandoffEchoCThread);
 
 }  // namespace distbench

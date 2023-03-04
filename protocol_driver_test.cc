@@ -246,14 +246,6 @@ std::string GrpcPollingClientHandoffSimpleServer() {
   return pdo.DebugString();
 }
 
-std::string GrpcPollingClientHandoffCThreadServer() {
-  ProtocolDriverOptions pdo;
-  pdo.set_protocol_name("grpc");
-  AddClientStringOptionTo(pdo, "client_type", "polling");
-  AddServerStringOptionTo(pdo, "server_type", "handoff");
-  AddServerStringOptionTo(pdo, "threadpool_type", "cthread");
-  return pdo.DebugString();
-}
 std::string GrpcPollingClientHandoffMercuryServer() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");

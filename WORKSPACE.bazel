@@ -110,16 +110,6 @@ http_archive(
     strip_prefix = "HomaModule-a889ebc0d9c2a2437fc41323da01422e8314f6db",
 )
 
-http_archive(
-    name = "com_github_cthreadpool",
-    sha256 = "959b5fb4bbab434972a8c03ff70843d498cb74989e69a0819a90792510decebd",
-    urls = [
-        "https://github.com/Pithikos/C-Thread-Pool/archive/b259a6e29a76d756f68c3665a3d841e5848e928b.tar.gz"
-    ],
-    build_file = "@//:c-thread-pool.BUILD",
-    strip_prefix = "C-Thread-Pool-b259a6e29a76d756f68c3665a3d841e5848e928b",
-)
-
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "com_github_nelhage_rules_boost",
