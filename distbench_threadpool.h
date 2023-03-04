@@ -30,7 +30,7 @@ struct ThreadpoolStat {
 class AbstractThreadpool {
  public:
   virtual ~AbstractThreadpool() = default;
-  virtual void AddWork(std::function<void()> function) = 0;
+  virtual void AddWork(std::function<void()> task) = 0;
   virtual std::vector<ThreadpoolStat> GetStats() = 0;
 };
 
