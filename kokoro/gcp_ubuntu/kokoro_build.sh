@@ -59,8 +59,11 @@ function bazel_install {
   bash "/tmp/${BAZEL_FILE}" --user
 }
 
-export CXX=g++
-export CC=gcc
+# This overrides -repo_env=CC=gcc-11 --repo_env=CXX=g++-11 from .bazelrc:
+function bazel_basic {
+  bazel "${@}" --repo_env=CC=gcc --repo_env=CXX=g++
+}
+
 BAZEL_VERSION=5.4.0
 PATH="$HOME/bin:$PATH"
 
@@ -81,11 +84,11 @@ print_header_and_run "Logging host kernel version" \
 print_header_and_run "Logging host ip addresses" \
   ip address
 
-print_header_and_run "Logging $CC version" \
-  $CC --version
+print_header_and_run "Logging gcc version" \
+  gcc --version
 
-print_header_and_run "Logging $CXX version" \
-  $CXX --version
+print_header_and_run "Logging g++ version" \
+  g++ --version
 
 print_header_and_run "Logging Bazel version" \
   bazel --version
@@ -97,19 +100,19 @@ print_header_and_run "Bazel fetch" \
   run_with_retries bazel fetch :all
 
 print_header_and_run "Bazel test test_builder" \
-  bazel test test_builder:all
+  bazel_basic test test_builder:all
 
 print_header_and_run "Bazel build" \
-  bazel build :all --//:with-mercury
+  bazel_basic build :all --//:with-mercury
 
 print_header_and_run "Bazel test" \
-  bazel test --test_output=errors :all --//:with-mercury
+  bazel_basic test --test_output=errors :all --//:with-mercury
 
 print_header_and_run "Bazel test - ASAN" \
-  bazel test --test_output=errors :all --//:with-mercury --config=asan
+  bazel_basic test --test_output=errors :all --//:with-mercury --config=asan
 
 print_header_and_run "Bazel test - TSAN" \
-  bazel test --test_output=errors :all --//:with-mercury --config=tsan
+  bazel_basic test --test_output=errors :all --//:with-mercury --config=tsan
 
 print_header_and_run "Bazel shutdown" \
   bazel shutdown
