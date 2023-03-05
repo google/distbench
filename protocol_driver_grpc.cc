@@ -490,7 +490,7 @@ class TrafficServiceAsyncCallback
     if (handler_) {
       auto remaining_work = handler_(rpc_state);
       if (remaining_work) {
-        thread_pool_->AddWork(remaining_work);
+        thread_pool_->AddTask(remaining_work);
       }
     }
     return reactor;
@@ -622,7 +622,7 @@ class PollingRpcHandlerFsm {
     if (*handler_) {
       auto remaining_work = (*handler_)(&rpc_state_);
       if (remaining_work) {
-        thread_pool_->AddWork(remaining_work);
+        thread_pool_->AddTask(remaining_work);
       }
     }
   }

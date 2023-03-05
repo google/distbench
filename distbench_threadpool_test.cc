@@ -43,7 +43,7 @@ TEST_P(ThreadpoolTest, PerformSimpleWork) {
     auto atp = CreateThreadpool(GetParam(), 4);
     ASSERT_NE(atp, nullptr);
     for (int i = 0; i < iterations; i++) {
-      atp->AddWork([&]() { ++work_counter; });
+      atp->AddTask([&]() { ++work_counter; });
     }
   }  // Complete the work of atp.
   ASSERT_EQ(work_counter, iterations);
@@ -59,8 +59,8 @@ TEST_P(ThreadpoolTest, ParallelAddTest) {
       auto atp_work_generator = CreateThreadpool(GetParam(), 4);
       ASSERT_NE(atp_work_generator, nullptr);
       for (int i = 0; i < iterations; i++) {
-        atp_work_generator->AddWork(
-            [&]() { atp_work_performer->AddWork([&]() { ++work_counter; }); });
+        atp_work_generator->AddTask(
+            [&]() { atp_work_performer->AddTask([&]() { ++work_counter; }); });
       }
     }  // Complete the work of atp_work_generator.
   }    // Complete the work of atp_work_performer.

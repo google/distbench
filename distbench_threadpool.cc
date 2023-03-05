@@ -33,7 +33,7 @@ class NullThreadpool : public AbstractThreadpool {
  public:
   NullThreadpool(int nb_threads);
   ~NullThreadpool() override;
-  void AddWork(std::function<void()> task) override;
+  void AddTask(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
@@ -49,7 +49,7 @@ NullThreadpool::~NullThreadpool() {
   mutex_.Await(absl::Condition(&all_threads_done));
 }
 
-void NullThreadpool::AddWork(std::function<void()> task) {
+void NullThreadpool::AddTask(std::function<void()> task) {
   {
     absl::MutexLock m(&mutex_);
     ++active_threads_;
@@ -68,35 +68,35 @@ class SimpleThreadpool : public AbstractThreadpool {
  public:
   SimpleThreadpool(int nb_threads);
   ~SimpleThreadpool() override;
-  void AddWork(std::function<void()> task) override;
+  void AddTask(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   mutable absl::Mutex mutex_;
   absl::Notification shutdown_;
   int active_threads_ = 0;
-  std::queue<std::function<void()> > work_queue_;
+  std::queue<std::function<void()> > task_queue_;
 };
 
 SimpleThreadpool::SimpleThreadpool(int nb_threads) {
   active_threads_ = nb_threads;
   for (int i = 0; i < nb_threads; i++) {
     auto task_runner = [this]() {
-      auto work_available = [this]() {
-        return !work_queue_.empty() || shutdown_.HasBeenNotified();
+      auto task_available = [this]() {
+        return !task_queue_.empty() || shutdown_.HasBeenNotified();
       };
-      auto working_conditions = absl::Condition(&work_available);
+      auto working_conditions = absl::Condition(&task_available);
       do {
         std::function<void()> task;
         {
           absl::MutexLock m(&mutex_);
           mutex_.Await(working_conditions);
-          if (work_queue_.empty()) {
+          if (task_queue_.empty()) {
             --active_threads_;
             return;
           }
-          task = std::move(work_queue_.front());
-          work_queue_.pop();
+          task = std::move(task_queue_.front());
+          task_queue_.pop();
         }
         task();
       } while (true);
@@ -114,54 +114,54 @@ SimpleThreadpool::~SimpleThreadpool() {
 
 std::vector<ThreadpoolStat> SimpleThreadpool::GetStats() { return {}; }
 
-void SimpleThreadpool::AddWork(std::function<void()> task) {
+void SimpleThreadpool::AddTask(std::function<void()> task) {
   absl::MutexLock m(&mutex_);
-  work_queue_.push(std::move(task));
+  task_queue_.push(std::move(task));
 }
 
 class ElasticThreadpool : public AbstractThreadpool {
  public:
   ElasticThreadpool(int nb_threads);
   ~ElasticThreadpool() override;
-  void AddWork(std::function<void()> task) override;
+  void AddTask(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   void TaskRunner(std::function<void()> task);
-  bool WaitForTask() ABSL_EXCLUSIVE_LOCKS_REQUIRED(work_mutex_);
+  bool WaitForTask() ABSL_EXCLUSIVE_LOCKS_REQUIRED(task_mutex_);
 
-  const size_t max_idle_threads_ = 0;
-  size_t work_count_ = 0;
-  size_t idle_threads_ = 0;
-  size_t threads_launched_ = 0;
-  size_t active_threads_ = 0;
-  mutable absl::Mutex work_mutex_;
+  const int64_t max_idle_threads_ = 0;
+  size_t task_count_ = 0;
+  int64_t idle_threads_ = 0;
+  int64_t threads_launched_ = 0;
+  int64_t active_threads_ = 0;
+  mutable absl::Mutex task_mutex_;
   absl::Notification shutdown_;
-  std::queue<std::function<void()> > work_queue_ ABSL_GUARDED_BY(work_mutex_);
+  std::queue<std::function<void()> > task_queue_ ABSL_GUARDED_BY(task_mutex_);
 };
 
 ElasticThreadpool::ElasticThreadpool(int nb_threads)
     : max_idle_threads_(nb_threads) {}
 
-void ElasticThreadpool::AddWork(std::function<void()> task) {
-  auto ok_to_add = [this]() ABSL_EXCLUSIVE_LOCKS_REQUIRED(work_mutex_) {
-    return (work_queue_.size() + 1) <= max_idle_threads_;
+void ElasticThreadpool::AddTask(std::function<void()> task) {
+  auto ok_to_add = [this]() ABSL_EXCLUSIVE_LOCKS_REQUIRED(task_mutex_) {
+    return (task_queue_.size() + 1) <= max_idle_threads_;
   };
   auto ok_conditions = absl::Condition(&ok_to_add);
 
-  work_mutex_.Lock();
-  work_mutex_.Await(ok_conditions);
-  work_queue_.push(std::move(task));
+  task_mutex_.Lock();
+  task_mutex_.Await(ok_conditions);
+  task_queue_.push(std::move(task));
   bool need_to_grow_threadpool =
       (idle_threads_ == 0) || (active_threads_ < max_idle_threads_ &&
-                               work_queue_.size() > idle_threads_);
+                               task_queue_.size() > idle_threads_);
   if (need_to_grow_threadpool) {
     ++threads_launched_;
     ++active_threads_;
-    task = std::move(work_queue_.front());
-    work_queue_.pop();
+    task = std::move(task_queue_.front());
+    task_queue_.pop();
   }
-  work_mutex_.Unlock();
+  task_mutex_.Unlock();
   if (need_to_grow_threadpool) {
     auto elastic_runner = [this, lambda_task = std::move(task)]() {
       TaskRunner(std::move(lambda_task));
@@ -171,15 +171,15 @@ void ElasticThreadpool::AddWork(std::function<void()> task) {
 }
 
 bool ElasticThreadpool::WaitForTask() {
-  auto work_available = [this]() ABSL_EXCLUSIVE_LOCKS_REQUIRED(work_mutex_) {
-    return !work_queue_.empty() || shutdown_.HasBeenNotified();
+  auto task_available = [this]() ABSL_EXCLUSIVE_LOCKS_REQUIRED(task_mutex_) {
+    return !task_queue_.empty() || shutdown_.HasBeenNotified();
   };
-  auto working_conditions = absl::Condition(&work_available);
+  auto working_conditions = absl::Condition(&task_available);
   idle_threads_++;
   absl::Duration timeout = (idle_threads_ > max_idle_threads_)
                                ? absl::Seconds(1)
                                : absl::InfiniteDuration();
-  bool ret = work_mutex_.AwaitWithTimeout(working_conditions, timeout);
+  bool ret = task_mutex_.AwaitWithTimeout(working_conditions, timeout);
   idle_threads_--;
   return ret;
 }
@@ -194,30 +194,30 @@ void ElasticThreadpool::TaskRunner(std::function<void()> task) {
       task = nullptr;
       did_work = true;
     }
-    work_mutex_.Lock();
+    task_mutex_.Lock();
     if (did_work) {
-      ++work_count_;
+      ++task_count_;
       did_work = false;
     }
     if (WaitForTask()) {
       // A task is available, or we are shutting down:
-      if (work_queue_.empty()) {
+      if (task_queue_.empty()) {
         // The queue is empty and we are shutting down:
         --active_threads_;
-        work_mutex_.Unlock();
+        task_mutex_.Unlock();
         return;
       }
       // A task is available....
-      task = std::move(work_queue_.front());
-      work_queue_.pop();
-      need_to_grow_threadpool = (idle_threads_ == 0 && !work_queue_.empty());
+      task = std::move(task_queue_.front());
+      task_queue_.pop();
+      need_to_grow_threadpool = (idle_threads_ == 0 && !task_queue_.empty());
       if (need_to_grow_threadpool) {
         ++threads_launched_;
         ++active_threads_;
-        task2 = std::move(work_queue_.front());
-        work_queue_.pop();
+        task2 = std::move(task_queue_.front());
+        task_queue_.pop();
       }
-      work_mutex_.Unlock();
+      task_mutex_.Unlock();
       if (need_to_grow_threadpool) {
         auto elastic_runner = [this, lambda_task2 = std::move(task2)]() {
           TaskRunner(std::move(lambda_task2));
@@ -230,7 +230,7 @@ void ElasticThreadpool::TaskRunner(std::function<void()> task) {
       if (need_to_shrink_threadpool) {
         --active_threads_;
       }
-      work_mutex_.Unlock();
+      task_mutex_.Unlock();
       if (need_to_shrink_threadpool) {
         return;
       }
@@ -241,22 +241,22 @@ void ElasticThreadpool::TaskRunner(std::function<void()> task) {
 std::vector<ThreadpoolStat> ElasticThreadpool::GetStats() {
   std::vector<ThreadpoolStat> ret;
   ret.resize(2);
-  absl::MutexLock m(&work_mutex_);
+  absl::MutexLock m(&task_mutex_);
   ret[0].name = "threads_launched";
   ret[0].value = threads_launched_;
   ret[1].name = "tasks_processed";
-  ret[1].value = work_count_;
+  ret[1].value = task_count_;
   return ret;
 }
 
 ElasticThreadpool::~ElasticThreadpool() {
   shutdown_.Notify();
   auto all_threads_done = [this]() { return active_threads_ == 0; };
-  absl::MutexLock m(&work_mutex_);
-  work_mutex_.Await(absl::Condition(&all_threads_done));
+  absl::MutexLock m(&task_mutex_);
+  task_mutex_.Await(absl::Condition(&all_threads_done));
   if (0) {
     LOG(ERROR) << "we launched " << threads_launched_ << " threads";
-    LOG(ERROR) << "we worked " << work_count_ << " times";
+    LOG(ERROR) << "we worked " << task_count_ << " times";
   }
 }
 
@@ -265,12 +265,12 @@ class MercuryThreadpool : public AbstractThreadpool {
  public:
   MercuryThreadpool(int nb_threads);
   ~MercuryThreadpool() override;
-  void AddWork(std::function<void()> task) override;
+  void AddTask(std::function<void()> task) override;
   std::vector<ThreadpoolStat> GetStats() override;
 
  private:
   struct HeapObject {
-    struct hg_thread_work work_item; /* Must be first! */
+    struct hg_thread_work task_item; /* Must be first! */
     std::function<void()> task;
   };
   static void* Trampoline(void* heap_object_pointer);
@@ -290,14 +290,14 @@ MercuryThreadpool::~MercuryThreadpool() {
   hg_thread_pool_destroy(thread_pool_.release());
 }
 
-void MercuryThreadpool::AddWork(std::function<void()> task) {
+void MercuryThreadpool::AddTask(std::function<void()> task) {
   // Copy the functor object to the heap, and pass the address of the heap
   // object to the thread pool:
   auto* heap_object = new HeapObject;
-  heap_object->work_item.func = Trampoline;
-  heap_object->work_item.args = heap_object;
+  heap_object->task_item.func = Trampoline;
+  heap_object->task_item.args = heap_object;
   heap_object->task = std::move(task);
-  hg_thread_pool_post(thread_pool_.get(), &heap_object->work_item);
+  hg_thread_pool_post(thread_pool_.get(), &heap_object->task_item);
 }
 
 void* MercuryThreadpool::Trampoline(void* heap_object_pointer) {

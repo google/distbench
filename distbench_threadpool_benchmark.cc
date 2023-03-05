@@ -46,7 +46,7 @@ void threadpool_test(std::string_view type, benchmark::State& state) {
   for (auto s : state) {
     auto atp = CreateThreadpool(type, 8);
     for (int i = 0; i < n; i++) {
-      atp->AddWork([&]() { ++work_counter; });
+      atp->AddTask([&]() { ++work_counter; });
     }
   }  // Complete the work of atp.
 }
