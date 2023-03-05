@@ -19,8 +19,6 @@ Follow the instructions for your distribution at
 
 Once Bazel is installed, you can build Distbench with the following command:
 ```bash
-export CC=gcc-11
-export CXX=g++-11
 bazel build :all
 ```
 

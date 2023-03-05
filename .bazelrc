@@ -1,46 +1,49 @@
+build --repo_env=CC=gcc-11
+build --repo_env=CXX=g++-11
+
 build --cxxopt='-std=c++17'
 
 # Statically link libstdc++ and libgcc.
 build --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-lm
 build --action_env=BAZEL_LINKOPTS=-static-libgcc
 
-build:ubsan --strip=never
+build:ubsan --linkopt=-fsanitize=undefined
 build:ubsan --copt=-fsanitize=undefined
 build:ubsan --copt=-DUNDEFINED_SANITIZER
 build:ubsan --copt=-O1
 build:ubsan --copt=-g
 build:ubsan --copt=-fno-omit-frame-pointer
-build:ubsan --linkopt=-fsanitize=undefined
+build:ubsan --strip=never
 
-build:msan --strip=never
+build:msan --linkopt=-fsanitize=memory
 build:msan --copt=-fsanitize=memory
 build:msan --copt=-DMEMORY_SANITIZER
 build:msan --copt=-O1
 build:msan --copt=-g
 build:msan --copt=-fno-omit-frame-pointer
-build:msan --linkopt=-fsanitize=memory
+build:msan --strip=never
 
-build:asan --strip=never
+build:asan --linkopt=-fsanitize=address
 build:asan --copt=-fsanitize=address
 build:asan --copt=-DADDRESS_SANITIZER
 build:asan --copt=-O1
 build:asan --copt=-g
 build:asan --copt=-fno-omit-frame-pointer
-build:asan --linkopt=-fsanitize=address
+build:asan --strip=never
 
-build:tsan --strip=never
+build:tsan --linkopt=-fsanitize=thread
 build:tsan --copt=-fsanitize=thread
 build:tsan --copt=-fno-omit-frame-pointer
 build:tsan --copt=-DTHREAD_SANITIZER
 build:tsan --copt=-DGRPC_TSAN
 build:tsan --copt=-DGPR_NO_DIRECT_SYSCALLS
 build:tsan --copt=-g
-build:tsan --linkopt=-fsanitize=thread
-# This is needed to address false positive problem with abseil.
-# https://github.com/google/sanitizers/issues/953
+build:tsan --strip=never
+
+# These are needed to avoid reporting false positives in abseil code:
+# See https://github.com/google/sanitizers/issues/953
 build:tsan --test_env=TSAN_OPTIONS="report_atomic_races=0 history_size=7"
 build:tsan --action_env=TSAN_OPTIONS=suppressions=test/core/util/tsan_suppressions.txt:halt_on_error=1:second_deadlock_stack=1
-
 
 build:basicprof --strip=never
 build:basicprof --copt=-DNDEBUG
