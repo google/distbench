@@ -1109,7 +1109,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
           copied_server_rpc_state->have_dedicated_thread = true;
           copied_server_rpc_state->SetFreeStateFunction(
               [=] { delete copied_server_rpc_state; });
-          thread_pool_->AddWork([this, action_list_index, iteration_state,
+          thread_pool_->AddTask([this, action_list_index, iteration_state,
                                  copied_request,
                                  copied_server_rpc_state]() mutable {
             RunActionList(action_list_index, copied_server_rpc_state,
