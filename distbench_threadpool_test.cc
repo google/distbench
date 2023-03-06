@@ -28,12 +28,12 @@ class ThreadpoolTest : public testing::TestWithParam<std::string> {};
 
 TEST(ThreadpoolTest, BadType) {
   auto atp = CreateThreadpool("bad_type", 4);
-  ASSERT_EQ(atp, nullptr);
+  ASSERT_FALSE(atp.ok());
 };
 
 TEST_P(ThreadpoolTest, Constructor) {
   auto atp = CreateThreadpool(GetParam(), 4);
-  ASSERT_NE(atp, nullptr);
+  ASSERT_TRUE(atp.ok());
 };
 
 TEST_P(ThreadpoolTest, PerformSimpleWork) {
@@ -41,9 +41,9 @@ TEST_P(ThreadpoolTest, PerformSimpleWork) {
   std::atomic<int> work_counter = 0;
   {
     auto atp = CreateThreadpool(GetParam(), 4);
-    ASSERT_NE(atp, nullptr);
+    ASSERT_TRUE(atp.ok());
     for (int i = 0; i < iterations; i++) {
-      atp->AddTask([&]() { ++work_counter; });
+      atp.value()->AddTask([&]() { ++work_counter; });
     }
   }  // Complete the work of atp.
   ASSERT_EQ(work_counter, iterations);
@@ -54,13 +54,14 @@ TEST_P(ThreadpoolTest, ParallelAddTest) {
   std::atomic<int> work_counter = 0;
   {
     auto atp_work_performer = CreateThreadpool(GetParam(), 4);
-    ASSERT_NE(atp_work_performer, nullptr);
+    ASSERT_TRUE(atp_work_performer.ok());
     {
       auto atp_work_generator = CreateThreadpool(GetParam(), 4);
-      ASSERT_NE(atp_work_generator, nullptr);
+      ASSERT_TRUE(atp_work_generator.ok());
       for (int i = 0; i < iterations; i++) {
-        atp_work_generator->AddTask(
-            [&]() { atp_work_performer->AddTask([&]() { ++work_counter; }); });
+        atp_work_generator.value()->AddTask([&]() {
+          atp_work_performer.value()->AddTask([&]() { ++work_counter; });
+        });
       }
     }  // Complete the work of atp_work_generator.
   }    // Complete the work of atp_work_performer.

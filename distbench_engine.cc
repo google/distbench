@@ -455,7 +455,12 @@ absl::Status DistBenchEngine::Initialize(
   service_spec_ = maybe_service_spec.value();
   service_instance_ = service_instance;
   engine_name_ = absl::StrCat(service_name_, "/", service_instance_);
-  thread_pool_ = CreateThreadpool("elastic", absl::base_internal::NumCPUs());
+  auto maybe_threadpool =
+      CreateThreadpool("elastic", absl::base_internal::NumCPUs());
+  if (!maybe_threadpool.ok()) {
+    return maybe_threadpool.status();
+  }
+  thread_pool_ = std::move(maybe_threadpool.value());
 
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
