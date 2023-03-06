@@ -44,7 +44,7 @@ void threadpool_test(std::string_view type, benchmark::State& state) {
   int n = state.range(0);
   std::atomic<int> work_counter = 0;
   for (auto s : state) {
-    auto atp = CreateThreadpool(type, 8);
+    auto atp = CreateThreadpool(type, 8).value();
     for (int i = 0; i < n; i++) {
       atp->AddTask([&]() { ++work_counter; });
     }

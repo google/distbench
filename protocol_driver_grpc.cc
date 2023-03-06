@@ -315,12 +315,11 @@ absl::Status ProtocolDriverGrpc::Initialize(
     auto threadpool_type =
         GetNamedServerSettingString(pd_opts, "threadpool_type", "");
     auto tp = CreateThreadpool(threadpool_type, threadpool_size);
-    if (!tp) {
-      return absl::UnknownError(absl::StrCat(
-          "Could not allocate threadpool of type '", threadpool_type, "'"));
+    if (!tp.ok()) {
+      return tp.status();
     }
     server_ = std::unique_ptr<ProtocolDriverServer>(
-        new GrpcPollingServerDriver(std::move(tp)));
+        new GrpcPollingServerDriver(std::move(tp.value())));
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
   }
@@ -521,12 +520,11 @@ absl::Status GrpcHandoffServerDriver::Initialize(
       GetNamedServerSettingString(pd_opts, "threadpool_type", "");
 
   auto tp = CreateThreadpool(threadpool_type, threadpool_size);
-  if (!tp) {
-    return absl::UnknownError(absl::StrCat(
-        "Could not allocate threadpool of type '", threadpool_type, "'"));
+  if (!tp.ok()) {
+    return tp.status();
   }
   traffic_service_ =
-      std::make_unique<TrafficServiceAsyncCallback>(std::move(tp));
+      std::make_unique<TrafficServiceAsyncCallback>(std::move(tp.value()));
   grpc::ServerBuilder builder;
   builder.SetMaxMessageSize(std::numeric_limits<int32_t>::max());
   auto maybe_server_creds = CreateServerCreds(transport_);

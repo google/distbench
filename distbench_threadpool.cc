@@ -75,7 +75,7 @@ class SimpleThreadpool : public AbstractThreadpool {
   mutable absl::Mutex mutex_;
   absl::Notification shutdown_;
   int active_threads_ = 0;
-  std::queue<std::function<void()> > task_queue_;
+  std::queue<std::function<void()>> task_queue_;
 };
 
 SimpleThreadpool::SimpleThreadpool(int nb_threads) {
@@ -137,7 +137,7 @@ class ElasticThreadpool : public AbstractThreadpool {
   int64_t active_threads_ = 0;
   mutable absl::Mutex task_mutex_;
   absl::Notification shutdown_;
-  std::queue<std::function<void()> > task_queue_ ABSL_GUARDED_BY(task_mutex_);
+  std::queue<std::function<void()>> task_queue_ ABSL_GUARDED_BY(task_mutex_);
 };
 
 ElasticThreadpool::ElasticThreadpool(int nb_threads)
@@ -314,8 +314,11 @@ std::vector<ThreadpoolStat> MercuryThreadpool::GetStats() { return {}; }
 
 }  // anonymous namespace
 
-std::unique_ptr<AbstractThreadpool> CreateThreadpool(
+absl::StatusOr<std::unique_ptr<AbstractThreadpool>> CreateThreadpool(
     std::string_view threadpool_type, int size) {
+  if (size < 1) {
+    return absl::InvalidArgumentError("Threadpool size must be positive");
+  }
   if (threadpool_type == "simple") {
     return std::make_unique<SimpleThreadpool>(size);
   } else if (threadpool_type.empty() || threadpool_type == "elastic") {
@@ -327,7 +330,8 @@ std::unique_ptr<AbstractThreadpool> CreateThreadpool(
     return std::make_unique<MercuryThreadpool>(size);
 #endif
   } else {
-    return {};
+    return absl::InvalidArgumentError(
+        absl::StrCat("Threadpool type unknown: ", threadpool_type));
   }
 }
 

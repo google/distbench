@@ -20,6 +20,8 @@
 #include <string>
 #include <string_view>
 
+#include "absl/status/statusor.h"
+
 namespace distbench {
 
 struct ThreadpoolStat {
@@ -34,7 +36,7 @@ class AbstractThreadpool {
   virtual std::vector<ThreadpoolStat> GetStats() = 0;
 };
 
-std::unique_ptr<AbstractThreadpool> CreateThreadpool(
+absl::StatusOr<std::unique_ptr<AbstractThreadpool>> CreateThreadpool(
     std::string_view threadpool_type, int size);
 
 }  // namespace distbench
