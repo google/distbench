@@ -163,8 +163,8 @@ void ElasticThreadpool::AddWork(std::function<void()> task) {
   }
   work_mutex_.Unlock();
   if (need_to_grow_threadpool) {
-    auto elastic_runner = [this, task = std::move(task)]() {
-      TaskRunner(std::move(task));
+    auto elastic_runner = [this, lambda_task = std::move(task)]() {
+      TaskRunner(std::move(lambda_task));
     };
     RunRegisteredThread("ElasticThreadPool", elastic_runner).detach();
   }
@@ -219,8 +219,8 @@ void ElasticThreadpool::TaskRunner(std::function<void()> task) {
       }
       work_mutex_.Unlock();
       if (need_to_grow_threadpool) {
-        auto elastic_runner = [this, task2 = std::move(task2)]() {
-          TaskRunner(std::move(task2));
+        auto elastic_runner = [this, lambda_task2 = std::move(task2)]() {
+          TaskRunner(std::move(lambda_task2));
         };
         RunRegisteredThread("ElasticThreadPool", elastic_runner).detach();
       }
