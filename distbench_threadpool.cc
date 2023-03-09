@@ -130,11 +130,11 @@ class ElasticThreadpool : public AbstractThreadpool {
   void TaskRunner(std::function<void()> task);
   bool WaitForTask() ABSL_EXCLUSIVE_LOCKS_REQUIRED(task_mutex_);
 
-  const int64_t max_idle_threads_ = 0;
+  const size_t max_idle_threads_ = 0;
   size_t task_count_ = 0;
-  int64_t idle_threads_ = 0;
-  int64_t threads_launched_ = 0;
-  int64_t active_threads_ = 0;
+  size_t idle_threads_ = 0;
+  size_t threads_launched_ = 0;
+  size_t active_threads_ = 0;
   mutable absl::Mutex task_mutex_;
   absl::Notification shutdown_;
   std::queue<std::function<void()>> task_queue_ ABSL_GUARDED_BY(task_mutex_);
