@@ -302,6 +302,7 @@ void MercuryThreadpool::AddWork(std::function<void()> task) {
 
 void* MercuryThreadpool::Trampoline(void* heap_object_pointer) {
   // Execute and delete the heap allocated copy of the functor object:
+  RegisterThread("mercury_threadpool");
   auto heap_object = reinterpret_cast<HeapObject*>(heap_object_pointer);
   heap_object->task();
   delete heap_object;
