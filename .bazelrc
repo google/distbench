@@ -1,3 +1,7 @@
+build --action_env=GLOG_logtostderr=1
+build --action_env=GLOG_stderrthreshold=0
+build --action_env=ASAN_OPTIONS=halt_on_error=true
+
 build --repo_env=CC=gcc-11
 build --repo_env=CXX=g++-11
 
