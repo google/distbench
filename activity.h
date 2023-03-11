@@ -18,10 +18,20 @@
 
 #include "absl/status/statusor.h"
 #include "distbench.pb.h"
+#include "simple_clock.h"
 
 namespace distbench {
 
-struct ParsedActivityConfig;
+struct ParsedActivityConfig {
+  std::string activity_config_name;
+  std::string activity_func;
+  int array_size;
+  int array_reads_per_iteration;
+  int function_invocations_per_iteration;
+  absl::Duration sleepfor_duration;
+};
+
+absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(ActivityConfig& ac);
 
 // Base class for activities that run along with RPCs in distbench.
 // Activities can be used to simulate various activities occuring in real world,
@@ -32,7 +42,7 @@ class Activity {
 
   // Initializes the class members from configuration provided
   // in ActivityConfig.
-  virtual void Initialize(ParsedActivityConfig* config) = 0;
+  virtual void Initialize(ParsedActivityConfig* config, SimpleClock* clock) = 0;
 
   // Executes the Activity present in the class. This function is called from
   // DistBenchEngine::ActionState's iteration_function by
@@ -46,15 +56,14 @@ class Activity {
 
 // Returns a unique_ptr to a newly instantiated Activity as described by the
 // configuration in ActivityConfig.
-std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config);
-
-// Activity: ConsumeCpu
+std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config,
+                                           SimpleClock* clock);
 
 class ConsumeCpu : public Activity {
  public:
   void DoActivity() override;
   ActivityLog GetActivityLog() override;
-  void Initialize(ParsedActivityConfig* config) override;
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
   static absl::Status ValidateConfig(ActivityConfig& ac);
 
  private:
@@ -63,16 +72,10 @@ class ConsumeCpu : public Activity {
   int64_t optimization_preventing_num_ = 0;
 };
 
-struct ConsumeCpuConfig {
-  int array_size;
-};
-
-// Activity: PolluteDataCache
-
 class PolluteDataCache : public Activity {
  public:
   static absl::Status ValidateConfig(ActivityConfig& ac);
-  void Initialize(ParsedActivityConfig* config) override;
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
   void DoActivity() override;
   ActivityLog GetActivityLog() override;
 
@@ -85,18 +88,10 @@ class PolluteDataCache : public Activity {
   std::mt19937 mersenne_twister_prng_;
 };
 
-struct PolluteDataCacheConfig {
-  int array_size;
-  int array_reads_per_iteration;
-};
-
-// Activity: PolluteInstructionCache
-
-typedef int (*MyFunctionPtr)(bool);
 class PolluteInstructionCache : public Activity {
  public:
   static absl::Status ValidateConfig(ActivityConfig& ac);
-  void Initialize(ParsedActivityConfig* config) override;
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
   void DoActivity() override;
   ActivityLog GetActivityLog() override;
 
@@ -104,21 +99,20 @@ class PolluteInstructionCache : public Activity {
   int iteration_count_ = 0;
   int function_invocations_per_iteration_ = 0;
   std::mt19937 mersenne_twister_prng_;
-  std::vector<MyFunctionPtr> func_ptr_array_;
-  int64_t optimization_preventer_ = 0;
+  std::vector<int (*)(bool)> func_ptr_array_;
   std::uniform_int_distribution<> random_index_;
 };
 
-struct PolluteInstructionCacheConfig {
-  int function_invocations_per_iteration;
-};
+class SleepFor : public Activity {
+ public:
+  static absl::Status ValidateConfig(ActivityConfig& ac);
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
+  void DoActivity() override;
+  ActivityLog GetActivityLog() override;
 
-struct ParsedActivityConfig {
-  struct ConsumeCpuConfig consume_cpu_config;
-  struct PolluteDataCacheConfig pollute_data_cache_config;
-  struct PolluteInstructionCacheConfig pollute_instruction_cache_config;
-  std::string activity_config_name;
-  std::string activity_func;
+ private:
+  SimpleClock* clock_ = nullptr;
+  absl::Duration duration_;
 };
 
 }  // namespace distbench

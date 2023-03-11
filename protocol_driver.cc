@@ -59,6 +59,8 @@ class RealClock : public SimpleClock {
   ~RealClock() override {}
   absl::Time Now() override { return absl::Now(); }
 
+  void SleepFor(absl::Duration duration) override { absl::SleepFor(duration); }
+
   bool MutexLockWhenWithDeadline(absl::Mutex* mu,
                                  const absl::Condition& condition,
                                  absl::Time deadline)

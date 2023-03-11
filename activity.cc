@@ -14,13 +14,52 @@
 
 #include "activity.h"
 
+#include "benchmark/benchmark.h"
 #include "boost/preprocessor/repetition/repeat.hpp"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
 namespace distbench {
 
-std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
+absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(ActivityConfig& ac) {
+  ParsedActivityConfig s;
+  s.activity_func =
+      GetNamedSettingString(ac.activity_settings(), "activity_func", "");
+  s.activity_config_name = ac.name();
+
+  if (s.activity_func == "ConsumeCpu") {
+    auto status = ConsumeCpu::ValidateConfig(ac);
+    if (!status.ok()) return status;
+    s.array_size =
+        GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
+  } else if (s.activity_func == "PolluteDataCache") {
+    auto status = PolluteDataCache::ValidateConfig(ac);
+    if (!status.ok()) return status;
+    s.array_size =
+        GetNamedSettingInt64(ac.activity_settings(), "array_size", 2'000'000);
+    s.array_reads_per_iteration = GetNamedSettingInt64(
+        ac.activity_settings(), "array_reads_per_iteration", 1000);
+  } else if (s.activity_func == "PolluteInstructionCache") {
+    auto status = PolluteInstructionCache::ValidateConfig(ac);
+    if (!status.ok()) return status;
+    s.function_invocations_per_iteration = GetNamedSettingInt64(
+        ac.activity_settings(), "function_invocations_per_iteration", 1000);
+  } else if (s.activity_func == "SleepFor") {
+    auto status = SleepFor::ValidateConfig(ac);
+    if (!status.ok()) return status;
+    s.sleepfor_duration = absl::Microseconds(
+        GetNamedSettingInt64(ac.activity_settings(), "duration_us", 0));
+  } else {
+    return absl::FailedPreconditionError(absl::StrCat(
+        "Activity config '", s.activity_config_name,
+        "' has an unknown activity_func '", s.activity_func, "'."));
+  }
+
+  return s;
+}
+
+std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config,
+                                           SimpleClock* clock) {
   std::unique_ptr<Activity> activity;
   auto activity_func = config->activity_func;
 
@@ -30,13 +69,32 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config) {
     activity = std::make_unique<PolluteDataCache>();
   } else if (activity_func == "PolluteInstructionCache") {
     activity = std::make_unique<PolluteInstructionCache>();
+  } else if (activity_func == "SleepFor") {
+    activity = std::make_unique<SleepFor>();
   }
 
-  activity->Initialize(config);
+  activity->Initialize(config, clock);
   return activity;
 }
 
-// Activity: ConsumeCpu
+void SleepFor::DoActivity() { clock_->SleepFor(duration_); }
+
+ActivityLog SleepFor::GetActivityLog() { return {}; }
+
+void SleepFor::Initialize(ParsedActivityConfig* config, SimpleClock* clock) {
+  clock_ = clock;
+  duration_ = config->sleepfor_duration;
+}
+
+absl::Status SleepFor::ValidateConfig(ActivityConfig& ac) {
+  auto duration_us =
+      GetNamedSettingInt64(ac.activity_settings(), "duration_us", -1);
+  if (duration_us < 1) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "duration_us ", duration_us, ") must be a positive integer."));
+  }
+  return absl::OkStatus();
+}
 
 void ConsumeCpu::DoActivity() {
   iteration_count_++;
@@ -58,8 +116,8 @@ ActivityLog ConsumeCpu::GetActivityLog() {
   return alog;
 }
 
-void ConsumeCpu::Initialize(ParsedActivityConfig* config) {
-  rand_array.resize(config->consume_cpu_config.array_size);
+void ConsumeCpu::Initialize(ParsedActivityConfig* config, SimpleClock* clock) {
+  rand_array.resize(config->array_size);
   iteration_count_ = 0;
 }
 
@@ -68,34 +126,33 @@ absl::Status ConsumeCpu::ValidateConfig(ActivityConfig& ac) {
       GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
   if (array_size < 1) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "Array size (", array_size, ") must be a positive integer."));
+        "array_size (", array_size, ") must be a positive integer."));
   }
   return absl::OkStatus();
 }
-
-// Activity: PolluteDataCache
 
 absl::Status PolluteDataCache::ValidateConfig(ActivityConfig& ac) {
   auto array_size =
       GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
   if (array_size < 1) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "Array size (", array_size, ") must be a positive integer."));
+        "array_size (", array_size, ") must be a positive integer."));
   }
 
   auto array_reads_per_iteration = GetNamedSettingInt64(
       ac.activity_settings(), "array_reads_per_iteration", 1000);
   if (array_reads_per_iteration < 1) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Array reads per iteration (", array_reads_per_iteration,
+        absl::StrCat("array_reads_per_iteration (", array_reads_per_iteration,
                      ") must be a positive integer."));
   }
   return absl::OkStatus();
 }
 
-void PolluteDataCache::Initialize(ParsedActivityConfig* config) {
+void PolluteDataCache::Initialize(ParsedActivityConfig* config,
+                                  SimpleClock* clock) {
   std::srand(time(0));
-  auto array_size = config->pollute_data_cache_config.array_size;
+  auto array_size = config->array_size;
 
   data_array_.resize(array_size);
   for (int i = 0; i < array_size; i++) {
@@ -103,8 +160,7 @@ void PolluteDataCache::Initialize(ParsedActivityConfig* config) {
   }
 
   random_index_ = std::uniform_int_distribution<>(0, array_size - 1);
-  array_reads_per_iteration_ =
-      config->pollute_data_cache_config.array_reads_per_iteration;
+  array_reads_per_iteration_ = config->array_reads_per_iteration;
   iteration_count_ = 0;
 
   std::random_device rd;
@@ -132,8 +188,6 @@ ActivityLog PolluteDataCache::GetActivityLog() {
   }
   return alog;
 }
-
-// Activity: PolluteInstructionCache
 
 // The boost library (https://github.com/nelhage/rules_boost) is used to
 // create a 2D array of functions with names -
@@ -189,7 +243,8 @@ absl::Status PolluteInstructionCache::ValidateConfig(ActivityConfig& ac) {
   return absl::OkStatus();
 }
 
-void PolluteInstructionCache::Initialize(ParsedActivityConfig* config) {
+void PolluteInstructionCache::Initialize(ParsedActivityConfig* config,
+                                         SimpleClock* clock) {
   auto func_array_size = POLLUTE_ICACHE_LOOP_SIZE * POLLUTE_ICACHE_LOOP_SIZE;
   func_ptr_array_.resize(func_array_size);
   BOOST_PP_REPEAT(POLLUTE_ICACHE_LOOP_SIZE, GET_FUNC_PTR_OUTER_LOOP, );
@@ -197,8 +252,8 @@ void PolluteInstructionCache::Initialize(ParsedActivityConfig* config) {
   std::random_device rd;
   mersenne_twister_prng_ = std::mt19937(rd());
 
-  function_invocations_per_iteration_ = config->pollute_instruction_cache_config
-                                            .function_invocations_per_iteration;
+  function_invocations_per_iteration_ =
+      config->function_invocations_per_iteration;
 
   random_index_ = std::uniform_int_distribution<>(0, func_array_size - 1);
 
@@ -211,9 +266,8 @@ void PolluteInstructionCache::DoActivity() {
 
   for (int i = 0; i < function_invocations_per_iteration_; i++) {
     int index = random_index_(mersenne_twister_prng_);
-    sum += func_ptr_array_[index](false);
+    benchmark::DoNotOptimize(sum += func_ptr_array_[index](false));
   }
-  optimization_preventer_ = sum;
 }
 
 ActivityLog PolluteInstructionCache::GetActivityLog() {

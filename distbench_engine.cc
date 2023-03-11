@@ -175,55 +175,17 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
   return absl::OkStatus();
 }
 
-absl::Status DistBenchEngine::ParseActivityConfig(ActivityConfig& ac) {
-  ParsedActivityConfig s;
-  s.activity_func =
-      GetNamedSettingString(ac.activity_settings(), "activity_func", "");
-  s.activity_config_name = ac.name();
-
-  if (s.activity_func == "ConsumeCpu") {
-    auto status = ConsumeCpu::ValidateConfig(ac);
-    if (!status.ok()) return status;
-
-    s.consume_cpu_config.array_size =
-        GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
-  } else if (s.activity_func == "PolluteDataCache") {
-    auto status = PolluteDataCache::ValidateConfig(ac);
-    if (!status.ok()) return status;
-
-    s.pollute_data_cache_config.array_size =
-        GetNamedSettingInt64(ac.activity_settings(), "array_size", 2'000'000);
-    s.pollute_data_cache_config.array_reads_per_iteration =
-        GetNamedSettingInt64(ac.activity_settings(),
-                             "array_reads_per_iteration", 1000);
-  } else if (s.activity_func == "PolluteInstructionCache") {
-    auto status = PolluteInstructionCache::ValidateConfig(ac);
-    if (!status.ok()) return status;
-
-    s.pollute_instruction_cache_config.function_invocations_per_iteration =
-        GetNamedSettingInt64(ac.activity_settings(),
-                             "function_invocations_per_iteration", 1000);
-
-  } else {
-    return absl::FailedPreconditionError(absl::StrCat(
-        "Activity config '", s.activity_config_name,
-        "' has an unknown activity_func '", s.activity_func, "'."));
-  }
-
-  activity_config_indices_map_[s.activity_config_name] =
-      stored_activity_config_.size();
-  stored_activity_config_.push_back(s);
-  return absl::OkStatus();
-}
-
 absl::Status DistBenchEngine::InitializeActivityConfigMap() {
   for (int i = 0; i < traffic_config_.activity_configs_size(); ++i) {
     ActivityConfig activity_config = traffic_config_.activity_configs(i);
     const auto& activity_config_name = activity_config.name();
     if (activity_config_indices_map_.find(activity_config_name) ==
         activity_config_indices_map_.end()) {
-      auto status = ParseActivityConfig(activity_config);
-      if (!status.ok()) return status;
+      auto maybe_config = ParseActivityConfig(activity_config);
+      if (!maybe_config.ok()) return maybe_config.status();
+      activity_config_indices_map_[maybe_config.value().activity_config_name] =
+          stored_activity_config_.size();
+      stored_activity_config_.push_back(maybe_config.value());
     } else {
       return absl::FailedPreconditionError(
           absl::StrCat("Activity config '", activity_config_name,
@@ -1138,7 +1100,7 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
         };
   } else if (action.proto.has_activity_config_name()) {
     auto* config = &stored_activity_config_[action.activity_config_index];
-    action_state->activity = AllocateActivity(config);
+    action_state->activity = AllocateActivity(config, clock_);
     action_state->iteration_function =
         [this,
          action_state](std::shared_ptr<ActionIterationState> iteration_state) {

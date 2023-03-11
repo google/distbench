@@ -124,6 +124,17 @@ cc_library(
 )
 
 cc_library(
+    name = "simple_clock",
+    hdrs = [
+        "simple_clock.h",
+    ],
+    deps = [
+        ":distbench_utils",
+        "@com_google_absl//absl/synchronization",
+    ],
+)
+
+cc_library(
     name = "protocol_driver_api",
     srcs = [
         "protocol_driver.cc",
@@ -134,6 +145,7 @@ cc_library(
     deps = [
         ":distbench_cc_proto",
         ":distbench_utils",
+        ":simple_clock",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
@@ -521,6 +533,8 @@ cc_library(
     deps = [
         ":distbench_cc_proto",
         ":distbench_utils",
+        ":simple_clock",
+        "@com_google_benchmark//:benchmark",
         "@com_github_google_glog//:glog",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
