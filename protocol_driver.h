@@ -22,6 +22,7 @@
 #include "absl/synchronization/notification.h"
 #include "distbench.pb.h"
 #include "grpc_wrapper.h"
+#include "simple_clock.h"
 
 namespace distbench {
 
@@ -57,16 +58,6 @@ struct TransportStat {
 };
 
 using RpcId = int64_t;
-
-class SimpleClock {
- public:
-  virtual ~SimpleClock() = default;
-  virtual absl::Time Now() = 0;
-  virtual bool MutexLockWhenWithDeadline(absl::Mutex* mu,
-                                         const absl::Condition& condition,
-                                         absl::Time deadline)
-      ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) = 0;
-};
 
 class ProtocolDriverClient {
  public:
