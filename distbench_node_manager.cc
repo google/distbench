@@ -142,7 +142,9 @@ grpc::Status NodeManager::IntroducePeers(grpc::ServerContext* context,
   for (const auto& service_engine : service_engines_) {
     auto ret = service_engine.second->ConfigurePeers(peers_);
     if (!ret.ok()) {
-      return grpc::Status(grpc::StatusCode::UNKNOWN, "ConfigurePeers failure");
+      return grpc::Status(
+          grpc::StatusCode::UNKNOWN,
+          absl::StrCat("ConfigurePeers failure: ", ret.ToString()));
     }
   }
   return grpc::Status::OK;
