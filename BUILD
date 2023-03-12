@@ -350,7 +350,7 @@ cc_test(
     name = "distbench_test_sequencer_test",
     size = "medium",
     srcs = ["distbench_test_sequencer_test.cc"],
-    shard_count = 8,
+    shard_count = 26,
     deps = [
         ":distbench_node_manager_lib",
         ":distbench_test_sequencer_lib",
