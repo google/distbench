@@ -826,7 +826,7 @@ void DistBenchEngine::RunActionList(int list_index,
       s.state_table[i].action_list_state = &s;
       atomic_fetch_add_explicit(&s.pending_action_count_, 1,
                                 std::memory_order_relaxed);
-      RunAction(&s.state_table[i]);
+      InitiateAction(&s.state_table[i]);
     }
     absl::Time next_iteration_time = absl::InfiniteFuture();
     bool done = true;
@@ -1126,7 +1126,7 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
   }
 }
 
-void DistBenchEngine::RunAction(ActionState* action_state) {
+void DistBenchEngine::InitiateAction(ActionState* action_state) {
   auto& action = *action_state->action;
   if (action.actionlist_index >= 0) {
     std::shared_ptr<const GenericRequest> copied_request =
@@ -1224,8 +1224,8 @@ void DistBenchEngine::RunAction(ActionState* action_state) {
                                           fraction * period;
     } else {
       action_state->next_iteration_time = clock_->Now();
-      StartOpenLoopIteration(action_state);
     }
+    // StartOpenLoopIteration will be called from RunActionList().
   } else {
     int64_t parallel_copies = std::min(
         action.proto.iterations().max_parallel_iterations(), max_iterations);

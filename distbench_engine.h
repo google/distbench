@@ -257,7 +257,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   void RunActionList(int list_index, ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);
-  void RunAction(ActionState* action_state);
+  void InitiateAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);
   void RunActivity(ActionState* action_state);
   void StartIteration(std::shared_ptr<ActionIterationState> iteration_state);
