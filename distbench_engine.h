@@ -306,6 +306,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   // Random
   absl::BitGen random_generator;
 
+  std::atomic<int64_t> pending_rpcs_ = 0;
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
   absl::Mutex cumulative_activity_log_mu_;
   std::map<std::string, std::map<std::string, int64_t>>

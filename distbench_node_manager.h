@@ -60,6 +60,8 @@ class NodeManager final : public DistBenchNodeManager::Service {
                              const CancelTrafficRequest* request,
                              CancelTrafficResult* response) override;
 
+  void CancelTraffic(absl::Status status);
+
   grpc::Status ShutdownNode(grpc::ServerContext* context,
                             const ShutdownNodeRequest* request,
                             ShutdownNodeResult* response) override;

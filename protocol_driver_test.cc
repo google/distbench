@@ -234,6 +234,7 @@ std::string GrpcPollingClientHandoffServer() {
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
+  AddServerStringOptionTo(pdo, "threadpool_type", "elastic");
   return pdo.DebugString();
 }
 

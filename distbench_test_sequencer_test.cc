@@ -16,6 +16,7 @@
 
 #include "absl/strings/str_replace.h"
 #include "distbench_node_manager.h"
+#include "distbench_thread_support.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -54,6 +55,7 @@ DistBenchTester::~DistBenchTester() {
   for (size_t i = 0; i < nodes.size(); ++i) {
     nodes[i]->Wait();
   }
+  SetOverloadAbortThreshhold(0);
 }
 
 absl::Status DistBenchTester::Initialize(int num_nodes) {
@@ -76,6 +78,12 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
     auto ret = nodes[i]->Initialize(nm_opts);
     if (!ret.ok()) return ret;
   }
+  SetOverloadAbortCallback([this]() {
+    for (const auto& node : nodes) {
+      node->CancelTraffic(
+          absl::ResourceExhaustedError("Too many threads running"));
+    }
+  });
   std::shared_ptr<grpc::ChannelCredentials> client_creds =
       MakeChannelCredentials();
   std::shared_ptr<grpc::Channel> channel =
@@ -157,6 +165,96 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   ASSERT_NE(s2_1_echo, s2_1->second.rpc_logs().end());
   ASSERT_TRUE(s2_1_echo->second.failed_rpc_samples().empty());
   ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
+}
+
+TEST(DistBenchTestSequencer, Overload) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+  const std::string proto = R"(
+tests {
+  overload_limits {
+    max_threads: 4
+  }
+  protocol_driver_options {
+    name: 'default_protocol_driver_options'
+    protocol_name: 'grpc'
+    server_settings {
+      name: 'server_type'
+      string_value: 'handoff'
+    }
+  }
+  services {
+    name: "client"
+    count: 1
+  }
+  services {
+    name: "server"
+    count: 1
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_overloading_queries"
+  }
+  actions {
+    name: "run_overloading_queries"
+    rpc_name: "overload_query"
+    iterations {
+      max_iteration_count: 100
+      max_parallel_iterations: 100
+    }
+  }
+  rpc_descriptions {
+    name: "overload_query"
+    client: "client"
+    server: "server"
+  }
+  action_lists {
+    name: "overload_query"
+    action_names: "simulate_overload"
+  }
+  actions {
+    name: "simulate_overload"
+    activity_config_name: "simulate_overload_activity"
+  }
+  activity_configs {
+    name: "simulate_overload_activity"
+    activity_settings {
+      name: "activity_func"
+      string_value: "SleepFor"
+    }
+    activity_settings {
+      name: "duration_us"
+      int64_value: 10000000
+    }
+  }
+})";
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), *test_sequence, &results);
+  ASSERT_OK(status);
+
+  auto& test_results = results.test_results(0);
+  auto service_logs = test_results.service_logs();
+  ASSERT_EQ(service_logs.instance_logs().size(), 1);
+  EXPECT_EQ(service_logs.instance_logs().begin()->first, "client/0");
+  auto& log = service_logs.instance_logs().begin()->second;
+  ASSERT_EQ(log.engine_error_message(),
+            "RESOURCE_EXHAUSTED: Too many threads running");
+  ASSERT_EQ(log.peer_logs_size(), 1);
+  auto peer_log = log.peer_logs().begin()->second.rpc_logs().at(0);
+  EXPECT_GE(peer_log.successful_rpc_samples_size(), 4);
+  EXPECT_LE(peer_log.successful_rpc_samples_size(), 30);
+  EXPECT_LE(peer_log.failed_rpc_samples_size(), 96);
+  ASSERT_GE(peer_log.failed_rpc_samples_size(), 70);
+  EXPECT_EQ(peer_log.failed_rpc_samples().at(0).error_index(), 1);
+  EXPECT_EQ(log.error_dictionary().error_message_size(), 2);
+  EXPECT_TRUE(log.error_dictionary().error_message().at(0).empty());
+  EXPECT_EQ(log.error_dictionary().error_message().at(1),
+            "Traffic cancelled: RESOURCE_EXHAUSTED: Too many threads running");
 }
 
 TestSequence IntenseTrafficTestSequence(const char* protocol) {
