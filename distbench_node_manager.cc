@@ -24,7 +24,9 @@ namespace distbench {
 absl::StatusOr<ProtocolDriverOptions> NodeManager::ResolveProtocolDriverAlias(
     const std::string& protocol_name) {
   for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
-    if (pd_opts_enum.name() == protocol_name) {
+    if (pd_opts_enum.name() == protocol_name ||
+        (protocol_name.empty() &&
+         pd_opts_enum.name() == "default_protocol_driver_options")) {
       return pd_opts_enum;
     }
   }
