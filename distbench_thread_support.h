@@ -21,6 +21,10 @@
 
 namespace distbench {
 
+void SetOverloadAbortThreshhold(int max_threads);
+
+void SetOverloadAbortCallback(std::function<void()> callback);
+
 std::thread RunRegisteredThread(std::string_view thread_name,
                                 std::function<void()> f);
 

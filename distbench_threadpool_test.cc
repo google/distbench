@@ -16,6 +16,9 @@
 
 #include <atomic>
 
+#include "absl/base/internal/sysinfo.h"
+#include "absl/synchronization/notification.h"
+#include "distbench_thread_support.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
@@ -23,6 +26,32 @@
 namespace {
 
 using distbench::CreateThreadpool;
+
+class OverloadTest : public testing::TestWithParam<std::string> {};
+
+TEST_P(OverloadTest, Overload) {
+  absl::Notification overload_waiter;
+  {
+    auto atp = CreateThreadpool(GetParam(), absl::base_internal::NumCPUs());
+    ASSERT_TRUE(atp.ok());
+    int overload_threshhold = absl::base_internal::NumCPUs();
+    distbench::SetOverloadAbortThreshhold(overload_threshhold);
+    distbench::SetOverloadAbortCallback([&]() {
+      LOG(INFO) << "detected overload";
+      overload_waiter.Notify();
+      LOG(INFO) << "and notified " << &overload_waiter;
+    });
+    for (int i = 0; i < 2 * overload_threshhold; ++i) {
+      atp.value()->AddTask([&]() {
+        overload_waiter.WaitForNotificationWithTimeout(absl::Seconds(1));
+      });
+    }
+  }
+  ASSERT_TRUE(overload_waiter.HasBeenNotified()) << &overload_waiter;
+};
+
+INSTANTIATE_TEST_SUITE_P(OverloadTests, OverloadTest,
+                         testing::Values("null", "elastic"));
 
 class ThreadpoolTest : public testing::TestWithParam<std::string> {};
 

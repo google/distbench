@@ -20,6 +20,7 @@
 #include "absl/flags/parse.h"
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"
+#include "distbench_thread_support.h"
 #include "distbench_utils.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
@@ -253,11 +254,18 @@ int MainTestSequencer(std::vector<char*>& arguments) {
                 << std::endl;
     }
   }
+  distbench::SetOverloadAbortCallback([&nodes]() {
+    for (const auto& node : nodes) {
+      node->CancelTraffic(
+          absl::ResourceExhaustedError("Too many threads running"));
+    }
+  });
   test_sequencer.Wait();
   for (int i = 0; i < num_nodes; ++i) {
     nodes[i]->Shutdown();
     nodes[i]->Wait();
   }
+  distbench::SetOverloadAbortThreshhold(0);
   return 0;
 }
 
@@ -293,7 +301,12 @@ int MainNodeManager(std::vector<char*>& arguments) {
     std::cerr << "Initializing the node manager failed: " << status
               << std::endl;
   }
+  distbench::SetOverloadAbortCallback([&node_manager]() {
+    node_manager.CancelTraffic(
+        absl::ResourceExhaustedError("Too many threads running"));
+  });
   node_manager.Wait();
+  distbench::SetOverloadAbortThreshhold(0);
   return !status.ok();
 }
 

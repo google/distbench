@@ -16,6 +16,7 @@
 
 #include "absl/strings/str_split.h"
 #include "distbench_netutils.h"
+#include "distbench_thread_support.h"
 #include "glog/logging.h"
 #include "protocol_driver_allocator.h"
 
@@ -47,6 +48,11 @@ grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
                                         ServiceEndpointMap* response) {
   absl::MutexLock m(&mutex_);
   traffic_config_ = request->traffic_config();
+  if (traffic_config_.overload_limits().max_threads() <= 0) {
+    return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                        "overload_limits.max_threads must be positive.");
+  }
+  SetOverloadAbortThreshhold(traffic_config_.overload_limits().max_threads());
   ClearServices();
   auto& service_map = *response->mutable_service_endpoints();
   for (const auto& service_name : request->services()) {
@@ -197,16 +203,19 @@ grpc::Status NodeManager::GetTrafficResult(
   return grpc::Status::OK;
 }
 
-grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
-                                        const CancelTrafficRequest* request,
-                                        CancelTrafficResult* response) {
+void NodeManager::CancelTraffic(absl::Status status) {
   LOG(INFO) << "Starting CancelTraffic on " << NodeAlias();
   absl::ReaderMutexLock m(&mutex_);
   for (const auto& service_engine : service_engines_) {
-    service_engine.second->CancelTraffic(
-        absl::CancelledError("cancelled by test_sequencer"));
+    service_engine.second->CancelTraffic(status);
   }
   LOG(INFO) << "Finished CancelTraffic on " << NodeAlias();
+}
+
+grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
+                                        const CancelTrafficRequest* request,
+                                        CancelTrafficResult* response) {
+  CancelTraffic(absl::CancelledError("cancelled by test_sequencer"));
   return grpc::Status::OK;
 }
 

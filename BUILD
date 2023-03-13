@@ -102,6 +102,9 @@ cc_library(
     hdrs = [
         "distbench_thread_support.h",
     ],
+    deps = [
+        "@com_google_absl//absl/synchronization",
+    ],
 )
 
 cc_library(

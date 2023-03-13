@@ -104,6 +104,11 @@ message ProtocolDriverOptions {
   optional int32 ip_version = 6 [default = 0];
 }
 
+message OverloadLimits {
+  optional int64 max_threads = 1 [default = 1000];
+  optional int64 max_pending_rpcs = 2 [default = 1000000];
+}
+
 message DistributedSystemDescription {
   optional string name = 9;
   map<string, string> attributes = 10;
@@ -121,4 +126,6 @@ message DistributedSystemDescription {
   optional string default_protocol = 7 [default = "grpc"];
   repeated ProtocolDriverOptions protocol_driver_options = 8;
   repeated DistributionConfig distribution_config = 12;
+
+  optional OverloadLimits overload_limits = 13;
 }

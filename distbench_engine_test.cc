@@ -22,9 +22,12 @@
 namespace distbench {
 
 ProtocolDriverOptions grpc_pd_opts() {
-  auto opts = ProtocolDriverOptions();
-  opts.set_protocol_name("grpc");
-  return opts;
+  auto pdo = ProtocolDriverOptions();
+  pdo.set_protocol_name("grpc");
+  AddClientStringOptionTo(pdo, "client_type", "polling");
+  AddServerStringOptionTo(pdo, "server_type", "handoff");
+  AddServerStringOptionTo(pdo, "threadpool_type", "elastic");
+  return pdo;
 }
 
 TEST(DistBenchEngineTest, Constructor) {

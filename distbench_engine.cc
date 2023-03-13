@@ -47,7 +47,7 @@ int ThreadSafeDictionary::GetIndex(std::string_view text) {
     return it->second;
   }
   contents_.push_back(std::string(text));
-  contents_map_[text] =  contents_.size() - 1;
+  contents_map_[text] = contents_.size() - 1;
   return contents_.size() - 1;
 }
 
@@ -492,7 +492,7 @@ absl::Status DistBenchEngine::Initialize(
 absl::Status DistBenchEngine::ConfigurePeers(const ServiceEndpointMap& peers) {
   pd_->SetHandler([this](ServerRpcState* state) { return RpcHandler(state); });
   service_map_ = peers;
-  if (service_map_.service_endpoints_size() < 2) {
+  if (service_map_.service_endpoints_size() < 1) {
     return absl::NotFoundError("No peers configured.");
   }
 
@@ -612,7 +612,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
 }
 
 absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
-  if (service_map_.service_endpoints_size() < 2) {
+  if (service_map_.service_endpoints_size() < 1) {
     return absl::NotFoundError("No peers configured.");
   }
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
@@ -638,9 +638,9 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
 
 void DistBenchEngine::CancelTraffic(absl::Status status,
                                     absl::Duration grace_period) {
-  LOG(INFO) << engine_name_ << ": Got CancelTraffic " << status;
   absl::MutexLock m(&cancelation_mutex_);
   if (canceled_.TryToNotify()) {
+    LOG(INFO) << engine_name_ << ": CancelTraffic " << status;
     cancelation_reason_ = status.ToString();
     cancelation_time_ = clock_->Now() + grace_period;
   }
@@ -1370,6 +1370,7 @@ void DistBenchEngine::RunRpcActionIteration(
   const auto& servers = peers_[rpc_service_index];
   for (size_t i = 0; i < current_targets.size(); ++i) {
     int peer_instance = current_targets[i];
+    ++pending_rpcs_;
     ClientRpcState* rpc_state;
     {
       absl::MutexLock m(&peers_[rpc_service_index][peer_instance].mutex);
@@ -1393,13 +1394,22 @@ void DistBenchEngine::RunRpcActionIteration(
           if (!rpc_state->response.error_message().empty()) {
             rpc_state->success = false;
           }
+          if (absl::StartsWith(rpc_state->response.error_message(),
+                               "Traffic cancelled: RESOURCE_EXHAUSTED:")) {
+            CancelTraffic(absl::UnknownError(absl::StrCat(
+                "Peer reported ", rpc_state->response.error_message())));
+          }
           action_state->action_list_state->RecordLatency(
               action_state->rpc_index, action_state->rpc_service_index,
               peer_instance, rpc_state);
           if (--iteration_state->remaining_rpcs == 0) {
             FinishIteration(iteration_state);
           }
+          --pending_rpcs_;
         });
+    if (pending_rpcs_ > traffic_config_.overload_limits().max_pending_rpcs()) {
+      CancelTraffic(absl::ResourceExhaustedError("Too many RPCs pending"));
+    }
   }
 }
 

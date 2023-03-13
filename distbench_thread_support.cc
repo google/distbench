@@ -14,18 +14,73 @@
 
 #include "distbench_thread_support.h"
 
+#include <memory>
+
+#include "absl/base/const_init.h"
+#include "absl/synchronization/mutex.h"
+#include "absl/synchronization/notification.h"
+
 namespace distbench {
+
+namespace {
+
+ABSL_CONST_INIT absl::Mutex abort_mutex(absl::kConstInit);
+int abort_max_threads = 0;
+int abort_current_threads = 0;
+std::function<void()> abort_callback;
+
+}  // namespace
+
+void SetOverloadAbortThreshhold(int max_threads) {
+  absl::MutexLock m(&abort_mutex);
+  abort_max_threads = max_threads;
+  if (max_threads == 0) {
+    abort_callback = nullptr;
+  }
+}
+
+void SetOverloadAbortCallback(std::function<void()> callback) {
+  absl::MutexLock m(&abort_mutex);
+  abort_callback = std::move(callback);
+}
 
 std::thread RunRegisteredThread(std::string_view thread_name,
                                 std::function<void()> f) {
-  return std::thread([=]() {
+  std::shared_ptr<absl::Notification> abort_callback_notification;
+  absl::Notification abort_callback_started;
+  {
+    absl::MutexLock m(&abort_mutex);
+    ++abort_current_threads;
+    if (abort_current_threads > abort_max_threads) {
+      if (abort_max_threads && abort_callback) {
+        abort_callback_notification = std::make_shared<absl::Notification>();
+        abort_max_threads = 0;
+      }
+    }
+  }
+  auto ret = std::thread([=, &abort_callback_started]() {
     RegisterThread(thread_name);
+    if (abort_callback_notification) {
+      abort_callback_started.Notify();
+      if (abort_callback) {
+        abort_callback();
+      }
+      abort_callback_notification->Notify();
+    }
     f();
+    absl::MutexLock m(&abort_mutex);
+    --abort_current_threads;
   });
+  if (abort_callback_notification) {
+    abort_callback_started.WaitForNotification();
+    abort_callback_notification->WaitForNotificationWithTimeout(
+        absl::Milliseconds(1000));
+  }
+  return ret;
 }
 
 void RegisterThread(std::string_view thread_name) {
-  // Pay no attention tothe man behind the curtain.....
+  // Pay no attention to the man behind the curtain.....
 }
 
 }  // namespace distbench
