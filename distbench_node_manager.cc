@@ -187,7 +187,7 @@ grpc::Status NodeManager::GetTrafficResult(
 
   if (request->clear_services()) {
     for (const auto& service_engine : service_engines_) {
-      service_engine.second->CancelTraffic();
+      service_engine.second->CancelTraffic(absl::OkStatus());
     }
     ClearServices();
   }
@@ -203,7 +203,8 @@ grpc::Status NodeManager::CancelTraffic(grpc::ServerContext* context,
   LOG(INFO) << "Starting CancelTraffic on " << NodeAlias();
   absl::ReaderMutexLock m(&mutex_);
   for (const auto& service_engine : service_engines_) {
-    service_engine.second->CancelTraffic();
+    service_engine.second->CancelTraffic(
+        absl::CancelledError("cancelled by test_sequencer"));
   }
   LOG(INFO) << "Finished CancelTraffic on " << NodeAlias();
   return grpc::Status::OK;

@@ -636,9 +636,14 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   return absl::OkStatus();
 }
 
-void DistBenchEngine::CancelTraffic() {
-  LOG(INFO) << engine_name_ << ": Got CancelTraffic";
-  canceled_.TryToNotify();
+void DistBenchEngine::CancelTraffic(absl::Status status,
+                                    absl::Duration grace_period) {
+  LOG(INFO) << engine_name_ << ": Got CancelTraffic " << status;
+  absl::MutexLock m(&cancelation_mutex_);
+  if (canceled_.TryToNotify()) {
+    cancelation_reason_ = status.ToString();
+    cancelation_time_ = clock_->Now() + grace_period;
+  }
 }
 
 void DistBenchEngine::FinishTraffic() {
@@ -661,6 +666,9 @@ void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* sp_log) {
 
 ServicePerformanceLog DistBenchEngine::GetLogs() {
   ServicePerformanceLog log;
+  if (!cancelation_reason_.empty()) {
+    log.set_engine_error_message(cancelation_reason_);
+  }
   for (size_t i = 0; i < peers_.size(); ++i) {
     for (size_t j = 0; j < peers_[i].size(); ++j) {
       absl::MutexLock m(&peers_[i][j].mutex);
@@ -694,6 +702,17 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
 // should process in a seperate thread.
 std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   CHECK(state->request->has_rpc_index());
+  if (canceled_.HasBeenNotified()) {
+    absl::MutexLock m(&cancelation_mutex_);
+    // Avoid reporting errors during the grace period:
+    if (clock_->Now() > cancelation_time_) {
+      state->response.set_error_message(
+          absl::StrCat("Traffic cancelled: ", cancelation_reason_));
+      state->SendResponseIfSet();
+      state->FreeStateIfSet();
+      return std::function<void()>();
+    }
+  }
   const auto& server_rpc = server_rpc_table_[state->request->rpc_index()];
   const auto& rpc_def = server_rpc.rpc_definition;
 
@@ -790,14 +809,16 @@ void DistBenchEngine::RunActionList(int list_index,
                                               this]() {
           incoming_rpc_state->SendResponseIfSet();
           if (s.state_table[i].action->proto.cancel_traffic_when_done()) {
-            CancelTraffic();
+            CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
+                          absl::Seconds(1));
           }
           s.FinishAction(i);
         };
       } else {
         s.state_table[i].all_done_callback = [&s, i, this]() {
           if (s.state_table[i].action->proto.cancel_traffic_when_done()) {
-            CancelTraffic();
+            CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
+                          absl::Seconds(1));
           }
           s.FinishAction(i);
         };
@@ -828,8 +849,8 @@ void DistBenchEngine::RunActionList(int list_index,
     }
     s.action_mu.Unlock();
     if (canceled_.HasBeenNotified()) {
-      LOG(INFO) << engine_name_ << ": Cancelled action list "
-                << s.action_list->proto.name();
+      LOG(INFO) << engine_name_ << ": Cancelled action list '"
+                << s.action_list->proto.name() << "'";
 
       s.CancelActivities();
       s.WaitForAllPendingActions();

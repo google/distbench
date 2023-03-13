@@ -55,7 +55,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   absl::Status ConfigurePeers(const ServiceEndpointMap& peers);
   absl::Status RunTraffic(const RunTrafficRequest* request);
-  void CancelTraffic();
+  void CancelTraffic(absl::Status status,
+                     absl::Duration grace_period = absl::Seconds(0));
 
   void FinishTraffic();
   ServicePerformanceLog GetLogs();
@@ -279,7 +280,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   int get_payload_size(const std::string& name);
 
-  SafeNotification canceled_;
   DistributedSystemDescription traffic_config_;
   ServiceEndpointMap service_map_;
   std::string service_name_;
@@ -324,6 +324,11 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   // Get the index of the sample generator in sample_generator_array_
   int GetSampleGeneratorIndex(const std::string& name);
+
+  absl::Mutex cancelation_mutex_;
+  std::string cancelation_reason_;
+  SafeNotification canceled_;
+  absl::Time cancelation_time_;
 
   std::unique_ptr<AbstractThreadpool> thread_pool_;
   std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
