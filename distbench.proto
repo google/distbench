@@ -55,6 +55,7 @@ message RpcSample {
   // by most analysis tools, except when tuning the warmup period
   // of a test.
   optional bool warmup = 7;
+  optional int32 error_index = 8;
 }
 
 message RpcPerformanceLog {
@@ -100,6 +101,10 @@ message ActivityLog {
   repeated ActivityMetric activity_metrics = 1;
 }
 
+message ErrorDictionary {
+  repeated string error_message = 1;
+}
+
 // Logs for an individual instance of a service:
 message ServicePerformanceLog {
   // The key is service instance's name and the value contains performance
@@ -108,6 +113,8 @@ message ServicePerformanceLog {
 
   // The key is activity name and value is activity logs.
   map<string, ActivityLog> activity_logs = 2;
+
+  optional ErrorDictionary error_dictionary = 3;
 }
 
 // Logs for multiple service instances:

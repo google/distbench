@@ -33,6 +33,34 @@ enum kFieldNames {
 };
 }  // anonymous namespace
 
+ThreadSafeDictionary::ThreadSafeDictionary() {
+  absl::MutexLock m(&mutex_);
+  contents_.reserve(100);
+  contents_.push_back("");  // Index 0 is empty string
+  contents_map_[""] = 0;
+}
+
+int ThreadSafeDictionary::GetIndex(std::string_view text) {
+  absl::MutexLock m(&mutex_);
+  auto it = contents_map_.find(text);
+  if (it != contents_map_.end()) {
+    return it->second;
+  }
+  contents_.push_back(std::string(text));
+  contents_map_[text] =  contents_.size() - 1;
+  return contents_.size() - 1;
+}
+
+std::vector<std::string> ThreadSafeDictionary::GetContents() {
+  absl::MutexLock m(&mutex_);
+  return contents_;
+}
+
+std::string_view ThreadSafeDictionary::GetValue(int index) const {
+  absl::MutexLock m(&mutex_);
+  return contents_[index];
+}
+
 grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
                                               const ConnectRequest* request,
                                               ConnectResponse* response) {
@@ -457,6 +485,7 @@ absl::Status DistBenchEngine::Initialize(
   }
 
   service_index_ = it->second;
+  actionlist_error_dictionary_ = std::make_shared<ThreadSafeDictionary>();
   return absl::OkStatus();
 }
 
@@ -650,6 +679,9 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
       }
     }
   }
+  for (const auto& error : actionlist_error_dictionary_->GetContents()) {
+    log.mutable_error_dictionary()->add_error_message(error);
+  }
   AddActivityLogs(&log);
   return log;
 }
@@ -698,6 +730,7 @@ void DistBenchEngine::RunActionList(int list_index,
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
   ActionListState s = {};
+  s.actionlist_error_dictionary_ = actionlist_error_dictionary_;
   s.warmup_ = force_warmup || incoming_rpc_state->request->warmup();
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
@@ -955,6 +988,9 @@ void DistBenchEngine::ActionListState::UnpackLatencySamples() {
     if (packed_sample.warmup) {
       sample->set_warmup(true);
     }
+    if (packed_sample.error_index) {
+      sample->set_error_index(packed_sample.error_index);
+    }
   }
 }
 
@@ -1031,12 +1067,20 @@ void DistBenchEngine::ActionListState::RecordLatency(size_t rpc_index,
     *sample->mutable_trace_context() =
         std::move(state->request.trace_context());
   }
+  if (!state->response.error_message().empty()) {
+    sample->set_error_index(actionlist_error_dictionary_->GetIndex(
+        state->response.error_message()));
+  }
 }
 
 void DistBenchEngine::ActionListState::RecordPackedLatency(
     size_t sample_number, size_t index, size_t rpc_index, size_t service_type,
     size_t instance, ClientRpcState* state) {
   PackedLatencySample& packed_sample = packed_samples_[index];
+  if (!state->response.error_message().empty()) {
+    packed_sample.error_index =
+        actionlist_error_dictionary_->GetIndex(state->response.error_message());
+  }
   packed_sample.sample_number = sample_number;
   packed_sample.trace_context = nullptr;
   packed_sample.rpc_index = rpc_index;
@@ -1325,6 +1369,9 @@ void DistBenchEngine::RunRpcActionIteration(
         [this, rpc_state, iteration_state, peer_instance]() mutable {
           ActionState* action_state = iteration_state->action_state;
           rpc_state->end_time = clock_->Now();
+          if (!rpc_state->response.error_message().empty()) {
+            rpc_state->success = false;
+          }
           action_state->action_list_state->RecordLatency(
               action_state->rpc_index, action_state->rpc_service_index,
               peer_instance, rpc_state);
