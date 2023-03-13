@@ -486,13 +486,6 @@ function parse_params_dict_from_config_string() {
   done
 }
 
-function maybe_emit_ip_version() {
-  if [[ -v params_dict[ip_version] ]]
-  then
-    echo $'\n    ip_version: '${params_dict[ip_version]:-}
-  fi
-}
-
 ################################################################################
 # Invokes the traffic pattern and protocol driver helper functions to finalize
 # the contents of params_dict, converts params_dict to a test config proto,
@@ -715,6 +708,13 @@ function set_parameter_default() {
   fi
 }
 
+function maybe_emit_ip_version() {
+  if [[ -v params_dict[ip_version] ]]
+  then
+    echo $'\n    ip_version: '${params_dict[ip_version]:-}
+  fi
+}
+
 ################################################################################
 # Setup the test config proto for the grpc protocol driver:
 # Arguments:
@@ -738,9 +738,9 @@ function grpc_protocol_driver_setup() {
    then params_dict[protocol_alias]+="_ipv${params_dict[ip_version]}"
   fi
   params_dict[protocol_driver]="grpc"
-  params_dict[protocol_driver_options_proto]="  default_protocol: 'grpc'
-  protocol_driver_options {
-    name: 'common_options'
+  params_dict[protocol_driver_options_proto]="  protocol_driver_options {
+    name: 'default_protocol_driver_options'
+    protocol_name: 'grpc'
     server_settings {
       name: 'server_type'
       string_value: '${SERVER_TYPE}'
@@ -813,9 +813,9 @@ function mercury_protocol_driver_setup() {
    then params_dict[protocol_alias]+="_ipv${params_dict[ip_version]}"
   fi
   params_dict[protocol_driver]="mercury"
-  params_dict[protocol_driver_options_proto]="  default_protocol: 'mercury'
-  protocol_driver_options {
-    name: 'common_options'
+  params_dict[protocol_driver_options_proto]="  protocol_driver_options {
+    name: 'default_protocol_driver_options'
+    protocol_name: 'mercury'
     server_settings {
       name: 'hg_init_info_string'
       string_value: '${HG_INIT_INFO_STRING}'
@@ -836,9 +836,9 @@ function homa_protocol_driver_setup() {
    then params_dict[protocol_alias]+="_ipv${params_dict[ip_version]}"
   fi
   params_dict[protocol_driver]="homa"
-  params_dict[protocol_driver_options_proto]="  default_protocol: 'homa'
-  protocol_driver_options {
-    name: 'common_options'$(maybe_emit_ip_version)
+  params_dict[protocol_driver_options_proto]="  protocol_driver_options {
+    name: 'default_protocol_driver_options'
+    protocol_name: 'homa'$(maybe_emit_ip_version)
   }"
 }
 ################################################################################
@@ -872,7 +872,6 @@ function clique_traffic_pattern_setup() {
   services {
     name: 'clique'
     count: ${NODE_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   action_lists {
     name: 'clique'
@@ -940,12 +939,10 @@ function client_server_traffic_pattern_setup() {
   services {
     name: 'client'
     count: ${CLIENT_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   services {
     name: 'server'
     count: ${SERVER_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   rpc_descriptions {
     name: 'client_server_rpc'
@@ -1010,17 +1007,14 @@ function tripartite_traffic_pattern_setup() {
     services {
     name: 'client'
     count: ${CLIENT_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   services {
     name: 'index'
     count: ${INDEX_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   services {
     name: 'data'
     count: ${DATA_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   rpc_descriptions {
     name: 'client_index_rpc'
@@ -1117,17 +1111,14 @@ function multi_level_rpc_traffic_pattern_setup() {
   services {
     name: 'load_balancer'
     count: 1
-    protocol_driver_options_name: 'common_options'
   }
   services {
     name: 'root'
     count: ${ROOT_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   services {
     name: 'leaf'
     count: ${LEAF_COUNT}
-    protocol_driver_options_name: 'common_options'
   }
   action_lists {
     name: 'load_balancer'
