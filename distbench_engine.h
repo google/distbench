@@ -208,7 +208,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
                              size_t instance, ClientRpcState* state);
     void UnpackLatencySamples();
 
-    const ServerRpcState* incoming_rpc_state = nullptr;
+    ServerRpcState* incoming_rpc_state = nullptr;
     std::unique_ptr<ActionState[]> state_table;
     const ActionListTableEntry* action_list;
     absl::Mutex action_mu;
@@ -238,7 +238,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeActivityConfigMap();
   absl::Status ParseActivityConfig(ActivityConfig& ac);
 
-  void RunActionList(int list_index, const ServerRpcState* incoming_rpc_state,
+  void RunActionList(int list_index, ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);
   void RunAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);

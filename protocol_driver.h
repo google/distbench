@@ -41,10 +41,10 @@ struct ServerRpcState {
 
   void SetSendResponseFunction(
       std::function<void(void)> send_response_function);
-  void SendResponseIfSet() const;
+  void SendResponseIfSet();
 
   void SetFreeStateFunction(std::function<void(void)> free_state_function);
-  void FreeStateIfSet() const;
+  void FreeStateIfSet();
 
  private:
   std::function<void(void)> send_response_function_;

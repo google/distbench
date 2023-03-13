@@ -726,7 +726,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
 }
 
 void DistBenchEngine::RunActionList(int list_index,
-                                    const ServerRpcState* incoming_rpc_state,
+                                    ServerRpcState* incoming_rpc_state,
                                     bool force_warmup) {
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
@@ -894,7 +894,15 @@ void DistBenchEngine::ActionListState::CancelActivities() {
     }
     if (action_state->action->proto.has_activity_config_name()) {
       finished_some_actions = true;
+#ifdef NDEBUG
       action_state->all_done_callback();
+#else
+      auto adcb = std::move(action_state->all_done_callback);
+      action_state->all_done_callback = []() {
+        LOG(FATAL) << "all_done_callback already called!";
+      };
+      adcb();
+#endif
     }
   }
   if (finished_some_actions) {
@@ -1252,7 +1260,16 @@ void DistBenchEngine::FinishIteration(
   int pending_iterations = state->next_iteration - state->finished_iterations;
   state->iteration_mutex.Unlock();
   if (done && !pending_iterations) {
+    state->finished = true;
+#ifdef NDEBUG
     state->all_done_callback();
+#else
+    auto adcb = std::move(state->all_done_callback);
+    state->all_done_callback = []() {
+      LOG(FATAL) << "all_done_callback already called!";
+    };
+    adcb();
+#endif
   } else if (!state->action->proto.has_activity_config_name() &&
              start_another_iteration) {
     StartIteration(iteration_state);
