@@ -886,15 +886,20 @@ void DistBenchEngine::ActionListState::HandleFinishedActions() {
 }
 
 void DistBenchEngine::ActionListState::CancelActivities() {
+  bool finished_some_actions = false;
   for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
     if (action_state->finished) {
       continue;
     }
     if (action_state->action->proto.has_activity_config_name()) {
+      finished_some_actions = true;
       action_state->all_done_callback();
-      action_state->finished = true;
     }
+  }
+  if (finished_some_actions) {
+    absl::MutexLock m(&action_mu);
+    HandleFinishedActions();
   }
 }
 
