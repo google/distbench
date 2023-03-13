@@ -115,6 +115,7 @@ message ServicePerformanceLog {
   map<string, ActivityLog> activity_logs = 2;
 
   optional ErrorDictionary error_dictionary = 3;
+  optional string engine_error_message = 4;
 }
 
 // Logs for multiple service instances:
