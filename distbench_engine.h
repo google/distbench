@@ -18,6 +18,7 @@
 #include <thread>
 #include <unordered_set>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
 #include "activity.h"
 #include "distbench.grpc.pb.h"
@@ -27,6 +28,20 @@
 #include "protocol_driver.h"
 
 namespace distbench {
+
+class ThreadSafeDictionary {
+ public:
+  ThreadSafeDictionary();
+  ~ThreadSafeDictionary() = default;
+  int GetIndex(std::string_view text);
+  std::string_view GetValue(int index) const;
+  std::vector<std::string> GetContents();
+
+ private:
+  std::vector<std::string> contents_;
+  absl::flat_hash_map<std::string, size_t> contents_map_;
+  mutable absl::Mutex mutex_;
+};
 
 class DistBenchEngine : public ConnectionSetup::Service {
  public:
@@ -187,6 +202,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int64_t latency_weight;
     size_t sample_number;
     TraceContext* trace_context;
+    int error_index;
   };
 
   static_assert(std::is_trivially_destructible<PackedLatencySample>::value);
@@ -229,6 +245,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // actions it initiates will propgate the warmup flag:
     bool warmup_;
     std::atomic<int> pending_action_count_ = 0;
+    std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
   };
 
   absl::Status InitializeTables();
@@ -309,6 +326,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   int GetSampleGeneratorIndex(const std::string& name);
 
   std::unique_ptr<AbstractThreadpool> thread_pool_;
+  std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
 };
 
 }  // namespace distbench
