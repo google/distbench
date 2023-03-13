@@ -23,9 +23,17 @@ void ServerRpcState::SetSendResponseFunction(
   send_response_function_ = send_response_function;
 }
 
-void ServerRpcState::SendResponseIfSet() const {
+void ServerRpcState::SendResponseIfSet() {
   if (send_response_function_) {
+#ifdef NDEBUG
     send_response_function_();
+#else
+    auto send_func = std::move(send_response_function_);
+    send_response_function_ = []() {
+      LOG(FATAL) << "response was already sent";
+    };
+    send_func();
+#endif
   }
 }
 
@@ -34,9 +42,15 @@ void ServerRpcState::SetFreeStateFunction(
   free_state_function_ = free_state_function;
 }
 
-void ServerRpcState::FreeStateIfSet() const {
+void ServerRpcState::FreeStateIfSet() {
   if (free_state_function_) {
+#ifdef NDEBUG
     free_state_function_();
+#else
+    auto free_func = std::move(free_state_function_);
+    free_state_function_ = []() { LOG(FATAL) << "state was already freed"; };
+    free_func();
+#endif
   }
 }
 
