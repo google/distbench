@@ -243,6 +243,7 @@ message GenericRequest {
 
 message GenericResponse {
   optional bytes payload = 1;
+  optional string error_message = 2;
 }
 
 message ServerAddress {

@@ -149,6 +149,8 @@ void GrpcPollingClientDriver::RpcCompletionThread() {
         finished_rpc->state->request = std::move(finished_rpc->request);
         finished_rpc->state->response = std::move(finished_rpc->response);
       } else {
+        finished_rpc->state->response.set_error_message(
+            finished_rpc->status.error_message());
         LOG_EVERY_N(ERROR, 1000)
             << "RPC failed with status: " << finished_rpc->status;
       }
@@ -438,6 +440,8 @@ void GrpcCallbackClientDriver::InitiateRpc(
       new_rpc->state->request = std::move(new_rpc->request);
       new_rpc->state->response = std::move(new_rpc->response);
     } else {
+      new_rpc->state->response.set_error_message(
+          new_rpc->status.error_message());
       LOG_EVERY_N(ERROR, 1000) << "RPC failed with status: " << status;
     }
     new_rpc->done_callback();
