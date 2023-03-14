@@ -831,6 +831,7 @@ void DistBenchEngine::RunActionList(int list_index,
     absl::Time next_iteration_time = absl::InfiniteFuture();
     bool done = true;
     for (int i = 0; i < size; ++i) {
+      absl::MutexLock m(&s.state_table[i].iteration_mutex);
       if (!s.state_table[i].finished) {
         if (s.state_table[i].next_iteration_time < next_iteration_time) {
           next_iteration_time = s.state_table[i].next_iteration_time;
@@ -1292,7 +1293,6 @@ void DistBenchEngine::FinishIteration(
   int pending_iterations = state->next_iteration - state->finished_iterations;
   state->iteration_mutex.Unlock();
   if (done && !pending_iterations) {
-    state->finished = true;
 #ifdef NDEBUG
     state->all_done_callback();
 #else
