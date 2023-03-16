@@ -554,7 +554,6 @@ TEST(DistBenchTestSequencer, ConsumeCpuWithMaxIterationCount) {
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
 }
-#endif
 
 TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
   int nb_cliques = 2;
@@ -604,6 +603,7 @@ TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
 }
+#endif
 
 TEST(DistBenchTestSequencer, UnknownActivity) {
   int nb_cliques = 3;
