@@ -20,6 +20,7 @@
 #include <mercury_proc_string.h>
 
 #include "absl/base/const_init.h"
+#include "absl/base/internal/sysinfo.h"
 #include "absl/strings/str_replace.h"
 #include "absl/synchronization/mutex.h"
 #include "distbench_thread_support.h"
@@ -39,6 +40,15 @@ absl::Status ProtocolDriverMercury::Initialize(
     return absl::UnimplementedError(
         "The compiled-in version of mercury only supports IPv4");
   }
+  auto threadpool_size = GetNamedServerSettingInt64(
+      pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
+  auto threadpool_type =
+      GetNamedServerSettingString(pd_opts, "threadpool_type", "");
+  auto tp = CreateThreadpool(threadpool_type, threadpool_size);
+  if (!tp.ok()) {
+    return tp.status();
+  }
+  thread_pool_ = std::move(tp.value());
   std::string netdev_name = pd_opts.netdev_name();
   auto maybe_ip = IpAddressForDevice(
       netdev_name, mercury_ipv4_only_ ? 4 : pd_opts.ip_version());
@@ -337,10 +347,9 @@ hg_return_t ProtocolDriverMercury::RpcServerCallback(hg_handle_t handle) {
     delete rpc_state;
   });
 
-  auto fct_action_list_thread = handler_(rpc_state);
-  if (fct_action_list_thread) {
-    RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread)
-        .detach();
+  auto remaining_work = handler_(rpc_state);
+  if (remaining_work) {
+    thread_pool_->AddTask(remaining_work);
   }
   return HG_SUCCESS;
 }

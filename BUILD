@@ -222,6 +222,7 @@ cc_library(
         ":distbench_cc_grpc_proto",
         ":distbench_netutils",
         ":distbench_thread_support",
+        ":distbench_threadpool_lib",
         ":protocol_driver_api",
         "@mercury//:mercury",
         "@com_google_absl//absl/strings",
