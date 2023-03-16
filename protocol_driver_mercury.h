@@ -23,6 +23,7 @@
 #include <thread>
 
 #include "distbench_netutils.h"
+#include "distbench_threadpool.h"
 #include "distbench_utils.h"
 #include "protocol_driver.h"
 
@@ -87,6 +88,7 @@ class ProtocolDriverMercury : public ProtocolDriver {
   std::vector<hg_addr_t> remote_addresses_;
 
   std::function<std::function<void()>(ServerRpcState* state)> handler_;
+  std::unique_ptr<AbstractThreadpool> thread_pool_;
 };
 
 }  // namespace distbench
