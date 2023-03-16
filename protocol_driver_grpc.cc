@@ -605,7 +605,7 @@ class PollingRpcHandlerFsm {
   // one of which will delete the PollingRpcHandlerFsm.
   void DecRefAndMaybeDelete() {
     if (std::atomic_fetch_sub_explicit(&refcnt_, 1,
-                                       std::memory_order_relaxed) == 1) {
+                                       std::memory_order_acq_rel) == 1) {
       delete this;
     }
   }
