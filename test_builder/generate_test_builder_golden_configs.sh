@@ -50,6 +50,8 @@ test_builder -o . clique:homa
 test_builder -o . clique:mercury
 test_builder -o . clique:mercury:transport=ofi+tcp
 test_builder -o . clique:mercury:transport=custom_transport
+test_builder -o . clique:mercury:threadpool_size=16:ipv6
+test_builder -o . clique:mercury:threadpool_type=elastic:ipv4
 
 # Generate a parameter sweep:
 test_builder -o - parameter_sweep rpc_interval_us 4000 1000 8000 clique \
