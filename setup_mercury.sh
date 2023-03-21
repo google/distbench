@@ -128,6 +128,10 @@ function unknown_error_shutdown() {
 
 function main() {
   trap unknown_error_shutdown ERR
+  cmake --version &> /dev/null || (
+    echo_error red "cmake not found, trying to install it..."
+    sudo apt-get install cmake -y
+  )
 
   mkdir -p external_repos/opt
   cd external_repos
