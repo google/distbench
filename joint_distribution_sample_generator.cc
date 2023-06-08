@@ -158,7 +158,7 @@ absl::Status DistributionSampleGenerator::InitializeWithPmf(
   if (!status.ok()) return status;
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  generator_ = std::default_random_engine(seed);
+  generator_ = std::mt19937(seed);
   std::vector<float> pmf;
   num_dimensions_ = config.pmf_points(0).data_points_size();
   exact_value_.resize(num_dimensions_);
@@ -195,7 +195,7 @@ absl::Status DistributionSampleGenerator::Initialize(
 };
 
 std::vector<int> DistributionSampleGenerator::GetRandomSample(
-    std::default_random_engine* generator) {
+    std::mt19937* generator) {
   auto index = distribution_array_(*generator);
   std::vector<int> sample;
 
