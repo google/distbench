@@ -35,12 +35,12 @@ class DistributionSampleGenerator {
 
   absl::Status Initialize(const DistributionConfig& config);
   std::vector<int> GetRandomSample();
-  std::vector<int> GetRandomSample(std::default_random_engine* generator);
+  std::vector<int> GetRandomSample(std::mt19937* generator);
 
  private:
   int num_dimensions_;
 
-  std::default_random_engine generator_;
+  std::mt19937 generator_;
   std::discrete_distribution<int> distribution_array_;
 
   std::vector<std::vector<int>> exact_value_;

@@ -756,7 +756,7 @@ void DistBenchEngine::RunActionList(int list_index,
   bool sent_response_early = false;
   unsigned int seed =
       std::chrono::system_clock::now().time_since_epoch().count();
-  std::default_random_engine rand_gen(seed);
+  std::mt19937 rand_gen(seed);
 
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
