@@ -181,6 +181,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     // The 'rand_gen' must be used only from RunActionList's thread
     // to avoid race conditions.
     std::mt19937* rand_gen = nullptr;
+    std::exponential_distribution<double> exponential_gen;
+    bool interval_is_exponential;
   };
 
   struct PackedLatencySample {

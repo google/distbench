@@ -1227,4 +1227,199 @@ tests {
   }
 }
 
+//These tests do not work very well with the thread sanitizer.
+#ifndef THREAD_SANITIZER
+TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
+  const int avg_interval = 3'200'000;
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  test->set_default_protocol("grpc");
+
+  auto* s1 = test->add_services();
+  s1->set_name("exponential_client");
+  s1->set_count(1);
+
+  auto* s2 = test->add_services();
+  s2->set_name("exponential_server");
+  s2->set_count(1);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("exponential_client");
+  l1->add_action_names("exp_queries");
+
+  auto a1 = test->add_actions();
+  a1->set_name("exp_queries");
+  a1->mutable_iterations()->set_max_duration_us(2'000'000);
+  a1->mutable_iterations()->set_open_loop_interval_ns(avg_interval);
+  a1->mutable_iterations()->set_open_loop_interval_distribution("exponential");
+  a1->set_rpc_name("exp_query");
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("exp_query");
+  r1->set_client("exponential_client");
+  r1->set_server("exponential_server");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("exp_query");
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("exponential_client/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+  auto exp_server = instance_results_it->second.peer_logs().find("exponential_server/0");
+  ASSERT_NE(exp_server, instance_results_it->second.peer_logs().end());
+  auto exp_server_echo = exp_server->second.rpc_logs().find(0);
+  ASSERT_NE(exp_server_echo, exp_server->second.rpc_logs().end());
+  ASSERT_TRUE(exp_server_echo->second.failed_rpc_samples().empty());
+
+  //Store the timestamps of the rpcs in the timestamps vector
+  int N = exp_server_echo->second.successful_rpc_samples_size();
+  std::vector<uint64_t> timestamps;
+  timestamps.reserve(N);
+  for (auto& rpc_sample : exp_server_echo->second.successful_rpc_samples()) {
+    timestamps.push_back(rpc_sample.start_timestamp_ns());
+  }
+
+  //Find the time intervals between the timestamps, and the maximum, minimum and avg
+  std::vector<uint64_t> time_intervals;
+  time_intervals.reserve(N - 1);
+  uint64_t max_ts = 0;
+  uint64_t min_ts = std::numeric_limits<uint64_t>::max();
+  uint64_t avg=0;
+  uint64_t next_interval;
+  for(size_t i = 0; i < timestamps.size() - 1; i++){
+    next_interval = timestamps[i + 1] - timestamps[i];
+    time_intervals.push_back(next_interval);
+    avg += time_intervals[i];
+    if (next_interval > max_ts) {
+      max_ts = next_interval;
+    }
+    if (next_interval < min_ts) {
+      min_ts = next_interval;
+    }
+  }
+  avg/=(N-1);
+
+  LOG(INFO) << "MIN: " << min_ts;
+  LOG(INFO) << "MAX: " << max_ts;
+  LOG(INFO) << "AVG: " << avg;
+  //Assert that the range of the intervals is wide enough
+  ASSERT_LE(min_ts, 0.1 * avg_interval );
+  ASSERT_GE(max_ts, 3 * avg_interval );
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  ASSERT_NE(instance_results_it, test_results.service_logs().instance_logs().end());
+}
+
+TEST(DistBenchTestSequencer, ConstantDistributionTest) {
+  const int avg_interval = 3'200'000;
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(2));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  test->set_default_protocol("grpc");
+
+  auto* s1 = test->add_services();
+  s1->set_name("constant_client");
+  s1->set_count(1);
+
+  auto* s2 = test->add_services();
+  s2->set_name("constant_server");
+  s2->set_count(1);
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name("constant_client");
+  l1->add_action_names("constant_queries");
+
+  auto a1 = test->add_actions();
+  a1->set_name("constant_queries");
+  a1->mutable_iterations()->set_max_duration_us(2'000'000);
+  a1->mutable_iterations()->set_open_loop_interval_ns(avg_interval);
+  a1->mutable_iterations()->set_open_loop_interval_distribution("constant");
+  a1->set_rpc_name("constant_query");
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("constant_query");
+  r1->set_client("constant_client");
+  r1->set_server("constant_server");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("constant_query");
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+
+  const auto& log_summary = test_results.log_summary();
+  const auto& latency_summary = log_summary[1];
+  size_t pos = latency_summary.find("N: ") + 3;
+  ASSERT_NE(pos, std::string::npos);
+  const std::string N_value = latency_summary.substr(pos);
+
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("constant_client/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+  auto constant_server = instance_results_it->second.peer_logs().find("constant_server/0");
+  ASSERT_NE(constant_server, instance_results_it->second.peer_logs().end());
+  auto constant_server_echo = constant_server->second.rpc_logs().find(0);
+  ASSERT_NE(constant_server_echo, constant_server->second.rpc_logs().end());
+  ASSERT_TRUE(constant_server_echo->second.failed_rpc_samples().empty());
+
+  //Store the timestamps of the rpcs in the timestamps vector
+  int N = constant_server_echo->second.successful_rpc_samples_size();
+  std::vector<uint64_t> timestamps;
+  timestamps.reserve(N);
+  for (auto& rpc_sample : constant_server_echo->second.successful_rpc_samples()) {
+    timestamps.push_back(rpc_sample.start_timestamp_ns());
+  }
+
+  //Find the time intervals between the timestamps, and the maximum, minimum and avg
+  std::vector<uint64_t> time_intervals;
+  time_intervals.reserve(N - 1);
+
+  uint64_t next_interval;
+  double variance = 0;
+  for(size_t i = 0; i < timestamps.size() - 1; i++){
+    next_interval = timestamps[i + 1] - timestamps[i];
+    time_intervals.push_back(next_interval);
+    int64_t num = next_interval - avg_interval;
+    num *= num;
+    variance += static_cast<double>(num);
+  }
+  variance /= time_intervals.size();
+  LOG(INFO) << "VARIANCE: " << variance;
+
+  //Assert that the standard deviation is low
+  ASSERT_LE(sqrt(variance), 0.2 * avg_interval);
+
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  ASSERT_NE(instance_results_it, test_results.service_logs().instance_logs().end());
+
+}
+#endif
 }  // namespace distbench
