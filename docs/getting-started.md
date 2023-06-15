@@ -83,4 +83,4 @@ bazel run --compilation_mode=dbg :distbench -- node_manager --test_sequencer=loc
 ## Distbench Workloads
 
 Once `simple_test.sh` is running, please look at the
-[Distbench Workloads](workloads/README.md) for more workloads to run.
+[Distbench Workloads](../workloads/README.md) for more workloads to run.
