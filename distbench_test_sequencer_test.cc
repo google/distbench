@@ -1086,11 +1086,23 @@ tests {
   ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
   ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
 
+  int64_t iterations = 0;
+
   for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
-    // The RPC trace should have two entries (@load_balancer/0, @root/0).
-    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 2);
-    ASSERT_EQ(rpc.trace_context().iterations().size(), 2);
+    ASSERT_EQ(rpc.trace_context().engine_ids_size(), 1);
+    ASSERT_EQ(rpc.trace_context().action_iterations_size(), 1);
+    ASSERT_EQ(rpc.trace_context().actionlist_invocations_size(), 1);
+    ASSERT_EQ(rpc.trace_context().actionlist_indices_size(), 1);
+    ASSERT_EQ(rpc.trace_context().action_indices_size(), 1);
+    ASSERT_EQ(rpc.trace_context().fanout_index_size(), 1);
+    iterations |= 1 << rpc.trace_context().action_iterations(0);
+    EXPECT_EQ(rpc.trace_context().engine_ids(0), 0);
+    EXPECT_EQ(rpc.trace_context().actionlist_invocations(0), 0);
+    EXPECT_EQ(rpc.trace_context().actionlist_indices(0), 0);
+    EXPECT_EQ(rpc.trace_context().action_indices(0), 0);
+    EXPECT_EQ(rpc.trace_context().fanout_index(0), 0);
   }
+  EXPECT_EQ(iterations, (1 << 25) - 1);
 }
 
 TEST(DistBenchTestSequencer, RPCTraceTwoLevels) {
@@ -1194,10 +1206,23 @@ tests {
   ASSERT_NE(dest_rpc, dest->second.rpc_logs().end());
   ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
   ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
+  int64_t iterations_bitmask = 0;
+
   for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
-    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 2);
-    ASSERT_EQ(rpc.trace_context().iterations().size(), 2);
+    ASSERT_EQ(rpc.trace_context().engine_ids_size(), 1);
+    ASSERT_EQ(rpc.trace_context().action_iterations_size(), 1);
+    ASSERT_EQ(rpc.trace_context().actionlist_invocations_size(), 1);
+    ASSERT_EQ(rpc.trace_context().actionlist_indices_size(), 1);
+    ASSERT_EQ(rpc.trace_context().action_indices_size(), 1);
+    ASSERT_EQ(rpc.trace_context().fanout_index_size(), 1);
+    iterations_bitmask |= 1 << (rpc.trace_context().action_iterations(0) / 2);
+    EXPECT_EQ(rpc.trace_context().engine_ids(0), 0);
+    EXPECT_EQ(rpc.trace_context().actionlist_invocations(0), 0);
+    EXPECT_EQ(rpc.trace_context().actionlist_indices(0), 0);
+    EXPECT_EQ(rpc.trace_context().action_indices(0), 0);
+    EXPECT_EQ(rpc.trace_context().fanout_index(0), 0);
   }
+  EXPECT_EQ(iterations_bitmask, (1 << 25) - 1);
   // root/1 gets no tracing.
   dest = instance_results_it->second.peer_logs().find("root/1");
   ASSERT_NE(dest, instance_results_it->second.peer_logs().end());
@@ -1206,8 +1231,7 @@ tests {
   ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
   ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
   for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
-    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 0);
-    ASSERT_EQ(rpc.trace_context().iterations().size(), 0);
+    ASSERT_FALSE(rpc.has_trace_context());
   }
 
   // Verify that the tracing cascades down to the leaf (root/0->leaf/0).
@@ -1221,10 +1245,33 @@ tests {
   ASSERT_NE(dest_rpc, dest->second.rpc_logs().end());
   ASSERT_TRUE(dest_rpc->second.failed_rpc_samples().empty());
   ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
+
+  iterations_bitmask = 0;
+  int64_t invocations = 0;
+
   for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
-    ASSERT_EQ(rpc.trace_context().engine_ids().size(), 3);
-    ASSERT_EQ(rpc.trace_context().iterations().size(), 3);
+    ASSERT_EQ(rpc.trace_context().engine_ids_size(), 2);
+    ASSERT_EQ(rpc.trace_context().action_iterations_size(), 2);
+    ASSERT_EQ(rpc.trace_context().actionlist_invocations_size(), 2);
+    ASSERT_EQ(rpc.trace_context().actionlist_indices_size(), 2);
+    ASSERT_EQ(rpc.trace_context().action_indices_size(), 2);
+    ASSERT_EQ(rpc.trace_context().fanout_index_size(), 2);
+    iterations_bitmask |= 1 << (rpc.trace_context().action_iterations(0) / 2);
+    EXPECT_EQ(rpc.trace_context().engine_ids(0), 0);
+    EXPECT_EQ(rpc.trace_context().actionlist_invocations(0), 0);
+    EXPECT_EQ(rpc.trace_context().actionlist_indices(0), 0);
+    EXPECT_EQ(rpc.trace_context().action_indices(0), 0);
+    EXPECT_EQ(rpc.trace_context().action_iterations(1), 0);
+    EXPECT_EQ(rpc.trace_context().engine_ids(1), 1);
+    invocations |= 1 << rpc.trace_context().actionlist_invocations(1);
+    EXPECT_EQ(rpc.trace_context().actionlist_indices(1), 1);
+    EXPECT_EQ(rpc.trace_context().action_indices(1), 0);
+    EXPECT_EQ(rpc.trace_context().fanout_index(1), 0);
+    EXPECT_EQ(rpc.trace_context().fanout_index(1), 0);
   }
+
+  EXPECT_EQ(iterations_bitmask, (1 << 25) - 1);
+  EXPECT_EQ(invocations, (1 << 25) - 1);
 }
 
 //These tests do not work very well with the thread sanitizer.

@@ -454,6 +454,8 @@ absl::Status DistBenchEngine::Initialize(
 
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
+  actionlist_invocation_counts = std::make_unique<std::atomic<int>[]>(
+      global_description.action_lists_size());
 
   // Start server
   std::string server_address =
@@ -749,6 +751,9 @@ void DistBenchEngine::RunActionList(int list_index,
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
   ActionListState s = {};
+  s.actionlist_invocation = atomic_fetch_add_explicit(
+      &actionlist_invocation_counts[list_index], 1, std::memory_order_relaxed);
+  s.actionlist_index = list_index;
   s.actionlist_error_dictionary_ = actionlist_error_dictionary_;
   s.warmup_ = force_warmup || incoming_rpc_state->request->warmup();
   s.incoming_rpc_state = incoming_rpc_state;
@@ -798,6 +803,7 @@ void DistBenchEngine::RunActionList(int list_index,
         }
       }
       if (!deps_ready) continue;
+      s.state_table[i].action_index = i;
       s.state_table[i].started = true;
       s.state_table[i].action = &s.action_list->list_actions[i];
       s.state_table[i].rand_gen = &rand_gen;
@@ -1316,7 +1322,7 @@ void DistBenchEngine::FinishIteration(
 
 void DistBenchEngine::StartIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
-  struct ActionState* action_state = iteration_state->action_state;
+  ActionState* action_state = iteration_state->action_state;
   iteration_state->warmup =
       action_state->action_list_state->warmup_ ||
       (iteration_state->iteration_number <
@@ -1337,20 +1343,26 @@ void DistBenchEngine::RunRpcActionIteration(
   const int rpc_index = action_state->rpc_index;
   const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
   const auto& rpc_spec = rpc_def.rpc_spec;
-  bool do_trace = false;
   int trace_count = client_rpc_table_[rpc_index].rpc_tracing_counter++;
-  if (rpc_spec.tracing_interval() > 0) {
-    do_trace = (trace_count % rpc_spec.tracing_interval()) == 0;
-  }
+  bool do_trace = (rpc_spec.tracing_interval() > 0) &&
+                  !(trace_count % rpc_spec.tracing_interval());
   GenericRequest common_request;
   const ServerRpcState* const incoming_rpc_state =
       action_state->action_list_state->incoming_rpc_state;
-  if (!incoming_rpc_state->request->trace_context().engine_ids().empty()) {
+  if (incoming_rpc_state->request->has_trace_context()) {
+    do_trace = true;
     *common_request.mutable_trace_context() =
         incoming_rpc_state->request->trace_context();
-  } else if (do_trace) {
+  }
+  if (do_trace) {
     common_request.mutable_trace_context()->add_engine_ids(trace_id_);
-    common_request.mutable_trace_context()->add_iterations(
+    common_request.mutable_trace_context()->add_actionlist_invocations(
+        action_state->action_list_state->actionlist_invocation);
+    common_request.mutable_trace_context()->add_actionlist_indices(
+        action_state->action_list_state->actionlist_index);
+    common_request.mutable_trace_context()->add_action_indices(
+        action_state->action_index);
+    common_request.mutable_trace_context()->add_action_iterations(
         iteration_state->iteration_number);
   }
   common_request.set_rpc_index(rpc_index);
@@ -1382,13 +1394,23 @@ void DistBenchEngine::RunRpcActionIteration(
       absl::MutexLock m(&peers_[rpc_service_index][peer_instance].mutex);
       rpc_state = &iteration_state->rpc_states[i];
       rpc_state->request = common_request;
-      if (!common_request.trace_context().engine_ids().empty()) {
-        rpc_state->request.mutable_trace_context()->add_engine_ids(
-            peers_[rpc_service_index][peer_instance].trace_id);
-        rpc_state->request.mutable_trace_context()->add_iterations(i);
+      if (do_trace) {
+        rpc_state->request.mutable_trace_context()->add_fanout_index(i);
       }
+#ifndef NDEBUG
+      CHECK_EQ(
+          rpc_state->request.trace_context().engine_ids().size(),
+          rpc_state->request.trace_context().actionlist_invocations().size());
       CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
-               rpc_state->request.trace_context().iterations().size());
+               rpc_state->request.trace_context().actionlist_indices().size());
+      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+               rpc_state->request.trace_context().action_indices().size());
+      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+               rpc_state->request.trace_context().action_iterations().size());
+      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+               rpc_state->request.trace_context().fanout_index().size());
+      // CHECK_EQ(0, rpc_state->request.trace_context().iterations().size());
+#endif
     }  // End of MutexLock m
     rpc_state->prior_start_time = rpc_state->start_time;
     rpc_state->start_time = clock_->Now();

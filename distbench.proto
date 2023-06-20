@@ -36,12 +36,33 @@ message NodeServiceConfig {
 }
 
 message TraceContext {
+  // For compactness the TraceContext fields are all packed repeated fields
+  // with each node in the chain appending its local data to the end of each
+  // repeated field.
+
   // This is set to the global ID of each engine along the RPC chain.
   repeated int64 engine_ids = 1 [packed = true];
 
-  // Each engine along the chain also has an iteration count, in case
-  // multiple RPCs are being sent.
-  repeated int64 iterations = 2 [packed = true];
+  // The index of the actionlist that triggered this RPC within the
+  // DistributedSystemDescription.
+  repeated int64 actionlist_indices = 3 [packed = true];
+
+  // The invocation count of the actionlist that triggered this RPC.
+  // This number increments each time the actionlist is executed.
+  repeated int64 actionlist_invocations = 4 [packed = true];
+
+  // The index of the action within the actionlist that triggered this RPC.
+  repeated int64 action_indices = 5 [packed = true];
+
+  // The iteration number of the action that triggered this RPC.
+  repeated int64 action_iterations = 6 [packed = true];
+
+  // Each iteration of the action may send RPCs to multiple servers.
+  // This tracks the index into the set of related individual RPCs.
+  repeated int64 fanout_index = 7 [packed = true];
+
+  // Obsolete field that was poorly/inconsistently defined.
+  repeated int64 iterations = 2 [packed = true, deprecated = true];
 }
 
 message RpcSample {
