@@ -169,6 +169,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     const ActionTableEntry* action = nullptr;
     int rpc_index;
     int rpc_service_index;
+    int action_index;
 
     std::function<void(std::shared_ptr<ActionIterationState> iteration_state)>
         iteration_function;
@@ -225,6 +226,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
                              size_t instance, ClientRpcState* state);
     void UnpackLatencySamples();
 
+    int actionlist_index = -1;
+    int actionlist_invocation = -1;
     ServerRpcState* incoming_rpc_state = nullptr;
     std::unique_ptr<ActionState[]> state_table;
     const ActionListTableEntry* action_list;
@@ -297,6 +300,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::map<std::string, RpcDefinition> rpc_map_;
   std::map<std::string, int> activity_config_indices_map_;
   std::vector<ParsedActivityConfig> stored_activity_config_;
+
+  std::unique_ptr<std::atomic<int>[]> actionlist_invocation_counts;
 
   // The first index is the service, the second is the instance.
   std::vector<std::vector<PeerMetadata>> peers_;
