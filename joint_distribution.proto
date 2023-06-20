@@ -28,6 +28,8 @@ message DataPoint {
 // This is used to define the probility mass function (PMF) of a distribution.
 message PmfPoint {
   optional float pmf = 1;
+
+  // One entry for each dimension of the joint distribution:
   repeated DataPoint data_points = 2;
 }
 
