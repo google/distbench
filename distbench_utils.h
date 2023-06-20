@@ -153,6 +153,8 @@ void AddActivitySettingIntTo(ActivityConfig* ac, std::string option_name,
 void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
                                 std::string value);
 
+absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
+    const DistributionConfig& input_config);
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

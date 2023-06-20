@@ -16,6 +16,12 @@ syntax = "proto2";
 
 package distbench;
 
+enum kFieldNames {
+  kRequestPayloadSize = 0;
+  kResponsePayloadSize = 1;
+  kMaxFieldNames = 2;
+};
+
 message DataPoint {
   // Exact value.
   optional int32 exact = 1;
@@ -39,6 +45,9 @@ message PmfPoint {
 // at 'a' is the probability that 'X' will take
 // a value less than or equal to 'a'.
 // CDF_X(a) = P(X <= a)
+// If the first cdf value is equal to zero, then
+// the distribution is interpreted as piece-wise uniform with the
+// first point defining lower bound of the first interval.
 message CdfPoint {
   optional float cdf = 1;
   optional int32 value = 2;
@@ -51,7 +60,8 @@ message DistributionConfig {
   repeated PmfPoint pmf_points = 2;
 
   repeated CdfPoint cdf_points = 3;
-  optional bool is_cdf_uniform = 4 [default = true];
+  // This field is ignored.
+  optional bool is_cdf_uniform = 4 [default = true, deprecated = true];
 
   repeated string field_names = 5;
 }

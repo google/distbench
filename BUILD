@@ -122,7 +122,20 @@ cc_library(
         ":traffic_config_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_github_google_glog//:glog"
+        "@com_github_google_glog//:glog",
+        ":joint_distribution_sample_generator"
+    ],
+)
+
+cc_test(
+    name = "distbench_utils_test",
+    size = "medium",
+    srcs = [
+        "distbench_utils_test.cc",
+    ],
+    deps = [
+        ":distbench_utils",
+        ":gtest_utils"
     ],
 )
 
