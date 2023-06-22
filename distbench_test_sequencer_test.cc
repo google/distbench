@@ -1274,7 +1274,7 @@ tests {
   EXPECT_EQ(invocations, (1 << 25) - 1);
 }
 
-//These tests do not work very well with the thread sanitizer.
+// These tests do not work very well with the thread sanitizer.
 #ifndef THREAD_SANITIZER
 TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
   const int avg_interval = 3'200'000;
@@ -1331,13 +1331,14 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
       test_results.service_logs().instance_logs().find("exponential_client/0");
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
-  auto exp_server = instance_results_it->second.peer_logs().find("exponential_server/0");
+  auto exp_server =
+      instance_results_it->second.peer_logs().find("exponential_server/0");
   ASSERT_NE(exp_server, instance_results_it->second.peer_logs().end());
   auto exp_server_echo = exp_server->second.rpc_logs().find(0);
   ASSERT_NE(exp_server_echo, exp_server->second.rpc_logs().end());
   ASSERT_TRUE(exp_server_echo->second.failed_rpc_samples().empty());
 
-  //Store the timestamps of the rpcs in the timestamps vector
+  // Store the timestamps of the rpcs in the timestamps vector
   int N = exp_server_echo->second.successful_rpc_samples_size();
   std::vector<uint64_t> timestamps;
   timestamps.reserve(N);
@@ -1345,14 +1346,15 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
     timestamps.push_back(rpc_sample.start_timestamp_ns());
   }
 
-  //Find the time intervals between the timestamps, and the maximum, minimum and avg
+  // Find the time intervals between the timestamps, and the maximum, minimum
+  // and avg
   std::vector<uint64_t> time_intervals;
   time_intervals.reserve(N - 1);
   uint64_t max_ts = 0;
   uint64_t min_ts = std::numeric_limits<uint64_t>::max();
-  uint64_t avg=0;
+  uint64_t avg = 0;
   uint64_t next_interval;
-  for(size_t i = 0; i < timestamps.size() - 1; i++){
+  for (size_t i = 0; i < timestamps.size() - 1; i++) {
     next_interval = timestamps[i + 1] - timestamps[i];
     time_intervals.push_back(next_interval);
     avg += time_intervals[i];
@@ -1363,17 +1365,18 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
       min_ts = next_interval;
     }
   }
-  avg/=(N-1);
+  avg /= (N - 1);
 
   LOG(INFO) << "MIN: " << min_ts;
   LOG(INFO) << "MAX: " << max_ts;
   LOG(INFO) << "AVG: " << avg;
-  //Assert that the range of the intervals is wide enough
-  ASSERT_LE(min_ts, 0.1 * avg_interval );
-  ASSERT_GE(max_ts, 3 * avg_interval );
+  // Assert that the range of the intervals is wide enough
+  ASSERT_LE(min_ts, 0.1 * avg_interval);
+  ASSERT_GE(max_ts, 3 * avg_interval);
 
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
-  ASSERT_NE(instance_results_it, test_results.service_logs().instance_logs().end());
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
 }
 
 TEST(DistBenchTestSequencer, ConstantDistributionTest) {
@@ -1431,27 +1434,30 @@ TEST(DistBenchTestSequencer, ConstantDistributionTest) {
       test_results.service_logs().instance_logs().find("constant_client/0");
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
-  auto constant_server = instance_results_it->second.peer_logs().find("constant_server/0");
+  auto constant_server =
+      instance_results_it->second.peer_logs().find("constant_server/0");
   ASSERT_NE(constant_server, instance_results_it->second.peer_logs().end());
   auto constant_server_echo = constant_server->second.rpc_logs().find(0);
   ASSERT_NE(constant_server_echo, constant_server->second.rpc_logs().end());
   ASSERT_TRUE(constant_server_echo->second.failed_rpc_samples().empty());
 
-  //Store the timestamps of the rpcs in the timestamps vector
+  // Store the timestamps of the rpcs in the timestamps vector
   int N = constant_server_echo->second.successful_rpc_samples_size();
   std::vector<uint64_t> timestamps;
   timestamps.reserve(N);
-  for (auto& rpc_sample : constant_server_echo->second.successful_rpc_samples()) {
+  for (auto& rpc_sample :
+       constant_server_echo->second.successful_rpc_samples()) {
     timestamps.push_back(rpc_sample.start_timestamp_ns());
   }
 
-  //Find the time intervals between the timestamps, and the maximum, minimum and avg
+  // Find the time intervals between the timestamps, and the maximum, minimum
+  // and avg
   std::vector<uint64_t> time_intervals;
   time_intervals.reserve(N - 1);
 
   uint64_t next_interval;
   double variance = 0;
-  for(size_t i = 0; i < timestamps.size() - 1; i++){
+  for (size_t i = 0; i < timestamps.size() - 1; i++) {
     next_interval = timestamps[i + 1] - timestamps[i];
     time_intervals.push_back(next_interval);
     int64_t num = next_interval - avg_interval;
@@ -1461,12 +1467,12 @@ TEST(DistBenchTestSequencer, ConstantDistributionTest) {
   variance /= time_intervals.size();
   LOG(INFO) << "VARIANCE: " << variance;
 
-  //Assert that the standard deviation is low
+  // Assert that the standard deviation is low
   ASSERT_LE(sqrt(variance), 0.2 * avg_interval);
 
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
-  ASSERT_NE(instance_results_it, test_results.service_logs().instance_logs().end());
-
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
 }
 #endif
 }  // namespace distbench

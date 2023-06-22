@@ -1230,7 +1230,8 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
                                           absl::Floor(start, period) +
                                           fraction * period;
     } else {
-      action_state->interval_is_exponential = (interval_distribution == "exponential");
+      action_state->interval_is_exponential =
+          (interval_distribution == "exponential");
       action_state->next_iteration_time = clock_->Now();
     }
     // StartOpenLoopIteration will be called from RunActionList().
@@ -1255,10 +1256,10 @@ void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
   action_state->iteration_mutex.Lock();
-  if(action_state->interval_is_exponential){
+  if (action_state->interval_is_exponential) {
     action_state->next_iteration_time +=
-         period * action_state->exponential_gen(*action_state->rand_gen);
-  } else{
+        period * action_state->exponential_gen(*action_state->rand_gen);
+  } else {
     action_state->next_iteration_time += period;
   }
   if (action_state->next_iteration_time > action_state->time_limit) {
