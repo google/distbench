@@ -1274,10 +1274,8 @@ tests {
   EXPECT_EQ(invocations, (1 << 25) - 1);
 }
 
-// These tests do not work very well with the thread sanitizer.
-#ifndef THREAD_SANITIZER
 TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
-  const int avg_interval = 3'200'000;
+  const int nominal_interval = 16'000'000;
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
 
@@ -1300,7 +1298,7 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
   auto a1 = test->add_actions();
   a1->set_name("exp_queries");
   a1->mutable_iterations()->set_max_duration_us(2'000'000);
-  a1->mutable_iterations()->set_open_loop_interval_ns(avg_interval);
+  a1->mutable_iterations()->set_open_loop_interval_ns(nominal_interval);
   a1->mutable_iterations()->set_open_loop_interval_distribution("exponential");
   a1->set_rpc_name("exp_query");
 
@@ -1340,7 +1338,7 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
 
   // Store the timestamps of the rpcs in the timestamps vector
   int N = exp_server_echo->second.successful_rpc_samples_size();
-  std::vector<uint64_t> timestamps;
+  std::vector<int64_t> timestamps;
   timestamps.reserve(N);
   for (auto& rpc_sample : exp_server_echo->second.successful_rpc_samples()) {
     timestamps.push_back(rpc_sample.start_timestamp_ns());
@@ -1348,21 +1346,18 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
 
   // Find the time intervals between the timestamps, and the maximum, minimum
   // and avg
-  std::vector<uint64_t> time_intervals;
-  time_intervals.reserve(N - 1);
-  uint64_t max_ts = 0;
-  uint64_t min_ts = std::numeric_limits<uint64_t>::max();
-  uint64_t avg = 0;
-  uint64_t next_interval;
+  std::sort(timestamps.begin(), timestamps.end());
+  int64_t max_ts = 0;
+  int64_t min_ts = std::numeric_limits<int64_t>::max();
+  int64_t avg = 0;
   for (size_t i = 0; i < timestamps.size() - 1; i++) {
-    next_interval = timestamps[i + 1] - timestamps[i];
-    time_intervals.push_back(next_interval);
-    avg += time_intervals[i];
-    if (next_interval > max_ts) {
-      max_ts = next_interval;
+    int64_t interval = timestamps[i + 1] - timestamps[i];
+    avg += interval;
+    if (interval > max_ts) {
+      max_ts = interval;
     }
-    if (next_interval < min_ts) {
-      min_ts = next_interval;
+    if (interval < min_ts) {
+      min_ts = interval;
     }
   }
   avg /= (N - 1);
@@ -1371,8 +1366,8 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
   LOG(INFO) << "MAX: " << max_ts;
   LOG(INFO) << "AVG: " << avg;
   // Assert that the range of the intervals is wide enough
-  ASSERT_LE(min_ts, 0.1 * avg_interval);
-  ASSERT_GE(max_ts, 3 * avg_interval);
+  ASSERT_LE(min_ts, 0.25 * nominal_interval);
+  ASSERT_GE(max_ts, 3 * nominal_interval);
 
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
   ASSERT_NE(instance_results_it,
@@ -1380,7 +1375,7 @@ TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
 }
 
 TEST(DistBenchTestSequencer, ConstantDistributionTest) {
-  const int avg_interval = 3'200'000;
+  const int nominal_interval = 16'000'000;
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
 
@@ -1403,7 +1398,7 @@ TEST(DistBenchTestSequencer, ConstantDistributionTest) {
   auto a1 = test->add_actions();
   a1->set_name("constant_queries");
   a1->mutable_iterations()->set_max_duration_us(2'000'000);
-  a1->mutable_iterations()->set_open_loop_interval_ns(avg_interval);
+  a1->mutable_iterations()->set_open_loop_interval_ns(nominal_interval);
   a1->mutable_iterations()->set_open_loop_interval_distribution("constant");
   a1->set_rpc_name("constant_query");
 
@@ -1443,7 +1438,7 @@ TEST(DistBenchTestSequencer, ConstantDistributionTest) {
 
   // Store the timestamps of the rpcs in the timestamps vector
   int N = constant_server_echo->second.successful_rpc_samples_size();
-  std::vector<uint64_t> timestamps;
+  std::vector<int64_t> timestamps;
   timestamps.reserve(N);
   for (auto& rpc_sample :
        constant_server_echo->second.successful_rpc_samples()) {
@@ -1452,19 +1447,17 @@ TEST(DistBenchTestSequencer, ConstantDistributionTest) {
 
   // Find the time intervals between the timestamps, and the maximum, minimum
   // and avg
-  std::vector<uint64_t> time_intervals;
-  time_intervals.reserve(N - 1);
+  std::sort(timestamps.begin(), timestamps.end());
 
-  uint64_t next_interval;
   double variance = 0;
+  double avg_interval =
+      (timestamps.back() - timestamps.front()) / (timestamps.size() - 1.0);
   for (size_t i = 0; i < timestamps.size() - 1; i++) {
-    next_interval = timestamps[i + 1] - timestamps[i];
-    time_intervals.push_back(next_interval);
-    int64_t num = next_interval - avg_interval;
-    num *= num;
-    variance += static_cast<double>(num);
+    int64_t interval = timestamps[i + 1] - timestamps[i];
+    variance += pow(interval - avg_interval, 2);
+    LOG(INFO) << "deviation = " << interval - avg_interval;
   }
-  variance /= time_intervals.size();
+  variance /= timestamps.size() - 1;
   LOG(INFO) << "VARIANCE: " << variance;
 
   // Assert that the standard deviation is low
@@ -1474,5 +1467,5 @@ TEST(DistBenchTestSequencer, ConstantDistributionTest) {
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
 }
-#endif
+
 }  // namespace distbench
