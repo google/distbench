@@ -1,6 +1,7 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_proto_library")
 load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
+load("@com_google_protobuf//:protobuf.bzl", "py_proto_library")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 
 package(
@@ -590,4 +591,22 @@ cc_test(
         ":joint_distribution_sample_generator",
         ":gtest_utils",
     ],
+)
+
+py_proto_library(
+    name = "joint_distribution_py_proto",
+    srcs = ["joint_distribution.proto"],
+)
+
+py_proto_library(
+    name = "traffic_config_py_proto",
+    srcs = ["traffic_config.proto"],
+    deps = ["joint_distribution_py_proto"],
+)
+
+py_proto_library(
+    name = "distbench_py_proto",
+    srcs = ["distbench.proto"],
+    deps = ["traffic_config_py_proto",
+            "joint_distribution_py_proto"],
 )

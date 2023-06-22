@@ -110,7 +110,6 @@ http_archive(
     strip_prefix = "HomaModule-a889ebc0d9c2a2437fc41323da01422e8314f6db",
 )
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "com_github_nelhage_rules_boost",
     sha256 = "a023496468931c8d64abc4ba036f985f3977da03a7f7680282d7e6d9e42ff27d",
