@@ -112,7 +112,11 @@ grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
       std::make_shared<absl::Notification>();
   mutex_.Unlock();
   grpc::Status result = DoRunTestSequence(context, request, response);
-  LOG(INFO) << "DoRunTestSequence status: " << result;
+  if (result.ok()) {
+    LOG(INFO) << "DoRunTestSequence status: OK";
+  } else {
+    LOG(INFO) << "DoRunTestSequence status: " << result;
+  }
   notification->Notify();
   mutex_.Lock();
   running_test_sequence_context_ = nullptr;
