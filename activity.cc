@@ -202,28 +202,26 @@ ActivityLog PolluteDataCache::GetActivityLog() {
 //
 // We create this 2D array because BOOST_PP_REPEAT() macro can
 // generate at most 255 repetitions.
+// The purpose of 'do_work' part of the function is only to increase
+// the size of the function.
 #define POLLUTE_ICACHE_LOOP_SIZE 100
-#define GENERATE_FUNC_INNER_LOOP(z, n, prefix)                           \
-  int DummyFunc_##prefix##_##n(bool do_work) {                           \
-    /*                                                                   \
-     * The purpose of 'do_work' part of the function is only to increase \
-     * the size of the function.                                         \
-     */                                                                  \
-    if (do_work) {                                                       \
-      int result = 0;                                                    \
-      for (int i = 0; i < n; i++) {                                      \
-        result += i * i;                                                 \
-        result /= i + 1;                                                 \
-        result -= i / 2;                                                 \
-        result /= i * i;                                                 \
-        result += result * i;                                            \
-        result /= result + 1;                                            \
-        result -= result / 2;                                            \
-        result *= result;                                                \
-      }                                                                  \
-      return result;                                                     \
-    } else                                                               \
-      return n;                                                          \
+#define GENERATE_FUNC_INNER_LOOP(z, n, prefix) \
+  int DummyFunc_##prefix##_##n(bool do_work) { \
+    if (do_work) {                             \
+      int result = 0;                          \
+      for (int i = 0; i < n; i++) {            \
+        result += i * i;                       \
+        result /= i + 1;                       \
+        result -= i / 2;                       \
+        result /= i * i;                       \
+        result += result * i;                  \
+        result /= result + 1;                  \
+        result -= result / 2;                  \
+        result *= result;                      \
+      }                                        \
+      return result;                           \
+    } else                                     \
+      return n;                                \
   }
 #define GENERATE_FUNC_OUTER_LOOP(z, n, text) \
   BOOST_PP_REPEAT(POLLUTE_ICACHE_LOOP_SIZE, GENERATE_FUNC_INNER_LOOP, n)
