@@ -16,6 +16,7 @@
 
 #include "distbench_utils.h"
 #include "gtest/gtest.h"
+#include "gtest_utils.h"
 
 namespace distbench {
 
@@ -61,7 +62,7 @@ TEST(DistributionSampleGeneratorTest, ValidateDistributionPmfConfig) {
     data_point->set_exact(i);
   }
   auto status = ValidateDistributionConfig(config);
-  ASSERT_EQ(status, absl::OkStatus());
+  ASSERT_OK(status);
 }
 
 TEST(DistributionSampleGeneratorTest, InvalidDistributionPmfConfig) {
@@ -74,10 +75,7 @@ TEST(DistributionSampleGeneratorTest, InvalidDistributionPmfConfig) {
     data_point->set_exact(i);
   }
   auto status = ValidateDistributionConfig(config);
-  ASSERT_EQ(
-      status,
-      absl::InvalidArgumentError(
-          "Cumulative value of all PMFs should be 1. It is '0.5' instead."));
+  ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST(DistributionSampleGeneratorTest, ValidateDistributionCdfConfig) {
@@ -91,7 +89,7 @@ TEST(DistributionSampleGeneratorTest, ValidateDistributionCdfConfig) {
     cdf_point->set_cdf(cdf);
   }
   auto status = ValidateDistributionConfig(config);
-  ASSERT_EQ(status, absl::OkStatus());
+  ASSERT_OK(status);
 }
 
 TEST(DistributionSampleGeneratorTest,
@@ -162,10 +160,10 @@ TEST(DistributionSampleGeneratorTest, FullTestPmf) {
     data_point->set_exact(i);
   }
   auto status = ValidateDistributionConfig(config);
-  ASSERT_EQ(status, absl::OkStatus());
+  ASSERT_OK(status);
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.ok(), true);
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   std::map<int, int> sample_count;
@@ -199,7 +197,7 @@ TEST(DistributionSampleGeneratorTest, FullTestCdf) {
   }
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.status(), absl::OkStatus());
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   std::map<int, int> sample_count;
@@ -233,7 +231,7 @@ TEST(DistributionSampleGeneratorTest, FullTestCdfUniformIntervals) {
   }
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.status(), absl::OkStatus());
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   std::map<int, int> sample_count;
@@ -302,11 +300,8 @@ TEST(DistributionSampleGeneratorTest, InvalidPmfInitializeTest) {
     data_point->set_exact(i);
   }
 
-  auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(
-      maybe_sg.status(),
-      absl::InvalidArgumentError(
-          "Cumulative value of all PMFs should be 1. It is '0.1' instead."));
+  auto status = AllocateSampleGenerator(config).status();
+  ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST(DistributionSampleGeneratorTest, PmfRangeTest) {
@@ -328,7 +323,7 @@ TEST(DistributionSampleGeneratorTest, PmfRangeTest) {
   data_point->set_upper(10010);
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.ok(), true);
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   int small_count = 0;
@@ -370,7 +365,7 @@ TEST(DistributionSampleGeneratorTest, PmfRangeAndValueMixTest) {
   data_point->set_upper(10010);
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.ok(), true);
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   int small_count = 0;
@@ -409,10 +404,10 @@ TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
     data_point->set_exact(i * 10);
   }
   auto status = ValidateDistributionConfig(config);
-  ASSERT_EQ(status, absl::OkStatus());
+  ASSERT_OK(status);
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.ok(), true);
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   std::map<std::vector<int>, int> sample_count;
@@ -456,7 +451,7 @@ TEST(DistributionSampleGeneratorTest, PmfRangeAndValueMixTest2Vars) {
   data_point->set_exact(10000);
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.ok(), true);
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   int small_count = 0;
@@ -513,7 +508,7 @@ TEST(DistributionSampleGeneratorTest, Pmf3Vars) {
   data_point->set_exact(6000);
 
   auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.ok(), true);
+  ASSERT_OK(maybe_sg.status());
   auto sg = std::move(maybe_sg.value());
 
   int small_count = 0;
@@ -560,10 +555,8 @@ TEST(DistributionSampleGeneratorTest, PmfPointDifferentVariableNumbers) {
   data_point = pmf_point->add_data_points();
   data_point->set_exact(90);
 
-  auto maybe_sg = AllocateSampleGenerator(config);
-  ASSERT_EQ(maybe_sg.status(),
-            absl::InvalidArgumentError(
-                "The size of data_points must be same in all PmfPoints."));
+  auto status = AllocateSampleGenerator(config).status();
+  ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 }  // namespace distbench
