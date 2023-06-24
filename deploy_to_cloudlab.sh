@@ -325,15 +325,16 @@ function launch_remote() {
     "${SEQUENCER_IP}" \
     "${SEQUENCER_PORT}" \
     "${CONTROL_NETDEV}" \
-    "${TRAFFIC_NETDEV}"
+    "${TRAFFIC_NETDEV}" | (trap - ERR ; trap - INT ; tee remote_main.log)
 }
 
 (cat ${sh_files[@]} /dev/stdin | launch_remote) << 'EOF'
 ######################## REMOTE SCRIPT BEGINS HERE #############################
-# We must enclose the contents in () to force bash to read the entire script
-# before execution starts. Otherwise commands reading from stdin may steal the
-# text of the script.
-(
+# We must enclose the contents in a function to force bash to read the entire
+# script before execution starts. Otherwise commands reading from stdin may
+# steal the text of the script.
+function remote_main()
+{
 set -uEeo pipefail
 shopt -s inherit_errexit
 
@@ -487,5 +488,6 @@ jobs &> /dev/null # this /should/ not be necessary, but wait -n is buggy
 wait -n
 echo_error red "\\nA distbench process terminated early."
 echo_error red "  Look for errors in the log"
-) < /dev/null | tee deploy_to_cloudlab.log
+}
+remote_main "${@}" < /dev/null
 EOF
