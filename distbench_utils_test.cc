@@ -19,11 +19,9 @@
 
 namespace distbench {
 
-/**
- * This test makes a distribution config with 8 CDF points and a name
- * then creates a canonical version of it and tests that the number of
- * PMF points and name are equivalent to the original config.
- */
+// This test makes a distribution config with 8 CDF points and a name
+// then creates a canonical version of it and tests that the number of
+// PMF points and name are equivalent to the original config.
 TEST(DistBenchUtilsTest, GetCanonicalCdf) {
   const int num_cdf_points = 8;
   DistributionConfig config;
@@ -43,11 +41,9 @@ TEST(DistBenchUtilsTest, GetCanonicalCdf) {
   ASSERT_EQ(canonical.field_names_size(), 0);
 }
 
-/**
- * This test makes a distribution config with a name, 4 PMF points,
- * and 2 field names then creates a canonical version of the config and
- * tests that the name is equivalent, and the number of points are equal.
- */
+// This test makes a distribution config with a name, 4 PMF points,
+// and 2 field names then creates a canonical version of the config and
+// tests that the name is equivalent, and the number of points are equal.
 TEST(DistBenchUtilsTest, GetCanonicalPmf) {
   const int num_pmf_points = 4;
   const int sum_of_pmf_points = 10;
@@ -92,11 +88,9 @@ TEST(DistBenchUtilsTest, GetCanonicalPmfNearOne) {
   ASSERT_EQ(canonicalTwo.pmf_points_size(), num_pmf_points);
 }
 
-/**
- * This test creates a distribution config with PMF points with only one
- * datapoint and two field dimensions and makes sure the invalid argument
- * error is returned.
- */
+// This test creates a distribution config with PMF points with only one
+// datapoint and two field dimensions and makes sure the invalid argument
+// error is returned.
 TEST(DistBenchUtilsTest, GetCanonicalInvalidDimensions) {
   DistributionConfig config;
   const int num_pmf_points = 4;
@@ -116,10 +110,8 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidDimensions) {
                                        " and PMF datapoints do not match."));
 }
 
-/**
- * This test creates an invalid distribution config with a decreasing value
- * tests that an error status is returned.
- */
+// This test creates an invalid distribution config with a decreasing value
+// tests that an error status is returned.
 TEST(DistBenchUtilsTest, GetCanonicalInvalidCDFconfig) {
   const int num_cdf_points = 8;
   DistributionConfig config;
@@ -138,10 +130,8 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidCDFconfig) {
                 "index '1' in CDF:'invalid_CDF_config'."));
 }
 
-/**
- * This test creates an invalid distribution config with 4 PMF points and
- * tests that an error status is returned.
- */
+// This test creates an distribution config whose pmf values sum to 1/2, and
+// tests that an error status is returned.
 TEST(DistBenchUtilsTest, GetCanonicalInvalidPMFconfig) {
   DistributionConfig config;
   const int num_pmf_points = 4;
@@ -161,10 +151,8 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidPMFconfig) {
   ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
-/**
- * This test creates an invalid config with both CDF and PMF points and
- * tets that an error status is returned.
- */
+// This test creates an invalid config with both CDF and PMF points and
+// tets that an error status is returned.
 TEST(DistBenchUtilsTest, GetCanonicalInvalidDistributionConfig) {
   DistributionConfig config;
   const int num_points = 4;

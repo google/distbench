@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _GNU_SOURCE /* Pre-defined on GNU/Linux */
-#define _GNU_SOURCE /* To get defns of NI_MAXSERV and NI_MAXHOST */
+#ifndef _GNU_SOURCE  // Pre-defined on GNU/Linux
+#define _GNU_SOURCE  // To get definitions of NI_MAXSERV and NI_MAXHOST
 #endif
 
 #include "distbench_netutils.h"
@@ -49,8 +49,7 @@ std::vector<DeviceIpAddress> GetAllAddresses(std::string_view netdev) {
 
   if (getifaddrs(&ifaddr) == -1) return result;
 
-  /* Walk through linked list, maintaining head pointer so we
-     can free list later */
+  // Walk through linked list maintaining head pointer so we can free list later
   for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
     if (ifa->ifa_addr == NULL) continue;
 

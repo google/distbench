@@ -270,7 +270,7 @@ class MercuryThreadpool : public AbstractThreadpool {
 
  private:
   struct HeapObject {
-    struct hg_thread_work task_item; /* Must be first! */
+    struct hg_thread_work task_item;  // Must be first!
     std::function<void()> task;
   };
   static void* Trampoline(void* heap_object_pointer);
