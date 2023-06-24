@@ -386,6 +386,33 @@ git_clone_or_update \
   ${GITDIR} \
   ${WORKTREE}
 
+echo_magenta "\\nChecking for working copy of gcc-11..."
+CC=gcc-11
+
+if ! which gcc-11 > /dev/null
+then
+  if which gcc-11.3 > /dev/null
+  then
+    CC=gcc-11.3
+  else
+    echo_error red "gcc-11 and gcc-11.3 not found"
+  fi
+fi
+${CC} -v
+
+echo_magenta "\\nChecking for working copy of g++-11..."
+CXX=g++-11
+if ! which g++-11 > /dev/null
+then
+  if which g++-11.3 > /dev/null
+  then
+    CXX=g++-11.3
+  else
+    echo_error red "g++-11 and g++-11.3 not found"
+  fi
+fi
+${CXX} -v
+
 echo_magenta "\\nChecking for working copy of bazel..."
 pushd ${WORKTREE}
 bazel-5.4.0 version 2> /dev/null || (
@@ -415,7 +442,9 @@ echo_magenta "\\nBuilding distbench binary..."
 bazel build -c opt :distbench \
   --//:with-mercury=true \
   --//:with-homa=true \
-  --//:with-homa-grpc=true
+  --//:with-homa-grpc=true \
+  --repo_env=CC=${CC} \
+  --repo_env=CXX=${CXX}
 popd
 
 echo_magenta "\\nKilling any previous distbench processes..."
