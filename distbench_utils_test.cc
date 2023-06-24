@@ -19,67 +19,92 @@
 
 namespace distbench {
 
-TEST(DistBenchUtilsTest, GetCanonical) {
-  /**
-   * This first test makes a distribution config with 8 CDF points and a name
-   * then creates a canonical version of it and tests that the number of
-   * PMF points and name are equivalent to the original config.
-   */
-  const size_t num_CDF_points = 8;
+/**
+ * This test makes a distribution config with 8 CDF points and a name
+ * then creates a canonical version of it and tests that the number of
+ * PMF points and name are equivalent to the original config.
+ */
+TEST(DistBenchUtilsTest, GetCanonicalCdf) {
+  const int num_cdf_points = 8;
   DistributionConfig config;
   config.set_name("test_config");
-  for (size_t i = 1; i <= num_CDF_points; ++i) {
+  for (float i = 1; i <= num_cdf_points; ++i) {
     auto* cdf_point = config.add_cdf_points();
-    cdf_point->set_cdf(i / 8.0);
+    cdf_point->set_cdf(i / num_cdf_points);
     cdf_point->set_value(i);
   }
-  LOG(INFO) << "LOG OF CONFIG BEFORE GetCanonical: " << config.DebugString();
   ASSERT_EQ(config.name(), "test_config");
-  ASSERT_EQ(config.cdf_points_size(), num_CDF_points);
+  ASSERT_EQ(config.cdf_points_size(), num_cdf_points);
   auto temp = GetCanonicalDistributionConfig(config);
   auto canonical = temp.value();
   ASSERT_EQ(canonical.name(), "test_config");
   ASSERT_EQ(canonical.cdf_points_size(), 0);
-  ASSERT_EQ(canonical.pmf_points_size(), num_CDF_points);
+  ASSERT_EQ(canonical.pmf_points_size(), num_cdf_points);
   ASSERT_EQ(canonical.field_names_size(), 0);
+}
 
-  /**
-   * This second test makes a distribution config with a name, 4 PMF points,
-   * and 2 field names then creates a canonical version of the config and
-   * tests that the name is equivalent, and the number of points are equal.
-   */
-  const size_t num_PMF_points = 4;
+/**
+ * This test makes a distribution config with a name, 4 PMF points,
+ * and 2 field names then creates a canonical version of the config and
+ * tests that the name is equivalent, and the number of points are equal.
+ */
+TEST(DistBenchUtilsTest, GetCanonicalPmf) {
+  const int num_pmf_points = 4;
+  const int sum_of_pmf_points = 10;
   DistributionConfig configTwo;
   configTwo.set_name("another_config");
-  for (size_t i = 1; i <= num_PMF_points; ++i) {
+  for (float i = 1; i <= num_pmf_points; ++i) {
     auto* pmf_point = configTwo.add_pmf_points();
-    pmf_point->set_pmf(i / 10.0);
+    pmf_point->set_pmf(i / sum_of_pmf_points);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
   configTwo.add_field_names("request_payload_size");
 
-  LOG(INFO) << "LOG OF CONFIG BEFORE GetCanonical: " << configTwo.DebugString();
   ASSERT_EQ(configTwo.name(), "another_config");
-  temp = GetCanonicalDistributionConfig(configTwo);
+  auto temp = GetCanonicalDistributionConfig(configTwo);
   auto canonicalTwo = temp.value();
   ASSERT_EQ(canonicalTwo.name(), "another_config");
   ASSERT_EQ(canonicalTwo.cdf_points_size(), 0);
-  ASSERT_EQ(canonicalTwo.pmf_points_size(), num_PMF_points);
+  ASSERT_EQ(canonicalTwo.pmf_points_size(), num_pmf_points);
+}
+
+// This results in a total of all pmfs that is not-quite 1.0
+// but close enough that it should be accepted by the library:
+TEST(DistBenchUtilsTest, GetCanonicalPmfNearOne) {
+  const int num_pmf_points = 5;
+  const int sum_of_pmf_points = 15;
+  DistributionConfig configTwo;
+  configTwo.set_name("another_config");
+  for (float i = 1; i <= num_pmf_points; ++i) {
+    auto* pmf_point = configTwo.add_pmf_points();
+    pmf_point->set_pmf(i / sum_of_pmf_points);
+    auto* data_point = pmf_point->add_data_points();
+    data_point->set_exact(i);
+  }
+  configTwo.add_field_names("request_payload_size");
+
+  ASSERT_EQ(configTwo.name(), "another_config");
+  auto temp = GetCanonicalDistributionConfig(configTwo);
+  auto canonicalTwo = temp.value();
+  ASSERT_EQ(canonicalTwo.name(), "another_config");
+  ASSERT_EQ(canonicalTwo.cdf_points_size(), 0);
+  ASSERT_EQ(canonicalTwo.pmf_points_size(), num_pmf_points);
 }
 
 /**
  * This test creates a distribution config with PMF points with only one
  * datapoint and two field dimensions and makes sure the invalid argument
- * error is thrown.
+ * error is returned.
  */
 TEST(DistBenchUtilsTest, GetCanonicalInvalidDimensions) {
   DistributionConfig config;
-  const size_t num_PMF_points = 4;
+  const int num_pmf_points = 4;
+  const int sum_of_pmf_points = 10;
   config.set_name("invalid_dimensions_config");
-  for (size_t i = 1; i <= num_PMF_points; ++i) {
+  for (float i = 1; i <= num_pmf_points; ++i) {
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 10.0);
+    pmf_point->set_pmf(i / sum_of_pmf_points);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
@@ -92,20 +117,20 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidDimensions) {
 }
 
 /**
- * This test creates an invalid distribution config with 8 CDF points and
- * tests that an error status is thrown for decreasing value.
+ * This test creates an invalid distribution config with a decreasing value
+ * tests that an error status is returned.
  */
 TEST(DistBenchUtilsTest, GetCanonicalInvalidCDFconfig) {
-  const size_t num_CDF_points = 8;
+  const int num_cdf_points = 8;
   DistributionConfig config;
   config.set_name("invalid_CDF_config");
-  for (size_t i = 1; i <= num_CDF_points; ++i) {
+  for (float i = 1; i <= num_cdf_points; ++i) {
     auto* cdf_point = config.add_cdf_points();
-    cdf_point->set_cdf(i / 8.0);
+    cdf_point->set_cdf(i / num_cdf_points);
     // invalid, values must increase
-    cdf_point->set_value(num_CDF_points - i);
+    cdf_point->set_value(num_cdf_points - i);
   }
-  ASSERT_EQ(config.cdf_points_size(), num_CDF_points);
+  ASSERT_EQ(config.cdf_points_size(), num_cdf_points);
   auto canonical = GetCanonicalDistributionConfig(config).status();
   ASSERT_EQ(canonical,
             absl::InvalidArgumentError(
@@ -115,15 +140,16 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidCDFconfig) {
 
 /**
  * This test creates an invalid distribution config with 4 PMF points and
- * tests that an error status is thrown.
+ * tests that an error status is returned.
  */
 TEST(DistBenchUtilsTest, GetCanonicalInvalidPMFconfig) {
   DistributionConfig config;
-  const size_t num_PMF_points = 3;
+  const int num_pmf_points = 4;
+  const int sum_of_pmf_points = 10;
   config.set_name("invalid_PMF_config");
-  for (size_t i = 1; i <= num_PMF_points; ++i) {
+  for (float i = 1; i <= num_pmf_points; ++i) {
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 10.0);
+    pmf_point->set_pmf(i / (sum_of_pmf_points * 2));
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
     data_point = pmf_point->add_data_points();
@@ -131,26 +157,23 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidPMFconfig) {
   }
   config.add_field_names("request_payload_size");
   config.add_field_names("response_payload_size");
-  auto canonical = GetCanonicalDistributionConfig(config).status();
-  ASSERT_EQ(
-      canonical,
-      absl::InvalidArgumentError(
-          "Cumulative value of all PMFs should be 1. It is '0.6' instead."));
+  auto status = GetCanonicalDistributionConfig(config).status();
+  ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 /**
  * This test creates an invalid config with both CDF and PMF points and
- * tets that an error status is thrown
+ * tets that an error status is returned.
  */
 TEST(DistBenchUtilsTest, GetCanonicalInvalidDistributionConfig) {
   DistributionConfig config;
-  const size_t num_points = 4;
+  const int num_points = 4;
   config.set_name("invalid_config");
-  for (size_t i = 1; i < num_points; i += 2) {
+  for (float i = 1; i < num_points; i += 2) {
     auto* pmf_point = config.add_pmf_points();
-    pmf_point->set_pmf(i / 4.0);
+    pmf_point->set_pmf(i / num_points);
     auto* cdf_point = config.add_cdf_points();
-    cdf_point->set_cdf((i + 1) / 4.0);
+    cdf_point->set_cdf((i + 1) / num_points);
     cdf_point->set_value(i * 10000000);
   }
   auto canonical = GetCanonicalDistributionConfig(config).status();
@@ -161,27 +184,27 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidDistributionConfig) {
 }
 
 TEST(DistBenchUtilsTest, uniformCDFdistribution) {
-  const int num_CDF_points = 8;
+  const int num_cdf_points = 8;
   DistributionConfig config;
   int counter = 101;
-  std::vector<int> lower(num_CDF_points - 1, -1);
-  std::vector<int> upper(num_CDF_points - 1, -1);
+  std::vector<int> lower(num_cdf_points - 1, -1);
+  std::vector<int> upper(num_cdf_points - 1, -1);
   config.set_name("unifrom_dist");
-  for (int i = 0; i < num_CDF_points - 1; ++i) {
+  for (int i = 0; i < num_cdf_points - 1; ++i) {
     auto* cdf_point = config.add_cdf_points();
-    cdf_point->set_cdf(i / 8.0);
+    cdf_point->set_cdf(i / num_cdf_points);
     cdf_point->set_value(counter);
     lower[i] = counter;
     counter += 101;
     upper[i] = counter;
   }
   auto* cdf_point = config.add_cdf_points();
-  cdf_point->set_cdf(num_CDF_points / 8.0);
+  cdf_point->set_cdf(num_cdf_points / num_cdf_points);
   cdf_point->set_value(counter);
   auto temp = GetCanonicalDistributionConfig(config);
   auto canonical = temp.value();
-  ASSERT_EQ(canonical.pmf_points_size(), num_CDF_points - 1);
-  for (int i = 0; i < num_CDF_points - 1; ++i) {
+  ASSERT_EQ(canonical.pmf_points_size(), num_cdf_points - 1);
+  for (int i = 0; i < num_cdf_points - 1; ++i) {
     auto datapoint = canonical.pmf_points(i).data_points(1);
     ASSERT_EQ(datapoint.lower(), lower[i]);
     ASSERT_EQ(datapoint.upper(), upper[i] - 1);

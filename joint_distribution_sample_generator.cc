@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "distbench_utils.h"
 #include "joint_distribution_sample_generator.h"
+
+#include "distbench_utils.h"
 
 namespace distbench {
 
@@ -24,7 +25,7 @@ AllocateSampleGenerator(const DistributionConfig& config) {
   auto status = sample_gen_lib->Initialize(config);
   if (!status.ok()) return status;
   return sample_gen_lib;
-};
+}
 
 absl::Status DistributionSampleGenerator::InitializeWithCdf(
     const DistributionConfig& config) {
@@ -64,7 +65,7 @@ absl::Status DistributionSampleGenerator::InitializeWithCdf(
   }
 
   return InitializeWithPmf(config_with_pmf);
-};
+}
 
 absl::Status DistributionSampleGenerator::InitializeWithPmf(
     const DistributionConfig& config) {
@@ -93,7 +94,7 @@ absl::Status DistributionSampleGenerator::InitializeWithPmf(
 
   distribution_array_ = std::discrete_distribution<int>(pmf.begin(), pmf.end());
   return absl::OkStatus();
-};
+}
 
 absl::Status DistributionSampleGenerator::Initialize(
     const DistributionConfig& config) {
@@ -105,7 +106,7 @@ absl::Status DistributionSampleGenerator::Initialize(
   if (config.pmf_points_size()) return InitializeWithPmf(config);
   return absl::InvalidArgumentError(
       absl::StrCat("Add CDF or PMF to '", config.name(), "'."));
-};
+}
 
 std::vector<int> DistributionSampleGenerator::GetRandomSample(
     std::mt19937* generator) {
@@ -120,10 +121,10 @@ std::vector<int> DistributionSampleGenerator::GetRandomSample(
     }
   }
   return sample;
-};
+}
 
 std::vector<int> DistributionSampleGenerator::GetRandomSample() {
   return GetRandomSample(&generator_);
-};
+}
 
 }  // namespace distbench

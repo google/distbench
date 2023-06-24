@@ -463,33 +463,23 @@ absl::Status ValidatePmfConfig(const DistributionConfig& config) {
   float cdf = 0;
   int num_variables = -1;
   for (const auto& point : config.pmf_points()) {
-    if (point.data_points().empty()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("The size of data_points cannot be 0."));
-    }
     if (num_variables == -1) {
       num_variables = point.data_points_size();
     } else {
       if (num_variables != point.data_points_size())
         return absl::InvalidArgumentError(absl::StrCat(
-            "The size of data_points must be same in all PmfPoints."));
+            "The number of data_points must be the same in all PmfPoints."));
     }
     cdf += point.pmf();
   }
-  if (cdf != 1) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Cumulative value of all PMFs should be 1. It is '", cdf,
-                     "' instead."));
+  if (fabs(cdf - 1.0) > 1e-6) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "The cumulative value of all PMFs ", cdf, " should be 1.0 +-1e-6)."));
   }
   return absl::OkStatus();
 };
 
 absl::Status ValidateCdfConfig(const DistributionConfig& config) {
-  if (config.cdf_points_size() == 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("CDF is not provided for '", config.name(), "'."));
-  }
-
   auto prev_cdf = config.cdf_points(0).cdf();
   if (prev_cdf < 0) {
     return absl::InvalidArgumentError(
