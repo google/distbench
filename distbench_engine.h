@@ -56,7 +56,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status ConfigurePeers(const ServiceEndpointMap& peers);
   absl::Status RunTraffic(const RunTrafficRequest* request);
   void CancelTraffic(absl::Status status,
-                     absl::Duration grace_period = absl::Seconds(0));
+                     absl::Duration grace_period = absl::ZeroDuration());
 
   void FinishTraffic();
   ServicePerformanceLog GetLogs();

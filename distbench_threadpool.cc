@@ -155,15 +155,16 @@ void ElasticThreadpool::AddTask(std::function<void()> task) {
   bool need_to_grow_threadpool =
       (idle_threads_ == 0) || (active_threads_ < max_idle_threads_ &&
                                task_queue_.size() > idle_threads_);
+  std::function<void()> stolen_task;
   if (need_to_grow_threadpool) {
     ++threads_launched_;
     ++active_threads_;
-    task = std::move(task_queue_.front());
+    stolen_task = std::move(task_queue_.front());
     task_queue_.pop();
   }
   task_mutex_.Unlock();
   if (need_to_grow_threadpool) {
-    auto elastic_runner = [this, lambda_task = std::move(task)]() {
+    auto elastic_runner = [this, lambda_task = std::move(stolen_task)]() {
       TaskRunner(std::move(lambda_task));
     };
     RunRegisteredThread("ElasticThreadPool", elastic_runner).detach();
@@ -186,7 +187,6 @@ bool ElasticThreadpool::WaitForTask() {
 
 void ElasticThreadpool::TaskRunner(std::function<void()> task) {
   bool need_to_grow_threadpool = false;
-  std::function<void()> task2;
   bool did_work = false;
   while (1) {
     if (task) {
@@ -211,16 +211,18 @@ void ElasticThreadpool::TaskRunner(std::function<void()> task) {
       task = std::move(task_queue_.front());
       task_queue_.pop();
       need_to_grow_threadpool = (idle_threads_ == 0 && !task_queue_.empty());
+
+      std::function<void()> stolen_task;
       if (need_to_grow_threadpool) {
         ++threads_launched_;
         ++active_threads_;
-        task2 = std::move(task_queue_.front());
+        stolen_task = std::move(task_queue_.front());
         task_queue_.pop();
       }
       task_mutex_.Unlock();
       if (need_to_grow_threadpool) {
-        auto elastic_runner = [this, lambda_task2 = std::move(task2)]() {
-          TaskRunner(std::move(lambda_task2));
+        auto elastic_runner = [this, lambda_task = std::move(stolen_task)]() {
+          TaskRunner(std::move(lambda_task));
         };
         RunRegisteredThread("ElasticThreadPool", elastic_runner).detach();
       }
