@@ -16,14 +16,6 @@ syntax = "proto2";
 
 package distbench;
 
-// These define the canonical order of the fields in a multidimensional
-// distribution:
-enum kFieldNames {
-  kRequestPayloadSize = 0;
-  kResponsePayloadSize = 1;
-  kMaxFieldNames = 2;
-};
-
 message DataPoint {
   // Exact value.
   optional int64 exact = 1;
@@ -53,7 +45,11 @@ message CdfPoint {
   optional int64 value = 2;
 }
 
-// Please provide exactly one of the 'pmf_points' and 'cdf_points'.
+// This describes a (possibly) multi-dimensional joint distribution.
+// For convenience it is possible to describe a 1D distribution as a CDF.
+// For the more general multi-dimensional case, each pmf point can describe
+// multiple dimensions of the distribution independently, with the meaning of
+// each dimension being described by the coresponding field_names.
 message DistributionConfig {
   optional string name = 1;
   repeated PmfPoint pmf_points = 2;

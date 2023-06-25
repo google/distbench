@@ -620,7 +620,7 @@ TEST(DistBenchTestSequencer, CliqueTest) {
             test_results.service_logs().instance_logs().end());
 }
 
-TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
+TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
@@ -692,19 +692,95 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest) {
   ASSERT_NE(instance_results_it,
             test_results.service_logs().instance_logs().end());
 
-  int num_samples = 0;
-  for (const auto& rpc_sample : instance_results_it->second.peer_logs()
-                                    .find("server/0")
-                                    ->second.rpc_logs()
-                                    .find(0)
-                                    ->second.successful_rpc_samples()) {
+  auto& samples = instance_results_it->second.peer_logs()
+                      .find("server/0")
+                      ->second.rpc_logs()
+                      .find(0)
+                      ->second.successful_rpc_samples();
+
+  for (const auto& rpc_sample : samples) {
     ASSERT_EQ(rpc_sample.request_size() % 11, 0);
     ASSERT_NE(rpc_sample.request_size(), 0);
     ASSERT_EQ(rpc_sample.response_size() % 9, 0);
     ASSERT_NE(rpc_sample.response_size(), 0);
-    num_samples++;
   }
-  ASSERT_EQ(num_samples, 20);
+  ASSERT_EQ(samples.size(), 20);
+}
+
+TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
+  int nb_cliques = 2;
+
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(nb_cliques));
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(1);
+  client->set_protocol_driver_options_name("lo_opts");
+
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(1);
+  server->set_protocol_driver_options_name("lo_opts");
+
+  auto* rpc_desc = test->add_rpc_descriptions();
+  rpc_desc->set_name("client_server_rpc");
+  rpc_desc->set_client("client");
+  rpc_desc->set_server("server");
+  rpc_desc->set_distribution_config_name("MyPayloadDistribution");
+
+  auto* client_al = test->add_action_lists();
+  client_al->set_name("client");
+  client_al->add_action_names("run_queries");
+
+  auto* server_al = test->add_action_lists();
+  server_al->set_name("client_server_rpc");
+
+  auto* lo_opts = test->add_protocol_driver_options();
+  lo_opts->set_name("lo_opts");
+  lo_opts->set_netdev_name("lo");
+
+  auto* req_dist = test->add_distribution_config();
+  req_dist->set_name("MyPayloadDistribution");
+  for (float i = 0; i < 5; i++) {
+    auto* cdf_point = req_dist->add_cdf_points();
+    cdf_point->set_cdf(i / 4);
+    cdf_point->set_value(i * 11);
+  }
+  req_dist->add_field_names("payload_size");
+
+  auto action = test->add_actions();
+  action->set_name("run_queries");
+  action->set_rpc_name("client_server_rpc");
+  action->mutable_iterations()->set_max_iteration_count(20);
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  ASSERT_OK(status);
+
+  ASSERT_EQ(results.test_results().size(), 1);
+  auto& test_results = results.test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("client/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+
+  auto& samples = instance_results_it->second.peer_logs()
+                      .find("server/0")
+                      ->second.rpc_logs()
+                      .find(0)
+                      ->second.successful_rpc_samples();
+
+  for (const auto& rpc_sample : samples) {
+    ASSERT_EQ(rpc_sample.request_size(), rpc_sample.response_size());
+  }
+  ASSERT_EQ(samples.size(), 20);
 }
 
 TEST(DistBenchTestSequencer, StochasticTest) {
