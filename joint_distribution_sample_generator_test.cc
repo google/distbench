@@ -35,8 +35,6 @@ TEST(DistributionSampleGeneratorTest, FullTestPmf) {
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
-  auto status = ValidateDistributionConfig(config);
-  ASSERT_OK(status);
 
   auto maybe_sg = AllocateSampleGenerator(config);
   ASSERT_OK(maybe_sg.status());
@@ -280,8 +278,6 @@ TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
     data_point = pmf_point->add_data_points();
     data_point->set_exact(i * 10);
   }
-  auto status = ValidateDistributionConfig(config);
-  ASSERT_OK(status);
 
   auto maybe_sg = AllocateSampleGenerator(config);
   ASSERT_OK(maybe_sg.status());

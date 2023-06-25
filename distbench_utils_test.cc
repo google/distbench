@@ -20,6 +20,11 @@
 
 namespace distbench {
 
+const char* canonical_1d_fields[] = {"payload_size", nullptr};
+
+const char* canonical_2d_fields[] = {"request_payload_size",
+                                     "response_payload_size", nullptr};
+
 // This test makes a distribution config with 8 CDF points and a name
 // then creates a canonical version of it and tests that the number of
 // PMF points and name are equivalent to the original config.
@@ -27,6 +32,7 @@ TEST(DistBenchUtilsTest, GetCanonicalCdf) {
   const int num_cdf_points = 8;
   DistributionConfig config;
   config.set_name("test_config");
+  config.add_field_names(canonical_1d_fields[0]);
   for (float i = 1; i <= num_cdf_points; ++i) {
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_cdf(i / num_cdf_points);
@@ -34,12 +40,13 @@ TEST(DistBenchUtilsTest, GetCanonicalCdf) {
   }
   ASSERT_EQ(config.name(), "test_config");
   ASSERT_EQ(config.cdf_points_size(), num_cdf_points);
-  auto temp = GetCanonicalDistributionConfig(config);
+  auto temp = GetCanonicalDistributionConfig(config, canonical_1d_fields);
+  ASSERT_OK(temp.status());
   auto canonical = temp.value();
   ASSERT_EQ(canonical.name(), "test_config");
   ASSERT_EQ(canonical.cdf_points_size(), 0);
   ASSERT_EQ(canonical.pmf_points_size(), num_cdf_points);
-  ASSERT_EQ(canonical.field_names_size(), 0);
+  ASSERT_EQ(canonical.field_names_size(), 1);
 }
 
 // This test makes a distribution config with a name, 4 PMF points,
@@ -48,20 +55,21 @@ TEST(DistBenchUtilsTest, GetCanonicalCdf) {
 TEST(DistBenchUtilsTest, GetCanonicalPmf) {
   const int num_pmf_points = 4;
   const int sum_of_pmf_points = 10;
-  DistributionConfig configTwo;
-  configTwo.set_name("another_config");
+  DistributionConfig config;
+  config.set_name("test_config");
+  config.add_field_names(canonical_1d_fields[0]);
   for (float i = 1; i <= num_pmf_points; ++i) {
-    auto* pmf_point = configTwo.add_pmf_points();
+    auto* pmf_point = config.add_pmf_points();
     pmf_point->set_pmf(i / sum_of_pmf_points);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
-  configTwo.add_field_names("request_payload_size");
 
-  ASSERT_EQ(configTwo.name(), "another_config");
-  auto temp = GetCanonicalDistributionConfig(configTwo);
+  ASSERT_EQ(config.name(), "test_config");
+  auto temp = GetCanonicalDistributionConfig(config, canonical_1d_fields);
+  ASSERT_OK(temp.status());
   auto canonicalTwo = temp.value();
-  ASSERT_EQ(canonicalTwo.name(), "another_config");
+  ASSERT_EQ(canonicalTwo.name(), "test_config");
   ASSERT_EQ(canonicalTwo.cdf_points_size(), 0);
   ASSERT_EQ(canonicalTwo.pmf_points_size(), num_pmf_points);
 }
@@ -71,20 +79,21 @@ TEST(DistBenchUtilsTest, GetCanonicalPmf) {
 TEST(DistBenchUtilsTest, GetCanonicalPmfNearOne) {
   const int num_pmf_points = 5;
   const int sum_of_pmf_points = 15;
-  DistributionConfig configTwo;
-  configTwo.set_name("another_config");
+  DistributionConfig config;
+  config.set_name("test_config");
+  config.add_field_names(canonical_1d_fields[0]);
   for (float i = 1; i <= num_pmf_points; ++i) {
-    auto* pmf_point = configTwo.add_pmf_points();
+    auto* pmf_point = config.add_pmf_points();
     pmf_point->set_pmf(i / sum_of_pmf_points);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
-  configTwo.add_field_names("request_payload_size");
 
-  ASSERT_EQ(configTwo.name(), "another_config");
-  auto temp = GetCanonicalDistributionConfig(configTwo);
+  ASSERT_EQ(config.name(), "test_config");
+  auto temp = GetCanonicalDistributionConfig(config, canonical_1d_fields);
+  ASSERT_OK(temp.status());
   auto canonicalTwo = temp.value();
-  ASSERT_EQ(canonicalTwo.name(), "another_config");
+  ASSERT_EQ(canonicalTwo.name(), "test_config");
   ASSERT_EQ(canonicalTwo.cdf_points_size(), 0);
   ASSERT_EQ(canonicalTwo.pmf_points_size(), num_pmf_points);
 }
@@ -97,18 +106,17 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidDimensions) {
   const int num_pmf_points = 4;
   const int sum_of_pmf_points = 10;
   config.set_name("invalid_dimensions_config");
+  config.add_field_names(canonical_2d_fields[0]);
+  config.add_field_names(canonical_2d_fields[1]);
   for (float i = 1; i <= num_pmf_points; ++i) {
     auto* pmf_point = config.add_pmf_points();
     pmf_point->set_pmf(i / sum_of_pmf_points);
     auto* data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
-  config.add_field_names("request_payload_size");
-  config.add_field_names("response_payload_size");
-  auto status = GetCanonicalDistributionConfig(config).status();
-  ASSERT_EQ(status,
-            absl::InvalidArgumentError("The number of field dimensions"
-                                       " and PMF datapoints do not match."));
+  auto status =
+      GetCanonicalDistributionConfig(config, canonical_1d_fields).status();
+  ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 // This test creates an invalid distribution config with a decreasing value
@@ -124,8 +132,9 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidCDFconfig) {
     cdf_point->set_value(num_cdf_points - i);
   }
   ASSERT_EQ(config.cdf_points_size(), num_cdf_points);
-  auto canonical = GetCanonicalDistributionConfig(config).status();
-  ASSERT_EQ(canonical,
+  auto status =
+      GetCanonicalDistributionConfig(config, canonical_1d_fields).status();
+  ASSERT_EQ(status,
             absl::InvalidArgumentError(
                 "The value:'6' must be greater than previous_value:'7' at "
                 "index '1' in CDF:'invalid_CDF_config'."));
@@ -146,9 +155,9 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidPMFconfig) {
     data_point = pmf_point->add_data_points();
     data_point->set_exact(i);
   }
-  config.add_field_names("request_payload_size");
-  config.add_field_names("response_payload_size");
-  auto status = GetCanonicalDistributionConfig(config).status();
+  config.add_field_names(canonical_1d_fields[0]);
+  auto status =
+      GetCanonicalDistributionConfig(config, canonical_1d_fields).status();
   ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
@@ -165,9 +174,10 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidDistributionConfig) {
     cdf_point->set_cdf((i + 1) / num_points);
     cdf_point->set_value(i * 10000000);
   }
-  auto canonical = GetCanonicalDistributionConfig(config).status();
+  auto status =
+      GetCanonicalDistributionConfig(config, canonical_1d_fields).status();
   ASSERT_EQ(
-      canonical,
+      status,
       absl::InvalidArgumentError(
           "Exactly one of CDF and PMF must be provided for 'invalid_config'."));
 }
@@ -182,6 +192,7 @@ TEST(DistBenchUtilsTest, uniformCDFdistribution) {
   lower_bounds.reserve(num_pmf_points + 1);
   upper_bounds.reserve(num_pmf_points + 1);
   config.set_name("uniform_dist");
+  config.add_field_names(canonical_1d_fields[0]);
   lower_bounds.push_back(kStartValue);
   auto* cdf_point = config.add_cdf_points();
   cdf_point->set_cdf(0);
@@ -190,17 +201,16 @@ TEST(DistBenchUtilsTest, uniformCDFdistribution) {
     auto* cdf_point = config.add_cdf_points();
     cdf_point->set_cdf(i / num_pmf_points);
     cdf_point->set_value(kStartValue + i * kBucketWidth);
-    LOG(INFO) << cdf_point->value();
     upper_bounds.push_back(cdf_point->value());
     lower_bounds.push_back(cdf_point->value() + 1);
   }
   upper_bounds.push_back(kStartValue + (num_pmf_points + 1) * kBucketWidth);
-  auto temp = GetCanonicalDistributionConfig(config);
+  auto temp = GetCanonicalDistributionConfig(config, canonical_1d_fields);
+  ASSERT_OK(temp.status());
   auto canonical = temp.value();
   ASSERT_EQ(canonical.pmf_points_size(), num_pmf_points);
-  LOG(INFO) << canonical.DebugString();
   for (int i = 0; i < num_pmf_points - 1; ++i) {
-    auto datapoint = canonical.pmf_points(i).data_points(1);
+    auto datapoint = canonical.pmf_points(i).data_points(0);
     EXPECT_EQ(datapoint.lower(), lower_bounds[i]);
     EXPECT_EQ(datapoint.upper(), upper_bounds[i]);
   }

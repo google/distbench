@@ -25,6 +25,22 @@
 
 namespace distbench {
 
+namespace {
+
+// These define the canonical order of the fields in a multidimensional
+// distribution:
+const char* canonical_1d_fields[] = {"payload_size", nullptr};
+
+const char* canonical_2d_fields[] = {"request_payload_size",
+                                     "response_payload_size", nullptr};
+
+enum kFieldNames {
+  kRequestPayloadSizeField = 0,
+  kResponsePayloadSizeField = 1,
+};
+
+}  // namespace
+
 ThreadSafeDictionary::ThreadSafeDictionary() {
   absl::MutexLock m(&mutex_);
   contents_.reserve(100);
@@ -1364,17 +1380,22 @@ void DistBenchEngine::RunRpcActionIteration(
 
   if (rpc_def.sample_generator_index == -1) {
     common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
-
   } else {
+    // This RPC uses a distribution of sizes.
     auto sample = sample_generator_array_[rpc_def.sample_generator_index]
                       ->GetRandomSample(action_state->rand_gen);
 
-    if (sample[kRequestPayloadSize] != -1) {
-      common_request.set_payload(std::string(sample[kRequestPayloadSize], 'D'));
-    }
+    common_request.set_payload(
+        std::string(sample[kRequestPayloadSizeField], 'D'));
 
-    if (sample[kResponsePayloadSize] != -1) {
-      common_request.set_response_payload_size(sample[kResponsePayloadSize]);
+    if (sample.size() > kResponsePayloadSizeField) {
+      common_request.set_response_payload_size(
+          sample[kResponsePayloadSizeField]);
+    } else {
+      // Only a 1D distribution, therefore we should also use the request size
+      // as the response size.
+      common_request.set_response_payload_size(
+          sample[kRequestPayloadSizeField]);
     }
   }
 
@@ -1534,8 +1555,15 @@ absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
 
     if (sample_generator_indices_map_.find(config_name) ==
         sample_generator_indices_map_.end()) {
-      auto maybe_canonical_config = GetCanonicalDistributionConfig(config);
-      if (!maybe_canonical_config.ok()) return maybe_canonical_config.status();
+      auto maybe_canonical_config =
+          GetCanonicalDistributionConfig(config, canonical_2d_fields);
+      if (!maybe_canonical_config.ok()) {
+        maybe_canonical_config =
+            GetCanonicalDistributionConfig(config, canonical_1d_fields);
+      }
+      if (!maybe_canonical_config.ok()) {
+        return maybe_canonical_config.status();
+      }
       auto canonical_config = maybe_canonical_config.value();
 
       auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);

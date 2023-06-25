@@ -461,14 +461,19 @@ namespace {
 
 absl::Status ValidatePmfConfig(const DistributionConfig& config) {
   float cdf = 0;
-  int num_variables = -1;
+  int dimensions = config.field_names_size();
+  if (dimensions == 0) {
+    dimensions = config.pmf_points(0).data_points_size();
+  }
   for (const auto& point : config.pmf_points()) {
-    if (num_variables == -1) {
-      num_variables = point.data_points_size();
-    } else {
-      if (num_variables != point.data_points_size())
+    if (point.data_points_size() != dimensions) {
+      if (config.field_names_size()) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "The number of data_points must match the number of field_names."));
+      } else {
         return absl::InvalidArgumentError(absl::StrCat(
             "The number of data_points must be the same in all PmfPoints."));
+      }
     }
     cdf += point.pmf();
   }
@@ -528,11 +533,19 @@ absl::Status ValidateDistributionConfig(const DistributionConfig& config) {
                      config.name(), "'."));
   }
 
+  std::set<std::string> field_names;
+  for (const auto& name : config.field_names()) {
+    if (field_names.count(name)) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("field_name '", name, "'repeats in ", config.name()));
+    }
+    field_names.insert(name);
+  }
+
   if (cdf_present) return ValidateCdfConfig(config);
   if (pmf_present) return ValidatePmfConfig(config);
 
-  return absl::InvalidArgumentError(
-      absl::StrCat("Review CDF and PMF for '", config.name(), "'."));
+  return absl::InvalidArgumentError("We cannot get here.");
 };
 
 // Get the canonical version of DistributionConfig from the config
@@ -543,26 +556,38 @@ absl::Status ValidateDistributionConfig(const DistributionConfig& config) {
 // generator. If input_config has CDF points, they will be converted into
 // PMF points and added to the canonical version of Distribution Config.
 absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
-    const DistributionConfig& input_config) {
+    const DistributionConfig& input_config, const char* canonical_fields[]) {
+  std::vector<std::string_view> fields;
+  while (*canonical_fields) {
+    fields.push_back(*canonical_fields);
+    ++canonical_fields;
+  }
+  return GetCanonicalDistributionConfig(input_config, fields);
+}
+
+absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
+    const DistributionConfig& input_config,
+    std::vector<std::string_view> canonical_fields) {
   auto status = ValidateDistributionConfig(input_config);
   if (!status.ok()) return status;
 
   DistributionConfig canonical_config;
   canonical_config.set_name(input_config.name());
-  std::vector<int> proto_to_canonical(kMaxFieldNames, -1);
+  std::vector<int> canonical_from_proto(canonical_fields.size(), -1);
 
-  for (int i = 0; i < input_config.field_names_size(); i++) {
-    auto field_name = input_config.field_names(i);
+  for (size_t i = 0; i < canonical_fields.size(); ++i) {
+    canonical_config.add_field_names(std::string(canonical_fields[i]));
+    for (int j = 0; j < input_config.field_names_size(); j++) {
+      if (input_config.field_names(j) == canonical_fields[i]) {
+        canonical_from_proto[i] = j;
+      }
+    }
 
-    if (field_name == "request_payload_size")
-      proto_to_canonical[kRequestPayloadSize] = i;
-
-    else if (field_name == "response_payload_size")
-      proto_to_canonical[kResponsePayloadSize] = i;
-
-    else
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown Field Name: '", field_name, "'."));
+    // Try to parse field_name as an int. If sucessful it's a fixed value.
+    if (canonical_from_proto[i] == -1) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Field missing from config: '", canonical_fields[i], "'."));
+    }
   }
 
   for (int i = 0; i < input_config.pmf_points_size(); i++) {
@@ -570,31 +595,15 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
     auto input_pmf_point = input_config.pmf_points(i);
     output_pmf_point->set_pmf(input_pmf_point.pmf());
 
-    int input_vars_index = 0;
-    for (int j = 0; j < kMaxFieldNames; j++) {
+    for (size_t j = 0; j < canonical_fields.size(); j++) {
       auto& input_pmf_point = input_config.pmf_points(i);
-      if (proto_to_canonical[j] != -1) {
-        if (input_pmf_point.data_points_size() !=
-            input_config.field_names_size()) {
-          return absl::InvalidArgumentError(
-              "The number of field dimensions "
-              "and PMF datapoints do not match.");
-        }
-        auto input_data_point = input_pmf_point.data_points(input_vars_index);
-        auto* output_data_point = output_pmf_point->add_data_points();
-        output_data_point->CopyFrom(input_data_point);
-        input_vars_index++;
-
-      } else {
-        auto* output_data_point = output_pmf_point->add_data_points();
-        output_data_point->set_exact(-1);
-      }
+      auto* output_data_point = output_pmf_point->add_data_points();
+      output_data_point->CopyFrom(
+          input_pmf_point.data_points(canonical_from_proto[j]));
     }
   }
 
   double prev_cdf = 0.0;
-  static_assert(kMaxFieldNames == 2,
-                "Please update this function to add the new canonical fields.");
   // If the distribution is uniform, then make pmf points with datapoints that
   // are intervals, else make pmf points with datapoints that have exact values.
   if (input_config.cdf_points_size() && input_config.cdf_points(0).cdf() == 0) {
@@ -604,12 +613,11 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
       auto input_cdf_point = input_config.cdf_points(i);
       output_pmf_point->set_pmf(input_cdf_point.cdf() - prev_cdf);
       prev_cdf = input_cdf_point.cdf();
-      auto* requestPayloadSize = output_pmf_point->add_data_points();
-      requestPayloadSize->set_lower(next_lower_bound);
-      requestPayloadSize->set_upper(input_cdf_point.value());
-      auto* responsePayloadSize = output_pmf_point->add_data_points();
-      responsePayloadSize->set_lower(next_lower_bound);
-      responsePayloadSize->set_upper(input_cdf_point.value());
+      for (size_t j = 0; j < canonical_fields.size(); j++) {
+        auto* output_data_point = output_pmf_point->add_data_points();
+        output_data_point->set_lower(next_lower_bound);
+        output_data_point->set_upper(input_cdf_point.value());
+      }
       next_lower_bound = input_cdf_point.value() + 1;
     }
   } else {
@@ -618,10 +626,10 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
       auto input_cdf_point = input_config.cdf_points(i);
       output_pmf_point->set_pmf(input_cdf_point.cdf() - prev_cdf);
       prev_cdf = input_cdf_point.cdf();
-      auto* requestPayloadSize = output_pmf_point->add_data_points();
-      requestPayloadSize->set_exact(input_cdf_point.value());
-      auto* responsePayloadSize = output_pmf_point->add_data_points();
-      responsePayloadSize->set_exact(input_cdf_point.value());
+      for (size_t j = 0; j < canonical_fields.size(); j++) {
+        auto* output_data_point = output_pmf_point->add_data_points();
+        output_data_point->set_exact(input_cdf_point.value());
+      }
     }
   }
 

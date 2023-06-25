@@ -86,7 +86,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
     FanoutFilter fanout_filter;
     std::vector<StochasticDist> stochastic_dist;
 
-    // Decoded
+    // Cached here for easy access, but these may not be used if
+    // sample_generator_index != 1.
     int request_payload_size;
     int response_payload_size;
 

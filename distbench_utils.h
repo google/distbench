@@ -154,8 +154,16 @@ void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
                                 std::string value);
 
 absl::Status ValidateDistributionConfig(const DistributionConfig& config);
+
+// canonical_fields is a nullptr-terminated array of field names in the
+// desired order.
 absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
-    const DistributionConfig& input_config);
+    const DistributionConfig& input_config, const char* canonical_fields[]);
+
+// canonical_fields list the field names in the desired order.
+absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
+    const DistributionConfig& input_config,
+    std::vector<std::string_view> canonical_fields);
 
 }  // namespace distbench
 
