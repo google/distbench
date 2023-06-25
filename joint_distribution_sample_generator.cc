@@ -36,15 +36,14 @@ absl::Status DistributionSampleGenerator::InitializeWithCdf(
   pmf_point->set_pmf(config.cdf_points(0).cdf());
   auto* data_point = pmf_point->add_data_points();
 
-  if (config.is_cdf_uniform()) {
-    data_point->set_lower(0);
-    data_point->set_upper(config.cdf_points(0).value());
-  } else {
+  const bool cdf_is_uniform = config.cdf_points(0).cdf() == 0.0;
+
+  if (!cdf_is_uniform) {
     data_point->set_exact(config.cdf_points(0).value());
   }
 
   auto prev_cdf = config.cdf_points(0).cdf();
-  auto prev_data_value = config.cdf_points(0).value();
+  auto next_lower_bound = config.cdf_points(0).value();
   for (int i = 1; i < config.cdf_points_size(); i++) {
     auto curr_cdf = config.cdf_points(i).cdf();
     auto curr_data_value = config.cdf_points(i).value();
@@ -53,15 +52,15 @@ absl::Status DistributionSampleGenerator::InitializeWithCdf(
     pmf_point->set_pmf(curr_cdf - prev_cdf);
 
     auto* data_point = pmf_point->add_data_points();
-    if (config.is_cdf_uniform()) {
-      data_point->set_lower(prev_data_value + 1);
+    if (cdf_is_uniform) {
+      data_point->set_lower(next_lower_bound);
       data_point->set_upper(curr_data_value);
     } else {
       data_point->set_exact(curr_data_value);
     }
 
     prev_cdf = curr_cdf;
-    prev_data_value = curr_data_value;
+    next_lower_bound = curr_data_value + 1;
   }
 
   return InitializeWithPmf(config_with_pmf);

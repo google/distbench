@@ -172,30 +172,36 @@ TEST(DistBenchUtilsTest, GetCanonicalInvalidDistributionConfig) {
 }
 
 TEST(DistBenchUtilsTest, uniformCDFdistribution) {
-  const int num_cdf_points = 8;
+  const int num_pmf_points = 7;
   DistributionConfig config;
-  int counter = 101;
-  std::vector<int> lower(num_cdf_points - 1, -1);
-  std::vector<int> upper(num_cdf_points - 1, -1);
-  config.set_name("unifrom_dist");
-  for (int i = 0; i < num_cdf_points - 1; ++i) {
-    auto* cdf_point = config.add_cdf_points();
-    cdf_point->set_cdf(i / num_cdf_points);
-    cdf_point->set_value(counter);
-    lower[i] = counter;
-    counter += 101;
-    upper[i] = counter;
-  }
+  const int kBucketWidth = 101;
+  const int kStartValue = 1976;
+  std::vector<int> lower_bounds;
+  std::vector<int> upper_bounds;
+  lower_bounds.reserve(num_pmf_points + 1);
+  upper_bounds.reserve(num_pmf_points + 1);
+  config.set_name("uniform_dist");
+  lower_bounds.push_back(kStartValue);
   auto* cdf_point = config.add_cdf_points();
-  cdf_point->set_cdf(num_cdf_points / num_cdf_points);
-  cdf_point->set_value(counter);
+  cdf_point->set_cdf(0);
+  cdf_point->set_value(kStartValue);
+  for (float i = 1; i <= num_pmf_points; ++i) {
+    auto* cdf_point = config.add_cdf_points();
+    cdf_point->set_cdf(i / num_pmf_points);
+    cdf_point->set_value(kStartValue + i * kBucketWidth);
+    LOG(INFO) << cdf_point->value();
+    upper_bounds.push_back(cdf_point->value());
+    lower_bounds.push_back(cdf_point->value() + 1);
+  }
+  upper_bounds.push_back(kStartValue + (num_pmf_points + 1) * kBucketWidth);
   auto temp = GetCanonicalDistributionConfig(config);
   auto canonical = temp.value();
-  ASSERT_EQ(canonical.pmf_points_size(), num_cdf_points - 1);
-  for (int i = 0; i < num_cdf_points - 1; ++i) {
+  ASSERT_EQ(canonical.pmf_points_size(), num_pmf_points);
+  LOG(INFO) << canonical.DebugString();
+  for (int i = 0; i < num_pmf_points - 1; ++i) {
     auto datapoint = canonical.pmf_points(i).data_points(1);
-    ASSERT_EQ(datapoint.lower(), lower[i]);
-    ASSERT_EQ(datapoint.upper(), upper[i] - 1);
+    EXPECT_EQ(datapoint.lower(), lower_bounds[i]);
+    EXPECT_EQ(datapoint.upper(), upper_bounds[i]);
   }
 }
 
