@@ -594,23 +594,23 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
 
   double prev_cdf = 0.0;
   static_assert(kMaxFieldNames == 2,
-                "Please adjust this function to the new canonical fields.");
+                "Please update this function to add the new canonical fields.");
   // If the distribution is uniform, then make pmf points with datapoints that
   // are intervals, else make pmf points with datapoints that have exact values.
   if (input_config.cdf_points_size() && input_config.cdf_points(0).cdf() == 0) {
-    int32_t prev_value = input_config.cdf_points(0).value();
+    int64_t next_lower_bound = input_config.cdf_points(0).value();
     for (int i = 1; i < input_config.cdf_points_size(); i++) {
       auto* output_pmf_point = canonical_config.add_pmf_points();
       auto input_cdf_point = input_config.cdf_points(i);
       output_pmf_point->set_pmf(input_cdf_point.cdf() - prev_cdf);
       prev_cdf = input_cdf_point.cdf();
       auto* requestPayloadSize = output_pmf_point->add_data_points();
-      requestPayloadSize->set_lower(prev_value);
-      requestPayloadSize->set_upper(input_cdf_point.value() - 1);
+      requestPayloadSize->set_lower(next_lower_bound);
+      requestPayloadSize->set_upper(input_cdf_point.value());
       auto* responsePayloadSize = output_pmf_point->add_data_points();
-      responsePayloadSize->set_lower(prev_value);
-      responsePayloadSize->set_upper(input_cdf_point.value() - 1);
-      prev_value = input_cdf_point.value();
+      responsePayloadSize->set_lower(next_lower_bound);
+      responsePayloadSize->set_upper(input_cdf_point.value());
+      next_lower_bound = input_cdf_point.value() + 1;
     }
   } else {
     for (int i = 0; i < input_config.cdf_points_size(); i++) {

@@ -16,6 +16,8 @@ syntax = "proto2";
 
 package distbench;
 
+// These define the canonical order of the fields in a multidimensional
+// distribution:
 enum kFieldNames {
   kRequestPayloadSize = 0;
   kResponsePayloadSize = 1;
@@ -24,44 +26,38 @@ enum kFieldNames {
 
 message DataPoint {
   // Exact value.
-  optional int32 exact = 1;
+  optional int64 exact = 1;
 
-  // Range of values inclusive
-  // of upper and lower limits.
-  optional int32 upper = 3;
-  optional int32 lower = 4;
+  // Range of values inclusive of upper and lower limits.
+  optional int64 upper = 3;
+  optional int64 lower = 4;
 }
 
-// The 'pmf' of a random variable 'X' valued
-// at 'a' the probability that 'X' will take
-// a value equal to 'a'.
-// PMF_X(a) = P(X=a)
+// This is used to define the probility mass function (PMF) of a distribution.
 message PmfPoint {
   optional float pmf = 1;
   repeated DataPoint data_points = 2;
 }
 
-// The 'cdf' of a random variable 'X' valued
-// at 'a' is the probability that 'X' will take
-// a value less than or equal to 'a'.
-// CDF_X(a) = P(X <= a)
-// If the first cdf value is equal to zero, then
-// the distribution is interpreted as piece-wise uniform with the
-// first point defining lower bound of the first interval.
+// This can be  used to define the cumulative distribution function (CDF) of
+// a distribution. However, if the first point's cdf value is equal to zero,
+// then the distribution is interpreted as piece-wise uniform with the
+// first point defining the lower bound of the first interval, and the
+// lower bound of each subsequent interval being (the previous value + 1)
+// automatically.
+// E.g. values of 5, 10, 25, 40 would
+// define inclusive intervals of [5, 10], [11, 25], [26, 40].
+// Note that N points define N-1 intervals.
 message CdfPoint {
   optional float cdf = 1;
-  optional int32 value = 2;
+  optional int64 value = 2;
 }
 
-// Please provide exactly one of the
-// 'pmf_points' and 'cdf_points'.
+// Please provide exactly one of the 'pmf_points' and 'cdf_points'.
 message DistributionConfig {
   optional string name = 1;
   repeated PmfPoint pmf_points = 2;
-
   repeated CdfPoint cdf_points = 3;
-  // This field is ignored.
-  optional bool is_cdf_uniform = 4 [default = true, deprecated = true];
-
   repeated string field_names = 5;
+  reserved 4;
 }

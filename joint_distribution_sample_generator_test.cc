@@ -184,7 +184,6 @@ TEST(DistributionSampleGeneratorTest, FullTestPmf) {
 TEST(DistributionSampleGeneratorTest, FullTestCdf) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
-  config.set_is_cdf_uniform(false);
 
   float cdf = 0;
   for (int i = 1; i < 5; i++) {
@@ -218,9 +217,11 @@ TEST(DistributionSampleGeneratorTest, FullTestCdf) {
 TEST(DistributionSampleGeneratorTest, FullTestCdfUniformIntervals) {
   DistributionConfig config;
   config.set_name("MyReqPayloadDC");
-  config.set_is_cdf_uniform(true);
 
   float cdf = 0;
+  auto* cdf_point = config.add_cdf_points();
+  cdf_point->set_value(0);
+  cdf_point->set_cdf(0.0);
   for (int i = 1; i < 5; i++) {
     // Generate integral values of less than or equal to 100, 200, 300
     // and 400 with a CDF of 0.1, 0.3, 0.6 and 1.0 respectively.
