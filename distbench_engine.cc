@@ -1097,6 +1097,7 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
     size_t sample_number, size_t index, size_t rpc_index, size_t service_type,
     size_t instance, ClientRpcState* state) {
   PackedLatencySample& packed_sample = packed_samples_[index];
+  packed_sample.error_index = 0;
   if (!state->response.error_message().empty()) {
     packed_sample.error_index =
         actionlist_error_dictionary_->GetIndex(state->response.error_message());
