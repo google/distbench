@@ -57,16 +57,6 @@ cc_library(
 )
 
 cc_library(
-    name = "interface_lookup",
-    srcs = [
-        "interface_lookup.cc",
-    ],
-    hdrs = [
-        "interface_lookup.h",
-    ],
-)
-
-cc_library(
     name = "distbench_summary",
     srcs = [
         "distbench_summary.cc",
@@ -118,7 +108,6 @@ cc_library(
     deps = [
         ":distbench_cc_proto",
         ":grpc_wrapper",
-        ":interface_lookup",
         ":traffic_config_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
