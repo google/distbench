@@ -12,93 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "distbench_utils.h"
 #include "joint_distribution_sample_generator.h"
 
 namespace distbench {
-
-absl::Status ValidatePmfConfig(const DistributionConfig& config) {
-  float cdf = 0;
-  int num_variables = -1;
-  for (const auto& point : config.pmf_points()) {
-    if (point.data_points().empty()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("The size of data_points cannot be 0."));
-    }
-    if (num_variables == -1) {
-      num_variables = point.data_points_size();
-    } else {
-      if (num_variables != point.data_points_size())
-        return absl::InvalidArgumentError(absl::StrCat(
-            "The size of data_points must be same in all PmfPoints."));
-    }
-    cdf += point.pmf();
-  }
-  if (cdf != 1) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Cumulative value of all PMFs should be 1. It is '", cdf,
-                     "' instead."));
-  }
-  return absl::OkStatus();
-};
-
-absl::Status ValidateCdfConfig(const DistributionConfig& config) {
-  if (config.cdf_points_size() == 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("CDF is not provided for '", config.name(), "'."));
-  }
-
-  auto prev_cdf = config.cdf_points(0).cdf();
-  if (prev_cdf < 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("The cdf value:'", prev_cdf,
-                     "' must not be negative in CDF:'", config.name(), "'."));
-  }
-
-  auto prev_value = config.cdf_points(0).value();
-  for (int i = 1; i < config.cdf_points_size(); i++) {
-    auto curr_value = config.cdf_points(i).value();
-    auto curr_cdf = config.cdf_points(i).cdf();
-    if (curr_value <= prev_value) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "The value:'", curr_value, "' must be greater than previous_value:'",
-          prev_value, "' at index '", i, "' in CDF:'", config.name(), "'."));
-    }
-    if (curr_cdf < prev_cdf) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("The cdf value:'", curr_cdf,
-                       "' must be greater than previous cdf value:'", prev_cdf,
-                       "' at index '", i, "' in CDF:'", config.name(), "'."));
-    }
-    prev_value = curr_value;
-    prev_cdf = curr_cdf;
-  }
-
-  auto last_configured_cdf =
-      config.cdf_points(config.cdf_points_size() - 1).cdf();
-  if (last_configured_cdf != 1) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "The maximum value of cdf is '", last_configured_cdf, "' in CDF:'",
-        config.name(), "'. It must be exactly equal to 1."));
-  }
-  return absl::OkStatus();
-};
-
-absl::Status ValidateDistributionConfig(const DistributionConfig& config) {
-  auto cdf_present = config.cdf_points_size() != 0;
-  auto pmf_present = config.pmf_points_size() != 0;
-
-  if (cdf_present == pmf_present) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Exactly one of CDF and PMF must be provided for '",
-                     config.name(), "'."));
-  }
-
-  if (cdf_present) return ValidateCdfConfig(config);
-  if (pmf_present) return ValidatePmfConfig(config);
-
-  return absl::InvalidArgumentError(
-      absl::StrCat("Review CDF and PMF for '", config.name(), "'."));
-};
 
 absl::StatusOr<std::unique_ptr<DistributionSampleGenerator>>
 AllocateSampleGenerator(const DistributionConfig& config) {
@@ -111,9 +28,6 @@ AllocateSampleGenerator(const DistributionConfig& config) {
 
 absl::Status DistributionSampleGenerator::InitializeWithCdf(
     const DistributionConfig& config) {
-  auto status = ValidateCdfConfig(config);
-  if (!status.ok()) return status;
-
   DistributionConfig config_with_pmf;
   config_with_pmf.set_name(config.name());
 
@@ -154,9 +68,6 @@ absl::Status DistributionSampleGenerator::InitializeWithCdf(
 
 absl::Status DistributionSampleGenerator::InitializeWithPmf(
     const DistributionConfig& config) {
-  auto status = ValidatePmfConfig(config);
-  if (!status.ok()) return status;
-
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   generator_ = std::mt19937(seed);
   std::vector<float> pmf;
@@ -186,6 +97,8 @@ absl::Status DistributionSampleGenerator::InitializeWithPmf(
 
 absl::Status DistributionSampleGenerator::Initialize(
     const DistributionConfig& config) {
+  auto status = ValidateDistributionConfig(config);
+  if (!status.ok()) return status;
   std::random_device rd;
   mersenne_twister_prng_ = std::mt19937(rd());
   if (config.cdf_points_size()) return InitializeWithCdf(config);

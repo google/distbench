@@ -25,10 +25,6 @@
 
 namespace distbench {
 
-absl::Status ValidatePmfConfig(const DistributionConfig& config);
-absl::Status ValidateCdfConfig(const DistributionConfig& config);
-absl::Status ValidateDistributionConfig(const DistributionConfig& config);
-
 class DistributionSampleGenerator {
  public:
   ~DistributionSampleGenerator(){};

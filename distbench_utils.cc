@@ -27,7 +27,6 @@
 #include "glog/logging.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
-#include "joint_distribution_sample_generator.h"
 
 namespace std {
 ostream& operator<<(ostream& out, grpc::Status const& c) {
@@ -457,6 +456,94 @@ void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
   ns->set_name(option_name);
   ns->set_string_value(value);
 }
+
+namespace {
+
+absl::Status ValidatePmfConfig(const DistributionConfig& config) {
+  float cdf = 0;
+  int num_variables = -1;
+  for (const auto& point : config.pmf_points()) {
+    if (point.data_points().empty()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("The size of data_points cannot be 0."));
+    }
+    if (num_variables == -1) {
+      num_variables = point.data_points_size();
+    } else {
+      if (num_variables != point.data_points_size())
+        return absl::InvalidArgumentError(absl::StrCat(
+            "The size of data_points must be same in all PmfPoints."));
+    }
+    cdf += point.pmf();
+  }
+  if (cdf != 1) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Cumulative value of all PMFs should be 1. It is '", cdf,
+                     "' instead."));
+  }
+  return absl::OkStatus();
+};
+
+absl::Status ValidateCdfConfig(const DistributionConfig& config) {
+  if (config.cdf_points_size() == 0) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("CDF is not provided for '", config.name(), "'."));
+  }
+
+  auto prev_cdf = config.cdf_points(0).cdf();
+  if (prev_cdf < 0) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("The cdf value:'", prev_cdf,
+                     "' must not be negative in CDF:'", config.name(), "'."));
+  }
+
+  auto prev_value = config.cdf_points(0).value();
+  for (int i = 1; i < config.cdf_points_size(); i++) {
+    auto curr_value = config.cdf_points(i).value();
+    auto curr_cdf = config.cdf_points(i).cdf();
+    if (curr_value <= prev_value) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "The value:'", curr_value, "' must be greater than previous_value:'",
+          prev_value, "' at index '", i, "' in CDF:'", config.name(), "'."));
+    }
+    if (curr_cdf < prev_cdf) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("The cdf value:'", curr_cdf,
+                       "' must be greater than previous cdf value:'", prev_cdf,
+                       "' at index '", i, "' in CDF:'", config.name(), "'."));
+    }
+    prev_value = curr_value;
+    prev_cdf = curr_cdf;
+  }
+
+  auto last_configured_cdf =
+      config.cdf_points(config.cdf_points_size() - 1).cdf();
+  if (last_configured_cdf != 1) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "The maximum value of cdf is '", last_configured_cdf, "' in CDF:'",
+        config.name(), "'. It must be exactly equal to 1."));
+  }
+  return absl::OkStatus();
+};
+
+}  // anonymous namespace
+
+absl::Status ValidateDistributionConfig(const DistributionConfig& config) {
+  auto cdf_present = config.cdf_points_size() != 0;
+  auto pmf_present = config.pmf_points_size() != 0;
+
+  if (cdf_present == pmf_present) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Exactly one of CDF and PMF must be provided for '",
+                     config.name(), "'."));
+  }
+
+  if (cdf_present) return ValidateCdfConfig(config);
+  if (pmf_present) return ValidatePmfConfig(config);
+
+  return absl::InvalidArgumentError(
+      absl::StrCat("Review CDF and PMF for '", config.name(), "'."));
+};
 
 // Get the canonical version of DistributionConfig from the config
 // provided by the user. The canonical version of the config has
