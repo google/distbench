@@ -14,6 +14,7 @@
 
 #include "joint_distribution_sample_generator.h"
 
+#include "distbench_utils.h"
 #include "gtest/gtest.h"
 
 namespace distbench {

@@ -111,8 +111,7 @@ cc_library(
         ":traffic_config_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_github_google_glog//:glog",
-        ":joint_distribution_sample_generator"
+        "@com_github_google_glog//:glog"
     ],
 )
 
@@ -564,6 +563,7 @@ cc_library(
     srcs = ["joint_distribution_sample_generator.cc"],
     hdrs = ["joint_distribution_sample_generator.h"],
     deps = [
+        ":distbench_utils",
         ":joint_distribution_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -576,6 +576,7 @@ cc_test(
     name = "joint_distribution_sample_generator_test",
     srcs = ["joint_distribution_sample_generator_test.cc"],
     deps = [
+        ":distbench_utils",
         ":joint_distribution_sample_generator",
         ":gtest_utils",
     ],
