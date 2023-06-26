@@ -27,7 +27,6 @@
 #include "glog/logging.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
-#include "interface_lookup.h"
 #include "joint_distribution_sample_generator.h"
 
 namespace std {
