@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "gtest_utils.h"
 
 namespace distbench {
 
@@ -203,6 +204,130 @@ TEST(DistBenchUtilsTest, uniformCDFdistribution) {
     EXPECT_EQ(datapoint.lower(), lower_bounds[i]);
     EXPECT_EQ(datapoint.upper(), upper_bounds[i]);
   }
+}
+
+TEST(DistributionSampleGeneratorTest, NoDistributionConfig) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_EQ(
+      status,
+      absl::InvalidArgumentError(
+          "Exactly one of CDF and PMF must be provided for 'MyReqPayloadDC'."));
+}
+
+TEST(DistributionSampleGeneratorTest, BothCdfAndPdfConfig) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+
+  auto* pmf_point = config.add_pmf_points();
+  pmf_point->set_pmf(1);
+  auto* data_point = pmf_point->add_data_points();
+  data_point->set_exact(10);
+
+  auto* cdf_point = config.add_cdf_points();
+  cdf_point->set_cdf(1);
+  cdf_point->set_value(10);
+
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_EQ(
+      status,
+      absl::InvalidArgumentError(
+          "Exactly one of CDF and PMF must be provided for 'MyReqPayloadDC'."));
+}
+
+TEST(DistributionSampleGeneratorTest, ValidateDistributionPmfConfig) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+  for (int i = 1; i < 5; i++) {
+    auto* pmf_point = config.add_pmf_points();
+    pmf_point->set_pmf(i / 10.0);
+    auto* data_point = pmf_point->add_data_points();
+    data_point->set_exact(i);
+  }
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_OK(status);
+}
+
+TEST(DistributionSampleGeneratorTest, InvalidDistributionPmfConfig) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+  for (int i = 1; i < 5; i++) {
+    auto* pmf_point = config.add_pmf_points();
+    pmf_point->set_pmf(i / 20.0);
+    auto* data_point = pmf_point->add_data_points();
+    data_point->set_exact(i);
+  }
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+}
+
+TEST(DistributionSampleGeneratorTest, ValidateDistributionCdfConfig) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+  float cdf = 0;
+  for (int i = 1; i < 5; i++) {
+    auto* cdf_point = config.add_cdf_points();
+    cdf_point->set_value(i);
+    cdf += i / 10.0;
+    cdf_point->set_cdf(cdf);
+  }
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_OK(status);
+}
+
+TEST(DistributionSampleGeneratorTest,
+     InvalidDistributionCdfConfigErraneousCdf) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+  float cdf = 0;
+  for (int i = 1; i < 5; i++) {
+    auto* cdf_point = config.add_cdf_points();
+    cdf_point->set_value(i);
+    cdf += i / 20.0;
+    cdf_point->set_cdf(cdf);
+  }
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_EQ(status,
+            absl::InvalidArgumentError(
+                "The maximum value of cdf is '0.5' in CDF:'MyReqPayloadDC'. "
+                "It must be exactly equal to 1."));
+}
+
+TEST(DistributionSampleGeneratorTest,
+     InvalidDistributionCdfConfigNonIncreasingValues) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+  float cdf = 0;
+  for (int i = 1; i < 5; i++) {
+    auto* cdf_point = config.add_cdf_points();
+    cdf_point->set_value(100 - 10 * i);
+    cdf += i / 20.0;
+    cdf_point->set_cdf(cdf);
+  }
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_EQ(status,
+            absl::InvalidArgumentError(
+                "The value:'80' must be greater than previous_value:'90' at "
+                "index '1' in CDF:'MyReqPayloadDC'."));
+}
+
+TEST(DistributionSampleGeneratorTest,
+     InvalidDistributionCdfConfigNonIncreasingCdf) {
+  DistributionConfig config;
+  config.set_name("MyReqPayloadDC");
+  float cdf = 0;
+  for (int i = 1; i < 5; i++) {
+    auto* cdf_point = config.add_cdf_points();
+    cdf_point->set_value(i);
+    cdf += i / 20.0;
+    cdf_point->set_cdf(1 / cdf);
+  }
+  auto status = ValidateDistributionConfig(config);
+  ASSERT_EQ(status,
+            absl::InvalidArgumentError(
+                "The cdf value:'6.66667' must be greater than previous cdf "
+                "value:'20' at index '1' in CDF:'MyReqPayloadDC'."));
 }
 
 }  // namespace distbench
