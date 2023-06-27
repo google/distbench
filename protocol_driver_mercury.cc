@@ -232,7 +232,10 @@ void ProtocolDriverMercury::InitiateRpc(
 
 void ProtocolDriverMercury::ChurnConnection(int peer) {}
 
-void ProtocolDriverMercury::ShutdownServer() {}
+void ProtocolDriverMercury::ShutdownServer() {
+  HG_Deregister(hg_class_, mercury_generic_rpc_id_);
+  thread_pool_.reset();
+}
 
 void ProtocolDriverMercury::ShutdownClient() {
   while (pending_rpcs_) {
