@@ -61,7 +61,8 @@ class ProtocolDriverMercury : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  void RpcCompletionThread();
+  void ClientPollingThread();
+  void ServerPollingThread();
   void PrintMercuryVersion();
 
   hg_return_t RpcClientCallback(const struct hg_cb_info* callback_info);
@@ -70,21 +71,26 @@ class ProtocolDriverMercury : public ProtocolDriver {
   static hg_return_t StaticRpcServerCallback(hg_handle_t handle);
   static hg_return_t StaticRpcServerDoneCallback(
       const struct hg_cb_info* hg_cb_info);
-  static hg_return_t StaticRpcServerSerialize(hg_proc_t proc, void* data);
+  static hg_return_t GenericRpcSerializer(hg_proc_t proc, void* data);
   static hg_return_t StaticClientCallback(
       const struct hg_cb_info* callback_info);
 
   std::atomic<int> pending_rpcs_ = 0;
-  SafeNotification shutdown_;
-  std::thread progress_thread_;
+  SafeNotification client_shutdown_;
+  SafeNotification server_shutdown_;
+  std::thread client_progress_thread_;
+  std::thread server_progress_thread_;
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
 
-  hg_context_t* hg_context_ = nullptr;
-  hg_class_t* hg_class_ = nullptr;
+  hg_class_t* mercury_server_class_ = nullptr;
+  hg_class_t* mercury_client_class_ = nullptr;
+  hg_context_t* mercury_server_context_ = nullptr;
+  hg_context_t* mercury_client_context_ = nullptr;
   static constexpr bool mercury_ipv4_only_ = true;
 
-  hg_id_t mercury_generic_rpc_id_;
+  hg_id_t mercury_server_generic_rpc_id_;
+  hg_id_t mercury_client_generic_rpc_id_;
   std::vector<hg_addr_t> remote_addresses_;
 
   std::function<std::function<void()>(ServerRpcState* state)> handler_;

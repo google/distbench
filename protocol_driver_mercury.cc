@@ -68,23 +68,39 @@ absl::Status ProtocolDriverMercury::Initialize(
     struct hg_init_info info = {.na_init_info = NA_INIT_INFO_INITIALIZER};
     info.na_init_info.addr_format =
         server_ip_address_.isIPv4() ? NA_ADDR_IPV4 : NA_ADDR_IPV6;
-    hg_class_ = HG_Init_opt(info_string.c_str(), /*listen=*/true, &info);
-  }
-  if (hg_class_ == nullptr) {
-    return absl::UnknownError("HG_Init: failed");
+    mercury_server_class_ =
+        HG_Init_opt(info_string.c_str(), /*listen=*/true, &info);
+    if (mercury_server_class_ == nullptr) {
+      return absl::UnknownError("HG_Init for server failed");
+    }
+    mercury_client_class_ =
+        HG_Init_opt(info_string.c_str(), /*listen=*/false, &info);
+    if (mercury_client_class_ == nullptr) {
+      return absl::UnknownError("HG_Init for client failed");
+    }
   }
 
-  hg_context_ = HG_Context_create(hg_class_);
-  if (hg_context_ == nullptr) {
-    return absl::UnknownError("HG_Context_create: failed");
+  mercury_client_context_ = HG_Context_create(mercury_client_class_);
+  if (mercury_client_context_ == nullptr) {
+    return absl::UnknownError("HG_Context_create for client failed");
+  }
+  mercury_server_context_ = HG_Context_create(mercury_server_class_);
+  if (mercury_server_context_ == nullptr) {
+    return absl::UnknownError("HG_Context_create for server failed");
   }
 
-  mercury_generic_rpc_id_ = HG_Register_name(
-      hg_class_, "mercury_generic_rpc", StaticRpcServerSerialize,
-      StaticRpcServerSerialize, StaticRpcServerCallback);
+  mercury_client_generic_rpc_id_ =
+      HG_Register_name(mercury_client_class_, "mercury_generic_rpc",
+                       GenericRpcSerializer, GenericRpcSerializer,
+                       /*rpc_cb=*/nullptr);
+
+  mercury_server_generic_rpc_id_ = HG_Register_name(
+      mercury_server_class_, "mercury_generic_rpc", GenericRpcSerializer,
+      GenericRpcSerializer, StaticRpcServerCallback);
 
   hg_return_t hg_ret;
-  hg_ret = HG_Register_data(hg_class_, mercury_generic_rpc_id_, /*data=*/this,
+  hg_ret = HG_Register_data(mercury_server_class_,
+                            mercury_server_generic_rpc_id_, /*data=*/this,
                             /*free_callback=*/NULL);
   if (hg_ret != HG_SUCCESS) {
     return absl::UnknownError("HG_Register_data: failed");
@@ -94,17 +110,17 @@ absl::Status ProtocolDriverMercury::Initialize(
   char buf[256] = {'\0'};
   hg_size_t buf_size = 256;
 
-  hg_ret = HG_Addr_self(hg_class_, &addr);
+  hg_ret = HG_Addr_self(mercury_server_class_, &addr);
   if (hg_ret != HG_SUCCESS) {
     return absl::UnknownError("HG_Addr_self: failed");
   }
 
-  hg_ret = HG_Addr_to_string(hg_class_, buf, &buf_size, addr);
+  hg_ret = HG_Addr_to_string(mercury_server_class_, buf, &buf_size, addr);
   if (hg_ret != HG_SUCCESS) {
     return absl::UnknownError("HG_Addr_to_string: failed");
   }
 
-  hg_ret = HG_Addr_free(hg_class_, addr);
+  hg_ret = HG_Addr_free(mercury_server_class_, addr);
   if (hg_ret != HG_SUCCESS) {
     return absl::UnknownError("HG_Addr_free: failed");
   }
@@ -115,8 +131,10 @@ absl::Status ProtocolDriverMercury::Initialize(
   PrintMercuryVersion();
   VLOG(1) << "Mercury Traffic server listening on " << server_socket_address_;
 #endif
-  progress_thread_ = RunRegisteredThread(
-      "MercuryProgress", [=]() { this->RpcCompletionThread(); });
+  client_progress_thread_ = RunRegisteredThread(
+      "MercuryClientPoll", [=]() { this->ClientPollingThread(); });
+  server_progress_thread_ = RunRegisteredThread(
+      "MercuryServerPoll", [=]() { this->ServerPollingThread(); });
   return absl::OkStatus();
 }
 
@@ -132,17 +150,23 @@ void ProtocolDriverMercury::SetNumPeers(int num_peers) {
 ProtocolDriverMercury::~ProtocolDriverMercury() {
   ShutdownServer();
   ShutdownClient();
-  {
-    absl::MutexLock l(&mercury_init_mutex);
-    if (hg_class_ != nullptr) {
-      HG_Deregister(hg_class_, mercury_generic_rpc_id_);
-    }
-    if (hg_context_ != nullptr) {
-      HG_Context_destroy(hg_context_);
-    }
-    if (hg_class_ != nullptr) {
-      HG_Finalize(hg_class_);
-    }
+  for (hg_addr_t addr : remote_addresses_) {
+    HG_Addr_free(mercury_client_class_, addr);
+  }
+  remote_addresses_.resize(0);
+  absl::MutexLock l(&mercury_init_mutex);
+  HG_Deregister(mercury_server_class_, mercury_server_generic_rpc_id_);
+  if (mercury_server_context_ != nullptr) {
+    HG_Context_destroy(mercury_server_context_);
+  }
+  if (mercury_server_class_ != nullptr) {
+    HG_Finalize(mercury_server_class_);
+  }
+  if (mercury_client_context_ != nullptr) {
+    HG_Context_destroy(mercury_client_context_);
+  }
+  if (mercury_client_class_ != nullptr) {
+    HG_Finalize(mercury_client_class_);
   }
 }
 
@@ -157,8 +181,9 @@ absl::Status ProtocolDriverMercury::HandleConnect(
   CHECK_LT((size_t)peer, remote_addresses_.size());
 
   hg_return_t hg_ret;
-  hg_ret = HG_Addr_lookup2(hg_class_, remote_connection_info.c_str(),
-                           &remote_addresses_[peer]);
+  hg_ret =
+      HG_Addr_lookup2(mercury_client_class_, remote_connection_info.c_str(),
+                      &remote_addresses_[peer]);
   if (hg_ret != HG_SUCCESS) {
     return absl::UnknownError("HG_Addr_lookup: failed");
   }
@@ -205,8 +230,8 @@ void ProtocolDriverMercury::InitiateRpc(
 
   hg_handle_t target_handle;
   hg_return_t hg_ret;
-  hg_ret = HG_Create(hg_context_, remote_addresses_[peer_index],
-                     mercury_generic_rpc_id_, &target_handle);
+  hg_ret = HG_Create(mercury_client_context_, remote_addresses_[peer_index],
+                     mercury_client_generic_rpc_id_, &target_handle);
   if (hg_ret != HG_SUCCESS) {
     --pending_rpcs_;
     LOG(ERROR) << "HG_Create: failed";
@@ -233,7 +258,11 @@ void ProtocolDriverMercury::InitiateRpc(
 void ProtocolDriverMercury::ChurnConnection(int peer) {}
 
 void ProtocolDriverMercury::ShutdownServer() {
-  HG_Deregister(hg_class_, mercury_generic_rpc_id_);
+  if (server_shutdown_.TryToNotify()) {
+    if (server_progress_thread_.joinable()) {
+      server_progress_thread_.join();
+    }
+  }
   thread_pool_.reset();
 }
 
@@ -241,32 +270,50 @@ void ProtocolDriverMercury::ShutdownClient() {
   while (pending_rpcs_) {
     sched_yield();
   }
-  if (shutdown_.TryToNotify()) {
-    if (progress_thread_.joinable()) {
-      progress_thread_.join();
+  if (client_shutdown_.TryToNotify()) {
+    if (client_progress_thread_.joinable()) {
+      client_progress_thread_.join();
     }
   }
-  for (hg_addr_t addr : remote_addresses_) {
-    HG_Addr_free(hg_class_, addr);
-  }
-  remote_addresses_.resize(0);
 }
 
-void ProtocolDriverMercury::RpcCompletionThread() {
-  while (!shutdown_.HasBeenNotified()) {
+void ProtocolDriverMercury::ClientPollingThread() {
+  while (!client_shutdown_.HasBeenNotified()) {
     hg_return_t hg_ret;
     unsigned int actual_count = 0;
 
     // Process callbacks based on the network event received
-    hg_ret = HG_Trigger(hg_context_, /*timeout=*/0, /*max_count=1*/ 1,
-                        &actual_count);
+    hg_ret = HG_Trigger(mercury_client_context_, /*timeout=*/0,
+                        /*max_count*/ 1, &actual_count);
     if (hg_ret != HG_SUCCESS && hg_ret != HG_TIMEOUT) {
       LOG(ERROR) << "HG_Trigger: failed with " << hg_ret
                  << " actual_count:" << actual_count;
     }
 
     // Process network events
-    hg_ret = HG_Progress(hg_context_, /*timeout_ms=*/1);
+    hg_ret = HG_Progress(mercury_client_context_, /*timeout_ms=*/1);
+    if (hg_ret != HG_SUCCESS && hg_ret != HG_TIMEOUT) {
+      LOG(ERROR) << "HG_Progress: failed with " << hg_ret
+                 << " actual_count:" << actual_count;
+    }
+  }
+}
+
+void ProtocolDriverMercury::ServerPollingThread() {
+  while (!server_shutdown_.HasBeenNotified()) {
+    hg_return_t hg_ret;
+    unsigned int actual_count = 0;
+
+    // Process callbacks based on the network event received
+    hg_ret = HG_Trigger(mercury_server_context_, /*timeout=*/0,
+                        /*max_count*/ 1, &actual_count);
+    if (hg_ret != HG_SUCCESS && hg_ret != HG_TIMEOUT) {
+      LOG(ERROR) << "HG_Trigger: failed with " << hg_ret
+                 << " actual_count:" << actual_count;
+    }
+
+    // Process network events
+    hg_ret = HG_Progress(mercury_server_context_, /*timeout_ms=*/1);
     if (hg_ret != HG_SUCCESS && hg_ret != HG_TIMEOUT) {
       LOG(ERROR) << "HG_Progress: failed with " << hg_ret
                  << " actual_count:" << actual_count;
@@ -282,8 +329,8 @@ hg_return_t ProtocolDriverMercury::StaticClientCallback(
 
 // This function performs both serialization and deserialization (specified
 // by proc).
-hg_return_t ProtocolDriverMercury::StaticRpcServerSerialize(hg_proc_t proc,
-                                                            void* data) {
+hg_return_t ProtocolDriverMercury::GenericRpcSerializer(hg_proc_t proc,
+                                                        void* data) {
   hg_return_t hg_ret;
   mercury_generic_rpc_string_t* struct_data =
       (mercury_generic_rpc_string_t*)data;
