@@ -45,22 +45,22 @@ absl::Status DistributionSampleGenerator::InitializeWithCdf(
   auto prev_cdf = config.cdf_points(0).cdf();
   auto next_lower_bound = config.cdf_points(0).value();
   for (int i = 1; i < config.cdf_points_size(); i++) {
-    auto curr_cdf = config.cdf_points(i).cdf();
-    auto curr_data_value = config.cdf_points(i).value();
+    auto current_cdf = config.cdf_points(i).cdf();
+    auto current_data_value = config.cdf_points(i).value();
 
     auto* pmf_point = config_with_pmf.add_pmf_points();
-    pmf_point->set_pmf(curr_cdf - prev_cdf);
+    pmf_point->set_pmf(current_cdf - prev_cdf);
 
     auto* data_point = pmf_point->add_data_points();
     if (cdf_is_uniform) {
       data_point->set_lower(next_lower_bound);
-      data_point->set_upper(curr_data_value);
+      data_point->set_upper(current_data_value);
     } else {
-      data_point->set_exact(curr_data_value);
+      data_point->set_exact(current_data_value);
     }
 
-    prev_cdf = curr_cdf;
-    next_lower_bound = curr_data_value + 1;
+    prev_cdf = current_cdf;
+    next_lower_bound = current_data_value + 1;
   }
 
   return InitializeWithPmf(config_with_pmf);
