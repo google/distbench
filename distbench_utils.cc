@@ -494,21 +494,21 @@ absl::Status ValidateCdfConfig(const DistributionConfig& config) {
 
   auto prev_value = config.cdf_points(0).value();
   for (int i = 1; i < config.cdf_points_size(); i++) {
-    auto curr_value = config.cdf_points(i).value();
-    auto curr_cdf = config.cdf_points(i).cdf();
-    if (curr_value <= prev_value) {
+    auto current_value = config.cdf_points(i).value();
+    auto current_cdf = config.cdf_points(i).cdf();
+    if (current_value <= prev_value) {
       return absl::InvalidArgumentError(absl::StrCat(
-          "The value:'", curr_value, "' must be greater than previous_value:'",
+          "The value:'", current_value, "' must be greater than previous_value:'",
           prev_value, "' at index '", i, "' in CDF:'", config.name(), "'."));
     }
-    if (curr_cdf < prev_cdf) {
+    if (current_cdf < prev_cdf) {
       return absl::InvalidArgumentError(
-          absl::StrCat("The cdf value:'", curr_cdf,
+          absl::StrCat("The cdf value:'", current_cdf,
                        "' must be greater than previous cdf value:'", prev_cdf,
                        "' at index '", i, "' in CDF:'", config.name(), "'."));
     }
-    prev_value = curr_value;
-    prev_cdf = curr_cdf;
+    prev_value = current_value;
+    prev_cdf = current_cdf;
   }
 
   auto last_configured_cdf =
