@@ -18,13 +18,34 @@ package distbench;
 
 import "joint_distribution.proto";
 
-// Specifies how many servers there are of each type.
-// The name of an individual instance is just $name/$intance_number,
-// e.g. "search_leaf/0"
+// Specifies how many servers there are of each type, their organization, and
+// protocol-specific options.
 message ServiceSpec {
   optional string name = 1;
   optional int32 count = 2;
   optional string protocol_driver_options_name = 3;
+
+  // A service can be modeled as a 1D, 2D, or 3D grid of instances, in which
+  // case the "count" field is optional.
+  // The product of the x/y/z sizes (if present) must be equal to the count
+  // field (if present). These rank of each instance of the service is used
+  // by the following fanout_filter values:
+  // same_x, same_y, same_z, same_xy, same_yz, same xz, same_xyz.
+  //
+  // if x_size is not set, then y_size must not be set.
+  // if y_size is not set, then z_size must not be set.
+
+  // For services that do not specify x/y/z sizes, the name assigned to individual
+  // instances will be "$name/$intance_number", e.g. "search_leaf/0"
+  // For services that specify only x_size the name of an individual instance
+  // will be "$name/($x_rank)", e.g. "search_leaf/(0)"
+  // For services that specify y_size the name of an individual instance
+  // will be "$name/($x_rank,y_rank)", e.g. "search_leaf/(0,2)"
+  // For services thatspecify z_size the name of an individual instance
+  // will be "$name/($x_rank,y_rank,z_rank)", e.g. "search_leaf/(0,2,1)"
+  optional int32 x_size = 4 [default = 1];
+  optional int32 y_size = 5 [default = 1];
+  optional int32 z_size = 6 [default = 1];
 }
 
 // Specifies how multiple services may be co-located on the same machine.

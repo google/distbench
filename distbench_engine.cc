@@ -136,20 +136,31 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
     RpcDefinition& rpc_def) {
   const auto& rpc_spec = rpc_def.rpc_spec;
   std::string fanout_filter = rpc_spec.fanout_filter();
-  const std::string stochastic_keyword = "stochastic";
-  const std::string all_keyword = "all";
-  const std::string random_keyword = "random";
-  const std::string round_robin_keyword = "round_robin";
+  std::map<std::string, FanoutFilter> fanout_map = {
+    {"", kAll},
+    {"all", kAll},
+    {"random", kRandomSingle},
+    {"random_single", kRandomSingle},
+    {"round_robin", kRoundRobin},
+    {"same_x", kSameX},
+    {"same_y", kSameY},
+    {"same_z", kSameZ},
+    {"same_xy", kSameXY},
+    {"same_xz", kSameXZ},
+    {"same_yz", kSameYZ},
+    {"same_xyz", kSameXYZ},
+  };
 
-  if (!absl::StartsWith(fanout_filter, stochastic_keyword)) {
-    if (fanout_filter.empty() || fanout_filter == all_keyword) {
-      rpc_def.fanout_filter = kAll;
-    } else if (fanout_filter == random_keyword) {
-      rpc_def.fanout_filter = kRandomSingle;
-    } else if (fanout_filter == round_robin_keyword) {
-      rpc_def.fanout_filter = kRoundRobin;
-    }
+  auto it = fanout_map.find(fanout_filter);
+  if (it != fanout_map.end()) {
+    rpc_def.fanout_filter = it->second;
     return absl::OkStatus();
+  }
+
+  const std::string stochastic_keyword = "stochastic";
+  if (!absl::StartsWith(fanout_filter, stochastic_keyword)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown fanout_filter: ", fanout_filter));
   }
   fanout_filter.erase(0, stochastic_keyword.length());
 
@@ -238,6 +249,11 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 
     RpcDefinition rpc_def;
     rpc_def.rpc_spec = rpc_spec;
+    auto it = service_index_map_.find(rpc_def.rpc_spec.server());
+    if (it == service_index_map_.end()) {
+      return absl::NotFoundError(rpc_def.rpc_spec.server());
+    }
+    rpc_def.server_service_spec = traffic_config_.services(it->second);
 
     // Get request payload size
     rpc_def.request_payload_size = -1;
@@ -451,7 +467,8 @@ absl::Status DistBenchEngine::Initialize(
   if (!maybe_service_spec.ok()) return maybe_service_spec.status();
   service_spec_ = maybe_service_spec.value();
   service_instance_ = service_instance;
-  engine_name_ = absl::StrCat(service_name_, "/", service_instance_);
+
+  engine_name_ = GetServiceInstanceName(service_spec_, service_instance_);
   auto maybe_threadpool =
       CreateThreadpool("elastic", absl::base_internal::NumCPUs());
   if (!maybe_threadpool.ok()) {
@@ -459,6 +476,7 @@ absl::Status DistBenchEngine::Initialize(
   }
   thread_pool_ = std::move(maybe_threadpool.value());
 
+  ranks_ = GetServiceInstanceRanks(service_spec_, service_instance_);
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
   service_index_ = service_index_map_[service_name_];
@@ -1444,6 +1462,41 @@ void DistBenchEngine::RunRpcActionIteration(
   }
 }
 
+std::vector<int> DistBenchEngine::PickRankTargets(
+    FanoutFilter filter, const ServiceSpec& peer_service) {
+  int x_size = peer_service.x_size();
+  int y_size = peer_service.y_size();
+  int z_size = peer_service.z_size();
+  int x_start = 0;
+  int y_start = 0;
+  int z_start = 0;
+  int x_end = x_size;
+  int y_end = y_size;
+  int z_end = z_size;
+  if (filter & kSameX) {
+    x_start = ranks_.x;
+    x_end = x_start + 1;
+  }
+  if (filter & kSameY) {
+    y_start = ranks_.y;
+    y_end = y_start + 1;
+  }
+  if (filter & kSameZ) {
+    z_start = ranks_.z;
+    z_end = z_start + 1;
+  }
+  std::vector<int> ret;
+  ret.reserve((x_end - x_start) * (y_end - y_start) * (z_end - z_start));
+  for (int i = x_start; i < x_end; ++i) {
+    for (int j = y_start; j < y_end; ++j) {
+      for (int k = z_start; k < z_end; ++k) {
+        ret.push_back(i + j * x_size + k * x_size * y_size);
+      }
+    }
+  }
+  return ret;
+}
+
 // Return a vector of service instances, which have to be translated to
 // protocol_drivers endpoint ids by the caller.
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
@@ -1458,6 +1511,16 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
       // Default case: return the first instance of the service
       targets.reserve(1);
       targets.push_back(0);
+      break;
+
+    case kSameX:
+    case kSameY:
+    case kSameZ:
+    case kSameXY:
+    case kSameXZ:
+    case kSameYZ:
+    case kSameXYZ:
+    targets = PickRankTargets(rpc_def.fanout_filter, rpc_def.server_service_spec);
       break;
 
     case kRandomSingle:

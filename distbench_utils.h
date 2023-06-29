@@ -153,7 +153,26 @@ void AddActivitySettingIntTo(ActivityConfig* ac, std::string option_name,
 void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
                                 std::string value);
 
-absl::Status ValidateDistributionConfig(const DistributionConfig& config);
+struct InstanceRanks {
+  int x;
+  int y;
+  int z;
+};
+
+InstanceRanks GetServiceInstanceRanks(
+    const distbench::ServiceSpec& service_spec, int instance);
+
+std::string GetServiceInstanceName(const distbench::ServiceSpec& service_spec, int instance);
+
+absl::StatusOr<distbench::ServiceSpec> GetCanonicalServiceSpec(
+    const distbench::ServiceSpec& service_spec);
+
+absl::StatusOr<distbench::DistributedSystemDescription>
+GetCanonicalDistributedSystemDescription(
+    const distbench::DistributedSystemDescription& traffic_config);
+
+absl::StatusOr<distbench::TestSequence> GetCanonicalTestSequence(
+    const distbench::TestSequence& sequence);
 
 // canonical_fields is a nullptr-terminated array of field names in the
 // desired order.
@@ -164,6 +183,8 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
 absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
     const DistributionConfig& input_config,
     std::vector<std::string_view> canonical_fields);
+
+absl::Status ValidateDistributionConfig(const DistributionConfig& config);
 
 }  // namespace distbench
 

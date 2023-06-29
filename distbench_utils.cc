@@ -636,4 +636,109 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
   return canonical_config;
 }
 
+absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
+    const ServiceSpec& service_spec) {
+  int xyz_size = 1;
+  if (service_spec.has_x_size()) {
+    if (service_spec.x_size() <= 0) {
+      return absl::InvalidArgumentError("x_size must be positive");
+    }
+    xyz_size *= service_spec.x_size();
+    if (service_spec.has_y_size()) {
+      if (service_spec.y_size() <= 0) {
+        return absl::InvalidArgumentError("y_size must be positive");
+      }
+      xyz_size *= service_spec.y_size();
+      if (service_spec.has_z_size()) {
+        if (service_spec.z_size() <= 0) {
+          return absl::InvalidArgumentError("z_size must be positive");
+        }
+        xyz_size *= service_spec.z_size();
+      }
+    } else {
+      if (service_spec.has_z_size()) {
+        return absl::InvalidArgumentError(
+            "z_size cannot be specified without y_size.");
+      }
+    }
+  } else {
+    if (service_spec.has_y_size()) {
+      return absl::InvalidArgumentError(
+          "y_size cannot be specified without x_size.");
+    }
+    if (service_spec.has_z_size()) {
+      return absl::InvalidArgumentError(
+          "z_size cannot be specified without x_size and y_size.");
+    }
+  }
+  if (service_spec.has_count() && service_spec.has_x_size()
+      && service_spec.count() != xyz_size) {
+    return absl::InvalidArgumentError("count does not match x/y/z size");
+  }
+  ServiceSpec ret = service_spec;
+  ret.set_count(xyz_size);
+  return ret;
+}
+
+InstanceRanks GetServiceInstanceRanks(const ServiceSpec& service_spec,
+                                      int instance) {
+  InstanceRanks ranks = {instance, 0, 0};
+  if (service_spec.has_x_size()) {
+    ranks.x = instance % service_spec.x_size();
+    if (service_spec.has_y_size()) {
+      ranks.y = (instance / service_spec.x_size()) % service_spec.y_size();
+      if (service_spec.has_z_size()) {
+        ranks.z = (instance / service_spec.x_size()) / service_spec.y_size();
+      }
+    }
+  }
+  return ranks;
+}
+
+std::string GetServiceInstanceName(const ServiceSpec& service_spec,
+                                   int instance) {
+  if (!service_spec.has_x_size()) {
+    return absl::StrCat(service_spec.name(), "/", instance);
+  }
+  InstanceRanks ranks = GetServiceInstanceRanks(service_spec, instance);
+  if (service_spec.has_z_size()) {
+    return absl::StrCat(
+        service_spec.name(), "/(", ranks.x, ",", ranks.y, ",", ranks.z, ")");
+  }
+  if (service_spec.has_y_size()) {
+    return absl::StrCat(service_spec.name(), "/(", ranks.x, ",", ranks.y, ")");
+  }
+  return absl::StrCat(service_spec.name(), "/(", ranks.x, ")");
+}
+
+absl::StatusOr<DistributedSystemDescription>
+GetCanonicalDistributedSystemDescription(
+    const DistributedSystemDescription& traffic_config) {
+  DistributedSystemDescription ret = traffic_config;
+  ret.clear_services();
+  for (const auto& service : traffic_config.services()) {
+    auto maybe_service = GetCanonicalServiceSpec(service);
+    if (!maybe_service.ok()) {
+      return maybe_service.status();
+    }
+    *ret.add_services() = maybe_service.value();
+  }
+  return traffic_config;
+}
+
+
+absl::StatusOr<TestSequence> GetCanonicalTestSequence(
+    const TestSequence& sequence) {
+  TestSequence ret;
+  *ret.mutable_tests_setting() = sequence.tests_setting();
+  for (const auto& test : sequence.tests()) {
+    auto maybe_test = GetCanonicalDistributedSystemDescription(test);
+    if (!maybe_test.ok()) {
+      return maybe_test.status();
+    }
+    *ret.add_tests() = maybe_test.value();
+  }
+  return ret;
+}
+
 }  // namespace distbench

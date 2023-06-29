@@ -73,14 +73,23 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   enum FanoutFilter {
     kAll = 0,
-    kRandomSingle = 1,
-    kRoundRobin = 2,
-    kStochastic = 3,
+    kSameX = 1 << 0,
+    kSameY = 1 << 1,
+    kSameZ = 1 << 2,
+    kSameXY = kSameX | kSameY,
+    kSameXZ = kSameX | kSameZ,
+    kSameYZ = kSameY | kSameZ,
+    kSameXYZ = kSameX | kSameY | kSameZ,
+    kRandomSingle = kSameXYZ + 1,
+    kRoundRobin,
+    kStochastic,
   };
 
   struct RpcDefinition {
     // Original proto
     RpcSpec rpc_spec;
+
+    ServiceSpec server_service_spec;
 
     // Used to store decoded stochastic fanout
     FanoutFilter fanout_filter;
@@ -281,6 +290,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<SimulatedServerRpc> server_rpc_table_;
   std::vector<ActionListTableEntry> action_lists_;
 
+  std::vector<int> PickRankTargets(FanoutFilter filter, const ServiceSpec&  peer_service);
+
   absl::Status ConnectToPeers();
   std::function<void()> RpcHandler(ServerRpcState* state);
 
@@ -293,6 +304,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::set<std::string> dependent_services_;
   int service_index_;
   int service_instance_;
+  InstanceRanks ranks_ = {0, 0, 0};
   std::unique_ptr<grpc::Server> server_;
   std::unique_ptr<ProtocolDriver> pd_;
   std::thread engine_main_thread_;
