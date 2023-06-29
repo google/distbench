@@ -881,7 +881,6 @@ function clique_traffic_pattern_setup() {
   set_parameter_default synchronization_mode sync_burst "sync_burst sync_burst_spread"
   set_parameter_default request_size 1024
   set_parameter_default response_size 1024
-
   local REQUEST_SIZE="${params_dict[request_size]}"
   local RESPONSE_SIZE="${params_dict[response_size]}"
   local RPC_INTERVAL_US="${params_dict[rpc_interval_us]}"
