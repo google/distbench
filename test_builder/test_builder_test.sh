@@ -12,6 +12,8 @@ function compare_golden_file() {
   diff -u -I '^# produced by ' <(../test_builder -o - ${invocation}) "$1"
 }
 
+test_builder/test_builder -h
+
 cd "./test_builder/test_builder_golden_configs"
 for f in *; do
   echo Comparing against "$f":
