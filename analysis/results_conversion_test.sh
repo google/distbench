@@ -28,3 +28,19 @@ if diff --brief -x '*.pb' -x '*.config' -r "$TEST_TMPDIR" "$RESULT_DIR/golden_re
     echo "Test 2 output does not match! :-("
     exit 1
 fi
+
+rm $TEST_TMPDIR/* -r
+TEST_FILE_3="$RESULT_DIR/golden_results/statistics_format_test/multi_level_rpc_2x3x1-grpc_polling_inline.pb"
+
+$BINDIR/results_conversion --output_directory=$TEST_TMPDIR --input_file=$TEST_FILE_3 \
+  --output_format="statistics"
+
+#just comparing the non-empty directories:
+NON_EMPTY_DIR=$(find "$RESULT_DIR/golden_results/statistics_format_test" -type d ! -empty)
+
+if diff --brief -x '*.pb' -x '*.config' -r "$TEST_TMPDIR" "$RESULT_DIR/golden_results/statistics_format_test" | grep -vF "$NON_EMPTY_DIR"; then
+    echo "Test 3 output matches! :-)"
+  else
+    echo "Test 3 output does not match! :-("
+    exit 1
+fi
