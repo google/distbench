@@ -92,6 +92,12 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
 grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
                                             const TestSequence* request,
                                             TestSequenceResults* response) {
+  auto maybe_test_sequence = GetCanonicalTestSequence(*request);
+  if (!maybe_test_sequence.ok()) {
+    return grpc::Status(grpc::StatusCode::ABORTED,
+                        std::string(maybe_test_sequence.status().message()));
+  }
+
   std::shared_ptr<absl::Notification> prior_notification;
   CancelTraffic();
   mutex_.Lock();
@@ -111,7 +117,8 @@ grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
   auto notification = running_test_notification_ =
       std::make_shared<absl::Notification>();
   mutex_.Unlock();
-  grpc::Status result = DoRunTestSequence(context, request, response);
+  grpc::Status result =
+      DoRunTestSequence(context, &maybe_test_sequence.value(), response);
   if (result.ok()) {
     LOG(INFO) << "DoRunTestSequence status: OK";
   } else {
@@ -210,15 +217,13 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   }
 
   int total_services = 0;
-  for (const auto& service_node : test.services()) {
-    for (int i = 0; i < service_node.count(); ++i) {
-      ++total_services;
-    }
+  for (const auto& service : test.services()) {
+    total_services += service.count();
   }
   all_services.reserve(total_services);
-  for (const auto& service_node : test.services()) {
-    for (int i = 0; i < service_node.count(); ++i) {
-      std::string service_instance = absl::StrCat(service_node.name(), "/", i);
+  for (const auto& service : test.services()) {
+    for (int i = 0; i < service.count(); ++i) {
+      std::string service_instance = GetInstanceName(service, i);
       unplaced_services.insert(service_instance);
       all_services.push_back(service_instance);
     }

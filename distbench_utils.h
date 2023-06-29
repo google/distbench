@@ -56,11 +56,27 @@ class SafeNotification {
   absl::Notification n;
 };
 
+struct GridIndex {
+  int x;
+  int y;
+  int z;
+};
+
+GridIndex GetGridIndexFromInstance(const distbench::ServiceSpec& service_spec,
+                                   int instance);
+
+int GetInstanceFromGridIndex(const distbench::ServiceSpec& service_spec,
+                             GridIndex index);
+
+std::string GetInstanceName(const distbench::ServiceSpec& service_spec,
+                            int instance);
+
+GridIndex GetGridIndexFromName(std::string_view name);
+
 grpc::ChannelArguments DistbenchCustomChannelArguments();
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
 
-std::string ServiceInstanceName(std::string_view service_type, int instance);
 std::map<std::string, int> EnumerateServiceSizes(
     const DistributedSystemDescription& config);
 std::map<std::string, int> EnumerateServiceInstanceIds(
@@ -153,7 +169,15 @@ void AddActivitySettingIntTo(ActivityConfig* ac, std::string option_name,
 void AddActivitySettingStringTo(ActivityConfig* ac, std::string option_name,
                                 std::string value);
 
-absl::Status ValidateDistributionConfig(const DistributionConfig& config);
+absl::StatusOr<distbench::ServiceSpec> GetCanonicalServiceSpec(
+    const distbench::ServiceSpec& service_spec);
+
+absl::StatusOr<distbench::DistributedSystemDescription>
+GetCanonicalDistributedSystemDescription(
+    const distbench::DistributedSystemDescription& traffic_config);
+
+absl::StatusOr<distbench::TestSequence> GetCanonicalTestSequence(
+    const distbench::TestSequence& sequence);
 
 // canonical_fields is a nullptr-terminated array of field names in the
 // desired order.
@@ -164,6 +188,8 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
 absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
     const DistributionConfig& input_config,
     std::vector<std::string_view> canonical_fields);
+
+absl::Status ValidateDistributionConfig(const DistributionConfig& config);
 
 }  // namespace distbench
 

@@ -51,7 +51,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status Initialize(
       const DistributedSystemDescription& global_description,
       std::string_view control_plane_device, std::string_view service_name,
-      int service_instance, int* port);
+      GridIndex service_index, int* port);
 
   absl::Status ConfigurePeers(const ServiceEndpointMap& peers);
   absl::Status RunTraffic(const RunTrafficRequest* request);
@@ -73,17 +73,36 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   enum FanoutFilter {
     kAll = 0,
-    kRandomSingle = 1,
-    kRoundRobin = 2,
-    kStochastic = 3,
+    kSameX = 1 << 0,
+    kSameY = 1 << 1,
+    kSameZ = 1 << 2,
+    kSameXY = kSameX | kSameY,
+    kSameXZ = kSameX | kSameZ,
+    kSameYZ = kSameY | kSameZ,
+    kSameXYZ = kSameX | kSameY | kSameZ,
+    kRingX,
+    kRingY,
+    kRingZ,
+    kAlternatingRingX,
+    kAlternatingRingY,
+    kAlternatingRingZ,
+    kLinearX,
+    kLinearY,
+    kLinearZ,
+    kRandomSingle,
+    kRoundRobin,
+    kStochastic,
   };
 
   struct RpcDefinition {
     // Original proto
     RpcSpec rpc_spec;
 
+    ServiceSpec server_service_spec;
+
     // Used to store decoded stochastic fanout
     FanoutFilter fanout_filter;
+    int fanout_filter_distance = 0;
     std::vector<StochasticDist> stochastic_dist;
 
     // Cached here for easy access, but these may not be used if
@@ -279,6 +298,13 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<SimulatedServerRpc> server_rpc_table_;
   std::vector<ActionListTableEntry> action_lists_;
 
+  std::vector<int> PickGridTargets(FanoutFilter filter,
+                                   const ServiceSpec& peer_service);
+  std::vector<int> PickRingTargets(FanoutFilter filter,
+                                   const ServiceSpec& peer_service);
+  std::vector<int> PickLinearTargets(FanoutFilter filter, int distance,
+                                     const ServiceSpec& peer_service);
+
   absl::Status ConnectToPeers();
   std::function<void()> RpcHandler(ServerRpcState* state);
 
@@ -291,6 +317,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::set<std::string> dependent_services_;
   int service_index_;
   int service_instance_;
+  GridIndex grid_index_ = {0, 0, 0};
   std::unique_ptr<grpc::Server> server_;
   std::unique_ptr<ProtocolDriver> pd_;
   std::thread engine_main_thread_;
