@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eu
+rm -rf test_builder_golden_configs
 mkdir test_builder_golden_configs -p
 cd test_builder_golden_configs
 PATH+=":.."
