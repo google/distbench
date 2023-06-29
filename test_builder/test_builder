@@ -687,7 +687,9 @@ function maybe_run_test_sequence() {
 # present. Optionally track the set of parameters in order to help generate
 # usage info automatically.
 # Arguments:
-#   None
+#   The parameter name
+#   The default Parameter value
+#   an optional list of options for the parameter (as a string)
 # Inherits and mutates:
 #   params_dict (associative array)
 #   usage params_dict (optional associative array)
@@ -702,6 +704,7 @@ function set_parameter_default() {
     else
       usage_params_dict[$1]=""
     fi
+    params_dict[$1]="$2"
   fi
   if [[ ! -v params_dict[$1] && -n "$2" ]]; then
     params_dict[$1]="$2"
