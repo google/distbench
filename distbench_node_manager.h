@@ -75,7 +75,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   struct ServiceOpts {
     std::string_view service_name;
     std::string_view service_type;
-    int service_instance;
+    GridIndex service_index;
     int* port;
     std::string_view protocol;
     std::string_view netdev_name;

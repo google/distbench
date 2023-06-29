@@ -136,37 +136,93 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
     RpcDefinition& rpc_def) {
   const auto& rpc_spec = rpc_def.rpc_spec;
   std::string fanout_filter = rpc_spec.fanout_filter();
-  const std::string stochastic_keyword = "stochastic";
-  const std::string all_keyword = "all";
-  const std::string random_keyword = "random";
-  const std::string round_robin_keyword = "round_robin";
+  std::map<std::string, FanoutFilter> fanout_map = {
+      {"", kAll},
+      {"all", kAll},
+      {"random", kRandomSingle},
+      {"random_single", kRandomSingle},
+      {"round_robin", kRoundRobin},
+      {"same_x", kSameX},
+      {"same_y", kSameY},
+      {"same_z", kSameZ},
+      {"same_xy", kSameXY},
+      {"same_xz", kSameXZ},
+      {"same_yz", kSameYZ},
+      {"same_xyz", kSameXYZ},
+      {"ring_x", kRingX},
+      {"ring_y", kRingY},
+      {"ring_z", kRingZ},
+      {"alternating_ring_x", kAlternatingRingX},
+      {"alternating_ring_y", kAlternatingRingY},
+      {"alternating_ring_z", kAlternatingRingZ},
+  };
 
-  if (!absl::StartsWith(fanout_filter, stochastic_keyword)) {
-    if (fanout_filter.empty() || fanout_filter == all_keyword) {
-      rpc_def.fanout_filter = kAll;
-    } else if (fanout_filter == random_keyword) {
-      rpc_def.fanout_filter = kRandomSingle;
-    } else if (fanout_filter == round_robin_keyword) {
-      rpc_def.fanout_filter = kRoundRobin;
-    }
+  auto it = fanout_map.find(fanout_filter);
+  if (it != fanout_map.end()) {
+    rpc_def.fanout_filter = it->second;
     return absl::OkStatus();
   }
-  fanout_filter.erase(0, stochastic_keyword.length());
 
-  if (!absl::StartsWith(fanout_filter, "{")) {
+  size_t prefix_size = fanout_filter.find_first_of("{");
+  if (prefix_size == std::string::npos) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown fanout_filter: ", fanout_filter));
+  }
+
+  std::string fanout_filter_params = fanout_filter.substr(prefix_size);
+  fanout_filter = fanout_filter.substr(0, prefix_size);
+
+  std::map<std::string, FanoutFilter> fanout_map2 = {
+      {"stochastic", kStochastic},
+      {"linear_x", kLinearX},
+      {"linear_y", kLinearY},
+      {"linear_z", kLinearZ},
+  };
+
+  it = fanout_map2.find(fanout_filter);
+  if (it == fanout_map2.end()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown fanout_filter: ", fanout_filter));
+  }
+
+  rpc_def.fanout_filter = it->second;
+
+  switch (rpc_def.fanout_filter) {
+    case kStochastic:
+      break;
+
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown fanout_filter: ", fanout_filter));
+      break;
+
+    case kLinearX:
+    case kLinearY:
+    case kLinearZ:
+      if (sscanf(fanout_filter_params.data(), "{%d}",
+                 &rpc_def.fanout_filter_distance)) {
+        return absl::OkStatus();
+      } else {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Could not parse parameter: ", fanout_filter_params));
+      }
+      break;
+  }
+
+  if (!absl::StartsWith(fanout_filter_params, "{")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should starts with stochastic{");
   }
-  fanout_filter.erase(0, 1);  // Consume the '{'
+  fanout_filter_params.erase(0, 1);  // Consume the '{'
 
-  if (!absl::EndsWith(fanout_filter, "}")) {
+  if (!absl::EndsWith(fanout_filter_params, "}")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should ends with }");
   }
-  fanout_filter.pop_back();  // Consume the '}'
+  fanout_filter_params.pop_back();  // Consume the '}'
 
   float total_probability = 0.;
-  for (auto s : absl::StrSplit(fanout_filter, ',')) {
+  for (auto s : absl::StrSplit(fanout_filter_params, ',')) {
     std::vector<std::string> v = absl::StrSplit(s, ':');
     if (v.size() != 2) {
       return absl::InvalidArgumentError(
@@ -207,7 +263,6 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
         "Invalid stochastic filter; need at least a value pair");
   }
 
-  rpc_def.fanout_filter = kStochastic;
   return absl::OkStatus();
 }
 
@@ -238,6 +293,11 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 
     RpcDefinition rpc_def;
     rpc_def.rpc_spec = rpc_spec;
+    auto it = service_index_map_.find(rpc_def.rpc_spec.server());
+    if (it == service_index_map_.end()) {
+      return absl::NotFoundError(rpc_def.rpc_spec.server());
+    }
+    rpc_def.server_service_spec = traffic_config_.services(it->second);
 
     // Get request payload size
     rpc_def.request_payload_size = -1;
@@ -443,15 +503,17 @@ absl::Status DistBenchEngine::InitializeTables() {
 absl::Status DistBenchEngine::Initialize(
     const DistributedSystemDescription& global_description,
     std::string_view control_plane_device, std::string_view service_name,
-    int service_instance, int* port) {
+    GridIndex service_index, int* port) {
   traffic_config_ = global_description;
   CHECK(!service_name.empty());
   service_name_ = service_name;
+  grid_index_ = service_index;
   auto maybe_service_spec = GetServiceSpec(service_name, global_description);
   if (!maybe_service_spec.ok()) return maybe_service_spec.status();
   service_spec_ = maybe_service_spec.value();
-  service_instance_ = service_instance;
-  engine_name_ = absl::StrCat(service_name_, "/", service_instance_);
+  service_instance_ = GetInstanceFromGridIndex(service_spec_, service_index);
+
+  engine_name_ = GetInstanceName(service_spec_, service_instance_);
   auto maybe_threadpool =
       CreateThreadpool("elastic", absl::base_internal::NumCPUs());
   if (!maybe_threadpool.ok()) {
@@ -512,17 +574,20 @@ absl::Status DistBenchEngine::ConnectToPeers() {
   }
 
   int num_targets = 0;
-  std::string my_name = absl::StrCat(service_name_, "/", service_instance_);
+  std::string my_name = GetInstanceName(
+      traffic_config_.services(service_index_map_[service_name_]),
+      service_instance_);
   for (const auto& service : service_map_.service_endpoints()) {
     auto it = service_instance_ids.find(service.first);
     CHECK(it != service_instance_ids.end());
     int peer_trace_id = it->second;
     std::vector<std::string> service_and_instance =
         absl::StrSplit(service.first, '/');
-    CHECK_EQ(service_and_instance.size(), 2ul);
+    CHECK_GE(service_and_instance.size(), 2ul);
     auto& service_type = service_and_instance[0];
-    int instance;
-    CHECK(absl::SimpleAtoi(service_and_instance[1], &instance));
+    int instance = GetInstanceFromGridIndex(
+        traffic_config_.services(service_index_map_[service_type]),
+        GetGridIndexFromName(service.first));
     if (service.first == my_name) {
       trace_id_ = peer_trace_id;
     }
@@ -577,7 +642,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       }
     }
   }
-  CHECK(rpc_count == num_targets);
+  CHECK_EQ(rpc_count, num_targets);
   while (rpc_count) {
     bool ok;
     void* tag;
@@ -1448,6 +1513,127 @@ void DistBenchEngine::RunRpcActionIteration(
   }
 }
 
+std::vector<int> DistBenchEngine::PickLinearTargets(
+    FanoutFilter filter, int distance, const ServiceSpec& peer_service) {
+  int x = grid_index_.x;
+  int y = grid_index_.y;
+  int z = grid_index_.z;
+  switch (filter) {
+    case kLinearX:
+      x += distance;
+      break;
+
+    case kLinearY:
+      y += distance;
+      break;
+
+    case kLinearZ:
+      z += distance;
+      break;
+
+    default:
+      break;
+  }
+  if (x < 0 || y < 0 || z < 0) {
+    return {};
+  }
+  if (x >= peer_service.x_size() || y >= peer_service.y_size() ||
+      z >= peer_service.z_size()) {
+    return {};
+  }
+  return {x + y * peer_service.x_size() +
+          z * peer_service.x_size() * peer_service.y_size()};
+}
+
+std::vector<int> DistBenchEngine::PickRingTargets(
+    FanoutFilter filter, const ServiceSpec& peer_service) {
+  int x = grid_index_.x + peer_service.x_size();
+  int y = grid_index_.y + peer_service.y_size();
+  int z = grid_index_.z + peer_service.z_size();
+  switch (filter) {
+    case kRingX:
+      x++;
+      break;
+
+    case kRingY:
+      y++;
+      break;
+
+    case kRingZ:
+      z++;
+      break;
+
+    case kAlternatingRingX:
+      if (grid_index_.y & 0x1) {
+        x--;
+      } else {
+        x++;
+      }
+      break;
+
+    case kAlternatingRingY:
+      if (grid_index_.x & 0x1) {
+        y--;
+      } else {
+        y++;
+      }
+      break;
+
+    case kAlternatingRingZ:
+      if (grid_index_.x & 0x1) {
+        z--;
+      } else {
+        z++;
+      }
+      break;
+
+    default:
+      break;
+  }
+  x %= peer_service.x_size();
+  y %= peer_service.y_size();
+  z %= peer_service.z_size();
+  return {x + y * peer_service.x_size() +
+          z * peer_service.x_size() * peer_service.y_size()};
+}
+
+std::vector<int> DistBenchEngine::PickGridTargets(
+    FanoutFilter filter, const ServiceSpec& peer_service) {
+  int x_size = peer_service.x_size();
+  int y_size = peer_service.y_size();
+  int z_size = peer_service.z_size();
+  int x_start = 0;
+  int y_start = 0;
+  int z_start = 0;
+  int x_end = x_size;
+  int y_end = y_size;
+  int z_end = z_size;
+  if (filter & kSameX) {
+    x_start = grid_index_.x;
+    x_end = x_start + 1;
+  }
+  if (filter & kSameY) {
+    y_start = grid_index_.y;
+    y_end = y_start + 1;
+  }
+  if (filter & kSameZ) {
+    z_start = grid_index_.z;
+    z_end = z_start + 1;
+  }
+  std::vector<int> ret;
+  size_t ret_size = (x_end - x_start) * (y_end - y_start) * (z_end - z_start);
+  ret.reserve(ret_size);
+  for (int i = x_start; i < x_end; ++i) {
+    for (int j = y_start; j < y_end; ++j) {
+      for (int k = z_start; k < z_end; ++k) {
+        int target = i + j * x_size + k * x_size * y_size;
+        ret.push_back(target);
+      }
+    }
+  }
+  return ret;
+}
+
 // Return a vector of service instances, which have to be translated to
 // protocol_drivers endpoint ids by the caller.
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
@@ -1466,6 +1652,36 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
       // Default case: return the first instance of the service
       targets.reserve(1);
       targets.push_back(0);
+      break;
+
+    case kAll:
+    case kSameX:
+    case kSameY:
+    case kSameZ:
+    case kSameXY:
+    case kSameXZ:
+    case kSameYZ:
+    case kSameXYZ:
+      targets =
+          PickGridTargets(rpc_def.fanout_filter, rpc_def.server_service_spec);
+      break;
+
+    case kLinearX:
+    case kLinearY:
+    case kLinearZ:
+      targets = PickLinearTargets(rpc_def.fanout_filter,
+                                  rpc_def.fanout_filter_distance,
+                                  rpc_def.server_service_spec);
+      break;
+
+    case kRingX:
+    case kRingY:
+    case kRingZ:
+    case kAlternatingRingX:
+    case kAlternatingRingY:
+    case kAlternatingRingZ:
+      targets =
+          PickRingTargets(rpc_def.fanout_filter, rpc_def.server_service_spec);
       break;
 
     case kRandomSingle:
@@ -1498,15 +1714,6 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
       }
       break;
 
-    case kAll:
-      targets.reserve(num_servers);
-      for (int target = 0; target < num_servers; ++target) {
-        if (!exclude_self || target != service_instance_) {
-          targets.push_back(target);
-        }
-      }
-      break;
-
     case kStochastic:
       int nb_targets = 0;
       float random_val = absl::Uniform(random_generator, 0, 1.0);
@@ -1518,6 +1725,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
           break;
         }
       }
+
       if (nb_targets > num_servers) {
         nb_targets = num_servers;
       }
@@ -1533,6 +1741,36 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
       targets.resize(nb_targets);
       break;
   }
+
+  // PickGridTargets may include our local Grid ID, which is fine for RPCs
+  // between services, but intra-service RPCs should not send to themselves.
+  if (exclude_self) {
+    targets.erase(
+        std::remove(targets.begin(), targets.end(), service_instance_),
+        targets.end());
+  }
+
+#if 0  // disabled for now, due to breaking unit tests
+  if (rpc_def.fanout_filter != kStochastic) {
+    if (exclude_self) {
+      // This gives each node a unique order in which it sends RPCs to its peers.
+      // otherwise node zero would get incoming requests all at once, while node
+      // N-1 would get none for the begining of a burst. In general, node N will
+      // start by sending to nodes N + 1, N + 2, N + 3, before wrapping around to
+      // nodes 0, 1, 2, and ending at node N - 1.
+      auto comp = [&](int a, int b) {
+        a += num_servers - service_instance_;
+        b += num_servers - service_instance_;
+        return (a % num_servers) < (b % num_servers);
+      };
+      std::sort(targets.begin(), targets.end(), comp);
+    } else {
+      // Try to avoid hot spots in the destination service by randomizing the
+      // order of the instances we will send RPCs to:
+      std::shuffle(targets.begin(), targets.end(), *action_state->rand_gen);
+    }
+  }
+#endif
 
   return targets;
 }

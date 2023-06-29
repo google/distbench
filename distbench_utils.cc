@@ -69,12 +69,6 @@ void InitLibs(const char* argv0) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
-std::string ServiceInstanceName(std::string_view service_type, int instance) {
-  CHECK(!service_type.empty());
-  CHECK_GE(instance, 0);
-  return absl::StrCat(service_type, "/", instance);
-}
-
 std::map<std::string, int> EnumerateServiceTypes(
     const DistributedSystemDescription& config) {
   std::map<std::string, int> ret;
@@ -109,7 +103,7 @@ std::map<std::string, int> EnumerateServiceInstanceIds(
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
     for (int i = 0; i < service.count(); ++i) {
-      std::string instance = ServiceInstanceName(service.name(), i);
+      std::string instance = GetInstanceName(service, i);
       // LOG(INFO) << "service " << instance << " = " << ret.size();
       ret[instance] = ret.size();
     }
@@ -635,6 +629,132 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
   }
 
   return canonical_config;
+}
+
+absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
+    const ServiceSpec& service_spec) {
+  int xyz_size = 1;
+  ServiceSpec ret = service_spec;
+  if (service_spec.has_x_size()) {
+    if (service_spec.x_size() <= 0) {
+      return absl::InvalidArgumentError("x_size must be positive");
+    }
+    xyz_size *= service_spec.x_size();
+    if (service_spec.has_y_size()) {
+      if (service_spec.y_size() <= 0) {
+        return absl::InvalidArgumentError("y_size must be positive");
+      }
+      xyz_size *= service_spec.y_size();
+      if (service_spec.has_z_size()) {
+        if (service_spec.z_size() <= 0) {
+          return absl::InvalidArgumentError("z_size must be positive");
+        }
+        xyz_size *= service_spec.z_size();
+      }
+    } else {
+      if (service_spec.has_z_size()) {
+        return absl::InvalidArgumentError(
+            "z_size cannot be specified without y_size.");
+      }
+    }
+    if (service_spec.has_count()) {
+      if (service_spec.count() != xyz_size) {
+        return absl::InvalidArgumentError("count does not match x/y/z size");
+      }
+    } else {
+      ret.set_count(xyz_size);
+    }
+  } else {
+    ret.set_x_size(service_spec.count());
+    if (service_spec.has_y_size()) {
+      return absl::InvalidArgumentError(
+          "y_size cannot be specified without x_size.");
+    }
+    if (service_spec.has_z_size()) {
+      return absl::InvalidArgumentError(
+          "z_size cannot be specified without x_size and y_size.");
+    }
+  }
+  LOG(INFO) << ret.DebugString();
+  return ret;
+}
+
+GridIndex GetGridIndexFromName(std::string_view name) {
+  std::string_view name_view = name;
+  size_t prefix_length = name_view.find_first_of("/");
+  if (prefix_length != std::string::npos) {
+    name_view.remove_prefix(prefix_length + 1);
+  }
+  GridIndex ret = {0, 0, 0};
+  if (!sscanf(name_view.data(), "%d/%d/%d", &ret.x, &ret.y, &ret.z)) {
+    LOG(INFO) << name_view;
+    LOG(FATAL) << "could not read index from " << name;
+  }
+  return ret;
+}
+
+int GetInstanceFromGridIndex(const distbench::ServiceSpec& service_spec,
+                             GridIndex index) {
+  return index.x + index.y * service_spec.x_size() +
+         index.z * service_spec.x_size() * service_spec.y_size();
+}
+
+GridIndex GetServiceIndex(const ServiceSpec& service_spec, int instance) {
+  GridIndex ret = {instance, 0, 0};
+  if (service_spec.has_x_size()) {
+    ret.x = instance % service_spec.x_size();
+    if (service_spec.has_y_size()) {
+      ret.y = (instance / service_spec.x_size()) % service_spec.y_size();
+      if (service_spec.has_z_size()) {
+        ret.z = (instance / service_spec.x_size()) / service_spec.y_size();
+      }
+    }
+  }
+  return ret;
+}
+
+std::string GetInstanceName(const ServiceSpec& service_spec, int instance) {
+  if (!service_spec.has_x_size()) {
+    return absl::StrCat(service_spec.name(), "/", instance);
+  }
+  GridIndex index = GetServiceIndex(service_spec, instance);
+  if (service_spec.has_z_size()) {
+    return absl::StrCat(service_spec.name(), "/", index.x, "/", index.y, "/",
+                        index.z);
+  }
+  if (service_spec.has_y_size()) {
+    return absl::StrCat(service_spec.name(), "/", index.x, "/", index.y);
+  }
+  return absl::StrCat(service_spec.name(), "/", index.x);
+}
+
+absl::StatusOr<DistributedSystemDescription>
+GetCanonicalDistributedSystemDescription(
+    const DistributedSystemDescription& traffic_config) {
+  DistributedSystemDescription ret = traffic_config;
+  ret.clear_services();
+  for (const auto& service : traffic_config.services()) {
+    auto maybe_service = GetCanonicalServiceSpec(service);
+    if (!maybe_service.ok()) {
+      return maybe_service.status();
+    }
+    *ret.add_services() = maybe_service.value();
+  }
+  return ret;
+}
+
+absl::StatusOr<TestSequence> GetCanonicalTestSequence(
+    const TestSequence& sequence) {
+  TestSequence ret;
+  *ret.mutable_tests_setting() = sequence.tests_setting();
+  for (const auto& test : sequence.tests()) {
+    auto maybe_test = GetCanonicalDistributedSystemDescription(test);
+    if (!maybe_test.ok()) {
+      return maybe_test.status();
+    }
+    *ret.add_tests() = maybe_test.value();
+  }
+  return ret;
 }
 
 }  // namespace distbench
