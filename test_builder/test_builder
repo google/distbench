@@ -879,13 +879,17 @@ function clique_traffic_pattern_setup() {
   set_parameter_default rpc_interval_us 16000
   set_parameter_default node_count 10
   set_parameter_default synchronization_mode sync_burst "sync_burst sync_burst_spread"
+  set_parameter_default request_size 1024
+  set_parameter_default response_size 1024
+  local REQUEST_SIZE="${params_dict[request_size]}"
+  local RESPONSE_SIZE="${params_dict[response_size]}"
   local RPC_INTERVAL_US="${params_dict[rpc_interval_us]}"
   local NODE_COUNT="${params_dict[node_count]}"
   validate_integer 100 RPC_INTERVAL_US
   validate_integer 2 NODE_COUNT
   local SYNCHRONIZATION_MODE="${params_dict[synchronization_mode]}"
   local TRAFFIC_ALIAS="clique_"
-  TRAFFIC_ALIAS+="${SYNCHRONIZATION_MODE}_${NODE_COUNT}x${RPC_INTERVAL_US}"
+  TRAFFIC_ALIAS+="${SYNCHRONIZATION_MODE}_${NODE_COUNT}x${RPC_INTERVAL_US}x${REQUEST_SIZE}x${RESPONSE_SIZE}"
   local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
   params_dict[traffic_pattern]="clique"
   params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
@@ -912,11 +916,11 @@ function clique_traffic_pattern_setup() {
   }
   payload_descriptions {
     name: 'request_payload'
-    size: 1024
+    size: ${REQUEST_SIZE}
   }
   payload_descriptions {
     name: 'response_payload'
-    size: 1024
+    size: ${RESPONSE_SIZE}
   }
   rpc_descriptions {
     name: 'clique_query'
