@@ -3,6 +3,7 @@ import distbench_pb2
 import traffic_config_pb2
 import os
 import argparse
+import numpy as np
 
 # This a script to process the results from the distbench results proto format
 # with the purpose of putting the results into a text file
@@ -35,6 +36,40 @@ class DefaultFormatter(Formatter):
             output_str += "{: <15} {: <15}\n".format("Request_size", "Latency_ns")
         for item in summary:
             output_str += ("{: <15} {: <15}\n".format(item[0], item[1]))
+        return output_str
+
+class Statisticformatter(Formatter):
+    # this function takes a list of rpc and converts them into an intermediate format
+    def summarize(self, rpc_list):
+        summary = []
+        for rpc in rpc_list:
+            if(self.consider_warmups or not rpc.warmup):
+                summary.append(tuple([rpc.request_size, rpc.latency_ns]))
+        return summary
+
+    # this function takes datasets in the intermediate format, possibly a concatenation
+    # of high level summaries, and converts them into a string which can be written into a file
+    def format_file(self, summary):
+        buckets = {}
+        line_template = "{: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <15}\n"
+        output_str = ""
+        stats_list=[]
+        if(not self.supress_header):
+            output_str += line_template.format("Request_size", "N", "min", "50%", "90%", "99%"\
+                                               , "99.99%", "max")
+        for item in summary:
+            if(item[0] in buckets.keys()):
+                buckets[item[0]].append(item[1])
+            else:
+                buckets[item[0]] = [item[1]]
+        for request_size, latencies in buckets.items():
+            stats_list.append(tuple([request_size, len(latencies), np.round(np.min(latencies), 2)\
+                           , np.round(np.percentile(latencies, 50), 2), np.round(np.percentile(latencies, 90), 2)\
+                           , np.round(np.percentile(latencies, 99), 2), np.round(np.percentile(latencies, 99.99), 2)\
+                            , np.max(latencies)]))
+        for stats in stats_list:
+            output_str += line_template.format(stats[0], stats[1], stats[2], stats[3], stats[4]\
+                                               , stats[5], stats[6], stats[7])
         return output_str
 
 class TestProcessor:
@@ -244,6 +279,8 @@ if __name__ == "__main__":
     consider_warmups = args.consider_warmups
     if(output_format == "default"):
         formatter = DefaultFormatter(supress_header, consider_warmups)
+    elif(output_format == "statistics"):
+        formatter = Statisticformatter(supress_header, consider_warmups)
     else:
         print("Output format %s not supported" % output_format)
         exit()
