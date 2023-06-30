@@ -80,7 +80,13 @@ class DistBenchEngine : public ConnectionSetup::Service {
     kSameXZ = kSameX | kSameZ,
     kSameYZ = kSameY | kSameZ,
     kSameXYZ = kSameX | kSameY | kSameZ,
-    kRandomSingle = kSameXYZ + 1,
+    kRingX,
+    kRingY,
+    kRingZ,
+    kAlternatingRingX,
+    kAlternatingRingY,
+    kAlternatingRingZ,
+    kRandomSingle,
     kRoundRobin,
     kStochastic,
   };
@@ -291,6 +297,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<ActionListTableEntry> action_lists_;
 
   std::vector<int> PickRankTargets(FanoutFilter filter, const ServiceSpec&  peer_service);
+  std::vector<int> PickRingTargets(FanoutFilter filter, const ServiceSpec&  peer_service);
 
   absl::Status ConnectToPeers();
   std::function<void()> RpcHandler(ServerRpcState* state);

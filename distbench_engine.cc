@@ -149,6 +149,12 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
     {"same_xz", kSameXZ},
     {"same_yz", kSameYZ},
     {"same_xyz", kSameXYZ},
+    {"ring_x", kRingX},
+    {"ring_y", kRingY},
+    {"ring_z", kRingZ},
+    {"alternating_ring_x", kAlternatingRingX},
+    {"alternating_ring_y", kAlternatingRingY},
+    {"alternating_ring_z", kAlternatingRingZ},
   };
 
   auto it = fanout_map.find(fanout_filter);
@@ -1463,6 +1469,57 @@ void DistBenchEngine::RunRpcActionIteration(
   }
 }
 
+std::vector<int> DistBenchEngine::PickRingTargets(
+    FanoutFilter filter, const ServiceSpec& peer_service) {
+  int x = ranks_.x + peer_service.x_size();
+  int y = ranks_.y + peer_service.y_size();
+  int z = ranks_.z + peer_service.z_size();
+  switch(filter) {
+    case kRingX:
+      x++;
+      break;
+
+    case kRingY:
+      y++;
+      break;
+
+    case kRingZ:
+      z++;
+      break;
+
+    case kAlternatingRingX:
+      if (ranks_.y & 0x1) {
+        x--;
+      } else {
+        x++;
+      }
+      break;
+
+    case kAlternatingRingY:
+      if (ranks_.x & 0x1) {
+        y--;
+      } else {
+        y++;
+      }
+      break;
+
+    case kAlternatingRingZ:
+      if (ranks_.x & 0x1) {
+        z--;
+      } else {
+        z++;
+      }
+      break;
+
+    default:
+      break;
+  }
+  x %= peer_service.x_size();
+  y %= peer_service.y_size();
+  z %= peer_service.z_size();
+  return {x + y * peer_service.x_size() + z * peer_service.x_size() * peer_service.y_size()};
+}
+
 std::vector<int> DistBenchEngine::PickRankTargets(
     FanoutFilter filter, const ServiceSpec& peer_service) {
   int x_size = peer_service.x_size();
@@ -1486,18 +1543,30 @@ std::vector<int> DistBenchEngine::PickRankTargets(
     z_start = ranks_.z;
     z_end = z_start + 1;
   }
+  std::vector<int> half_ret;
   std::vector<int> ret;
-  ret.reserve((x_end - x_start) * (y_end - y_start) * (z_end - z_start));
+  size_t ret_size = (x_end - x_start) * (y_end - y_start) * (z_end - z_start);
+  ret.reserve(ret_size);
   for (int i = x_start; i < x_end; ++i) {
     for (int j = y_start; j < y_end; ++j) {
       for (int k = z_start; k < z_end; ++k) {
         int target = i + j * x_size + k * x_size * y_size;
-        if (target != service_instance_) {
-          ret.push_back(i + j * x_size + k * x_size * y_size);
+        if (target == service_instance_) {
+          half_ret = std::move(ret);
+          ret.clear();
+          ret.reserve(ret_size);
+        } else {
+          ret.push_back(target);
         }
       }
     }
   }
+  // This gives each node a unique order in which it sends RPCs to its peers.
+  // otherwise node zero would get incoming requests all at once, while node
+  // N-1 would get none for the begining of a burst. In general, node N will
+  // start by sending to nodes N + 1, N + 2, N + 3, before wrapping around to 
+  // nodes 0, 1, 2, and ending at node N - 1.
+  ret.insert(ret.end(), half_ret.begin(), half_ret.end());
   return ret;
 }
 
@@ -1525,6 +1594,15 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     case kSameYZ:
     case kSameXYZ:
     targets = PickRankTargets(rpc_def.fanout_filter, rpc_def.server_service_spec);
+      break;
+
+    case kRingX:
+    case kRingY:
+    case kRingZ:
+    case kAlternatingRingX:
+    case kAlternatingRingY:
+    case kAlternatingRingZ:
+    targets = PickRingTargets(rpc_def.fanout_filter, rpc_def.server_service_spec);
       break;
 
     case kRandomSingle:
