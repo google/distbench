@@ -51,7 +51,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status Initialize(
       const DistributedSystemDescription& global_description,
       std::string_view control_plane_device, std::string_view service_name,
-      int service_instance, int* port);
+      InstanceRanks service_instance_ranks, int* port);
 
   absl::Status ConfigurePeers(const ServiceEndpointMap& peers);
   absl::Status RunTraffic(const RunTrafficRequest* request);

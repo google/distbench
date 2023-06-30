@@ -459,14 +459,15 @@ absl::Status DistBenchEngine::InitializeTables() {
 absl::Status DistBenchEngine::Initialize(
     const DistributedSystemDescription& global_description,
     std::string_view control_plane_device, std::string_view service_name,
-    int service_instance, int* port) {
+    InstanceRanks service_instance_ranks, int* port) {
   traffic_config_ = global_description;
   CHECK(!service_name.empty());
   service_name_ = service_name;
+  ranks_ = service_instance_ranks;
   auto maybe_service_spec = GetServiceSpec(service_name, global_description);
   if (!maybe_service_spec.ok()) return maybe_service_spec.status();
   service_spec_ = maybe_service_spec.value();
-  service_instance_ = service_instance;
+  service_instance_ = GetLinearServiceInstanceFromRanks(service_spec_, service_instance_ranks);
 
   engine_name_ = GetServiceInstanceName(service_spec_, service_instance_);
   auto maybe_threadpool =
@@ -476,7 +477,6 @@ absl::Status DistBenchEngine::Initialize(
   }
   thread_pool_ = std::move(maybe_threadpool.value());
 
-  ranks_ = GetServiceInstanceRanks(service_spec_, service_instance_);
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
   service_index_ = service_index_map_[service_name_];

@@ -164,6 +164,10 @@ InstanceRanks GetServiceInstanceRanks(
 
 std::string GetServiceInstanceName(const distbench::ServiceSpec& service_spec, int instance);
 
+InstanceRanks GetServiceInstanceRanksFromName(std::string_view name);
+
+int GetLinearServiceInstanceFromRanks(const distbench::ServiceSpec& service_spec, InstanceRanks ranks);
+
 absl::StatusOr<distbench::ServiceSpec> GetCanonicalServiceSpec(
     const distbench::ServiceSpec& service_spec);
 

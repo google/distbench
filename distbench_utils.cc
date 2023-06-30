@@ -680,6 +680,31 @@ absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
   return ret;
 }
 
+InstanceRanks GetServiceInstanceRanksFromName(std::string_view name) {
+  std::string_view name_view = name;
+  size_t prefix_length = name_view.find_first_of("(");
+  if (prefix_length != std::string::npos) {
+    name_view.remove_prefix(prefix_length + 1);
+  }
+  prefix_length = name_view.find_first_of("/");
+  if (prefix_length != std::string::npos) {
+    name_view.remove_prefix(prefix_length + 1);
+  }
+  InstanceRanks ret = {0, 0, 0};
+  if (!sscanf(name_view.data(), "%d,%d,%d", &ret.x, &ret.y, &ret.z)) {
+    LOG(INFO) << name_view;
+    LOG(FATAL) << "could not read ranks from " << name;
+  }
+  return ret;
+}
+
+int GetLinearServiceInstanceFromRanks(const distbench::ServiceSpec& service_spec, InstanceRanks ranks) {
+  int instance = ranks.x +
+                 ranks.y * service_spec.x_size() +
+                 ranks.z * service_spec.x_size() * service_spec.y_size();
+  return instance;
+}
+
 InstanceRanks GetServiceInstanceRanks(const ServiceSpec& service_spec,
                                       int instance) {
   InstanceRanks ranks = {instance, 0, 0};

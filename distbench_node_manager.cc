@@ -60,14 +60,11 @@ grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
         absl::StrSplit(service_name, '/');
     CHECK_EQ(service_instance.size(), 2lu);
 
-    int instance;
-    CHECK(absl::SimpleAtoi(service_instance[1], &instance));
-
     int port = 0;
     const ServiceOpts service_options = {
         .service_name = service_name,
         .service_type = service_instance[0],
-        .service_instance = instance,
+        .service_instance_ranks = GetServiceInstanceRanksFromName(service_name),
         .port = &port,
         .protocol = traffic_config_.default_protocol(),
         .netdev_name = opts_.default_data_plane_device};
@@ -135,7 +132,7 @@ absl::Status NodeManager::AllocService(const ServiceOpts& service_opts) {
   auto engine = std::make_unique<DistBenchEngine>(std::move(maybe_pd.value()));
   absl::Status ret = engine->Initialize(
       traffic_config_, opts_.control_plane_device, service_opts.service_type,
-      service_opts.service_instance, service_opts.port);
+      service_opts.service_instance_ranks, service_opts.port);
   if (!ret.ok()) return ret;
 
   service_engines_[std::string(service_opts.service_name)] = std::move(engine);
