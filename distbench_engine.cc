@@ -1491,7 +1491,10 @@ std::vector<int> DistBenchEngine::PickRankTargets(
   for (int i = x_start; i < x_end; ++i) {
     for (int j = y_start; j < y_end; ++j) {
       for (int k = z_start; k < z_end; ++k) {
-        ret.push_back(i + j * x_size + k * x_size * y_size);
+        int target = i + j * x_size + k * x_size * y_size;
+        if (target != service_instance_) {
+          ret.push_back(i + j * x_size + k * x_size * y_size);
+        }
       }
     }
   }
@@ -1537,8 +1540,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
 
     case kAll:
       targets.reserve(num_servers);
-      for (int i = 0; i < num_servers; ++i) {
-        int target = i;
+      for (int target = 0; target < num_servers; ++target) {
         if (action_state->rpc_service_index != service_index_ ||
             target != service_instance_) {
           CHECK_NE(target, -1);

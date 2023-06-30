@@ -931,7 +931,7 @@ function clique_traffic_pattern_setup() {
     name: 'clique_query'
     client: 'clique'
     server: 'clique'
-    fanout_filter: 'all'
+    fanout_filter: 'same_x'
     request_payload_name: 'request_payload'
     response_payload_name: 'response_payload'
   }
