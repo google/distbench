@@ -297,6 +297,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::unique_ptr<ProtocolDriver> pd_;
   std::thread engine_main_thread_;
   std::string engine_name_;
+  std::map<std::string, int> service_index_map_;
 
   // Payloads definitions
   std::map<std::string, PayloadSpec> payload_map_;

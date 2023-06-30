@@ -278,6 +278,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 }
 
 absl::Status DistBenchEngine::InitializeTables() {
+  service_index_map_ = EnumerateServiceTypes(traffic_config_);
   absl::Status ret_init_payload = InitializePayloadsMap();
   if (!ret_init_payload.ok()) return ret_init_payload;
 
@@ -299,8 +300,6 @@ absl::Status DistBenchEngine::InitializeTables() {
   }
   std::map<std::string, int> rpc_name_index_map =
       EnumerateRpcs(traffic_config_);
-  std::map<std::string, int> service_index_map =
-      EnumerateServiceTypes(traffic_config_);
 
   std::map<std::string, int> action_list_index_map;
   action_lists_.resize(traffic_config_.action_lists().size());
@@ -338,8 +337,8 @@ absl::Status DistBenchEngine::InitializeTables() {
         action.rpc_index = it2->second;
         std::string target_service_name =
             traffic_config_.rpc_descriptions(action.rpc_index).server();
-        auto it3 = service_index_map.find(target_service_name);
-        if (it3 == service_index_map.end()) {
+        auto it3 = service_index_map_.find(target_service_name);
+        if (it3 == service_index_map_.end()) {
           return absl::NotFoundError(target_service_name);
         }
         action.rpc_service_index = it3->second;
@@ -420,14 +419,14 @@ absl::Status DistBenchEngine::InitializeTables() {
 
     server_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
 
-    auto it1 = service_index_map.find(server_service_name);
-    if (it1 == service_index_map.end()) {
+    auto it1 = service_index_map_.find(server_service_name);
+    if (it1 == service_index_map_.end()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Rpc ", rpc.name(), " specifies unknown server service_type ",
           server_service_name));
     }
-    auto it2 = service_index_map.find(client_service_name);
-    if (it2 == service_index_map.end()) {
+    auto it2 = service_index_map_.find(client_service_name);
+    if (it2 == service_index_map_.end()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Rpc ", rpc.name(), " specifies unknown client service_type ",
           client_service_name));
@@ -462,6 +461,7 @@ absl::Status DistBenchEngine::Initialize(
 
   absl::Status ret = InitializeTables();
   if (!ret.ok()) return ret;
+  service_index_ = service_index_map_[service_name_];
   actionlist_invocation_counts = std::make_unique<std::atomic<int>[]>(
       global_description.action_lists_size());
 
@@ -485,16 +485,6 @@ absl::Status DistBenchEngine::Initialize(
   LOG(INFO) << engine_name_ << ": Engine server listening on "
             << server_address;
 
-  std::map<std::string, int> services = EnumerateServiceTypes(traffic_config_);
-  auto it = services.find(service_name_);
-
-  if (it == services.end()) {
-    LOG(ERROR) << engine_name_
-               << ": could not find service to run: " << service_name_;
-    return absl::NotFoundError("Service not found in config.");
-  }
-
-  service_index_ = it->second;
   actionlist_error_dictionary_ = std::make_shared<ThreadSafeDictionary>();
   return absl::OkStatus();
 }
@@ -514,8 +504,6 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       EnumerateServiceSizes(traffic_config_);
   std::map<std::string, int> service_instance_ids =
       EnumerateServiceInstanceIds(traffic_config_);
-  std::map<std::string, int> service_index_map =
-      EnumerateServiceTypes(traffic_config_);
 
   // peers_[service_id][instance_id]
   peers_.resize(traffic_config_.services_size());
@@ -538,8 +526,8 @@ absl::Status DistBenchEngine::ConnectToPeers() {
     if (service.first == my_name) {
       trace_id_ = peer_trace_id;
     }
-    auto it2 = service_index_map.find(service_type);
-    CHECK(it2 != service_index_map.end());
+    auto it2 = service_index_map_.find(service_type);
+    CHECK(it2 != service_index_map_.end());
     int service_id = it2->second;
     peers_[service_id][instance].log_name = service.first;
     peers_[service_id][instance].trace_id = peer_trace_id;
