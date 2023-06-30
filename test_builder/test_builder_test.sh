@@ -15,6 +15,11 @@ function compare_golden_file() {
 test_builder/test_builder -h
 
 cd "./test_builder/test_builder_golden_configs"
+for config in *; do
+  echo checking ${config}
+  ../../distbench check_test --infile $PWD/${config}
+done
+
 for f in *; do
   echo Comparing against "$f":
   if compare_golden_file "$f"; then
