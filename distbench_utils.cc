@@ -69,12 +69,6 @@ void InitLibs(const char* argv0) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
-std::string ServiceInstanceName(std::string_view service_type, int instance) {
-  CHECK(!service_type.empty());
-  CHECK_GE(instance, 0);
-  return absl::StrCat(service_type, "/", instance);
-}
-
 std::map<std::string, int> EnumerateServiceTypes(
     const DistributedSystemDescription& config) {
   std::map<std::string, int> ret;
@@ -109,7 +103,7 @@ std::map<std::string, int> EnumerateServiceInstanceIds(
   std::map<std::string, int> ret;
   for (const auto& service : config.services()) {
     for (int i = 0; i < service.count(); ++i) {
-      std::string instance = ServiceInstanceName(service.name(), i);
+      std::string instance = GetServiceInstanceName(service, i);
       // LOG(INFO) << "service " << instance << " = " << ret.size();
       ret[instance] = ret.size();
     }

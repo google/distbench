@@ -60,7 +60,6 @@ grpc::ChannelArguments DistbenchCustomChannelArguments();
 std::shared_ptr<grpc::ChannelCredentials> MakeChannelCredentials();
 std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials();
 
-std::string ServiceInstanceName(std::string_view service_type, int instance);
 std::map<std::string, int> EnumerateServiceSizes(
     const DistributedSystemDescription& config);
 std::map<std::string, int> EnumerateServiceInstanceIds(

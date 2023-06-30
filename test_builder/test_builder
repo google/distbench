@@ -879,8 +879,8 @@ function clique_traffic_pattern_setup() {
   local -i TEST_DURATION="${params_dict[test_duration]}"
   params_dict[test_timeout]="$((TEST_DURATION + RESULTS_COLLECTION_TIMEOUT))"
 
-  set_parameter_default rpc_interval_us 16000
-  set_parameter_default node_count 10
+  set_parameter_default rpc_interval_us 100000
+  set_parameter_default node_count 6
   set_parameter_default synchronization_mode sync_burst "sync_burst sync_burst_spread"
   set_parameter_default request_size 1024
   set_parameter_default response_size 1024
@@ -902,6 +902,8 @@ function clique_traffic_pattern_setup() {
   services {
     name: 'clique'
     count: ${NODE_COUNT}
+    x_size: 2
+    y_size: 3
   }
   action_lists {
     name: 'clique'

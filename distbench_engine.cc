@@ -530,17 +530,18 @@ absl::Status DistBenchEngine::ConnectToPeers() {
   }
 
   int num_targets = 0;
-  std::string my_name = absl::StrCat(service_name_, "/", service_instance_);
+  std::string my_name = GetServiceInstanceName(traffic_config_.services(service_index_map_[service_name_]), service_instance_);
   for (const auto& service : service_map_.service_endpoints()) {
     auto it = service_instance_ids.find(service.first);
-    CHECK(it != service_instance_ids.end());
+    CHECK(it != service_instance_ids.end()) << my_name;
     int peer_trace_id = it->second;
     std::vector<std::string> service_and_instance =
         absl::StrSplit(service.first, '/');
     CHECK_EQ(service_and_instance.size(), 2ul);
     auto& service_type = service_and_instance[0];
-    int instance;
-    CHECK(absl::SimpleAtoi(service_and_instance[1], &instance));
+    int instance = GetLinearServiceInstanceFromRanks(
+        traffic_config_.services(service_index_map_[service_type]),
+        GetServiceInstanceRanksFromName(service.first));
     if (service.first == my_name) {
       trace_id_ = peer_trace_id;
     }
