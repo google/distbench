@@ -38,7 +38,7 @@ class DefaultFormatter(Formatter):
             output_str += ("{: <15} {: <15}\n".format(item[0], item[1]))
         return output_str
 
-class Statisticformatter(Formatter):
+class StatisticFormatter(Formatter):
     # this function takes a list of rpc and converts them into an intermediate format
     def summarize(self, rpc_list):
         summary = []
@@ -70,6 +70,32 @@ class Statisticformatter(Formatter):
         for stats in stats_list:
             output_str += line_template.format(stats[0], stats[1], stats[2], stats[3], stats[4]\
                                                , stats[5], stats[6], stats[7])
+        return output_str
+
+class TraceContextFormatter(Formatter):
+
+    def summarize(self, rpc_list):
+        summary = []
+        for rpc in rpc_list:
+            if(self.consider_warmups or not rpc.warmup):
+                if not rpc.HasField("trace_context"):
+                    continue
+                summary.append(tuple([rpc.trace_context.action_iterations[0], rpc.latency_ns]))
+        return summary
+
+    def format_file(self, summary):
+        # max_latency_map is a map where the keys are the action iteration numbers
+        # and the values are the longest latencies for each iteration.
+        max_latency_map = {}
+        line_template = "{: <15} {: <15}\n"
+        output_str = ""
+        if(not self.supress_header):
+            output_str += line_template.format("# of iteration", "Longest_latency")
+        for item in summary:
+            if (item[1] > max_latency_map.setdefault(item[0], item[1])):
+                max_latency_map[item[0]] = item[1]
+        for action_iteration, longest_latency in max_latency_map.items():
+            output_str += line_template.format(action_iteration, longest_latency)
         return output_str
 
 def enumerate_service_instances(service_proto):
@@ -265,7 +291,9 @@ if __name__ == "__main__":
     if(output_format == "default"):
         formatter = DefaultFormatter(supress_header, consider_warmups)
     elif(output_format == "statistics"):
-        formatter = Statisticformatter(supress_header, consider_warmups)
+        formatter = StatisticFormatter(supress_header, consider_warmups)
+    elif(output_format == "trace_context"):
+        formatter = TraceContextFormatter(supress_header, consider_warmups)
     else:
         print("Output format %s not supported" % output_format)
         exit()

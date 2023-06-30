@@ -19,7 +19,12 @@ readonly test3=( \
   "--output_format=statistics" \
 )
 
-tests=(test1 test2 test3)
+readonly test4=(  \
+  "trace_context_test/clique_sync_burst_10x16000x1024x1024-grpc_polling_inline.pb"  \
+  "--output_format=trace_context"  \
+)
+
+tests=(test1 test2 test3 test4)
 
 function custom_diff()
 {
