@@ -7,18 +7,32 @@ import argparse
 # This a script to process the results from the distbench results proto format
 # with the purpose of putting the results into a text file
 
-class DefaultFormatter:
+class Formatter:
+    def __init__(self, supress_header, consider_warmups):
+        self.supress_header = supress_header
+        self.consider_warmups = consider_warmups
+
+    def format_file(self) -> list:
+        pass
+
+    def summarize(self) -> str:
+        pass
+
+class DefaultFormatter(Formatter):
     # this function takes a list of rpc and converts them into an intermediate format
     def summarize(self, rpc_list):
         summary = []
         for rpc in rpc_list:
-            summary.append(tuple([rpc.request_size, rpc.latency_ns]))
+            if(self.consider_warmups or not rpc.warmup):
+                summary.append(tuple([rpc.request_size, rpc.latency_ns]))
         return summary
 
     # this function takes datasets in the intermediate format, possibly a concatenation
     # of high level summaries, and converts them into a string which can be written into a file
     def format_file(self, summary):
-        output_str = "{: <15} {: <15}\n".format("Request_size", "Latency_ns")
+        output_str = ""
+        if(not self.supress_header):
+            output_str += "{: <15} {: <15}\n".format("Request_size", "Latency_ns")
         for item in summary:
             output_str += ("{: <15} {: <15}\n".format(item[0], item[1]))
         return output_str
@@ -35,7 +49,6 @@ class TestProcessor:
         self.client_services = set()
         # rpcs list stores the names of the rpcs in the order the traffic config stores the rpcs
         self.rpc_names = []
-
         self.output_formatter = output_formatter
         # iterate through the services to get the cumber of instances per each one
         for service in self.test_proto_message.traffic_config.services:
@@ -220,13 +233,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_directory', type = str, required = True)
     parser.add_argument('--input_file', type = str, required = True)
-    parser.add_argument('--output_format', type = str, required = False)
+    parser.add_argument('--output_format', type = str, default = "default", required = False)
+    parser.add_argument('--supress_header', default=False, action='store_true', required = False)
+    parser.add_argument('--consider_warmups', default=False, action='store_true', required = False)
     args = parser.parse_args()
     directory = args.output_directory
     file_name = args.input_file
     output_format = args.output_format
-    if(output_format == None or output_format == "default"):
-        formatter = DefaultFormatter()
+    supress_header = args.supress_header
+    consider_warmups = args.consider_warmups
+    if(output_format == "default"):
+        formatter = DefaultFormatter(supress_header, consider_warmups)
     else:
         print("Output format %s not supported" % output_format)
         exit()
