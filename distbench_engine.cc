@@ -163,27 +163,65 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
     return absl::OkStatus();
   }
 
-  const std::string stochastic_keyword = "stochastic";
-  if (!absl::StartsWith(fanout_filter, stochastic_keyword)) {
+  size_t prefix_size = fanout_filter.find_first_of("{");
+  if (prefix_size == std::string::npos) {
     return absl::InvalidArgumentError(
         absl::StrCat("Unknown fanout_filter: ", fanout_filter));
   }
-  fanout_filter.erase(0, stochastic_keyword.length());
 
-  if (!absl::StartsWith(fanout_filter, "{")) {
+  std::string fanout_filter_params = fanout_filter.substr(prefix_size);
+  fanout_filter = fanout_filter.substr(0, prefix_size);
+
+  std::map<std::string, FanoutFilter> fanout_map2 = {
+    {"stochastic", kStochastic},
+    {"linear_x", kLinearX},
+    {"linear_y", kLinearY},
+    {"linear_z", kLinearZ},
+  };
+
+  it = fanout_map2.find(fanout_filter);
+  if (it == fanout_map2.end()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown fanout_filter: ", fanout_filter));
+  }
+
+  rpc_def.fanout_filter = it->second;
+
+  switch (rpc_def.fanout_filter) {
+    case kStochastic:
+      break;
+
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown fanout_filter: ", fanout_filter));
+      break;
+
+    case kLinearX:
+    case kLinearY:
+    case kLinearZ:
+      if (sscanf(fanout_filter_params.data(), "{%d}", &rpc_def.fanout_filter_distance)) {
+        return absl::OkStatus();
+      } else {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Could not parse parameter: ", fanout_filter_params));
+      }
+      break;
+  }
+
+  if (!absl::StartsWith(fanout_filter_params, "{")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should starts with stochastic{");
   }
-  fanout_filter.erase(0, 1);  // Consume the '{'
+  fanout_filter_params.erase(0, 1);  // Consume the '{'
 
-  if (!absl::EndsWith(fanout_filter, "}")) {
+  if (!absl::EndsWith(fanout_filter_params, "}")) {
     return absl::InvalidArgumentError(
         "Invalid stochastic filter; should ends with }");
   }
-  fanout_filter.pop_back();  // Consume the '}'
+  fanout_filter_params.pop_back();  // Consume the '}'
 
   float total_probability = 0.;
-  for (auto s : absl::StrSplit(fanout_filter, ',')) {
+  for (auto s : absl::StrSplit(fanout_filter_params, ',')) {
     std::vector<std::string> v = absl::StrSplit(s, ':');
     if (v.size() != 2) {
       return absl::InvalidArgumentError(
@@ -224,7 +262,6 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
         "Invalid stochastic filter; need at least a value pair");
   }
 
-  rpc_def.fanout_filter = kStochastic;
   return absl::OkStatus();
 }
 
@@ -1359,6 +1396,10 @@ void DistBenchEngine::RunRpcActionIteration(
   ActionState* action_state = iteration_state->action_state;
   // Pick the subset of the target service instances to fanout to:
   std::vector<int> current_targets = PickRpcFanoutTargets(action_state);
+  if (current_targets.empty()) {
+    FinishIteration(iteration_state);
+    return;
+  }
   iteration_state->rpc_states.resize(current_targets.size());
   iteration_state->remaining_rpcs = current_targets.size();
 
@@ -1467,6 +1508,35 @@ void DistBenchEngine::RunRpcActionIteration(
       CancelTraffic(absl::ResourceExhaustedError("Too many RPCs pending"));
     }
   }
+}
+
+std::vector<int> DistBenchEngine::PickLinearTargets(FanoutFilter filter, int distance, const ServiceSpec&  peer_service) {
+  int x = ranks_.x;
+  int y = ranks_.y;
+  int z = ranks_.z;
+  switch(filter) {
+    case kLinearX:
+      x += distance;
+      break;
+
+    case kLinearY:
+      y += distance;
+      break;
+
+    case kLinearZ:
+      z += distance;
+      break;
+
+    default:
+      break;
+  }
+  if (x < 0 || y < 0 || z < 0) {
+    return {};
+  }
+  if (x >= peer_service.x_size() || y >= peer_service.y_size() || z >= peer_service.z_size()) {
+    return {};
+  }
+  return {x + y * peer_service.x_size() + z * peer_service.x_size() * peer_service.y_size()};
 }
 
 std::vector<int> DistBenchEngine::PickRingTargets(
@@ -1594,6 +1664,12 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     case kSameYZ:
     case kSameXYZ:
     targets = PickRankTargets(rpc_def.fanout_filter, rpc_def.server_service_spec);
+      break;
+
+    case kLinearX:
+    case kLinearY:
+    case kLinearZ:
+      targets = PickLinearTargets(rpc_def.fanout_filter, rpc_def.fanout_filter_distance, rpc_def.server_service_spec);
       break;
 
     case kRingX:

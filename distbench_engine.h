@@ -86,6 +86,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
     kAlternatingRingX,
     kAlternatingRingY,
     kAlternatingRingZ,
+    kLinearX,
+    kLinearY,
+    kLinearZ,
     kRandomSingle,
     kRoundRobin,
     kStochastic,
@@ -99,6 +102,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     // Used to store decoded stochastic fanout
     FanoutFilter fanout_filter;
+    int fanout_filter_distance = 0;
     std::vector<StochasticDist> stochastic_dist;
 
     // Cached here for easy access, but these may not be used if
@@ -298,6 +302,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   std::vector<int> PickRankTargets(FanoutFilter filter, const ServiceSpec&  peer_service);
   std::vector<int> PickRingTargets(FanoutFilter filter, const ServiceSpec&  peer_service);
+  std::vector<int> PickLinearTargets(FanoutFilter filter, int distance, const ServiceSpec&  peer_service);
 
   absl::Status ConnectToPeers();
   std::function<void()> RpcHandler(ServerRpcState* state);
