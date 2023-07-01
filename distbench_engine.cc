@@ -1702,10 +1702,10 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     case kStochastic:
       int nb_targets = 0;
       float random_val = absl::Uniform(random_generator, 0, 1.0);
-      float cur_val = 0.0;
+      float current_val = 0.0;
       for (const auto& d : rpc_def.stochastic_dist) {
-        cur_val += d.probability;
-        if (random_val <= cur_val) {
+        current_val += d.probability;
+        if (random_val <= current_val) {
           nb_targets = d.nb_targets;
           break;
         }
