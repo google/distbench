@@ -160,6 +160,7 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   ASSERT_EQ(s2_0_echo->second.successful_rpc_samples_size(), 10);
 
   auto s2_1 = instance_results_it->second.peer_logs().find("s2/1");
+  LOG(INFO) << instance_results_it->second.DebugString();
   ASSERT_NE(s2_1, instance_results_it->second.peer_logs().end());
   auto s2_1_echo = s2_1->second.rpc_logs().find(0);
   ASSERT_NE(s2_1_echo, s2_1->second.rpc_logs().end());

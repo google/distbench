@@ -1397,6 +1397,7 @@ void DistBenchEngine::RunRpcActionIteration(
   // Pick the subset of the target service instances to fanout to:
   std::vector<int> current_targets = PickRpcFanoutTargets(action_state);
   if (current_targets.empty()) {
+    // LOG(INFO) << "targets is empty";
     FinishIteration(iteration_state);
     return;
   }
@@ -1595,6 +1596,7 @@ std::vector<int> DistBenchEngine::PickRankTargets(
   int x_size = peer_service.x_size();
   int y_size = peer_service.y_size();
   int z_size = peer_service.z_size();
+  // LOG(INFO) << "sizes : " << x_size << " " << y_size << " " << z_size;
   int x_start = 0;
   int y_start = 0;
   int z_start = 0;
@@ -1621,12 +1623,11 @@ std::vector<int> DistBenchEngine::PickRankTargets(
     for (int j = y_start; j < y_end; ++j) {
       for (int k = z_start; k < z_end; ++k) {
         int target = i + j * x_size + k * x_size * y_size;
+        ret.push_back(target);
         if (target == service_instance_) {
           half_ret = std::move(ret);
           ret.clear();
           ret.reserve(ret_size);
-        } else {
-          ret.push_back(target);
         }
       }
     }
@@ -1644,6 +1645,7 @@ std::vector<int> DistBenchEngine::PickRankTargets(
 // protocol_drivers endpoint ids by the caller.
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     ActionState* action_state) {
+  bool exclude_self = action_state->rpc_service_index == service_index_;
   const int rpc_index = action_state->rpc_index;
   const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
   std::vector<int> targets;
@@ -1656,6 +1658,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
       targets.push_back(0);
       break;
 
+    case kAll:
     case kSameX:
     case kSameY:
     case kSameZ:
@@ -1690,17 +1693,6 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
       targets.reserve(1);
       targets.push_back(client_rpc_table_[rpc_index].rpc_tracing_counter %
                         num_servers);
-      break;
-
-    case kAll:
-      targets.reserve(num_servers);
-      for (int target = 0; target < num_servers; ++target) {
-        if (action_state->rpc_service_index != service_index_ ||
-            target != service_instance_) {
-          CHECK_NE(target, -1);
-          targets.push_back(target);
-        }
-      }
       break;
 
     case kStochastic:
@@ -1739,6 +1731,11 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
         targets.push_back(target);
       }
       break;
+  }
+
+  if (exclude_self) {
+    targets.erase(std::remove(targets.begin(), targets.end(), service_instance_), targets.end());
+
   }
 
   return targets;

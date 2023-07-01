@@ -92,6 +92,7 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
 grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
                                             const TestSequence* request,
                                             TestSequenceResults* response) {
+  LOG(INFO) << "original request:\n" << request->DebugString();
   auto maybe_test_sequence = GetCanonicalTestSequence(*request);
   if (!maybe_test_sequence.ok()) {
       return grpc::Status(grpc::StatusCode::ABORTED,

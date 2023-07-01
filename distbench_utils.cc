@@ -633,6 +633,7 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
 absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
     const ServiceSpec& service_spec) {
   int xyz_size = 1;
+  ServiceSpec ret = service_spec;
   if (service_spec.has_x_size()) {
     if (service_spec.x_size() <= 0) {
       return absl::InvalidArgumentError("x_size must be positive");
@@ -655,7 +656,15 @@ absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
             "z_size cannot be specified without y_size.");
       }
     }
+    if (service_spec.has_count()) {
+      if (service_spec.count() != xyz_size) {
+        return absl::InvalidArgumentError("count does not match x/y/z size");
+      }
+    } else {
+      ret.set_count(xyz_size);
+    }
   } else {
+    ret.set_x_size(service_spec.count());
     if (service_spec.has_y_size()) {
       return absl::InvalidArgumentError(
           "y_size cannot be specified without x_size.");
@@ -665,12 +674,7 @@ absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
           "z_size cannot be specified without x_size and y_size.");
     }
   }
-  if (service_spec.has_count() && service_spec.has_x_size()
-      && service_spec.count() != xyz_size) {
-    return absl::InvalidArgumentError("count does not match x/y/z size");
-  }
-  ServiceSpec ret = service_spec;
-  ret.set_count(xyz_size);
+  LOG(INFO) << ret.DebugString();
   return ret;
 }
 
@@ -742,7 +746,7 @@ GetCanonicalDistributedSystemDescription(
     }
     *ret.add_services() = maybe_service.value();
   }
-  return traffic_config;
+  return ret;
 }
 
 
