@@ -195,8 +195,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
         iteration_function;
     std::function<void(void)> all_done_callback;
 
-    std::map<int, std::vector<int>> partially_randomized_vectors;
-
     std::unique_ptr<Activity> activity;
 
     // The 'rand_gen' must be used only from RunActionList's thread

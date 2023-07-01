@@ -1615,7 +1615,6 @@ std::vector<int> DistBenchEngine::PickRankTargets(
     z_start = ranks_.z;
     z_end = z_start + 1;
   }
-  std::vector<int> half_ret;
   std::vector<int> ret;
   size_t ret_size = (x_end - x_start) * (y_end - y_start) * (z_end - z_start);
   ret.reserve(ret_size);
@@ -1624,20 +1623,9 @@ std::vector<int> DistBenchEngine::PickRankTargets(
       for (int k = z_start; k < z_end; ++k) {
         int target = i + j * x_size + k * x_size * y_size;
         ret.push_back(target);
-        if (target == service_instance_) {
-          half_ret = std::move(ret);
-          ret.clear();
-          ret.reserve(ret_size);
-        }
       }
     }
   }
-  // This gives each node a unique order in which it sends RPCs to its peers.
-  // otherwise node zero would get incoming requests all at once, while node
-  // N-1 would get none for the begining of a burst. In general, node N will
-  // start by sending to nodes N + 1, N + 2, N + 3, before wrapping around to 
-  // nodes 0, 1, 2, and ending at node N - 1.
-  ret.insert(ret.end(), half_ret.begin(), half_ret.end());
   return ret;
 }
 
@@ -1686,19 +1674,32 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
 
     case kRandomSingle:
       targets.reserve(1);
-      targets.push_back(random() % num_servers);
+      if (exclude_self) {
+        int target = random() % (num_servers -1);
+        if (target == service_instance_) {
+          target = num_servers - 1;
+        }
+        targets.push_back(target);
+      } else {
+        targets.push_back(random() % num_servers);
+      }
       break;
 
     case kRoundRobin:
       targets.reserve(1);
-      targets.push_back(client_rpc_table_[rpc_index].rpc_tracing_counter %
-                        num_servers);
+      if (exclude_self) {
+        int target = client_rpc_table_[rpc_index].rpc_tracing_counter % (num_servers - 1);
+        if (target == service_instance_) {
+          target = num_servers - 1;
+        }
+        targets.push_back(target);
+      } else {
+        targets.push_back(client_rpc_table_[rpc_index].rpc_tracing_counter %
+                          num_servers);
+      }
       break;
 
     case kStochastic:
-      std::map<int, std::vector<int>> partial_rand_vects =
-          action_state->partially_randomized_vectors;
-
       int nb_targets = 0;
       float random_val = absl::Uniform(random_generator, 0, 1.0);
       float cur_val = 0.0;
@@ -1709,32 +1710,38 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
           break;
         }
       }
+
       if (nb_targets > num_servers) {
         nb_targets = num_servers;
       }
 
-      // Generate a vector to pick random targets from (only done once)
-      partial_rand_vects.try_emplace(num_servers, std::vector<int>());
-      std::vector<int>& from_vector = partial_rand_vects[num_servers];
-      if (from_vector.empty()) {
-        for (int i = 0; i < num_servers; i++) {
-          from_vector.push_back(i);
-        }
+      targets.reserve(num_servers);
+      std::iota(targets.begin(), targets.end(), 0);
+      if (exclude_self) {
+        targets.erase(std::remove(targets.begin(), targets.end(), service_instance_), targets.end());
       }
-
-      // Randomize and pick up to nb_targets
-      for (int i = 0; i < nb_targets; i++) {
-        int rnd_pos = i + (random() % (num_servers - i));
-        std::swap(from_vector[i], from_vector[rnd_pos]);
-        int target = from_vector[i];
-        CHECK_NE(target, -1);
-        targets.push_back(target);
-      }
+      std::shuffle(targets.begin(), targets.end(), *action_state->rand_gen);
+      targets.resize(nb_targets);
       break;
   }
 
   if (exclude_self) {
     targets.erase(std::remove(targets.begin(), targets.end(), service_instance_), targets.end());
+#if 0
+    // shuffle / shift the results conditionally.
+  std::vector<int> half_ret;
+        if (target == service_instance_) {
+          half_ret = std::move(ret);
+          ret.clear();
+          ret.reserve(ret_size);
+        }
+  // This gives each node a unique order in which it sends RPCs to its peers.
+  // otherwise node zero would get incoming requests all at once, while node
+  // N-1 would get none for the begining of a burst. In general, node N will
+  // start by sending to nodes N + 1, N + 2, N + 3, before wrapping around to
+  // nodes 0, 1, 2, and ending at node N - 1.
+  ret.insert(ret.end(), half_ret.begin(), half_ret.end());
+#endif
 
   }
 
