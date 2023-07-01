@@ -680,11 +680,7 @@ absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
 
 InstanceRanks GetServiceInstanceRanksFromName(std::string_view name) {
   std::string_view name_view = name;
-  size_t prefix_length = name_view.find_first_of("(");
-  if (prefix_length != std::string::npos) {
-    name_view.remove_prefix(prefix_length + 1);
-  }
-  prefix_length = name_view.find_first_of("/");
+  size_t prefix_length = name_view.find_first_of("/");
   if (prefix_length != std::string::npos) {
     name_view.remove_prefix(prefix_length + 1);
   }
@@ -726,12 +722,12 @@ std::string GetServiceInstanceName(const ServiceSpec& service_spec,
   InstanceRanks ranks = GetServiceInstanceRanks(service_spec, instance);
   if (service_spec.has_z_size()) {
     return absl::StrCat(
-        service_spec.name(), "/(", ranks.x, ",", ranks.y, ",", ranks.z, ")");
+        service_spec.name(), "/", ranks.x, ",", ranks.y, ",", ranks.z);
   }
   if (service_spec.has_y_size()) {
-    return absl::StrCat(service_spec.name(), "/(", ranks.x, ",", ranks.y, ")");
+    return absl::StrCat(service_spec.name(), "/", ranks.x, ",", ranks.y);
   }
-  return absl::StrCat(service_spec.name(), "/(", ranks.x, ")");
+  return absl::StrCat(service_spec.name(), "/", ranks.x);
 }
 
 absl::StatusOr<DistributedSystemDescription>
