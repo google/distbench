@@ -204,7 +204,8 @@ function main() {
   trap error_handler ERR
 
   # Save the actual invocation for documenting the output proto files:
-  local -r INVOCATION="$(printf '%q ' "$@")"
+  local INVOCATION="$(printf '%q ' "$@")"
+  readonly INVOCATION="${INVOCATION% }"
 
   # Allow flags to come after other arguments for flexibility:
   local ALLOWED_OPTS="hs:l:c:t:o:"
