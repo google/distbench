@@ -238,8 +238,20 @@ int MainCheckTest(std::vector<char*>& arguments) {
               << "\n";
     return 1;
   }
+  auto maybe_canonical = GetCanonicalTestSequence(test_sequence.value());
+  if (maybe_canonical.status().ok()) {
+    std::string original = test_sequence.value().DebugString();
+    std::string canonical = maybe_canonical.value().DebugString();
+    if (canonical != original) {
+      std::cout << "Input parsed successfully, and converted to canonical\n"
+                << canonical;
+    }
+    std::cout << "Result: " << infile << " parsed successfully.\n\n";
+  } else {
+    std::cerr << maybe_canonical.status();
+    return 1;
+  }
 
-  std::cout << "Result: " << infile << " parsed successfully.\n\n";
   return 0;
 }
 
