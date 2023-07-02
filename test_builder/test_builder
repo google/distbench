@@ -941,6 +941,85 @@ function clique_traffic_pattern_setup() {
 }
 
 ################################################################################
+# Setup the test config proto for the clique traffic pattern:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   RESULTS_COLLECTION_TIMEOUT
+#   params_dict (associative array)
+################################################################################
+function rectangular_traffic_pattern_setup() {
+  local -i TEST_DURATION="${params_dict[test_duration]}"
+  params_dict[test_timeout]="$((TEST_DURATION + RESULTS_COLLECTION_TIMEOUT))"
+
+  set_parameter_default rpc_interval_us 100000
+  set_parameter_default x_size 5
+  set_parameter_default y_size 3
+  set_parameter_default synchronization_mode sync_burst "sync_burst sync_burst_spread"
+  set_parameter_default request_size 1024
+  set_parameter_default response_size 1024
+  set_parameter_default fanout_filter ring_x
+  local REQUEST_SIZE="${params_dict[request_size]}"
+  local RESPONSE_SIZE="${params_dict[response_size]}"
+  local RPC_INTERVAL_US="${params_dict[rpc_interval_us]}"
+  local X_SIZE="${params_dict[x_size]}"
+  local Y_SIZE="${params_dict[y_size]}"
+  local NODE_COUNT="$((X_SIZE * Y_SIZE))"
+  local FANOUT_FILTER="${params_dict[fanout_filter]}"
+  validate_integer 100 RPC_INTERVAL_US
+  validate_integer 2 NODE_COUNT
+  local SYNCHRONIZATION_MODE="${params_dict[synchronization_mode]}"
+  local TRAFFIC_ALIAS="rectangular_"
+  TRAFFIC_ALIAS+="${FANOUT_FILTER}_${SYNCHRONIZATION_MODE}_${X_SIZE}x${Y_SIZE}x${RPC_INTERVAL_US}x${REQUEST_SIZE}x${RESPONSE_SIZE}"
+  local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
+  params_dict[traffic_pattern]="rectangular"
+  params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
+  params_dict[test_name]="${TEST_NAME}"
+  params_dict[traffic_pattern_options_proto]="\
+  name: '${TEST_NAME}'
+  services {
+    name: 'rectangular'
+    count: ${NODE_COUNT}
+    x_size: ${X_SIZE}
+    y_size: ${Y_SIZE}
+  }
+  action_lists {
+    name: 'rectangular'
+    action_names: 'rectangular_queries'
+  }
+  actions {
+    name: 'rectangular_queries'
+    iterations {
+      max_duration_us: ${TEST_DURATION}000000
+      open_loop_interval_ns: ${RPC_INTERVAL_US}000
+      open_loop_interval_distribution: '${SYNCHRONIZATION_MODE}'
+      warmup_iterations: $((3000000 / RPC_INTERVAL_US))
+    }
+    rpc_name: 'rectangular_query'
+  }
+  payload_descriptions {
+    name: 'request_payload'
+    size: ${REQUEST_SIZE}
+  }
+  payload_descriptions {
+    name: 'response_payload'
+    size: ${RESPONSE_SIZE}
+  }
+  rpc_descriptions {
+    name: 'rectangular_query'
+    client: 'rectangular'
+    server: 'rectangular'
+    fanout_filter: '${FANOUT_FILTER}'
+    request_payload_name: 'request_payload'
+    response_payload_name: 'response_payload'
+  }
+  action_lists {
+    name: 'rectangular_query'
+    # no actions, NOP
+  }"
+}
+
+################################################################################
 # Setup the test config proto for the client_server traffic pattern:
 # Arguments:
 #   None
