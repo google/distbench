@@ -20,6 +20,8 @@ test_builder -o . clique:grpc:client_type=polling:server_type=handoff
 test_builder -o . clique:rpc_interval_us=2000
 test_builder -o . clique:node_count=123
 test_builder -o . clique:synchronization_mode=sync_burst_spread
+test_builder -o . clique:request_size=16384
+test_builder -o . clique:response_size=0
 
 test_builder -o . client_server
 test_builder -o . client_server:parallel_queries=25
