@@ -23,6 +23,15 @@ test_builder -o . clique:synchronization_mode=sync_burst_spread
 test_builder -o . clique:request_size=16384
 test_builder -o . clique:response_size=0
 
+test_builder -o . rectangular
+test_builder -o . rectangular:rpc_interval_us=1000000
+test_builder -o . rectangular:x_size=4
+test_builder -o . rectangular:y_size=2
+test_builder -o . rectangular:synchronization_mode=exponential
+test_builder -o . rectangular:request_size=16384
+test_builder -o . rectangular:response_size=0
+test_builder -o . rectangular:fanout_filter=same_y
+
 test_builder -o . client_server
 test_builder -o . client_server:parallel_queries=25
 test_builder -o . client_server:client_count=3
