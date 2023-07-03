@@ -1452,10 +1452,14 @@ void DistBenchEngine::RunRpcActionIteration(
 // protocol_drivers endpoint ids by the caller.
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     ActionState* action_state) {
+  const bool exclude_self = action_state->rpc_service_index == service_index_;
   const int rpc_index = action_state->rpc_index;
   const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
   std::vector<int> targets;
   int num_servers = peers_[action_state->rpc_service_index].size();
+  if (exclude_self && num_servers == 1) {
+    return {};
+  }
 
   switch (rpc_def.fanout_filter) {
     default:
@@ -1466,31 +1470,44 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
 
     case kRandomSingle:
       targets.reserve(1);
-      targets.push_back(random() % num_servers);
+      if (exclude_self) {
+        std::uniform_int_distribution range(0, num_servers - 2);
+        int target = range(*action_state->rand_gen);
+        if (target == service_instance_) {
+          target = num_servers - 1;
+        }
+        targets.push_back(target);
+      } else {
+        std::uniform_int_distribution range(0, num_servers - 1);
+        targets.push_back(range(*action_state->rand_gen));
+      }
       break;
 
     case kRoundRobin:
       targets.reserve(1);
-      targets.push_back(client_rpc_table_[rpc_index].rpc_tracing_counter %
-                        num_servers);
+      if (exclude_self) {
+        int target = client_rpc_table_[rpc_index].rpc_tracing_counter %
+                     (num_servers - 1);
+        if (target == service_instance_) {
+          target = num_servers - 1;
+        }
+        targets.push_back(target);
+      } else {
+        targets.push_back(client_rpc_table_[rpc_index].rpc_tracing_counter %
+                          num_servers);
+      }
       break;
 
     case kAll:
       targets.reserve(num_servers);
-      for (int i = 0; i < num_servers; ++i) {
-        int target = i;
-        if (action_state->rpc_service_index != service_index_ ||
-            target != service_instance_) {
-          CHECK_NE(target, -1);
+      for (int target = 0; target < num_servers; ++target) {
+        if (!exclude_self || target != service_instance_) {
           targets.push_back(target);
         }
       }
       break;
 
     case kStochastic:
-      std::map<int, std::vector<int>> partial_rand_vects =
-          action_state->partially_randomized_vectors;
-
       int nb_targets = 0;
       float random_val = absl::Uniform(random_generator, 0, 1.0);
       float current_val = 0.0;
@@ -1505,23 +1522,15 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
         nb_targets = num_servers;
       }
 
-      // Generate a vector to pick random targets from (only done once)
-      partial_rand_vects.try_emplace(num_servers, std::vector<int>());
-      std::vector<int>& from_vector = partial_rand_vects[num_servers];
-      if (from_vector.empty()) {
-        for (int i = 0; i < num_servers; i++) {
-          from_vector.push_back(i);
-        }
+      targets.reserve(num_servers);
+      std::iota(targets.begin(), targets.end(), 0);
+      if (exclude_self) {
+        targets.erase(
+            std::remove(targets.begin(), targets.end(), service_instance_),
+            targets.end());
       }
-
-      // Randomize and pick up to nb_targets
-      for (int i = 0; i < nb_targets; i++) {
-        int rnd_pos = i + (random() % (num_servers - i));
-        std::swap(from_vector[i], from_vector[rnd_pos]);
-        int target = from_vector[i];
-        CHECK_NE(target, -1);
-        targets.push_back(target);
-      }
+      std::shuffle(targets.begin(), targets.end(), *action_state->rand_gen);
+      targets.resize(nb_targets);
       break;
   }
 
