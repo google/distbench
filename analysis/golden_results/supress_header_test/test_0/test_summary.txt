@@ -1,4 +1,3 @@
-Request_size    Latency_ns     
 1024            947230         
 1024            849970         
 1024            998740         
