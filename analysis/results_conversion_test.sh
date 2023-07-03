@@ -2,45 +2,45 @@
 set -eu pipefail
 
 BINDIR=$(dirname $0)
-RESULT_DIR="$PWD/analysis"
-TEST_FILE_1="$RESULT_DIR/golden_results/client_server_test/client_server_1x1x1-grpc_polling_inline.pb"
+RESULT_DIR="$PWD/analysis/golden_results"
 
-$BINDIR/results_conversion --output_directory=$TEST_TMPDIR --input_file=$TEST_FILE_1 --consider_warmups
+readonly test1=( \
+  "client_server_test/client_server_1x1x1-grpc_polling_inline.pb" \
+  "--consider_warmups" \
+)
 
-if diff -x '*.pb' -x '*.config' -r "$TEST_TMPDIR" "$RESULT_DIR/golden_results/client_server_test"; then
-    echo "Test 1 output matches! :-)"
+readonly test2=( \
+  "supress_header_test/multi_level_rpc_2x3x1-grpc_polling_inline.pb" \
+  "--supress_header" \
+)
+
+readonly test3=( \
+  "statistics_format_test/multi_level_rpc_2x3x1-grpc_polling_inline.pb" \
+  "--output_format=statistics" \
+)
+
+tests=(test1 test2 test3)
+
+function custom_diff()
+{
+  diff -u -r -x '*.pb' -x '*.config' "$1" "$2"
+}
+
+for test in "${tests[@]}"; do
+  declare -n testparams="$test"
+  rm $TEST_TMPDIR/* -rf
+  INPUT="${RESULT_DIR}/${testparams[0]}"
+  GOLDEN="$(dirname ${RESULT_DIR}/${testparams[0]})"
+  $BINDIR/results_conversion \
+    --output_directory=$TEST_TMPDIR \
+    --input_file="${INPUT}" "${testparams[1]}"
+
+  if custom_diff "$TEST_TMPDIR" "${GOLDEN}"; then
+    echo "$test output matches! :-)"
   else
-    echo "Test 1 output does not match! :-("
+    echo "$test output does not match! :-("
     exit 1
-fi
+  fi
+done
 
-rm $TEST_TMPDIR/* -r
-TEST_FILE_2="$RESULT_DIR/golden_results/supress_header_test/multi_level_rpc_2x3x1-grpc_polling_inline.pb"
-
-$BINDIR/results_conversion --output_directory=$TEST_TMPDIR --input_file=$TEST_FILE_2 --supress_header
-
-#just comparing the non-empty directories:
-NON_EMPTY_DIR=$(find "$RESULT_DIR/golden_results/supress_header_test" -type d ! -empty)
-
-if diff --brief -x '*.pb' -x '*.config' -r "$TEST_TMPDIR" "$RESULT_DIR/golden_results/supress_header_test" | grep -vF "$NON_EMPTY_DIR"; then
-    echo "Test 2 output matches! :-)"
-  else
-    echo "Test 2 output does not match! :-("
-    exit 1
-fi
-
-rm $TEST_TMPDIR/* -r
-TEST_FILE_3="$RESULT_DIR/golden_results/statistics_format_test/multi_level_rpc_2x3x1-grpc_polling_inline.pb"
-
-$BINDIR/results_conversion --output_directory=$TEST_TMPDIR --input_file=$TEST_FILE_3 \
-  --output_format="statistics"
-
-#just comparing the non-empty directories:
-NON_EMPTY_DIR=$(find "$RESULT_DIR/golden_results/statistics_format_test" -type d ! -empty)
-
-if diff --brief -x '*.pb' -x '*.config' -r "$TEST_TMPDIR" "$RESULT_DIR/golden_results/statistics_format_test" | grep -vF "$NON_EMPTY_DIR"; then
-    echo "Test 3 output matches! :-)"
-  else
-    echo "Test 3 output does not match! :-("
-    exit 1
-fi
+exit 0
