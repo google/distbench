@@ -497,9 +497,10 @@ absl::Status ValidateCdfConfig(const DistributionConfig& config) {
     auto current_value = config.cdf_points(i).value();
     auto current_cdf = config.cdf_points(i).cdf();
     if (current_value <= prev_value) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "The value:'", current_value, "' must be greater than previous_value:'",
-          prev_value, "' at index '", i, "' in CDF:'", config.name(), "'."));
+      return absl::InvalidArgumentError(
+          absl::StrCat("The value:'", current_value,
+                       "' must be greater than previous_value:'", prev_value,
+                       "' at index '", i, "' in CDF:'", config.name(), "'."));
     }
     if (current_cdf < prev_cdf) {
       return absl::InvalidArgumentError(
