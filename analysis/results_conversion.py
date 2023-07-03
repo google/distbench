@@ -72,12 +72,15 @@ class Statisticformatter(Formatter):
                                                , stats[5], stats[6], stats[7])
         return output_str
 
+def enumerate_service_instances(service_proto):
+    return [str(x) for x in range(service_proto.count)]
+
 class TestProcessor:
     def __init__(self, test_proto_message, output_formatter):
         # test_proto_message is a protobuf message of type TestResult
         self.test_proto_message = test_proto_message
         # map from services names to the number of instances they have
-        self.services_count = {}
+        self.service_instances = {}
         # list of services that act as servers
         self.server_services = set()
         # list of services that act as clients
@@ -87,7 +90,7 @@ class TestProcessor:
         self.output_formatter = output_formatter
         # iterate through the services to get the cumber of instances per each one
         for service in self.test_proto_message.traffic_config.services:
-                self.services_count[service.name] = service.count
+                self.service_instances[service.name] = enumerate_service_instances(service)
 
         for rpc in self.test_proto_message.traffic_config.rpc_descriptions:
             # get the services that act as servers and the ones that act as clients
@@ -104,24 +107,14 @@ class TestProcessor:
 
     def create_directory_tree_for_client(self, client, output_directory):
         client_directory_path = os.path.join(output_directory, client)
-        try:
-            os.mkdir(client_directory_path)
-        except:
-            print("Error creating %s directory" % client_directory_path)
-            exit()
         # write the summary for the client
         client_summary_file_path = os.path.join(client_directory_path, "client_summary.txt")
         self.write_summary(self.get_summary_per_client(client), client_summary_file_path)
         # create directory for each instance of the client
-        for i in range(self.services_count[client]):
+        for instance in self.service_instances[client]:
             # obtain the full name of the client instance
-            client_instance = os.path.join(client, str(i))
-            client_instance_directory_path = os.path.join(client_directory_path, str(i))
-            try:
-                os.mkdir(client_instance_directory_path)
-            except:
-                print("Error creating %s directory" % client_instance_directory_path)
-                exit()
+            client_instance = os.path.join(client, instance)
+            client_instance_directory_path = os.path.join(client_directory_path, instance)
             # write the summary for the client instance
             instance_summary_file_path = os.path.join(client_instance_directory_path, "client_instance_summary.txt")
             self.write_summary(self.get_summary_per_client_instance(client_instance), instance_summary_file_path)
@@ -130,24 +123,14 @@ class TestProcessor:
 
     def create_directory_tree_for_service(self, client_instance, service, output_directory):
         service_directory_path = os.path.join(output_directory, service)
-        try:
-            os.mkdir(service_directory_path)
-        except:
-            print("Error creating %s directory" % service_directory_path)
-            exit()
         # write the summary for the service
         service_summary_file_path = os.path.join(service_directory_path, "service_summary.txt")
         self.write_summary(self.get_summary_per_service(client_instance, service), service_summary_file_path)
         # create directory for each instance of the service
-        for i in range(self.services_count[service]):
+        for instance in self.service_instances[service]:
             # obtain the full name of the service instance
-            server_instance_directory_path = os.path.join(service_directory_path, str(i))
-            server_instance = os.path.join(service, str(i))
-            try:
-                os.mkdir(server_instance_directory_path)
-            except:
-                print("Error creating %s directory" % server_instance_directory_path)
-                exit()
+            server_instance_directory_path = os.path.join(service_directory_path, instance)
+            server_instance = os.path.join(service, instance)
             # write the logs for these instances
             self.write_pairwise_logs(client_instance, server_instance, server_instance_directory_path)
 
@@ -212,7 +195,13 @@ class TestProcessor:
 
     def write_summary(self, summary, path):
         if(summary == []):
+            print("Empty output %s skipped..." % path)
             return
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+        except:
+            print("Error creating %s directory" % os.path.dirname(path))
+            exit()
         try:
             fs = open(path,"w")
         except:
@@ -244,10 +233,6 @@ class DistbenchResultsIO:
         self.parse_from_binary()
         for i, test in enumerate(self.tests_results):
             test_dir = self.output_directory + "/test_" + str(i)
-            try:
-                os.mkdir(test_dir)
-            except:
-                print("Error creating directory %s" % test_dir)
             t = TestProcessor(test, self.output_formatter)
             t.create_directory_tree(test_dir)
 
