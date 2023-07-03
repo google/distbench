@@ -1334,6 +1334,10 @@ void DistBenchEngine::RunRpcActionIteration(
   ActionState* action_state = iteration_state->action_state;
   // Pick the subset of the target service instances to fanout to:
   std::vector<int> current_targets = PickRpcFanoutTargets(action_state);
+  if (current_targets.empty()) {
+    FinishIteration(iteration_state);
+    return;
+  }
   iteration_state->rpc_states.resize(current_targets.size());
   iteration_state->remaining_rpcs = current_targets.size();
 
