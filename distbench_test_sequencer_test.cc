@@ -14,6 +14,7 @@
 
 #include "distbench_test_sequencer.h"
 
+#include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
 #include "distbench_node_manager.h"
 #include "distbench_thread_support.h"
@@ -1544,4 +1545,247 @@ TEST(DistBenchTestSequencer, ConstantDistributionTest) {
             test_results.service_logs().instance_logs().end());
 }
 
+TestSequence GetFanoutConfig(std::string fanout_filter, std::string from,
+                             std::string to) {
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* lo_opts = test->add_protocol_driver_options();
+  lo_opts->set_name("lo_opts");
+  lo_opts->set_netdev_name("lo");
+
+  auto* s1 = test->add_services();
+  s1->set_name(from);
+  s1->set_count(27);
+  s1->set_x_size(3);
+  s1->set_y_size(3);
+  s1->set_z_size(3);
+  s1->set_protocol_driver_options_name("lo_opts");
+
+  if (from != to) {
+    auto* s2 = test->add_services();
+    s2->set_name(to);
+    s2->set_count(27);
+    s2->set_x_size(3);
+    s2->set_y_size(3);
+    s2->set_z_size(3);
+    s2->set_protocol_driver_options_name("lo_opts");
+  }
+
+  auto* l1 = test->add_action_lists();
+  l1->set_name(from);
+  l1->add_action_names("clique_queries");
+
+  auto a1 = test->add_actions();
+  a1->set_name("clique_queries");
+  a1->set_rpc_name("clique_query");
+
+  auto* r1 = test->add_rpc_descriptions();
+  r1->set_name("clique_query");
+  r1->set_client(from);
+  r1->set_server(to);
+  r1->set_fanout_filter(fanout_filter);
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("clique_query");
+  return test_sequence;
+}
+
+TestResult RunFanoutTest(TestSequence test_sequence) {
+  DistBenchTester tester;
+  CHECK(tester.Initialize(27 * test_sequence.tests(0).services_size()).ok());
+
+  TestSequenceResults results;
+  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
+  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  CHECK(status.ok());
+  return results.test_results(0);
+}
+
+class RpcTracker {
+ public:
+  RpcTracker(TestResult test_result, std::string_view from,
+             std::string_view to) {
+    auto& config = test_result.traffic_config();
+    from_service_ = GetServiceSpec(from, config).value();
+    to_service_ = GetServiceSpec(to, config).value();
+    int from_size = from_service_.count();
+    int to_size = to_service_.count();
+    rpcs_seen_.resize(from_size, std::vector<bool>(to_size, false));
+    for (auto& [name, log] : test_result.service_logs().instance_logs()) {
+      int from =
+          GetInstanceFromGridIndex(from_service_, GetGridIndexFromName(name));
+      for (auto& [peer_name, unused] : log.peer_logs()) {
+        int to = GetInstanceFromGridIndex(to_service_,
+                                          GetGridIndexFromName(peer_name));
+        rpcs_seen_[from][to] = true;
+      }
+    }
+  }
+
+  bool RpcSeen(GridIndex source, GridIndex dest) {
+    int from = GetInstanceFromGridIndex(from_service_, source);
+    int to = GetInstanceFromGridIndex(to_service_, dest);
+    return rpcs_seen_[from][to];
+  }
+
+ private:
+  ServiceSpec from_service_;
+  ServiceSpec to_service_;
+  std::vector<std::vector<bool>> rpcs_seen_;
+};
+
+void FanoutHelper(
+    std::string fanout_filter, std::string from, std::string to,
+    std::function<bool(GridIndex from, GridIndex to)> fanout_checker) {
+  auto config = GetFanoutConfig(fanout_filter, from, to);
+  auto results = RunFanoutTest(config);
+  RpcTracker tracker(results, from, to);
+
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      for (int k = 0; k < 3; ++k) {
+        for (int l = 0; l < 3; ++l) {
+          for (int m = 0; m < 3; ++m) {
+            for (int n = 0; n < 3; ++n) {
+              GridIndex from = {i, j, k};
+              GridIndex to = {l, m, n};
+              EXPECT_EQ(tracker.RpcSeen(from, to), fanout_checker(from, to))
+                  << absl::StrFormat("{%d %d %d} vs {%d %d %d} did not match",
+                                     from.x, from.y, from.z, to.x, to.y, to.z);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST(Multidimensional, Fanout_all) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) { return from != to; };
+  FanoutHelper("all", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_same_x) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from != to && from.x == to.x;
+  };
+  FanoutHelper("same_x", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_same_y) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from != to && from.y == to.y;
+  };
+  FanoutHelper("same_y", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_same_z) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from != to && from.z == to.z;
+  };
+  FanoutHelper("same_z", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_same_xy) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from != to && from.x == to.x && from.y == to.y;
+  };
+  FanoutHelper("same_xy", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_same_xz) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from != to && from.x == to.x && from.z == to.z;
+  };
+  FanoutHelper("same_xz", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_same_yz) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from != to && from.z == to.z && from.y == to.y;
+  };
+  FanoutHelper("same_yz", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_same_xyz) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) { return from == to; };
+  FanoutHelper("same_xyz", "clique", "clique2", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_ring_x) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from.y == to.y && from.z == to.z && (from.x + 1) % 3 == to.x;
+  };
+  FanoutHelper("ring_x", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_ring_y) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from.x == to.x && from.z == to.z && (from.y + 1) % 3 == to.y;
+  };
+  FanoutHelper("ring_y", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_ring_z) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from.x == to.x && from.y == to.y && (from.z + 1) % 3 == to.z;
+  };
+  FanoutHelper("ring_z", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_alternating_ring_x) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    if (from.y & 0x1)
+      return from.y == to.y && from.z == to.z && (to.x + 1) % 3 == from.x;
+    else
+      return from.y == to.y && from.z == to.z && (from.x + 1) % 3 == to.x;
+  };
+  FanoutHelper("alternating_ring_x", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_alternating_ring_y) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    if (from.x & 0x1)
+      return from.x == to.x && from.z == to.z && (to.y + 1) % 3 == from.y;
+    else
+      return from.x == to.x && from.z == to.z && (from.y + 1) % 3 == to.y;
+  };
+  FanoutHelper("alternating_ring_y", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_alternating_ring_z) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    if (from.x & 0x1)
+      return from.x == to.x && from.y == to.y && (to.z + 1) % 3 == from.z;
+    else
+      return from.x == to.x && from.y == to.y && (from.z + 1) % 3 == to.z;
+  };
+  FanoutHelper("alternating_ring_z", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_linear_x) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from.y == to.y && from.z == to.z && (from.x + 1) % 3 == to.x &&
+           from.x < 2;
+  };
+  FanoutHelper("linear_x{1}", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_linear_y) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from.x == to.x && from.z == to.z && (from.y + 1) % 3 == to.y &&
+           from.y < 2;
+  };
+  FanoutHelper("linear_y{1}", "clique", "clique", fanout_checker);
+}
+
+TEST(Multidimensional, Fanout_linear_z) {
+  auto fanout_checker = [](GridIndex from, GridIndex to) {
+    return from.x == to.x && from.y == to.y && (from.z + 1) % 3 == to.z &&
+           from.z < 2;
+  };
+  FanoutHelper("linear_z{1}", "clique", "clique", fanout_checker);
+}
 }  // namespace distbench
