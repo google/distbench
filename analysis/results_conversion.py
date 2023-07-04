@@ -99,7 +99,24 @@ class TraceContextFormatter(Formatter):
         return output_str
 
 def enumerate_service_instances(service_proto):
-    return [str(x) for x in range(service_proto.count)]
+    if not service_proto.HasField("x_size"):
+        return [str(x) for x in range(service_proto.count)]
+    elif not service_proto.HasField("y_size"):
+        return [str(x) for x in range(service_proto.x_size)]
+    elif not service_proto.HasField("z_size"):
+        ret = []
+        for x in range(service_proto.x_size):
+            for y in range(service_proto.y_size):
+                    ret += [str(x) + "/" + str(y)]
+    else:
+        ret = []
+        for x in range(service_proto.x_size):
+            for y in range(service_proto.y_size):
+                for z in range(service_proto.z_size):
+                    ret += [str(x) + "/" + str(y) + "/" + str(z)]
+
+
+    return ret
 
 class TestProcessor:
     def __init__(self, test_proto_message, output_formatter):
