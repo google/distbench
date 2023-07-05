@@ -162,16 +162,13 @@ void PolluteDataCache::Initialize(ParsedActivityConfig* config,
   random_index_ = std::uniform_int_distribution<>(0, array_size - 1);
   array_reads_per_iteration_ = config->array_reads_per_iteration;
   iteration_count_ = 0;
-
-  std::random_device rd;
-  mersenne_twister_prng_ = std::mt19937(rd());
 }
 
 void PolluteDataCache::DoActivity() {
   iteration_count_++;
   int64_t sum = 0;
   for (int i = 0; i < array_reads_per_iteration_; i++) {
-    int index = random_index_(mersenne_twister_prng_);
+    int index = random_index_(bit_gen_);
 
     // This is read and write operation.
     sum += data_array_[index]++;
@@ -247,9 +244,6 @@ void PolluteInstructionCache::Initialize(ParsedActivityConfig* config,
   func_ptr_array_.resize(func_array_size);
   BOOST_PP_REPEAT(POLLUTE_ICACHE_LOOP_SIZE, GET_FUNC_PTR_OUTER_LOOP, );
 
-  std::random_device rd;
-  mersenne_twister_prng_ = std::mt19937(rd());
-
   function_invocations_per_iteration_ =
       config->function_invocations_per_iteration;
 
@@ -263,7 +257,7 @@ void PolluteInstructionCache::DoActivity() {
   int64_t sum = 0;
 
   for (int i = 0; i < function_invocations_per_iteration_; i++) {
-    int index = random_index_(mersenne_twister_prng_);
+    int index = random_index_(bit_gen_);
     benchmark::DoNotOptimize(sum += func_ptr_array_[index](false));
   }
 }

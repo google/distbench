@@ -18,8 +18,8 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
-#include <random>
 
+#include "absl/random/random.h"
 #include "absl/status/statusor.h"
 #include "joint_distribution.pb.h"
 
@@ -31,18 +31,17 @@ class DistributionSampleGenerator {
 
   absl::Status Initialize(const DistributionConfig& config);
   std::vector<int> GetRandomSample();
-  std::vector<int> GetRandomSample(std::mt19937* generator);
+  std::vector<int> GetRandomSample(absl::BitGen* generator);
 
  private:
   int num_dimensions_;
 
-  std::mt19937 generator_;
+  absl::BitGen generator_;
   std::discrete_distribution<int> distribution_array_;
 
   std::vector<std::vector<int>> exact_value_;
 
   std::vector<std::vector<std::uniform_int_distribution<>>> range_;
-  std::mt19937 mersenne_twister_prng_;
 
   std::vector<std::vector<bool>> is_exact_value_;
 
