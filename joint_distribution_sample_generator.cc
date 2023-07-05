@@ -68,8 +68,6 @@ absl::Status DistributionSampleGenerator::InitializeWithCdf(
 
 absl::Status DistributionSampleGenerator::InitializeWithPmf(
     const DistributionConfig& config) {
-  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  generator_ = std::mt19937(seed);
   std::vector<float> pmf;
   num_dimensions_ = config.pmf_points(0).data_points_size();
   exact_value_.resize(num_dimensions_);
@@ -99,8 +97,6 @@ absl::Status DistributionSampleGenerator::Initialize(
     const DistributionConfig& config) {
   auto status = ValidateDistributionConfig(config);
   if (!status.ok()) return status;
-  std::random_device rd;
-  mersenne_twister_prng_ = std::mt19937(rd());
   if (config.cdf_points_size()) return InitializeWithCdf(config);
   if (config.pmf_points_size()) return InitializeWithPmf(config);
   return absl::InvalidArgumentError(
@@ -108,7 +104,7 @@ absl::Status DistributionSampleGenerator::Initialize(
 }
 
 std::vector<int> DistributionSampleGenerator::GetRandomSample(
-    std::mt19937* generator) {
+    absl::BitGen* generator) {
   auto index = distribution_array_(*generator);
   std::vector<int> sample;
 
@@ -116,7 +112,7 @@ std::vector<int> DistributionSampleGenerator::GetRandomSample(
     if (is_exact_value_[dim][index]) {
       sample.push_back(exact_value_[dim][index]);
     } else {
-      sample.push_back(range_[dim][index](mersenne_twister_prng_));
+      sample.push_back(range_[dim][index](generator_));
     }
   }
   return sample;

@@ -171,6 +171,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     bool warmup = false;
     std::vector<ClientRpcState> rpc_states;
     std::atomic<int> remaining_rpcs = 0;
+    absl::BitGen rand_gen;
   };
 
   struct ActionState {
@@ -197,9 +198,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     std::unique_ptr<Activity> activity;
 
-    // The 'rand_gen' must be used only from RunActionList's thread
-    // to avoid race conditions.
-    std::mt19937* rand_gen = nullptr;
     std::exponential_distribution<double> exponential_gen;
     bool interval_is_exponential;
   };
@@ -288,7 +286,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   void RunRpcActionIteration(
       std::shared_ptr<ActionIterationState> iteration_state);
-  std::vector<int> PickRpcFanoutTargets(ActionState* action_state);
+  std::vector<int> PickRpcFanoutTargets(ActionIterationState* iteration_state);
 
   void AddActivityLogs(ServicePerformanceLog* sp_log);
 

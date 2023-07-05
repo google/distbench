@@ -14,8 +14,7 @@
 #ifndef DISTBENCH_ACTIVITY_H_
 #define DISTBENCH_ACTIVITY_H_
 
-#include <random>
-
+#include "absl/random/random.h"
 #include "absl/status/statusor.h"
 #include "distbench.pb.h"
 #include "simple_clock.h"
@@ -85,7 +84,7 @@ class PolluteDataCache : public Activity {
   std::vector<int> data_array_;
   int64_t optimization_preventing_num_ = 0;
   std::uniform_int_distribution<> random_index_;
-  std::mt19937 mersenne_twister_prng_;
+  absl::BitGen bit_gen_;
 };
 
 class PolluteInstructionCache : public Activity {
@@ -98,7 +97,7 @@ class PolluteInstructionCache : public Activity {
  private:
   int iteration_count_ = 0;
   int function_invocations_per_iteration_ = 0;
-  std::mt19937 mersenne_twister_prng_;
+  absl::BitGen bit_gen_;
   std::vector<int (*)(bool)> func_ptr_array_;
   std::uniform_int_distribution<> random_index_;
 };

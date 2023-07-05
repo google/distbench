@@ -811,7 +811,7 @@ void DistBenchEngine::RunActionList(int list_index,
                                     bool force_warmup) {
   CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
   CHECK_GE(list_index, 0);
-  ActionListState s = {};
+  ActionListState s;
   s.actionlist_invocation = atomic_fetch_add_explicit(
       &actionlist_invocation_counts[list_index], 1, std::memory_order_relaxed);
   s.actionlist_index = list_index;
@@ -820,9 +820,6 @@ void DistBenchEngine::RunActionList(int list_index,
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[list_index];
   bool sent_response_early = false;
-  unsigned int seed =
-      std::chrono::system_clock::now().time_since_epoch().count();
-  std::mt19937 rand_gen(seed);
 
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
@@ -867,7 +864,6 @@ void DistBenchEngine::RunActionList(int list_index,
       s.state_table[i].action_index = i;
       s.state_table[i].started = true;
       s.state_table[i].action = &s.action_list->list_actions[i];
-      s.state_table[i].rand_gen = &rand_gen;
       if ((!sent_response_early && incoming_rpc_state) &&
           ((size == 1) ||
            s.state_table[i].action->proto.send_response_when_done())) {
@@ -1320,7 +1316,7 @@ void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
   action_state->iteration_mutex.Lock();
   if (action_state->interval_is_exponential) {
     action_state->next_iteration_time +=
-        period * action_state->exponential_gen(*action_state->rand_gen);
+        period * action_state->exponential_gen(it_state->rand_gen);
   } else {
     action_state->next_iteration_time += period;
   }
@@ -1398,7 +1394,8 @@ void DistBenchEngine::RunRpcActionIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   ActionState* action_state = iteration_state->action_state;
   // Pick the subset of the target service instances to fanout to:
-  std::vector<int> current_targets = PickRpcFanoutTargets(action_state);
+  std::vector<int> current_targets =
+      PickRpcFanoutTargets(iteration_state.get());
   if (current_targets.empty()) {
     FinishIteration(iteration_state);
     return;
@@ -1440,7 +1437,7 @@ void DistBenchEngine::RunRpcActionIteration(
   } else {
     // This RPC uses a distribution of sizes.
     auto sample = sample_generator_array_[rpc_def.sample_generator_index]
-                      ->GetRandomSample(action_state->rand_gen);
+                      ->GetRandomSample(&iteration_state->rand_gen);
 
     common_request.set_payload(
         std::string(sample[kRequestPayloadSizeField], 'D'));
@@ -1637,7 +1634,8 @@ std::vector<int> DistBenchEngine::PickGridTargets(
 // Return a vector of service instances, which have to be translated to
 // protocol_drivers endpoint ids by the caller.
 std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
-    ActionState* action_state) {
+    ActionIterationState* iteration_state) {
+  ActionState* action_state = iteration_state->action_state;
   const bool exclude_self = action_state->rpc_service_index == service_index_;
   const int rpc_index = action_state->rpc_index;
   const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
@@ -1688,14 +1686,14 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
       targets.reserve(1);
       if (exclude_self) {
         std::uniform_int_distribution range(0, num_servers - 2);
-        int target = range(*action_state->rand_gen);
+        int target = range(iteration_state->rand_gen);
         if (target == service_instance_) {
           target = num_servers - 1;
         }
         targets.push_back(target);
       } else {
         std::uniform_int_distribution range(0, num_servers - 1);
-        targets.push_back(range(*action_state->rand_gen));
+        targets.push_back(range(iteration_state->rand_gen));
       }
       break;
 
@@ -1737,7 +1735,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
             std::remove(targets.begin(), targets.end(), service_instance_),
             targets.end());
       }
-      std::shuffle(targets.begin(), targets.end(), *action_state->rand_gen);
+      std::shuffle(targets.begin(), targets.end(), iteration_state->rand_gen);
       targets.resize(nb_targets);
       break;
   }
