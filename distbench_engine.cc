@@ -163,7 +163,7 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
     return absl::OkStatus();
   }
 
-  size_t prefix_size = fanout_filter.find_first_of("{");
+  size_t prefix_size = fanout_filter.find_first_of('{');
   if (prefix_size == std::string::npos) {
     return absl::InvalidArgumentError(
         absl::StrCat("Unknown fanout_filter: ", fanout_filter));

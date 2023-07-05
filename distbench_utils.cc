@@ -681,7 +681,7 @@ absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
 
 GridIndex GetGridIndexFromName(std::string_view name) {
   std::string_view name_view = name;
-  size_t prefix_length = name_view.find_first_of("/");
+  size_t prefix_length = name_view.find_first_of('/');
   if (prefix_length != std::string::npos) {
     name_view.remove_prefix(prefix_length + 1);
   }
