@@ -58,11 +58,11 @@ class StatisticFormatter(Formatter):
             output_str += line_template.format("Request_size", "N", "min", "50%", "90%", "99%"\
                                                , "99.99%", "max")
         for item in summary:
-            if(item[0] in buckets.keys()):
+            if(item[0] in sorted(buckets.keys())):
                 buckets[item[0]].append(item[1])
             else:
                 buckets[item[0]] = [item[1]]
-        for request_size, latencies in buckets.items():
+        for request_size, latencies in sorted(buckets.items()):
             stats_list.append(tuple([request_size, len(latencies), np.round(np.min(latencies), 2)\
                            , np.round(np.percentile(latencies, 50), 2), np.round(np.percentile(latencies, 90), 2)\
                            , np.round(np.percentile(latencies, 99), 2), np.round(np.percentile(latencies, 99.99), 2)\
@@ -94,7 +94,7 @@ class TraceContextFormatter(Formatter):
         for item in summary:
             if (item[1] > max_latency_map.setdefault(item[0], item[1])):
                 max_latency_map[item[0]] = item[1]
-        for action_iteration, longest_latency in max_latency_map.items():
+        for action_iteration, longest_latency in sorted(max_latency_map.items()):
             output_str += line_template.format(action_iteration, longest_latency)
         return output_str
 
@@ -163,7 +163,7 @@ class TestProcessor:
     def write_pairwise_logs(self, client_instance, service_instance, output_directory):
         client_instance_logs = self.test_proto_message.service_logs.instance_logs[client_instance]
         service_instance_logs = client_instance_logs.peer_logs[service_instance]
-        for rpc_index in service_instance_logs.rpc_logs.keys():
+        for rpc_index in sorted(service_instance_logs.rpc_logs.keys()):
             summary_per_rpc = self.get_summary_per_rpc_per_pair_of_instances(client_instance, service_instance, rpc_index)
             rpc_summary_file_path = os.path.join(output_directory, self.rpc_names[rpc_index] + ".txt")
             self.write_summary(summary_per_rpc, rpc_summary_file_path)
@@ -182,7 +182,7 @@ class TestProcessor:
         client_instance_logs = self.test_proto_message.service_logs.instance_logs[client_instance]
         server_instance_logs = client_instance_logs.peer_logs[service_instance]
         summary = []
-        for i in server_instance_logs.rpc_logs.keys():
+        for i in sorted(server_instance_logs.rpc_logs.keys()):
             summary += self.get_summary_per_rpc_per_pair_of_instances(client_instance, service_instance, i)
         return summary
 
@@ -190,7 +190,7 @@ class TestProcessor:
     def get_summary_per_service(self, client_instance, service):
         client_instance_logs = self.test_proto_message.service_logs.instance_logs[client_instance]
         summary = []
-        for service_instance in client_instance_logs.peer_logs.keys():
+        for service_instance in sorted(client_instance_logs.peer_logs.keys()):
             # gets the server name from the client instance
             service_name = service_instance.rsplit("/", 1)[0]
             if(service_name == service):
@@ -200,13 +200,13 @@ class TestProcessor:
     def get_summary_per_client_instance(self, client_instance):
         client_instance_logs = self.test_proto_message.service_logs.instance_logs[client_instance]
         summary = []
-        for server_instance in client_instance_logs.peer_logs.keys():
+        for server_instance in sorted(client_instance_logs.peer_logs.keys()):
             summary += self.get_summary_per_service_instance(client_instance, server_instance)
         return summary
 
     def get_summary_per_client(self, client):
         summary = []
-        for client_instance in self.test_proto_message.service_logs.instance_logs.keys():
+        for client_instance in sorted(self.test_proto_message.service_logs.instance_logs.keys()):
             # get the client name from the client instance
             client_name = client_instance.rsplit("/", 1)[0]
             if(client_name == client):
@@ -215,7 +215,7 @@ class TestProcessor:
 
     def get_summary(self):
         summary = []
-        for client_instance in self.test_proto_message.service_logs.instance_logs.keys():
+        for client_instance in sorted(self.test_proto_message.service_logs.instance_logs.keys()):
             summary += self.get_summary_per_client_instance(client_instance)
         return summary
 
