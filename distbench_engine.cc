@@ -1685,14 +1685,14 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     case kRandomSingle:
       targets.reserve(1);
       if (exclude_self) {
-        std::uniform_int_distribution range(0, num_servers - 2);
+        std::uniform_int_distribution<int> range(0, num_servers - 2);
         int target = range(iteration_state->rand_gen);
         if (target == service_instance_) {
           target = num_servers - 1;
         }
         targets.push_back(target);
       } else {
-        std::uniform_int_distribution range(0, num_servers - 1);
+        std::uniform_int_distribution<int> range(0, num_servers - 1);
         targets.push_back(range(iteration_state->rand_gen));
       }
       break;
