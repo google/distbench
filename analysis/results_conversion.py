@@ -33,9 +33,9 @@ class DefaultFormatter(Formatter):
     def format_file(self, summary):
         output_str = ""
         if(not self.supress_header):
-            output_str += "{: <15} {: <15}\n".format("Request_size", "Latency_ns")
+            output_str += "{: <15} {: <}\n".format("Request_size", "Latency_ns")
         for item in summary:
-            output_str += ("{: <15} {: <15}\n".format(item[0], item[1]))
+            output_str += ("{: <15} {: <}\n".format(item[0], item[1]))
         return output_str
 
 class StatisticFormatter(Formatter):
@@ -51,7 +51,7 @@ class StatisticFormatter(Formatter):
     # of high level summaries, and converts them into a string which can be written into a file
     def format_file(self, summary):
         buckets = {}
-        line_template = "{: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <15}\n"
+        line_template = "{: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <}\n"
         output_str = ""
         stats_list=[]
         if(not self.supress_header):
@@ -87,7 +87,7 @@ class TraceContextFormatter(Formatter):
         # max_latency_map is a map where the keys are the action iteration numbers
         # and the values are the longest latencies for each iteration.
         max_latency_map = {}
-        line_template = "{: <15} {: <15}\n"
+        line_template = "{: >} {: >}\n"
         output_str = ""
         if(not self.supress_header):
             output_str += line_template.format("# of iteration", "Longest_latency")
