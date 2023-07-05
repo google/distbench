@@ -112,14 +112,10 @@ std::vector<int> DistributionSampleGenerator::GetRandomSample(
     if (is_exact_value_[dim][index]) {
       sample.push_back(exact_value_[dim][index]);
     } else {
-      sample.push_back(range_[dim][index](generator_));
+      sample.push_back(range_[dim][index](*generator));
     }
   }
   return sample;
-}
-
-std::vector<int> DistributionSampleGenerator::GetRandomSample() {
-  return GetRandomSample(&generator_);
 }
 
 }  // namespace distbench
