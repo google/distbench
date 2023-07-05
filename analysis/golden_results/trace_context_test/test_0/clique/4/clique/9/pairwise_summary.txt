@@ -1,4 +1,4 @@
-# of iteration Longest_latency
+Action_iteration Longest_latency
 0 1063611
 1 257330
 2 1829141

@@ -90,7 +90,7 @@ class TraceContextFormatter(Formatter):
         line_template = "{: >} {: >}\n"
         output_str = ""
         if(not self.supress_header):
-            output_str += line_template.format("# of iteration", "Longest_latency")
+            output_str += line_template.format("Action_iteration", "Longest_latency")
         for item in summary:
             if (item[1] > max_latency_map.setdefault(item[0], item[1])):
                 max_latency_map[item[0]] = item[1]
