@@ -1748,14 +1748,13 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
         targets.end());
   }
 
-#if 0  // disabled for now, due to breaking unit tests
   if (rpc_def.fanout_filter != kStochastic) {
     if (exclude_self) {
-      // This gives each node a unique order in which it sends RPCs to its peers.
-      // otherwise node zero would get incoming requests all at once, while node
-      // N-1 would get none for the begining of a burst. In general, node N will
-      // start by sending to nodes N + 1, N + 2, N + 3, before wrapping around to
-      // nodes 0, 1, 2, and ending at node N - 1.
+      // This gives each node a unique order in which it sends RPCs to its
+      // peers. otherwise node zero would get incoming requests all at once,
+      // while node N-1 would get none for the begining of a burst. In general,
+      // node N will start by sending to nodes N + 1, N + 2, N + 3, before
+      // wrapping around to nodes 0, 1, 2, and ending at node N - 1.
       auto comp = [&](int a, int b) {
         a += num_servers - service_instance_;
         b += num_servers - service_instance_;
@@ -1765,10 +1764,9 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
     } else {
       // Try to avoid hot spots in the destination service by randomizing the
       // order of the instances we will send RPCs to:
-      std::shuffle(targets.begin(), targets.end(), *action_state->rand_gen);
+      std::shuffle(targets.begin(), targets.end(), iteration_state->rand_gen);
     }
   }
-#endif
 
   return targets;
 }

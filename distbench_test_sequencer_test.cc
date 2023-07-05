@@ -1324,7 +1324,8 @@ tests {
   ASSERT_EQ(dest_rpc->second.successful_rpc_samples_size(), 25);
 
   iterations_bitmask = 0;
-  int64_t invocations = 0;
+  int64_t invocations_bitmask = 0;
+  int64_t fanout_bitmask = 0;
 
   for (auto rpc : dest_rpc->second.successful_rpc_samples()) {
     ASSERT_EQ(rpc.trace_context().engine_ids_size(), 2);
@@ -1340,15 +1341,16 @@ tests {
     EXPECT_EQ(rpc.trace_context().action_indices(0), 0);
     EXPECT_EQ(rpc.trace_context().action_iterations(1), 0);
     EXPECT_EQ(rpc.trace_context().engine_ids(1), 1);
-    invocations |= 1 << rpc.trace_context().actionlist_invocations(1);
+    invocations_bitmask |= 1 << rpc.trace_context().actionlist_invocations(1);
     EXPECT_EQ(rpc.trace_context().actionlist_indices(1), 1);
     EXPECT_EQ(rpc.trace_context().action_indices(1), 0);
-    EXPECT_EQ(rpc.trace_context().fanout_index(1), 0);
-    EXPECT_EQ(rpc.trace_context().fanout_index(1), 0);
+    EXPECT_EQ(rpc.trace_context().fanout_index(0), 0);
+    fanout_bitmask |= 1ull << rpc.trace_context().fanout_index(1);
   }
 
+  EXPECT_EQ(fanout_bitmask, (1 << 3) - 1);
   EXPECT_EQ(iterations_bitmask, (1 << 25) - 1);
-  EXPECT_EQ(invocations, (1 << 25) - 1);
+  EXPECT_EQ(invocations_bitmask, (1 << 25) - 1);
 }
 
 TEST(DistBenchTestSequencer, ExponenentialDistributionTest) {
