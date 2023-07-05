@@ -24,13 +24,19 @@ readonly test4=(  \
   "--output_format=trace_context"  \
 )
 
-tests=(test1 test2 test3 test4)
+readonly test5=( \
+  "multidimensional_test/2dclique_ring_x_sync_burst_5x3x100000x1024x1024-grpc_polling_inline.pb" \
+  "--output_format=default" \
+)
+
+tests=(test1 test2 test3 test4 test5)
 
 function custom_diff()
 {
   diff -u -r -x '*.pb' -x '*.config' "$1" "$2"
 }
 
+set -x
 for test in "${tests[@]}"; do
   declare -n testparams="$test"
   rm $TEST_TMPDIR/* -rf
