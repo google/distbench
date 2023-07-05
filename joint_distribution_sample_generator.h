@@ -30,13 +30,11 @@ class DistributionSampleGenerator {
   ~DistributionSampleGenerator(){};
 
   absl::Status Initialize(const DistributionConfig& config);
-  std::vector<int> GetRandomSample();
   std::vector<int> GetRandomSample(absl::BitGen* generator);
 
  private:
   int num_dimensions_;
 
-  absl::BitGen generator_;
   std::discrete_distribution<int> distribution_array_;
 
   std::vector<std::vector<int>> exact_value_;
