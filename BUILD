@@ -367,7 +367,7 @@ cc_test(
     name = "distbench_test_sequencer_test",
     size = "medium",
     srcs = ["distbench_test_sequencer_test.cc"],
-    shard_count = 23,
+    shard_count = 14,
     deps = [
         ":distbench_test_sequencer_tester",
         ":distbench_utils",
@@ -390,6 +390,17 @@ cc_test(
     size = "medium",
     srcs = ["open_loop_test.cc"],
     shard_count = 3,
+    deps = [
+        ":distbench_test_sequencer_tester",
+        ":distbench_utils",
+    ],
+)
+
+cc_test(
+    name = "intense_traffic_test",
+    size = "medium",
+    srcs = ["intense_traffic_test.cc"],
+    shard_count = 9,
     deps = [
         ":distbench_test_sequencer_tester",
         ":distbench_utils",
