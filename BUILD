@@ -352,18 +352,36 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "distbench_test_sequencer_tester",
+    srcs = ["distbench_test_sequencer_tester.cc"],
+    hdrs = ["distbench_test_sequencer_tester.h"],
+    deps = [
+        ":distbench_node_manager_lib",
+        ":distbench_test_sequencer_lib",
+        ":gtest_utils",
+    ],
+)
+
 cc_test(
     name = "distbench_test_sequencer_test",
     size = "medium",
     srcs = ["distbench_test_sequencer_test.cc"],
     shard_count = 26,
     deps = [
-        ":distbench_node_manager_lib",
-        ":distbench_test_sequencer_lib",
+        ":distbench_test_sequencer_tester",
         ":distbench_utils",
-        ":grpc_wrapper",
-        ":gtest_utils",
-        ":protocol_driver_allocator_api",
+    ],
+)
+
+cc_test(
+    name = "fanout_test",
+    size = "medium",
+    srcs = ["fanout_test.cc"],
+    shard_count = 19,
+    deps = [
+        ":distbench_test_sequencer_tester",
+        ":distbench_utils",
     ],
 )
 
