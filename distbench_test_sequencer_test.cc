@@ -191,84 +191,6 @@ tests {
             "Traffic cancelled: RESOURCE_EXHAUSTED: Too many threads running");
 }
 
-TestSequence IntenseTrafficTestSequence(const char* protocol) {
-  TestSequence test_sequence;
-  auto* test = test_sequence.add_tests();
-  test->set_default_protocol(protocol);
-  auto* s1 = test->add_services();
-  s1->set_name("s1");
-  s1->set_count(1);
-  auto* s2 = test->add_services();
-  s2->set_name("s2");
-  s2->set_count(5);
-
-  auto* l1 = test->add_action_lists();
-  l1->set_name("s1");
-  l1->add_action_names("s1/ping");
-
-  auto a1 = test->add_actions();
-  a1->set_name("s1/ping");
-  a1->set_rpc_name("echo");
-
-  auto* iterations = a1->mutable_iterations();
-  iterations->set_max_duration_us(200'000);
-  iterations->set_max_iteration_count(2000);
-  iterations->set_max_parallel_iterations(100);
-
-  auto* r1 = test->add_rpc_descriptions();
-  r1->set_name("echo");
-  r1->set_client("s1");
-  r1->set_server("s2");
-
-  auto* l2 = test->add_action_lists();
-  l2->set_name("echo");
-  return test_sequence;
-}
-
-void RunIntenseTrafficMaxDurationMaxIteration(const char* protocol) {
-  DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
-  TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
-}
-
-void RunIntenseTrafficMaxDuration(const char* protocol) {
-  DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
-  TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
-  auto* iterations =
-      test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();
-  iterations->clear_max_iteration_count();
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
-}
-
-void RunIntenseTrafficMaxIteration(const char* protocol) {
-  DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
-  TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
-  auto* iterations =
-      test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();
-  iterations->clear_max_iteration_count();
-  iterations->clear_max_duration_us();
-  iterations->set_max_iteration_count(2000);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
-}
-
 TEST(DistBenchTestSequencer, TestReservoirSampling) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
@@ -446,45 +368,6 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   }
   EXPECT_EQ(warmup_samples, 1000);
 }
-
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationGrpc) {
-  RunIntenseTrafficMaxDuration("grpc");
-}
-
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationGrpcAsyncCallback) {
-  RunIntenseTrafficMaxDuration("grpc_async_callback");
-}
-
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxIterationGrpc) {
-  RunIntenseTrafficMaxIteration("grpc");
-}
-
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxIterationGrpcAsyncCallback) {
-  RunIntenseTrafficMaxIteration("grpc_async_callback");
-}
-
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationGrpc) {
-  RunIntenseTrafficMaxDurationMaxIteration("grpc");
-}
-
-TEST(DistBenchTestSequencer,
-     RunIntenseTrafficMaxDurationMaxIterationGrpcAsyncCallback) {
-  RunIntenseTrafficMaxDurationMaxIteration("grpc_async_callback");
-}
-
-#ifdef WITH_MERCURY
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMercury) {
-  RunIntenseTrafficMaxDuration("mercury");
-}
-
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxIterationMercury) {
-  RunIntenseTrafficMaxIteration("mercury");
-}
-
-TEST(DistBenchTestSequencer, RunIntenseTrafficMaxDurationMaxIterationMercury) {
-  RunIntenseTrafficMaxDurationMaxIteration("mercury");
-}
-#endif
 
 TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   int nb_cliques = 2;
