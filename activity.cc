@@ -21,7 +21,64 @@
 
 namespace distbench {
 
-absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(ActivityConfig& ac) {
+class ConsumeCpu : public Activity {
+ public:
+  void DoActivity() override;
+  ActivityLog GetActivityLog() override;
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
+  static absl::Status ValidateConfig(const ActivityConfig& ac);
+
+ private:
+  std::vector<int> rand_array;
+  int iteration_count_ = 0;
+  int64_t optimization_preventing_num_ = 0;
+};
+
+class PolluteDataCache : public Activity {
+ public:
+  static absl::Status ValidateConfig(const ActivityConfig& ac);
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
+  void DoActivity() override;
+  ActivityLog GetActivityLog() override;
+
+ private:
+  int iteration_count_ = 0;
+  int array_reads_per_iteration_ = 0;
+  std::vector<int> data_array_;
+  int64_t optimization_preventing_num_ = 0;
+  std::uniform_int_distribution<> random_index_;
+  absl::BitGen bit_gen_;
+};
+
+class PolluteInstructionCache : public Activity {
+ public:
+  static absl::Status ValidateConfig(const ActivityConfig& ac);
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
+  void DoActivity() override;
+  ActivityLog GetActivityLog() override;
+
+ private:
+  int iteration_count_ = 0;
+  int function_invocations_per_iteration_ = 0;
+  absl::BitGen bit_gen_;
+  std::vector<int (*)(bool)> func_ptr_array_;
+  std::uniform_int_distribution<> random_index_;
+};
+
+class SleepFor : public Activity {
+ public:
+  static absl::Status ValidateConfig(const ActivityConfig& ac);
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
+  void DoActivity() override;
+  ActivityLog GetActivityLog() override;
+
+ private:
+  SimpleClock* clock_ = nullptr;
+  absl::Duration duration_;
+};
+
+absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(
+    const ActivityConfig& ac) {
   ParsedActivityConfig s;
   s.activity_func =
       GetNamedSettingString(ac.activity_settings(), "activity_func", "");
@@ -86,7 +143,7 @@ void SleepFor::Initialize(ParsedActivityConfig* config, SimpleClock* clock) {
   duration_ = config->sleepfor_duration;
 }
 
-absl::Status SleepFor::ValidateConfig(ActivityConfig& ac) {
+absl::Status SleepFor::ValidateConfig(const ActivityConfig& ac) {
   auto duration_us =
       GetNamedSettingInt64(ac.activity_settings(), "duration_us", -1);
   if (duration_us < 1) {
@@ -121,7 +178,7 @@ void ConsumeCpu::Initialize(ParsedActivityConfig* config, SimpleClock* clock) {
   iteration_count_ = 0;
 }
 
-absl::Status ConsumeCpu::ValidateConfig(ActivityConfig& ac) {
+absl::Status ConsumeCpu::ValidateConfig(const ActivityConfig& ac) {
   auto array_size =
       GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
   if (array_size < 1) {
@@ -131,7 +188,7 @@ absl::Status ConsumeCpu::ValidateConfig(ActivityConfig& ac) {
   return absl::OkStatus();
 }
 
-absl::Status PolluteDataCache::ValidateConfig(ActivityConfig& ac) {
+absl::Status PolluteDataCache::ValidateConfig(const ActivityConfig& ac) {
   auto array_size =
       GetNamedSettingInt64(ac.activity_settings(), "array_size", 1000);
   if (array_size < 1) {
@@ -234,7 +291,7 @@ ActivityLog PolluteDataCache::GetActivityLog() {
 // Generate the functions for instruction cache miss.
 BOOST_PP_REPEAT(POLLUTE_ICACHE_LOOP_SIZE, GENERATE_FUNC_OUTER_LOOP, );
 
-absl::Status PolluteInstructionCache::ValidateConfig(ActivityConfig& ac) {
+absl::Status PolluteInstructionCache::ValidateConfig(const ActivityConfig& ac) {
   return absl::OkStatus();
 }
 
