@@ -268,7 +268,7 @@ absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
 
 absl::Status DistBenchEngine::InitializeActivityConfigMap() {
   for (int i = 0; i < traffic_config_.activity_configs_size(); ++i) {
-    ActivityConfig activity_config = traffic_config_.activity_configs(i);
+    const auto& activity_config = traffic_config_.activity_configs(i);
     const auto& activity_config_name = activity_config.name();
     if (activity_config_indices_map_.find(activity_config_name) ==
         activity_config_indices_map_.end()) {
@@ -361,11 +361,11 @@ absl::Status DistBenchEngine::InitializeTables() {
   std::map<std::string, int> rpc_name_index_map =
       EnumerateRpcs(traffic_config_);
 
-  std::map<std::string, int> action_list_index_map;
+  std::map<std::string, int> actionlist_index_map;
   action_lists_.resize(traffic_config_.action_lists().size());
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
     const auto& action_list = traffic_config_.action_lists(i);
-    action_list_index_map[action_list.name()] = i;
+    actionlist_index_map[action_list.name()] = i;
     action_lists_[i].proto = action_list;
     action_lists_[i].list_actions.resize(action_list.action_names_size());
   }
@@ -403,8 +403,8 @@ absl::Status DistBenchEngine::InitializeTables() {
         }
         action.rpc_service_index = it3->second;
       } else if (action.proto.has_action_list_name()) {
-        auto it4 = action_list_index_map.find(action.proto.action_list_name());
-        if (it4 == action_list_index_map.end()) {
+        auto it4 = actionlist_index_map.find(action.proto.action_list_name());
+        if (it4 == actionlist_index_map.end()) {
           return absl::InvalidArgumentError(absl::StrCat(
               "Action_list not found: ", action.proto.action_list_name()));
         }
@@ -465,17 +465,17 @@ absl::Status DistBenchEngine::InitializeTables() {
       server_rpc_set.insert(rpc.name());
     }
 
-    auto it = action_list_index_map.find(rpc.name());
-    if (it == action_list_index_map.end()) {
+    auto it = actionlist_index_map.find(rpc.name());
+    if (it == actionlist_index_map.end()) {
       return absl::NotFoundError(rpc.name());
     }
 
-    int action_list_index = it->second;
-    server_rpc_table_[i].handler_action_list_index = action_list_index;
+    int actionlist_index = it->second;
+    server_rpc_table_[i].handler_actionlist_index = actionlist_index;
 
     // Optimize by setting handler to -1 if the action list is empty
-    if (action_lists_[action_list_index].proto.action_names().empty())
-      server_rpc_table_[i].handler_action_list_index = action_list_index = -1;
+    if (action_lists_[actionlist_index].proto.action_names().empty())
+      server_rpc_table_[i].handler_actionlist_index = actionlist_index = -1;
 
     server_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
 
@@ -792,38 +792,39 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
         std::string(rpc_def.response_payload_size, 'D'));
   }
 
-  int handler_action_list_index = server_rpc.handler_action_list_index;
-  if (handler_action_list_index == -1) {
+  int handler_actionlist_index = server_rpc.handler_actionlist_index;
+  if (handler_actionlist_index == -1) {
     state->SendResponseIfSet();
     state->FreeStateIfSet();
     return std::function<void()>();
   }
 
   if (state->have_dedicated_thread) {
-    RunActionList(handler_action_list_index, state);
+    RunActionList(handler_actionlist_index, state);
     return std::function<void()>();
   }
 
   ++detached_actionlist_threads_;
   return [=]() {
-    RunActionList(handler_action_list_index, state);
+    RunActionList(handler_actionlist_index, state);
     --detached_actionlist_threads_;
   };
 }
 
-void DistBenchEngine::RunActionList(int list_index,
+void DistBenchEngine::RunActionList(int actionlist_index,
                                     ServerRpcState* incoming_rpc_state,
                                     bool force_warmup) {
-  CHECK_LT(static_cast<size_t>(list_index), action_lists_.size());
-  CHECK_GE(list_index, 0);
+  CHECK_LT(static_cast<size_t>(actionlist_index), action_lists_.size());
+  CHECK_GE(actionlist_index, 0);
   ActionListState s;
   s.actionlist_invocation = atomic_fetch_add_explicit(
-      &actionlist_invocation_counts[list_index], 1, std::memory_order_relaxed);
-  s.actionlist_index = list_index;
+      &actionlist_invocation_counts[actionlist_index], 1,
+      std::memory_order_relaxed);
+  s.actionlist_index = actionlist_index;
   s.actionlist_error_dictionary_ = actionlist_error_dictionary_;
   s.warmup_ = force_warmup || incoming_rpc_state->request->warmup();
   s.incoming_rpc_state = incoming_rpc_state;
-  s.action_list = &action_lists_[list_index];
+  s.action_list = &action_lists_[actionlist_index];
   bool sent_response_early = false;
 
   // Allocate peer_logs_ for performance gathering, if needed:
@@ -891,7 +892,7 @@ void DistBenchEngine::RunActionList(int list_index,
           s.FinishAction(i);
         };
       }
-      s.state_table[i].action_list_state = &s;
+      s.state_table[i].actionlist_state = &s;
       atomic_fetch_add_explicit(&s.pending_action_count_, 1,
                                 std::memory_order_relaxed);
       InitiateAction(&s.state_table[i]);
@@ -1201,20 +1202,20 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
   if (action.actionlist_index >= 0) {
     std::shared_ptr<const GenericRequest> copied_request =
         std::make_shared<GenericRequest>(
-            *action_state->action_list_state->incoming_rpc_state->request);
-    int action_list_index = action.actionlist_index;
+            *action_state->actionlist_state->incoming_rpc_state->request);
+    int actionlist_index = action.actionlist_index;
     action_state->iteration_function =
-        [this, action_list_index, copied_request](
+        [this, actionlist_index, copied_request](
             std::shared_ptr<ActionIterationState> iteration_state) {
           ServerRpcState* copied_server_rpc_state = new ServerRpcState{};
           copied_server_rpc_state->request = copied_request.get();
           copied_server_rpc_state->have_dedicated_thread = true;
           copied_server_rpc_state->SetFreeStateFunction(
               [=] { delete copied_server_rpc_state; });
-          thread_pool_->AddTask([this, action_list_index, iteration_state,
+          thread_pool_->AddTask([this, actionlist_index, iteration_state,
                                  copied_request,
                                  copied_server_rpc_state]() mutable {
-            RunActionList(action_list_index, copied_server_rpc_state,
+            RunActionList(actionlist_index, copied_server_rpc_state,
                           iteration_state->warmup);
             FinishIteration(iteration_state);
           });
@@ -1388,7 +1389,7 @@ void DistBenchEngine::StartIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   ActionState* action_state = iteration_state->action_state;
   iteration_state->warmup =
-      action_state->action_list_state->warmup_ ||
+      action_state->actionlist_state->warmup_ ||
       (iteration_state->iteration_number <
        action_state->action->proto.iterations().warmup_iterations());
   action_state->iteration_function(iteration_state);
@@ -1417,7 +1418,7 @@ void DistBenchEngine::RunRpcActionIteration(
                   !(trace_count % rpc_spec.tracing_interval());
   GenericRequest common_request;
   const ServerRpcState* const incoming_rpc_state =
-      action_state->action_list_state->incoming_rpc_state;
+      action_state->actionlist_state->incoming_rpc_state;
   if (incoming_rpc_state->request->has_trace_context()) {
     do_trace = true;
     *common_request.mutable_trace_context() =
@@ -1426,9 +1427,9 @@ void DistBenchEngine::RunRpcActionIteration(
   if (do_trace) {
     common_request.mutable_trace_context()->add_engine_ids(trace_id_);
     common_request.mutable_trace_context()->add_actionlist_invocations(
-        action_state->action_list_state->actionlist_invocation);
+        action_state->actionlist_state->actionlist_invocation);
     common_request.mutable_trace_context()->add_actionlist_indices(
-        action_state->action_list_state->actionlist_index);
+        action_state->actionlist_state->actionlist_index);
     common_request.mutable_trace_context()->add_action_indices(
         action_state->action_index);
     common_request.mutable_trace_context()->add_action_iterations(
@@ -1501,7 +1502,7 @@ void DistBenchEngine::RunRpcActionIteration(
             CancelTraffic(absl::UnknownError(absl::StrCat(
                 "Peer reported ", rpc_state->response.error_message())));
           }
-          action_state->action_list_state->RecordLatency(
+          action_state->actionlist_state->RecordLatency(
               action_state->rpc_index, action_state->rpc_service_index,
               peer_instance, rpc_state);
           if (--iteration_state->remaining_rpcs == 0) {
