@@ -1624,8 +1624,8 @@ std::vector<int> DistBenchEngine::PickGridTargets(
     z_end = z_start + 1;
   }
   std::vector<int> ret;
-  size_t ret_size = (x_end - x_start) * (y_end - y_start) * (z_end - z_start);
-  ret.reserve(ret_size);
+  size_t size = (x_end - x_start) * (y_end - y_start) * (z_end - z_start);
+  ret.reserve(size);
   for (int i = x_start; i < x_end; ++i) {
     for (int j = y_start; j < y_end; ++j) {
       for (int k = z_start; k < z_end; ++k) {
