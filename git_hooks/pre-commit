@@ -1,28 +1,13 @@
 #!/bin/sh
 
 check_all_files() {
-  if ! which clang-format &> /dev/null; then
-    echo -e "\n\n clang-format was not found in your PATH"
+  if ! which git-clang-format &> /dev/null; then
+    echo -e "\n\n git-clang-format was not found in your PATH"
     exit 1
   fi
-  format_valid=true
-  for file in $(git diff-index --cached --name-only HEAD | grep -iE '\.(cc|h)') ; do
-    if [[ -f "$file" ]]; then
-      diff=$(clang-format -style=file ${file} | diff -u ${file} -)
-      diff2=$(clang-format -style=file <(git show :${file}) | diff -u <(git show :${file}) -)
-      if [[ -n "$diff" && -n "$diff2" ]]; then
-        echo "Invalid clang-format for $file:"
-        echo
-        echo "$diff"
-        echo
-        format_valid=false
-      fi
-    fi
-  done
-
-  if [ $format_valid = false ]; then
+  if ! git-clang-format --diff --staged; then
     echo "Commit aborted due to formatting errors. You can:"
-    echo "- Fix the errors, e.g. with make clang-format"
+    echo "- Fix the errors, e.g. with git-clang-format"
     echo "- Disable checks on section of the code with:"
     echo "   // clang-format off"
     echo "   code"
