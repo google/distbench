@@ -137,7 +137,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   struct SimulatedServerRpc {
     std::vector<GenericResponse> response_table;
-    int handler_action_list_index = -1;
+    int handler_actionlist_index = -1;
     RpcDefinition rpc_definition;
   };
 
@@ -181,7 +181,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionState {
     bool started = false;
     bool finished = false;
-    ActionListState* action_list_state;
+    ActionListState* actionlist_state;
 
     absl::Mutex iteration_mutex;
     int next_iteration ABSL_GUARDED_BY(iteration_mutex);
@@ -283,7 +283,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeRpcDefinitionsMap();
   absl::Status InitializeActivityConfigMap();
 
-  void RunActionList(int list_index, ServerRpcState* incoming_rpc_state,
+  void RunActionList(int actionlist_index, ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);
   void InitiateAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);
