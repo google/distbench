@@ -30,7 +30,8 @@ struct ParsedActivityConfig {
   absl::Duration sleepfor_duration;
 };
 
-absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(ActivityConfig& ac);
+absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(
+    const ActivityConfig& ac);
 
 // Base class for activities that run along with RPCs in distbench.
 // Activities can be used to simulate various activities occuring in real world,
@@ -57,62 +58,6 @@ class Activity {
 // configuration in ActivityConfig.
 std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config,
                                            SimpleClock* clock);
-
-class ConsumeCpu : public Activity {
- public:
-  void DoActivity() override;
-  ActivityLog GetActivityLog() override;
-  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
-  static absl::Status ValidateConfig(ActivityConfig& ac);
-
- private:
-  std::vector<int> rand_array;
-  int iteration_count_ = 0;
-  int64_t optimization_preventing_num_ = 0;
-};
-
-class PolluteDataCache : public Activity {
- public:
-  static absl::Status ValidateConfig(ActivityConfig& ac);
-  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
-  void DoActivity() override;
-  ActivityLog GetActivityLog() override;
-
- private:
-  int iteration_count_ = 0;
-  int array_reads_per_iteration_ = 0;
-  std::vector<int> data_array_;
-  int64_t optimization_preventing_num_ = 0;
-  std::uniform_int_distribution<> random_index_;
-  absl::BitGen bit_gen_;
-};
-
-class PolluteInstructionCache : public Activity {
- public:
-  static absl::Status ValidateConfig(ActivityConfig& ac);
-  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
-  void DoActivity() override;
-  ActivityLog GetActivityLog() override;
-
- private:
-  int iteration_count_ = 0;
-  int function_invocations_per_iteration_ = 0;
-  absl::BitGen bit_gen_;
-  std::vector<int (*)(bool)> func_ptr_array_;
-  std::uniform_int_distribution<> random_index_;
-};
-
-class SleepFor : public Activity {
- public:
-  static absl::Status ValidateConfig(ActivityConfig& ac);
-  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
-  void DoActivity() override;
-  ActivityLog GetActivityLog() override;
-
- private:
-  SimpleClock* clock_ = nullptr;
-  absl::Duration duration_;
-};
 
 }  // namespace distbench
 
