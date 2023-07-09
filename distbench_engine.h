@@ -283,7 +283,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeRpcDefinitionsMap();
   absl::Status InitializeActivityConfigMap();
 
-  void RunActionList(int list_index, ServerRpcState* incoming_rpc_state,
+  void RunActionList(int actionlist_index, ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);
   void InitiateAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);
