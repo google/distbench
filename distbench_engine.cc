@@ -500,10 +500,9 @@ absl::Status DistBenchEngine::InitializeTables() {
   return absl::OkStatus();
 }
 
-absl::Status DistBenchEngine::Initialize(
+absl::Status DistBenchEngine::InitializeConfig(
     const DistributedSystemDescription& global_description,
-    std::string_view control_plane_device, std::string_view service_name,
-    GridIndex service_index, int* port) {
+    std::string_view service_name, GridIndex service_index) {
   traffic_config_ = global_description;
   CHECK(!service_name.empty());
   service_name_ = service_name;
@@ -512,9 +511,17 @@ absl::Status DistBenchEngine::Initialize(
   if (!maybe_service_spec.ok()) return maybe_service_spec.status();
   service_spec_ = maybe_service_spec.value();
   service_instance_ = GetInstanceFromGridIndex(service_spec_, service_index);
-
   engine_name_ = GetInstanceName(service_spec_, service_instance_);
-  absl::Status ret = InitializeTables();
+  absl::Status status = InitializeTables();
+  return status;
+}
+
+absl::Status DistBenchEngine::Initialize(
+    const DistributedSystemDescription& global_description,
+    std::string_view control_plane_device, std::string_view service_name,
+    GridIndex service_index, int* port) {
+  absl::Status ret =
+      InitializeConfig(global_description, service_name, service_index);
   if (!ret.ok()) return ret;
 
   auto maybe_threadpool =
@@ -1815,6 +1822,22 @@ absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
           absl::StrCat("Distribution config '", config_name,
                        "' was defined more than once."));
     }
+  }
+  return absl::OkStatus();
+}
+
+// This function uses the validation from InitializeConfig inline to validate
+// traffic configs in MainCheckTest() inside distbench_busybox.cc and
+// is declared in distbench_utils.h.
+absl::Status ValidateTrafficConfig(
+    const DistributedSystemDescription& traffic_config) {
+  GridIndex defaultIndex{1, 1, 1};
+  for (int i = 0; i < traffic_config.services_size(); ++i) {
+    std::string_view service_name = traffic_config.services(i).name();
+    DistBenchEngine engine;
+    absl::Status status =
+        engine.InitializeConfig(traffic_config, service_name, defaultIndex);
+    if (!status.ok()) return status;
   }
   return absl::OkStatus();
 }

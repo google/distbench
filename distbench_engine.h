@@ -66,6 +66,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
                                ConnectResponse* response) override;
 
  private:
+  DistBenchEngine() = default;
+  friend absl::Status ValidateTrafficConfig(
+      const DistributedSystemDescription& traffic_config);
+
   struct StochasticDist {
     float probability;
     int nb_targets;
@@ -270,6 +274,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
   };
 
+  absl::Status InitializeConfig(
+      const DistributedSystemDescription& global_description,
+      std::string_view service_name, GridIndex service_index);
   absl::Status InitializeTables();
   absl::Status InitializePayloadsMap();
   absl::Status InitializeRpcFanoutFilter(RpcDefinition& rpc_def);

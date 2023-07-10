@@ -246,12 +246,19 @@ int MainCheckTest(std::vector<char*>& arguments) {
       std::cout << "Input parsed successfully, and converted to canonical\n"
                 << canonical;
     }
-    std::cout << "Result: " << infile << " parsed successfully.\n\n";
   } else {
     std::cerr << maybe_canonical.status();
     return 1;
   }
+  for (const auto& test : test_sequence.value().tests()) {
+    absl::Status status = ValidateTrafficConfig(test);
+    if (!status.ok()) {
+      std::cout << status;
+      return 1;
+    }
+  }
 
+  std::cout << "\nResult: " << infile << " parsed successfully.\n\n";
   return 0;
 }
 

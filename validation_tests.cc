@@ -66,7 +66,7 @@ TEST_F(CheckTestsTest, ValidTestSequence) {
   auto maybe_canonical = GetCanonicalTestSequence(sequence);
   ASSERT_OK(maybe_canonical.status());
   for (const auto& test : sequence.tests()) {
-    auto status = InitializeTablescheck(test);
+    auto status = ValidateTrafficConfig(test);
     ASSERT_OK(status);
   }
 }
@@ -78,7 +78,7 @@ TEST_F(CheckTestsTest, DistConfigWithInvalidDimensions) {
   dist_config->add_field_names("request_payload");
   dist_config->add_field_names("response_payload");
   dist_config->add_field_names("payload_size");
-  auto status = InitializeTablescheck(*test);
+  auto status = ValidateTrafficConfig(*test);
   ASSERT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
@@ -94,7 +94,7 @@ TEST_F(CheckTestsTest, DistConfigsWithSameName) {
     cdf_point->set_cdf(i / num_points);
     cdf_point->set_value(i);
   }
-  auto status = InitializeTablescheck(*test);
+  auto status = ValidateTrafficConfig(*test);
   ASSERT_EQ(status.code(), absl::StatusCode::kFailedPrecondition);
 }
 
@@ -166,7 +166,7 @@ TEST_F(CheckTestsTest, InvalidRPC) {
   rpc->set_name("msg");
   rpc->set_client("service1");
 
-  auto status = InitializeTablescheck(*test);
+  auto status = ValidateTrafficConfig(*test);
   ASSERT_EQ(status.code(), absl::StatusCode::kNotFound);
 }
 

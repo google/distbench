@@ -199,6 +199,12 @@ absl::Status ValidateDistributionConfig(const DistributionConfig& config);
 
 absl::Status ValidateTestsSetting(const TestsSetting& settings);
 
+// This function tests if traffic_config could initialize tables in
+// DistBenchEngine. Used in distbench_busybox.cc in MainCheckTest(),
+// and defined in distbench_engine.cc.
+absl::Status ValidateTrafficConfig(
+    const DistributedSystemDescription& traffic_config);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
