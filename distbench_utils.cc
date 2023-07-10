@@ -743,9 +743,19 @@ GetCanonicalDistributedSystemDescription(
   return ret;
 }
 
+absl::Status ValidateTestsSetting(const TestsSetting& settings) {
+  return absl::OkStatus();
+}
+
 absl::StatusOr<TestSequence> GetCanonicalTestSequence(
     const TestSequence& sequence) {
   TestSequence ret;
+  if (sequence.has_tests_setting()) {
+    auto status = ValidateTestsSetting(sequence.tests_setting());
+    if (!status.ok()) {
+      return status;
+    }
+  }
   *ret.mutable_tests_setting() = sequence.tests_setting();
   for (const auto& test : sequence.tests()) {
     auto maybe_test = GetCanonicalDistributedSystemDescription(test);

@@ -197,6 +197,8 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
 
 absl::Status ValidateDistributionConfig(const DistributionConfig& config);
 
+absl::Status ValidateTestsSetting(const TestsSetting& settings);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
