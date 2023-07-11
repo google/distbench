@@ -473,6 +473,17 @@ cc_binary(
     ],
 )
 
+cc_test(
+    name = "validation_tests",
+    size = "medium",
+    srcs = ["validation_tests.cc"],
+    deps = [
+        ":distbench_engine_lib",
+        ":distbench_utils",
+        ":gtest_utils",
+    ],
+)
+
 cc_library(
     name = "protocol_driver_double_barrel",
     srcs = [
