@@ -575,7 +575,7 @@ cc_test(
     shard_count = 8,
     deps = [
         ":distbench_node_manager_lib",
-        ":distbench_test_sequencer_lib",
+        ":distbench_test_sequencer_tester",
         ":distbench_utils",
         ":grpc_wrapper",
         ":gtest_utils",

@@ -14,7 +14,7 @@
 
 #include "absl/strings/str_replace.h"
 #include "distbench_node_manager.h"
-#include "distbench_test_sequencer.h"
+#include "distbench_test_sequencer_tester.h"
 #include "distbench_utils.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -22,67 +22,6 @@
 #include "protocol_driver_allocator.h"
 
 namespace distbench {
-
-std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s) {
-  auto context = std::make_unique<grpc::ClientContext>();
-  SetGrpcClientContextDeadline(context.get(), max_time_s);
-  return context;
-}
-
-struct DistBenchTester {
-  ~DistBenchTester();
-  absl::Status Initialize(int num_nodes);
-
-  std::unique_ptr<TestSequencer> test_sequencer;
-  std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub;
-  std::vector<std::unique_ptr<NodeManager>> nodes;
-};
-
-DistBenchTester::~DistBenchTester() {
-  TestSequence test_sequence;
-  test_sequence.mutable_tests_setting()->set_shutdown_after_tests(true);
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/10);
-  grpc::Status status = test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  if (!status.ok()) {
-    ADD_FAILURE() << "RunTestSequence RPC failed " << status;
-    test_sequencer->Shutdown();
-  }
-  test_sequencer->Wait();
-  for (size_t i = 0; i < nodes.size(); ++i) {
-    nodes[i]->Wait();
-  }
-}
-
-absl::Status DistBenchTester::Initialize(int num_nodes) {
-  test_sequencer = std::make_unique<TestSequencer>();
-  distbench::TestSequencerOpts ts_opts = {};
-  int port = 0;
-  ts_opts.port = &port;
-  test_sequencer->Initialize(ts_opts);
-  nodes.resize(num_nodes);
-  for (int i = 0; i < num_nodes; ++i) {
-    distbench::NodeManagerOpts nm_opts = {};
-    int port = 0;
-    // Flip the order of the last few nodes:
-    if (i >= 2) {
-      nm_opts.preassigned_node_id = num_nodes - i + 1;
-    }
-    nm_opts.port = &port;
-    nm_opts.test_sequencer_service_address = test_sequencer->service_address();
-    nodes[i] = std::make_unique<NodeManager>();
-    auto ret = nodes[i]->Initialize(nm_opts);
-    if (!ret.ok()) return ret;
-  }
-  std::shared_ptr<grpc::ChannelCredentials> client_creds =
-      MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel =
-      grpc::CreateCustomChannel(test_sequencer->service_address(), client_creds,
-                                DistbenchCustomChannelArguments());
-  test_sequencer_stub = DistBenchTestSequencer::NewStub(channel);
-  return absl::OkStatus();
-}
 
 struct TestSequenceParams {
   int nb_cliques = 2;
