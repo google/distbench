@@ -570,12 +570,9 @@ absl::Status DistBenchEngine::ConfigurePeers(const ServiceEndpointMap& peers) {
 }
 
 absl::Status DistBenchEngine::ConnectToPeers() {
-  std::map<std::string, int> service_sizes =
-      EnumerateServiceSizes(traffic_config_);
   std::map<std::string, int> service_instance_ids =
       EnumerateServiceInstanceIds(traffic_config_);
 
-  // peers_[service_id][instance_id]
   peers_.resize(traffic_config_.services_size());
   for (int i = 0; i < traffic_config_.services_size(); ++i) {
     peers_[i].resize(traffic_config_.services(i).count());
