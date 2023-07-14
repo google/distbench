@@ -20,6 +20,7 @@
 #include "absl/flags/parse.h"
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"
+#include "distbench_test_sequencer_tester.h"
 #include "distbench_thread_support.h"
 #include "distbench_utils.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
@@ -30,6 +31,7 @@ bool CheckRemainingArguments(std::vector<char*> remaining_arguments,
                              size_t min_expected, size_t max_expected);
 int MainRunTests(std::vector<char*>& arguments);
 int MainCheckTest(std::vector<char*>& arguments);
+int MainTestPreview(std::vector<char*>& arguments);
 int MainTestSequencer(std::vector<char*>& arguments);
 int MainNodeManager(std::vector<char*>& arguments);
 void Usage();
@@ -73,6 +75,8 @@ int main(int argc, char** argv, char** envp) {
     return MainRunTests(remaining_arguments);
   } else if (!strcmp(distbench_module, "check_test")) {
     return MainCheckTest(remaining_arguments);
+  } else if (!strcmp(distbench_module, "test_preview")) {
+    return MainTestPreview(remaining_arguments);
   } else if (!strcmp(distbench_module, "help")) {
     Usage();
     return 0;
@@ -262,6 +266,55 @@ int MainCheckTest(std::vector<char*>& arguments) {
   return 0;
 }
 
+int MainTestPreview(std::vector<char*>& arguments) {
+  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
+
+  const std::string infile = absl::GetFlag(FLAGS_infile);
+  auto test_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
+  if (!test_sequence.ok()) {
+    std::cerr << "Error reading test sequence: " << test_sequence.status()
+              << "\n";
+    return 1;
+  }
+  auto context = distbench::CreateContextWithDeadline(/*max_time_s=*/3000);
+  distbench::DistBenchTester preview;
+  distbench::TestSequenceResults results;
+  int num_nodes = 0;
+  for (const auto& test : test_sequence.value().tests()) {
+    int sum = 0;
+    for (const auto& service : test.services()) {
+      if (service.count() > num_nodes) {
+        sum += service.count();
+      }
+    }
+    if (sum > num_nodes) {
+      num_nodes = sum;
+    }
+  }
+  absl::Status status = preview.Initialize(num_nodes);
+  if (!status.ok()) {
+    std::cout << status;
+    return 1;
+  }
+  grpc::Status outcome = preview.test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence.value(), &results);
+  if (!outcome.ok()) {
+    std::cout << outcome;
+    return 1;
+  }
+
+  const std::string outfile = absl::GetFlag(FLAGS_outfile);
+  if (!outfile.empty()) {
+    absl::Status save_status = SaveResultProtoToFile(outfile, results);
+    if (!save_status.ok()) {
+      std::cerr << "Unable to save the resutls: " << save_status << "\n";
+      return 1;
+    }
+  }
+  std::cout << "\nOutcome: Preview for " << infile << " was successful.\n\n";
+  return 0;
+}
+
 int MainTestSequencer(std::vector<char*>& arguments) {
   if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
   int port = absl::GetFlag(FLAGS_port);
@@ -373,6 +426,10 @@ void Usage() {
   std::cerr << "\n";
   std::cerr << "  distbench check_test "
                "[--infile test_sequence.proto_text] "
+               "\n";
+  std::cerr << "  distbench test_preview "
+               "[--infile test_sequence.proto_text] "
+               "[--outfile result.proto_text]"
                "\n";
   std::cerr << "\n";
   std::cerr << "  distbench help\n";
