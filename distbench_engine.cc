@@ -514,6 +514,9 @@ absl::Status DistBenchEngine::Initialize(
   service_instance_ = GetInstanceFromGridIndex(service_spec_, service_index);
 
   engine_name_ = GetInstanceName(service_spec_, service_instance_);
+  absl::Status ret = InitializeTables();
+  if (!ret.ok()) return ret;
+
   auto maybe_threadpool =
       CreateThreadpool("elastic", absl::base_internal::NumCPUs());
   if (!maybe_threadpool.ok()) {
@@ -521,8 +524,6 @@ absl::Status DistBenchEngine::Initialize(
   }
   thread_pool_ = std::move(maybe_threadpool.value());
 
-  absl::Status ret = InitializeTables();
-  if (!ret.ok()) return ret;
   service_index_ = service_index_map_[service_name_];
   actionlist_invocation_counts = std::make_unique<std::atomic<int>[]>(
       global_description.action_lists_size());
