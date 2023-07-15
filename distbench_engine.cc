@@ -299,6 +299,12 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
     }
     rpc_def.server_service_spec = traffic_config_.services(it->second);
 
+    it = service_index_map_.find(rpc_def.rpc_spec.client());
+    if (it == service_index_map_.end()) {
+      return absl::NotFoundError(rpc_def.rpc_spec.client());
+    }
+    rpc_def.client_service_index = it->second;
+
     // Get request payload size
     rpc_def.request_payload_size = -1;
     if (rpc_spec.has_request_payload_name()) {
@@ -1221,6 +1227,11 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
           });
         };
   } else if (action.rpc_service_index >= 0) {
+    const auto& rpc_def = client_rpc_table_[action.rpc_index].rpc_definition;
+    if (rpc_def.client_service_index != service_index_) {
+      LOG(ERROR) << "RPC invoked from wrong client node.";
+      return;
+    }
     CHECK_LT(static_cast<size_t>(action.rpc_service_index), peers_.size());
     int rpc_service_index = action.rpc_service_index;
     CHECK_GE(rpc_service_index, 0);
