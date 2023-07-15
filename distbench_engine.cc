@@ -447,7 +447,6 @@ absl::Status DistBenchEngine::InitializeTables() {
       traffic_config_.rpc_descriptions().size());
   server_rpc_table_.resize(traffic_config_.rpc_descriptions().size());
   std::map<std::string, int> client_rpc_index_map;
-  std::set<std::string> server_rpc_set;
 
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc = traffic_config_.rpc_descriptions(i);
@@ -468,7 +467,7 @@ absl::Status DistBenchEngine::InitializeTables() {
       dependent_services_.insert(server_service_name);
     }
     if (server_service_name == service_name_) {
-      server_rpc_set.insert(rpc.name());
+      server_rpc_table_[i].allowed = true;
     }
 
     auto it = actionlist_index_map.find(rpc.name());
@@ -788,6 +787,14 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
     }
   }
   const auto& server_rpc = server_rpc_table_[state->request->rpc_index()];
+  if (!server_rpc.allowed) {
+    state->response.set_error_message(
+        absl::StrCat("rpc_index should never be sent to this service: ",
+                     state->request->rpc_index()));
+    state->SendResponseIfSet();
+    state->FreeStateIfSet();
+    return std::function<void()>();
+  }
   const auto& rpc_def = server_rpc.rpc_definition;
 
   if (state->request->has_response_payload_size()) {
