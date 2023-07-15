@@ -141,6 +141,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::vector<GenericResponse> response_table;
     int handler_actionlist_index = -1;
     RpcDefinition rpc_definition;
+    bool allowed = false;
   };
 
   struct SimulatedClientRpc {
