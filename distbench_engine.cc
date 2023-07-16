@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <queue>
+
 #include "distbench_engine.h"
 
 #include "absl/base/internal/sysinfo.h"
@@ -286,6 +288,20 @@ absl::Status DistBenchEngine::InitializeActivityConfigMap() {
   return absl::OkStatus();
 }
 
+absl::Status DistBenchEngine::InitializeRpcTraceMap() {
+  for (int i = 0; i < traffic_config_.rpc_replay_traces_size(); ++i) {
+    const auto& trace = traffic_config_.rpc_replay_traces(i);
+    if (rpc_replay_trace_indices_map_.find(trace.name()) ==
+        rpc_replay_trace_indices_map_.end()) {
+      rpc_replay_trace_indices_map_[trace.name()] = i;
+    } else {
+      return absl::FailedPreconditionError(absl::StrCat(
+          "RpcReplayTrace '", trace.name(), "' was defined more than once."));
+    }
+  }
+  return absl::OkStatus();
+}
+
 absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc_spec = traffic_config_.rpc_descriptions(i);
@@ -371,6 +387,9 @@ absl::Status DistBenchEngine::InitializeTables() {
   absl::Status ret_init_activity_config = InitializeActivityConfigMap();
   if (!ret_init_activity_config.ok()) return ret_init_activity_config;
 
+  absl::Status ret_init_rpc_traces = InitializeRpcTraceMap();
+  if (!ret_init_rpc_traces.ok()) return ret_init_rpc_traces;
+
   // Convert the action table to a map indexed by name:
   std::map<std::string, Action> action_map;
   for (int i = 0; i < traffic_config_.actions_size(); ++i) {
@@ -437,6 +456,15 @@ absl::Status DistBenchEngine::InitializeTables() {
                            action.proto.activity_config_name()));
         }
         action.activity_config_index = it5->second;
+      } else if(action.proto.has_rpc_replay_trace_name()) {
+        auto it6 = rpc_replay_trace_indices_map_.find(
+            action.proto.rpc_replay_trace_name());
+        if (it6 == rpc_replay_trace_indices_map_.end()) {
+          return absl::InvalidArgumentError(
+              absl::StrCat("RpcReplayTrace not found for: ",
+                           action.proto.rpc_replay_trace_name()));
+        }
+        action.rpc_replay_trace_index = it6->second;
       } else {
         return absl::InvalidArgumentError(
             "only rpc actions & activities are supported for now");
@@ -460,6 +488,12 @@ absl::Status DistBenchEngine::InitializeTables() {
       traffic_config_.rpc_descriptions().size());
   server_rpc_table_.resize(traffic_config_.rpc_descriptions().size());
   std::map<std::string, int> client_rpc_index_map;
+
+  for (const auto& trace : traffic_config_.rpc_replay_traces()) {
+    if (trace.client() == service_name_) {
+      dependent_services_.insert(trace.server());
+    }
+  }
 
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc = traffic_config_.rpc_descriptions(i);
@@ -740,6 +774,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
 }
 
 absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
+  traffic_start_time_ns_ = 1e9 + clock_->SetOffset(request->start_timestamp_ns());
   if (service_map_.service_endpoints_size() < 1) {
     return absl::NotFoundError("No peers configured.");
   }
@@ -784,11 +819,18 @@ void DistBenchEngine::FinishTraffic() {
 void DistBenchEngine::AddActivityLogs(ServicePerformanceLog* sp_log) {
   for (auto& alog : cumulative_activity_logs_) {
     auto& activity_log = (*sp_log->mutable_activity_logs())[alog.first];
-    for (auto& metric : alog.second) {
+    for (const auto& metric : alog.second) {
       auto* am = activity_log.add_activity_metrics();
       am->set_name(metric.first);
       am->set_value_int(metric.second);
     }
+  }
+}
+
+void DistBenchEngine::AddRpcReplayTraceLogs(ServicePerformanceLog* sp_log) {
+  absl::MutexLock m(&replay_logs_mutex);
+  for (const std::unique_ptr<distbench::RpcReplayTraceLog>& alog : replay_logs_) {
+    *sp_log->add_replay_trace_logs() = std::move(*alog);
   }
 }
 
@@ -819,6 +861,7 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
     log.mutable_error_dictionary()->add_error_message(error);
   }
   AddActivityLogs(&log);
+  AddRpcReplayTraceLogs(&log);
   return log;
 }
 
@@ -829,7 +872,13 @@ ServicePerformanceLog DistBenchEngine::GetLogs() {
 // and longer RPCs will return a non-empty function that the protocol driver
 // should process in a seperate thread.
 std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
-  CHECK(state->request->has_rpc_index());
+  if (!state->request->has_rpc_index() && !state->request->has_response_payload_size()) {
+    LOG(ERROR) << state->request->DebugString();
+    state->response.set_error_message("rpc has no index, and no response size: ");
+    state->SendResponseIfSet();
+    state->FreeStateIfSet();
+    return std::function<void()>();
+  }
   if (canceled_.HasBeenNotified()) {
     absl::MutexLock m(&cancelation_mutex_);
     // Avoid reporting errors during the grace period:
@@ -867,7 +916,16 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
         std::string(rpc_def.response_payload_size, 'D'));
   }
 
-  if (traffic_config_.rpc_descriptions(state->request->rpc_index()).has_multi_server_channel_name()) {
+  if (!state->request->has_rpc_index()) {
+    // In rpc replay mode we don't know if this is a multi-server channel or
+    // not, so just assume it is:
+    state->response.set_server_instance(service_instance_);
+    return [=]() {
+      absl::SleepFor(absl::Nanoseconds(state->request->server_processing_time_ns()));
+    };
+  }
+
+  if (rpc_def.rpc_spec.has_multi_server_channel_name()) {
     state->response.set_server_instance(service_instance_);
   }
 
@@ -888,6 +946,238 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
     RunActionList(handler_actionlist_index, state);
     --detached_actionlist_threads_;
   };
+}
+
+struct RpcTraceDeps {
+  // This counts how many other RPCs this one is waiting for.
+  int remaining_deps;
+
+  // Every RPC that depends on this one via timing_mode RELATIVE_TO_PRIOR_RPC_START
+  // is listed here, and when the RPC starts we run through this list, decrementing
+  // remaining_deps. When remaining deps is zero we take the start time of
+  // this RPC and use it to compute the start time of the dependent ones.
+  std::vector<int> start_dependent_rpc_index;
+
+  // Every RPC that depends on this one via timing_mode RELATIVE_TO_PRIOR_RPC_END
+  // is listed here, and when the RPC ends we run through this list, decrementing
+  // remaining_deps. When remaining deps is zero we take the end time of
+  // this RPC and use it to compute the start time of the dependent ones.
+  std::vector<int> end_dependent_rpc_index;
+};
+
+// RPCs which have no remaining dependencies are added to a min-heap sorted by
+// absolute start time. This struct is used to implement the min-heap.
+struct ReadyRpc {
+  int64_t ready_time;
+  int index;
+
+  bool operator>(const ReadyRpc& other) const {
+    return ready_time > other.ready_time;
+  }
+};
+
+struct RpcReplayTraceRunner {
+  std::atomic<int> remaining_trace_rpcs = 0;
+  std::shared_ptr<ThreadSafeDictionary>actionlist_error_dictionary;
+  RpcReplayTraceLog ret ABSL_GUARDED_BY(rpc_mutex);
+  absl::Mutex rpc_mutex;
+  std::vector<RpcTraceDeps> deps;
+  const RpcReplayTrace* trace;
+  // Ready means no longer waiting for deps, but may still be waiting for
+  // timing.
+  std::priority_queue<ReadyRpc, std::vector<ReadyRpc>, std::greater<ReadyRpc>>
+    ready_rpcs ABSL_GUARDED_BY(rpc_mutex);
+  bool rpcs_finished ABSL_GUARDED_BY(rpc_mutex) = false;
+  SimpleClock* clock;
+  int64_t trace_start_time;
+  ProtocolDriver *pd;
+  std::vector<int> logical_to_pdid;
+  std::vector<int> logical_to_msc;
+
+  void SetupDependencies(int local_instance, int64_t traffic_start_time_ns) {
+    trace_start_time = ToUnixNanos(clock->Now());
+    ret.set_timestamp_offset(trace_start_time);
+    deps.resize(trace->records_size());
+    for (int i = 0; i < trace->records_size(); ++i) {
+      RpcReplayTraceRecord record = trace->defaults();
+      record.MergeFrom(trace->records(i));
+      if (record.has_client_instance() && record.client_instance() != local_instance) {
+        continue;
+      }
+      ++remaining_trace_rpcs;
+      int valid_deps = 0;
+      for (const auto& dep_distance : record.prior_rpc_distances()) {
+        CHECK_GE(dep_distance, 0);
+        int absolute_index = i - 1 - dep_distance;
+        CHECK_GE(absolute_index, 0);
+        RpcReplayTraceRecord dep_record = trace->defaults();
+        dep_record.MergeFrom(trace->records(absolute_index));
+        if (dep_record.has_client_instance() && dep_record.client_instance() != local_instance) {
+          LOG(WARNING) << "rpc trace seems messed up, ignoring a dependency";
+          continue;
+        }
+        ++valid_deps;
+
+        if (record.timing_mode() == RpcReplayTraceRecord::RELATIVE_TO_PRIOR_RPC_START) {
+          deps[absolute_index].start_dependent_rpc_index.push_back(i);
+        } else if (record.timing_mode() == RpcReplayTraceRecord::RELATIVE_TO_PRIOR_RPC_END) {
+          deps[absolute_index].end_dependent_rpc_index.push_back(i);
+        }
+      }
+      deps[i].remaining_deps = valid_deps;
+      if (valid_deps == 0) {
+        absl::MutexLock m(&rpc_mutex);
+        if (record.timing_mode() == RpcReplayTraceRecord::RELATIVE_TO_TRACE_START) {
+          ready_rpcs.push({trace_start_time + record.timing_ns(), i});
+        } else {
+          ready_rpcs.push({traffic_start_time_ns + record.timing_ns(), i});
+        }
+      }
+    }
+  }
+
+  void ActivateStartDeps(int started_rpc, int64_t start_time) ABSL_EXCLUSIVE_LOCKS_REQUIRED(rpc_mutex) {
+    absl::MutexLock m(&rpc_mutex);
+    for (const auto& dep_index : deps[started_rpc].start_dependent_rpc_index) {
+      if (--deps[dep_index].remaining_deps == 0) {
+        RpcReplayTraceRecord record = trace->defaults();
+        record.MergeFrom(trace->records(dep_index));
+        ready_rpcs.push({start_time + record.timing_ns(), dep_index});
+      }
+    }
+  }
+
+  void ActivateEndDeps(int finished_rpc, RpcSample sample) ABSL_EXCLUSIVE_LOCKS_REQUIRED(rpc_mutex) {
+    absl::MutexLock m(&rpc_mutex);
+    int64_t end_time = trace_start_time + sample.start_timestamp_ns() + sample.latency_ns();
+    for (const auto& dep_index : deps[finished_rpc].end_dependent_rpc_index) {
+      if (--deps[dep_index].remaining_deps == 0) {
+        RpcReplayTraceRecord record = trace->defaults();
+        record.MergeFrom(trace->records(dep_index));
+        ready_rpcs.push({end_time + record.timing_ns(), dep_index});
+      }
+    }
+    rpcs_finished = true;
+    --remaining_trace_rpcs;
+    (*ret.mutable_rpc_samples())[finished_rpc] = sample;
+  }
+
+  RpcReplayTraceLog Run(int local_instance, int64_t traffic_start_time_ns) {
+    SetupDependencies(local_instance, traffic_start_time_ns);
+    while (true) {
+      rpc_mutex.Lock();
+      if (!remaining_trace_rpcs) {
+        rpc_mutex.Unlock();
+        break;
+      }
+      absl::Time deadline = absl::InfiniteFuture();
+      if (!ready_rpcs.empty()) {
+        deadline = absl::FromUnixNanos(ready_rpcs.top().ready_time);
+      }
+
+      auto some_rpcs_finished = [&]() { return rpcs_finished; };
+      if (clock->MutexAwaitWithDeadline(
+            &rpc_mutex, absl::Condition(&some_rpcs_finished), deadline)) {
+        // some_rpcs_finished, so the next RPC might have been updated to an
+        // earlier one.
+        rpcs_finished = false;
+        rpc_mutex.Unlock();
+        continue;
+      } else {
+        // timeout expired
+        CHECK(!ready_rpcs.empty());
+        int rpc_to_run = ready_rpcs.top().index;
+        ready_rpcs.pop();
+        rpc_mutex.Unlock();
+        RpcReplayTraceRecord record = trace->defaults();
+        record.MergeFrom(trace->records(rpc_to_run));
+        ClientRpcState* rpc_state = new ClientRpcState;
+        rpc_state->start_time = clock->Now();
+        int64_t start_time_ns = absl::ToUnixNanos(rpc_state->start_time);
+        auto f = [this, rpc_to_run, rpc_state, record]() {
+          rpc_state->end_time = clock->Now();
+          // Update end deps:
+          RpcSample sample;
+          auto latency = rpc_state->end_time - rpc_state->start_time;
+          sample.set_start_timestamp_ns(absl::ToUnixNanos(rpc_state->start_time) - trace_start_time);
+          sample.set_latency_ns(absl::ToInt64Nanoseconds(latency));
+          if (!rpc_state->response.error_message().empty()) {
+            sample.set_error_index(actionlist_error_dictionary->GetIndex(
+                  rpc_state->response.error_message()));
+          }
+          ActivateEndDeps(rpc_to_run, sample);
+          delete rpc_state;
+        };
+        if (record.has_multi_server_channel_name_index()) {
+          if ((size_t)record.multi_server_channel_name_index() >= logical_to_msc.size()) {
+            LOG(FATAL) << "too big";
+          } else {
+            pd->InitiateRpcToMultiServerChannel(
+                logical_to_msc[record.multi_server_channel_name_index()], rpc_state, f);
+          }
+        } else {
+          if ((size_t)record.server_instance() >= logical_to_pdid.size()) {
+            LOG(FATAL) << "too big";
+          } else {
+            int pd_id = logical_to_pdid[record.server_instance()];
+            CHECK_GE(pd_id, 0) << "record.server_instance() = " << record.server_instance();
+            rpc_state->request.set_payload(std::string(record.request_size(), 'D'));
+            rpc_state->request.set_response_payload_size(record.response_size());
+            pd->InitiateRpc(pd_id, rpc_state, f);
+          }
+        }
+
+        // Update start deps:
+        ActivateStartDeps(rpc_to_run, start_time_ns);
+      }
+    }
+    return std::move(ret);
+  }
+};
+
+RpcReplayTraceLog DistBenchEngine::RunRpcReplayTrace(
+    int rpc_replay_trace_index, ServerRpcState* incoming_rpc_state,
+    std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary,
+    bool force_warmup) {
+  CHECK_GE(rpc_replay_trace_index, 0);
+  RpcReplayTraceRunner trace_runner;
+  trace_runner.clock = clock_;
+  trace_runner.actionlist_error_dictionary = actionlist_error_dictionary;
+  trace_runner.trace = &traffic_config_.rpc_replay_traces(rpc_replay_trace_index);
+  trace_runner.pd = pd_.get();
+
+  int target_service = service_index_;
+  if (trace_runner.trace->has_server()) {
+    target_service = service_index_map_[trace_runner.trace->server()];
+  }
+  if (trace_runner.trace->has_client()) {
+    if (trace_runner.trace->client() != traffic_config_.services(service_index_).name()) {
+      LOG(FATAL) << "calling RPC replay trace from wrong client";
+    }
+  }
+
+  const auto& target_channels = traffic_config_.services(target_service).multi_server_channels();
+
+  trace_runner.logical_to_msc.reserve(trace_runner.trace->multiserver_channel_names_size());
+  for (const auto& channel_name : trace_runner.trace->multiserver_channel_names()) {
+    for (int i = 0; i < target_channels.size(); ++i) {
+      if (target_channels[i].name() == channel_name) {
+        trace_runner.logical_to_msc.push_back(i);
+        break;
+      }
+    }
+  }
+  const auto& servers = peers_[target_service];
+  trace_runner.logical_to_pdid.reserve(peers_.size());
+  for (const auto& md : servers) {
+    trace_runner.logical_to_pdid.push_back(md.pd_id);
+  }
+
+  if (incoming_rpc_state->request->has_trace_context()) {
+    *trace_runner.ret.mutable_trace_context() =
+      incoming_rpc_state->request->trace_context();
+  }
+  return trace_runner.Run(service_instance_, traffic_start_time_ns_);
 }
 
 void DistBenchEngine::RunActionList(int actionlist_index,
@@ -990,7 +1280,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     if (done) break;
     auto some_actions_finished = [&s]() { return s.DidSomeActionsFinish(); };
 
-    // Idle here till some actions are finished.
+    // Idle here until some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
             next_iteration_time)) {
@@ -1233,7 +1523,7 @@ void DistBenchEngine::ActionListState::RecordLatency(size_t rpc_index,
   if (state->request.warmup()) {
     sample->set_warmup(true);
   }
-  if (!state->request.trace_context().engine_ids().empty()) {
+  if (state->request.has_trace_context()) {
     *sample->mutable_trace_context() =
         std::move(state->request.trace_context());
   }
@@ -1269,7 +1559,7 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
   }
   packed_sample.request_size = state->request.payload().size();
   packed_sample.response_size = state->response.payload().size();
-  if (!state->request.trace_context().engine_ids().empty()) {
+  if (state->request.has_trace_context()) {
     packed_sample.trace_context =
         ::google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
     *packed_sample.trace_context = state->request.trace_context();
@@ -1278,7 +1568,42 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
 
 void DistBenchEngine::InitiateAction(ActionState* action_state) {
   auto& action = *action_state->action;
-  if (action.actionlist_index >= 0) {
+  if (action.rpc_replay_trace_index >= 0) {
+    std::shared_ptr<const GenericRequest> copied_request =
+        std::make_shared<GenericRequest>(
+            *action_state->actionlist_state->incoming_rpc_state->request);
+    int rpc_replay_trace_index = action.rpc_replay_trace_index;
+    action_state->iteration_function = [this, rpc_replay_trace_index, copied_request](
+            std::shared_ptr<ActionIterationState> iteration_state) {
+          ServerRpcState* copied_server_rpc_state = new ServerRpcState{};
+          copied_server_rpc_state->request = copied_request.get();
+          copied_server_rpc_state->have_dedicated_thread = true;
+          copied_server_rpc_state->SetFreeStateFunction(
+              [=] { delete copied_server_rpc_state; });
+          thread_pool_->AddTask([this, rpc_replay_trace_index, iteration_state,
+                                 copied_request, copied_server_rpc_state]() mutable {
+            auto stats = RunRpcReplayTrace(
+                rpc_replay_trace_index, copied_server_rpc_state,
+                iteration_state->action_state->actionlist_state->actionlist_error_dictionary_,
+                iteration_state->warmup);
+            if (!stats.rpc_samples().empty()) {
+              stats.mutable_trace_context()->add_engine_ids(trace_id_);
+              stats.mutable_trace_context()->add_actionlist_invocations(
+                  iteration_state->action_state->actionlist_state->actionlist_invocation);
+              stats.mutable_trace_context()->add_actionlist_indices(
+                  iteration_state->action_state->actionlist_state->actionlist_index);
+              stats.mutable_trace_context()->add_action_indices(
+                  iteration_state->action_state->action_index);
+              stats.mutable_trace_context()->add_action_iterations(
+                iteration_state->iteration_number);
+              copied_server_rpc_state->FreeStateIfSet();
+              absl::MutexLock m(&replay_logs_mutex);
+              replay_logs_.push_back(std::make_unique<RpcReplayTraceLog>(std::move(stats)));
+            }
+            FinishIteration(iteration_state);
+          });
+        };
+  } else if (action.actionlist_index >= 0) {
     std::shared_ptr<const GenericRequest> copied_request =
         std::make_shared<GenericRequest>(
             *action_state->actionlist_state->incoming_rpc_state->request);
@@ -1455,6 +1780,7 @@ void DistBenchEngine::FinishIteration(
   if (start_another_iteration) {
     iteration_state->iteration_number = state->next_iteration++;
   }
+  const bool is_activity = state->action->proto.has_activity_config_name();
   int pending_iterations = state->next_iteration - state->finished_iterations;
   state->iteration_mutex.Unlock();
   if (done && !pending_iterations) {
@@ -1467,8 +1793,7 @@ void DistBenchEngine::FinishIteration(
     };
     adcb();
 #endif
-  } else if (!state->action->proto.has_activity_config_name() &&
-             start_another_iteration) {
+  } else if (!is_activity && start_another_iteration) {
     StartIteration(iteration_state);
   }
 }

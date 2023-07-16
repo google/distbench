@@ -134,6 +134,54 @@ message ActivityConfig {
   repeated NamedSetting activity_settings = 2;
 }
 
+message RpcReplayTraceRecord {
+  enum TimingMode {
+    UNKNOWN = 0;
+    RELATIVE_TO_TRAFFIC_START = 1;
+    RELATIVE_TO_TRACE_START = 2;
+    RELATIVE_TO_PRIOR_RPC_START = 3;
+    RELATIVE_TO_PRIOR_RPC_END = 4;
+  }
+  optional int64 timing_ns = 1;
+  optional TimingMode timing_mode = 2;
+
+  // If timing mode is RELATIVE_TO_PRIOR_RPC_START or RELATIVE_TO_PRIOR_RPC_END
+  // this specifies the specific RPC(s) to use for timing. If this is not
+  // present then the immediately preceding RPC will be used. Must be
+  // non-negative, and less than the current index.
+  repeated int32 prior_rpc_distances = 3;
+
+  // Replay RPCs do not have server-side handling via action lists,
+  // but can be grouped into classes for statistics processing purposes.
+  optional int32 rpc_class = 4;
+
+  // The client and server instances specify which service instances are the
+  // source and target of the given RPC.
+
+  // If the client instance is not specified, then all instances will
+  // Send this RPC.
+  optional int32 client_instance = 5;
+
+  // An RPC can either refer to a specific server instance, or to a specific
+  // multiserver channel by specifying the index into
+  // the multiserver_channel_names repeated field of the RpcReplayTrace.
+  optional int32 server_instance = 6;
+  optional int32 multi_server_channel_name_index = 7;
+
+  optional int32 request_size = 8;
+  optional int32 response_size = 9;
+  optional int64 server_processing_time_ns = 10;
+}
+
+message RpcReplayTrace {
+  optional string name = 1;
+  optional string client = 2;
+  optional string server = 3;
+  repeated string multiserver_channel_names = 4;
+  optional RpcReplayTraceRecord defaults = 5;
+  repeated RpcReplayTraceRecord records = 6;
+}
+
 message Action {
   optional string name = 1;
   repeated string dependencies = 2;
@@ -142,6 +190,7 @@ message Action {
     string rpc_name = 4;
     string action_list_name = 5;
     string activity_config_name = 6;
+    string rpc_replay_trace_name = 7;
   }
   optional bool send_response_when_done = 10;
   optional bool cancel_traffic_when_done = 11 [default = false];
@@ -195,4 +244,6 @@ message DistributedSystemDescription {
   repeated DistributionConfig distribution_config = 12;
 
   optional OverloadLimits overload_limits = 13;
+
+  repeated RpcReplayTrace rpc_replay_traces = 14;
 }

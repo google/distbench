@@ -65,6 +65,20 @@ message TraceContext {
   repeated int64 iterations = 2 [packed = true, deprecated = true];
 }
 
+message RpcReplayTraceLog {
+  // All RPCs in the trace will share the same trace_context, and warmup
+  // flag.
+  optional TraceContext trace_context = 1;
+  optional bool warmup = 2;
+
+  optional int64 timestamp_offset = 3;
+
+  // The key of this map is the index into the rpc_trace.
+  // The request_size and response_size fields are already in the
+  // trace. Timestamps are relative to the above timestamp_offset field.
+  map<int32, RpcSample> rpc_samples = 4;
+}
+
 message RpcSample {
   optional int64 request_size = 1;
   optional int64 response_size = 2;
@@ -77,6 +91,10 @@ message RpcSample {
   // of a test.
   optional bool warmup = 7;
   optional int32 error_index = 8;
+
+  // For multi-server channels during rpc replay, we record which server was
+  // actually chosen:
+  optional int32 server_instance = 9;
 }
 
 message RpcPerformanceLog {
@@ -131,6 +149,8 @@ message ServicePerformanceLog {
   // The key is service instance's name and the value contains performance
   // logs of RPCs initiated to the named service instance.
   map<string, PeerPerformanceLog> peer_logs = 1;
+
+  repeated RpcReplayTraceLog replay_trace_logs = 5;
 
   // The key is activity name and value is activity logs.
   map<string, ActivityLog> activity_logs = 2;
@@ -208,7 +228,9 @@ message ServiceEndpointMap {
 message IntroducePeersResult {}
 
 
-message RunTrafficRequest {}
+message RunTrafficRequest {
+  optional int64 start_timestamp_ns = 1;
+}
 
 message RunTrafficResponse {}
 
@@ -263,11 +285,17 @@ service ConnectionSetup {
 
 message GenericRequest {
   optional bytes payload = 1;
+  // rpc_index if present provides an index into the actionlist table for
+  // synthesized RPCs. Replay RPCs do not speciy rpc_index.
   optional int32 rpc_index = 2;
   optional TraceContext trace_context = 3;
   optional bool warmup = 4;
 
   optional int64 response_payload_size = 5;
+
+  // For replay RPCs we don't invoke a real service routine, but simulate
+  // delay with this instead:
+  optional int64 server_processing_time_ns = 6;
 }
 
 message GenericResponse {
