@@ -68,6 +68,11 @@ class ProtocolDriverClient {
 
   // Client interface =========================================================
   virtual void SetNumPeers(int num_peers) = 0;
+  virtual void SetNumMultiServerChannels(int num_channels);
+
+  virtual absl::Status SetupMultiServerChannel(
+      const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
+      const std::vector<int>& peer_ids, int channel_id);
 
   // Allocate local resources that are needed to establish a connection
   // E.g. an unconnected RoCE QueuePair. Returns opaque data. If no local
@@ -80,6 +85,9 @@ class ProtocolDriverClient {
                                      int peer) = 0;
   virtual void InitiateRpc(int peer_index, ClientRpcState* state,
                            std::function<void(void)> done_callback) = 0;
+  virtual void InitiateRpcToMultiServerChannel(
+      int channel_index, ClientRpcState* state,
+      std::function<void(void)> done_callback);
   virtual void ChurnConnection(int peer) = 0;
   virtual void ShutdownClient() = 0;
 
