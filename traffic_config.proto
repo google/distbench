@@ -46,6 +46,52 @@ message ServiceSpec {
   optional int32 y_size = 5 [default = 1];
   // if y_size is not set, then z_size must not be set.
   optional int32 z_size = 6 [default = 1];
+
+  repeated MultiServerChannel multi_server_channels = 7;
+}
+
+// Server channels allow experiments with dynamic client-side load balancing
+// strategies. A channel can refer to one or more servers, with a specific
+// configuration for how to select a subset of the available servers.
+message MultiServerChannel {
+  optional string name = 1;
+  repeated NamedSetting channel_settings = 2;
+
+  // The server instances that make up this channel can either be precomputed
+  // or dynamically computed. Any instances specified here are included
+  // regardless of whether or not they satisfy the constraints below:
+  repeated int32 selected_instances = 3 [packed = true];
+
+  optional ConstraintList channel_constraints = 4;
+}
+
+message ConstraintList {
+  // A node matches only if it satisfies all constraint sets (logical AND):
+  repeated ConstraintSet constraint_sets = 1;
+}
+
+message ConstraintSet {
+  // A node satisifies this constraint set if it matches any of its
+  // individual constraints (logical OR):
+  repeated Constraint constraints = 1;
+}
+
+message Constraint {
+  enum Relation {
+    equal = 1;
+    not_equal = 2;
+    modulo_equal = 3;
+    modulo_not_equal = 4;
+  }
+
+  // Attributes of each server instance include the GridIndex values (x/y/z) as
+  // well as any attributes of the underlying node that are inherited from the
+  // NodeManager instance.
+  optional string attribute_name = 1;
+  repeated string string_values = 2;
+  repeated int64  int64_values = 3;
+  optional Relation relation = 4;
+  optional int64  modulus = 5;
 }
 
 // Specifies how multiple services may be co-located on the same machine.
@@ -70,6 +116,10 @@ message RpcSpec {
   optional string fanout_filter = 6 [default = "all"];
   optional int32 tracing_interval = 7;
   optional string distribution_config_name = 8;
+
+  // If a server channel is specified the protocol driver will decide how
+  // to pick the specific server node(s) to target.
+  optional string multi_server_channel_name = 9;
 }
 
 message Iterations {

@@ -944,4 +944,74 @@ tests {
   EXPECT_EQ(invocations_bitmask, (1 << 25) - 1);
 }
 
+TEST(DistBenchTestSequencer, MultiServerChannelsTest) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(4));
+
+  const std::string proto = R"(
+tests {
+  services {
+    name: "client"
+    count: 1
+  }
+  services {
+    name: "server"
+    count: 3
+    protocol_driver_options_name: "loopback_pd"
+    multi_server_channels {
+      name: "MSC"
+      channel_settings { name: "policy", string_value: "round_robin" }
+      selected_instances: 0
+      selected_instances: 1
+      selected_instances: 2
+    }
+  }
+  rpc_descriptions {
+    name: "client_server_rpc"
+    client: "client"
+    server: "server"
+    multi_server_channel_name: "MSC"
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_queries"
+  }
+  actions {
+    name: "run_queries"
+    rpc_name: "client_server_rpc"
+    iterations {
+      max_iteration_count: 12
+      open_loop_interval_ns: 10000000
+    }
+  }
+  action_lists {
+    name: "client_server_rpc"
+  }
+  protocol_driver_options {
+    name: "loopback_pd"
+    netdev_name: "lo"
+  }
+})";
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
+
+  TestSequenceResults results;
+  auto maybe_results = tester.RunTestSequence(*test_sequence, 15);
+  ASSERT_OK(maybe_results.status());
+
+  const auto& test_results = maybe_results.value().test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  const auto& [client_name, client_log] =
+      *test_results.service_logs().instance_logs().begin();
+  ASSERT_EQ(client_log.peer_logs().size(), 3);
+  for (const auto& [server_name, per_server_log] : client_log.peer_logs()) {
+    LOG(INFO) << server_name;
+    LOG(INFO) << per_server_log.DebugString();
+    size_t num_samples = (*per_server_log.rpc_logs().begin())
+                             .second.successful_rpc_samples_size();
+    EXPECT_GE(num_samples, 3);
+    EXPECT_LE(num_samples, 5);
+  }
+}
+
 }  // namespace distbench
