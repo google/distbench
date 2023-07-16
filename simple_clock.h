@@ -23,11 +23,15 @@ class SimpleClock {
  public:
   virtual ~SimpleClock() = default;
   virtual absl::Time Now() = 0;
+  virtual int64_t SetOffset(int64_t ns) { return ns; }
   virtual void SleepFor(absl::Duration duration) = 0;
   virtual bool MutexLockWhenWithDeadline(absl::Mutex* mu,
                                          const absl::Condition& condition,
                                          absl::Time deadline)
       ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) = 0;
+  virtual bool MutexAwaitWithDeadline(absl::Mutex* mu,
+                                      const absl::Condition& condition,
+                                      absl::Time deadline) = 0;
 };
 
 }  // namespace distbench
