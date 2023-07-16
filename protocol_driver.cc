@@ -79,4 +79,24 @@ absl::StatusOr<std::string> ProtocolDriverClient::Preconnect() { return ""; }
 void ProtocolDriverServer::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
+void ProtocolDriverClient::SetNumMultiServerChannels(int num_channels) {
+}
+
+absl::Status ProtocolDriverClient::SetupMultiServerChannel(
+    const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
+    const std::vector<int>& peer_ids, int channel_id) {
+  return absl::UnimplementedError(
+      "This protocol driver does not support multi-server channels.");
+}
+
+void ProtocolDriverClient::InitiateRpcToMultiServerChannel(
+    int channel_index, ClientRpcState* state,
+    std::function<void(void)> done_callback) {
+  state->end_time = absl::Now();
+  state->success = 0;
+  state->response.set_error_message(
+      "This protocol driver does not support multi-server channels.");
+  done_callback();
+}
+
 }  // namespace distbench

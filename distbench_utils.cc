@@ -675,7 +675,6 @@ absl::StatusOr<ServiceSpec> GetCanonicalServiceSpec(
           "z_size cannot be specified without x_size and y_size.");
     }
   }
-  LOG(INFO) << ret.DebugString();
   return ret;
 }
 

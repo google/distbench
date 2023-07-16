@@ -31,6 +31,19 @@ namespace {
 
 const char* kDefaultTransport = "tcp";
 
+std::string AddGrpcProtocol(std::string_view s) {
+  std::string ret;
+  if (!s.empty()) {
+    if (s[0] == '[') {
+      ret = "ipv6:";
+    } else {
+      ret = "ipv4:";
+    }
+    ret += s;
+  }
+  return ret;
+}
+
 absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
     const std::string& socket_address, std::string_view transport) {
   if (transport == "homa") {
@@ -43,7 +56,7 @@ absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
 #endif
   } else if (transport == "tcp") {
     std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
-    return grpc::CreateCustomChannel(socket_address, creds,
+    return grpc::CreateCustomChannel(AddGrpcProtocol(socket_address), creds,
                                      DistbenchCustomChannelArguments());
   } else {
     LOG(ERROR) << "protocol_driver_grpc: unknown transport: " << transport;
@@ -87,12 +100,14 @@ absl::Status GrpcPollingClientDriver::Initialize(
 
 void GrpcPollingClientDriver::SetNumPeers(int num_peers) {
   grpc_client_stubs_.resize(num_peers);
+  peer_connection_info_.resize(num_peers);
 }
 
 absl::Status GrpcPollingClientDriver::HandleConnect(
     std::string remote_connection_info, int peer) {
   CHECK_GE(peer, 0);
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
+  peer_connection_info_[peer] = remote_connection_info;
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
   auto maybe_channel = CreateClientChannel(addr.socket_address(), transport_);
@@ -118,6 +133,121 @@ struct PendingRpc {
   ClientRpcState* state;
 };
 }  // anonymous namespace
+
+absl::Status GrpcPollingClientDriver::SetupMultiServerChannel(
+    const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
+    const std::vector<int>& peer_ids, int channel_id) {
+  CHECK_GE(channel_id, 0);
+  CHECK_LT(static_cast<size_t>(channel_id), multiserver_stubs_.size());
+  if (transport_ != "tcp") {
+    return absl::UnimplementedError("MultiServerChannel only works for tcp");
+  }
+  std::string addresses = "";
+  for (const auto& peer_id : peer_ids) {
+    CHECK_LT(static_cast<size_t>(peer_id), peer_connection_info_.size());
+    ServerAddress addr;
+    addr.ParseFromString(peer_connection_info_[peer_id]);
+    if (!addresses.empty()) {
+      addresses += ",";
+    }
+    addresses += addr.socket_address();
+  }
+  auto channel_args = DistbenchCustomChannelArguments();
+  channel_args.SetLoadBalancingPolicyName(GetNamedSettingString(
+        settings, "policy", "round_robin"));
+  std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
+  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+      AddGrpcProtocol(addresses), creds, channel_args);
+  multiserver_stubs_[channel_id] = Traffic::NewStub(channel);
+  return absl::OkStatus();
+}
+
+absl::Status GrpcCallbackClientDriver::SetupMultiServerChannel(
+    const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
+    const std::vector<int>& peer_ids, int channel_id) {
+  CHECK_GE(channel_id, 0);
+  CHECK_LT(static_cast<size_t>(channel_id), multiserver_stubs_.size());
+  if (transport_ != "tcp") {
+    return absl::UnimplementedError("MultiServerChannel only works for tcp");
+  }
+  std::string addresses;
+  for (const auto& peer_id : peer_ids) {
+    CHECK_LT(static_cast<size_t>(peer_id), peer_connection_info_.size());
+    ServerAddress addr;
+    addr.ParseFromString(peer_connection_info_[peer_id]);
+    if (!addresses.empty()) {
+      addresses += ",";
+    }
+    addresses += addr.socket_address();
+  }
+  auto channel_args = DistbenchCustomChannelArguments();
+  channel_args.SetLoadBalancingPolicyName(GetNamedSettingString(
+        settings, "policy", "round_robin"));
+  std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
+  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
+      AddGrpcProtocol(addresses), creds, channel_args);
+  multiserver_stubs_[channel_id] = Traffic::NewStub(channel);
+  return absl::OkStatus();
+}
+
+void GrpcPollingClientDriver::SetNumMultiServerChannels(int num_channels) {
+  multiserver_stubs_.resize(num_channels);
+}
+
+void GrpcCallbackClientDriver::SetNumMultiServerChannels(int num_channels) {
+  multiserver_stubs_.resize(num_channels);
+}
+
+void GrpcPollingClientDriver::InitiateRpcToMultiServerChannel(
+    int channel_index, ClientRpcState* state,
+    std::function<void(void)> done_callback) {
+  CHECK_GE(channel_index, 0);
+  CHECK_LT(static_cast<size_t>(channel_index), multiserver_stubs_.size());
+
+  ++pending_rpcs_;
+  PendingRpc* new_rpc = new PendingRpc;
+  new_rpc->done_callback = done_callback;
+  new_rpc->state = state;
+  new_rpc->request = std::move(state->request);
+  new_rpc->rpc = multiserver_stubs_[channel_index]->AsyncGenericRpc(
+      &new_rpc->context, new_rpc->request, &cq_);
+  new_rpc->rpc->Finish(&new_rpc->response, &new_rpc->status, new_rpc);
+}
+
+void GrpcCallbackClientDriver::InitiateRpcToMultiServerChannel(
+    int channel_index, ClientRpcState* state,
+    std::function<void(void)> done_callback) {
+  CHECK_GE(channel_index, 0);
+  CHECK_LT(static_cast<size_t>(channel_index), multiserver_stubs_.size());
+
+  ++pending_rpcs_;
+  PendingRpc* new_rpc = new PendingRpc;
+  new_rpc->done_callback = done_callback;
+  new_rpc->state = state;
+  new_rpc->request = std::move(state->request);
+
+  auto callback_fct = [this, new_rpc,
+                       done_callback](const grpc::Status& status) {
+    new_rpc->status = status;
+    new_rpc->state->success = status.ok();
+    if (new_rpc->state->success) {
+      new_rpc->state->request = std::move(new_rpc->request);
+      new_rpc->state->response = std::move(new_rpc->response);
+    } else {
+      new_rpc->state->response.set_error_message(
+          new_rpc->status.error_message());
+      LOG_EVERY_N(ERROR, 1000) << "RPC failed with status: " << status;
+    }
+    new_rpc->done_callback();
+
+    // Free before allowing the shutdown of the client
+    delete new_rpc;
+    --pending_rpcs_;
+  };
+
+  multiserver_stubs_[channel_index]->experimental_async()->GenericRpc(
+      &new_rpc->context, &new_rpc->request, &new_rpc->response, callback_fct);
+}
 
 void GrpcPollingClientDriver::InitiateRpc(
     int peer_index, ClientRpcState* state,
@@ -337,6 +467,16 @@ void ProtocolDriverGrpc::SetNumPeers(int num_peers) {
   client_->SetNumPeers(num_peers);
 }
 
+void ProtocolDriverGrpc::SetNumMultiServerChannels(int num_channels) {
+  client_->SetNumMultiServerChannels(num_channels);
+}
+
+absl::Status ProtocolDriverGrpc::SetupMultiServerChannel(
+    const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
+    const std::vector<int>& peer_ids, int channel_id) {
+  return client_->SetupMultiServerChannel(settings, peer_ids, channel_id);
+}
+
 ProtocolDriverGrpc::~ProtocolDriverGrpc() {
   ShutdownClient();
   ShutdownServer();
@@ -370,6 +510,12 @@ void ProtocolDriverGrpc::InitiateRpc(int peer_index, ClientRpcState* state,
   client_->InitiateRpc(peer_index, state, done_callback);
 }
 
+void ProtocolDriverGrpc::InitiateRpcToMultiServerChannel(
+    int channel_index, ClientRpcState* state,
+    std::function<void(void)> done_callback) {
+  client_->InitiateRpcToMultiServerChannel(channel_index, state, done_callback);
+}
+
 void ProtocolDriverGrpc::ChurnConnection(int peer) {
   client_->ChurnConnection(peer);
 }
@@ -400,12 +546,14 @@ absl::Status GrpcCallbackClientDriver::Initialize(
 
 void GrpcCallbackClientDriver::SetNumPeers(int num_peers) {
   grpc_client_stubs_.resize(num_peers);
+  peer_connection_info_.resize(num_peers);
 }
 
 absl::Status GrpcCallbackClientDriver::HandleConnect(
     std::string remote_connection_info, int peer) {
   CHECK_GE(peer, 0);
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
+  peer_connection_info_[peer] = remote_connection_info;
   ServerAddress addr;
   addr.ParseFromString(remote_connection_info);
   auto maybe_channel = CreateClientChannel(addr.socket_address(), transport_);

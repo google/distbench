@@ -297,7 +297,20 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
     if (it == service_index_map_.end()) {
       return absl::NotFoundError(rpc_def.rpc_spec.server());
     }
-    rpc_def.server_service_spec = traffic_config_.services(it->second);
+    const auto& server_spec = traffic_config_.services(it->second);
+    rpc_def.server_service_spec = server_spec;
+
+    if (rpc_spec.has_multi_server_channel_name()) {
+      for (int i = 0; i < server_spec.multi_server_channels_size(); ++i) {
+        if (rpc_spec.multi_server_channel_name() == server_spec.multi_server_channels(i).name()) {
+          rpc_def.multiserver_channel_index = i;
+          break;
+        }
+      }
+      if (rpc_def.multiserver_channel_index == -1) {
+        return absl::NotFoundError(server_spec.multi_server_channels(i).name());
+      }
+    }
 
     it = service_index_map_.find(rpc_def.rpc_spec.client());
     if (it == service_index_map_.end()) {
@@ -616,6 +629,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
   }
 
   pd_->SetNumPeers(num_targets);
+
   grpc::CompletionQueue cq;
   struct PendingRpc {
     std::unique_ptr<ConnectionSetup::Stub> stub;
@@ -681,7 +695,48 @@ absl::Status DistBenchEngine::ConnectToPeers() {
       }
     }
   }
-  return grpcStatusToAbslStatus(status);
+  if (!status.ok()) {
+    return grpcStatusToAbslStatus(status);
+  }
+  int num_msc_targets = 0;
+  for (const auto& service : traffic_config_.services()) {
+    if (dependent_services_.count(service.name())) {
+      num_msc_targets += service.multi_server_channels_size();
+    }
+  }
+  pd_->SetNumMultiServerChannels(num_msc_targets);
+
+  int msc = 0;
+  for (const auto& service : traffic_config_.services()) {
+    if (dependent_services_.count(service.name())) {
+      for (const auto& channel : service.multi_server_channels()) {
+        std::vector<int> peer_ids;
+        peer_ids.reserve(channel.selected_instances_size());
+        if (channel.selected_instances().empty()) {
+          return absl::InvalidArgumentError(
+              "must have at least one selected_instances field");
+        }
+        for (const auto& instance : channel.selected_instances()) {
+          if (instance >= service.count()) {
+            return absl::InvalidArgumentError(
+                "selected_instances out of range for service");
+          }
+          auto target_service = service_index_map_[service.name()];
+          peer_ids.push_back(peers_[target_service][instance].pd_id);
+        }
+        std::sort(peer_ids.begin(), peer_ids.end());
+        peer_ids.erase(std::unique(peer_ids.begin(), peer_ids.end()), peer_ids.end());
+        auto msc_status = pd_->SetupMultiServerChannel(
+            channel.channel_settings(), peer_ids, msc);
+        if (!msc_status.ok()) {
+          return msc_status;
+        }
+        ++msc;
+      }
+    }
+  }
+  return absl::OkStatus();
+
 }
 
 absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
@@ -786,6 +841,13 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
       return std::function<void()>();
     }
   }
+  if (static_cast<size_t>(state->request->rpc_index()) >= server_rpc_table_.size()) {
+    state->response.set_error_message(
+        absl::StrCat("rpc_index out of range: ", state->request->rpc_index()));
+    state->SendResponseIfSet();
+    state->FreeStateIfSet();
+    return std::function<void()>();
+  }
   const auto& server_rpc = server_rpc_table_[state->request->rpc_index()];
   if (!server_rpc.allowed) {
     state->response.set_error_message(
@@ -803,6 +865,10 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   } else {
     state->response.set_payload(
         std::string(rpc_def.response_payload_size, 'D'));
+  }
+
+  if (traffic_config_.rpc_descriptions(state->request->rpc_index()).has_multi_server_channel_name()) {
+    state->response.set_server_instance(service_instance_);
   }
 
   int handler_actionlist_index = server_rpc.handler_actionlist_index;
@@ -1245,10 +1311,17 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
 
     action_state->rpc_index = action.rpc_index;
     action_state->rpc_service_index = rpc_service_index;
-    action_state->iteration_function =
+    if (rpc_def.multiserver_channel_index != -1) {
+      action_state->iteration_function =
+        [this](std::shared_ptr<ActionIterationState> iteration_state) {
+          RunMultiServerChannelRpcActionIteration(iteration_state);
+        };
+    } else {
+      action_state->iteration_function =
         [this](std::shared_ptr<ActionIterationState> iteration_state) {
           RunRpcActionIteration(iteration_state);
         };
+    }
   } else if (action.proto.has_activity_config_name()) {
     auto* config = &stored_activity_config_[action.activity_config_index];
     action_state->activity = AllocateActivity(config, clock_);
@@ -1411,6 +1484,112 @@ void DistBenchEngine::StartIteration(
 }
 
 // This works fine for 1-at-a-time closed-loop iterations:
+void DistBenchEngine::RunMultiServerChannelRpcActionIteration(
+    std::shared_ptr<ActionIterationState> iteration_state) {
+  ActionState* action_state = iteration_state->action_state;
+  // Pick the subset of the target service instances to fanout to:
+  iteration_state->rpc_states.resize(1);
+  iteration_state->remaining_rpcs = 1;
+
+  // Setup tracing:
+  const int rpc_index = action_state->rpc_index;
+  const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
+  const auto& rpc_spec = rpc_def.rpc_spec;
+  int trace_count = client_rpc_table_[rpc_index].rpc_tracing_counter++;
+  bool do_trace = (rpc_spec.tracing_interval() > 0) &&
+                  !(trace_count % rpc_spec.tracing_interval());
+  GenericRequest common_request;
+  const ServerRpcState* const incoming_rpc_state =
+      action_state->actionlist_state->incoming_rpc_state;
+  if (incoming_rpc_state->request->has_trace_context()) {
+    do_trace = true;
+    *common_request.mutable_trace_context() =
+        incoming_rpc_state->request->trace_context();
+  }
+  if (do_trace) {
+    common_request.mutable_trace_context()->add_engine_ids(trace_id_);
+    common_request.mutable_trace_context()->add_actionlist_invocations(
+        action_state->actionlist_state->actionlist_invocation);
+    common_request.mutable_trace_context()->add_actionlist_indices(
+        action_state->actionlist_state->actionlist_index);
+    common_request.mutable_trace_context()->add_action_indices(
+        action_state->action_index);
+    common_request.mutable_trace_context()->add_action_iterations(
+        iteration_state->iteration_number);
+    common_request.mutable_trace_context()->add_fanout_index(0);
+  }
+  common_request.set_rpc_index(rpc_index);
+  common_request.set_warmup(iteration_state->warmup);
+
+  if (rpc_def.sample_generator_index == -1) {
+    common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
+  } else {
+    // This RPC uses a distribution of sizes.
+    auto sample = sample_generator_array_[rpc_def.sample_generator_index]
+                      ->GetRandomSample(&iteration_state->rand_gen);
+
+    common_request.set_payload(
+        std::string(sample[kRequestPayloadSizeField], 'D'));
+
+    if (sample.size() > kResponsePayloadSizeField) {
+      common_request.set_response_payload_size(
+          sample[kResponsePayloadSizeField]);
+    } else {
+      // Only a 1D distribution, therefore we should also use the request size
+      // as the response size.
+      common_request.set_response_payload_size(
+          sample[kRequestPayloadSizeField]);
+    }
+  }
+
+  ++pending_rpcs_;
+  ClientRpcState* rpc_state;
+  rpc_state = &iteration_state->rpc_states[0];
+  rpc_state->request = std::move(common_request);
+#ifndef NDEBUG
+  CHECK_EQ(
+      rpc_state->request.trace_context().engine_ids().size(),
+      rpc_state->request.trace_context().actionlist_invocations().size());
+  CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+      rpc_state->request.trace_context().actionlist_indices().size());
+  CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+      rpc_state->request.trace_context().action_indices().size());
+  CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+      rpc_state->request.trace_context().action_iterations().size());
+  CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+      rpc_state->request.trace_context().fanout_index().size());
+#endif
+  rpc_state->prior_start_time = rpc_state->start_time;
+  rpc_state->start_time = clock_->Now();
+  auto f = [this, rpc_state, iteration_state]() mutable {
+    ActionState* action_state = iteration_state->action_state;
+    rpc_state->end_time = clock_->Now();
+    if (!rpc_state->response.error_message().empty()) {
+      rpc_state->success = false;
+    }
+    if (absl::StartsWith(rpc_state->response.error_message(),
+          "Traffic cancelled: RESOURCE_EXHAUSTED:")) {
+      CancelTraffic(absl::UnknownError(absl::StrCat(
+              "Peer reported ", rpc_state->response.error_message())));
+    }
+    // latency stat is not well defined on failure
+    int peer_instance = rpc_state->response.server_instance();
+    action_state->actionlist_state->RecordLatency(
+        action_state->rpc_index, action_state->rpc_service_index,
+        peer_instance, rpc_state);
+    if (--iteration_state->remaining_rpcs == 0) {
+      FinishIteration(iteration_state);
+    }
+    --pending_rpcs_;
+  };
+  pd_->InitiateRpcToMultiServerChannel(
+      rpc_def.multiserver_channel_index, rpc_state, f);
+  if (pending_rpcs_ > traffic_config_.overload_limits().max_pending_rpcs()) {
+    CancelTraffic(absl::ResourceExhaustedError("Too many RPCs pending"));
+  }
+}
+
+// This works fine for 1-at-a-time closed-loop iterations:
 void DistBenchEngine::RunRpcActionIteration(
     std::shared_ptr<ActionIterationState> iteration_state) {
   ActionState* action_state = iteration_state->action_state;
@@ -1504,27 +1683,27 @@ void DistBenchEngine::RunRpcActionIteration(
     }  // End of MutexLock m
     rpc_state->prior_start_time = rpc_state->start_time;
     rpc_state->start_time = clock_->Now();
-    pd_->InitiateRpc(
-        servers[peer_instance].pd_id, rpc_state,
-        [this, rpc_state, iteration_state, peer_instance]() mutable {
-          ActionState* action_state = iteration_state->action_state;
-          rpc_state->end_time = clock_->Now();
-          if (!rpc_state->response.error_message().empty()) {
-            rpc_state->success = false;
-          }
-          if (absl::StartsWith(rpc_state->response.error_message(),
-                               "Traffic cancelled: RESOURCE_EXHAUSTED:")) {
-            CancelTraffic(absl::UnknownError(absl::StrCat(
+    auto f = [this, rpc_state, iteration_state, peer_instance]() mutable {
+      ActionState* action_state = iteration_state->action_state;
+      rpc_state->end_time = clock_->Now();
+      if (!rpc_state->response.error_message().empty()) {
+        rpc_state->success = false;
+      }
+      if (absl::StartsWith(rpc_state->response.error_message(),
+            "Traffic cancelled: RESOURCE_EXHAUSTED:")) {
+        CancelTraffic(absl::UnknownError(absl::StrCat(
                 "Peer reported ", rpc_state->response.error_message())));
-          }
-          action_state->actionlist_state->RecordLatency(
-              action_state->rpc_index, action_state->rpc_service_index,
-              peer_instance, rpc_state);
-          if (--iteration_state->remaining_rpcs == 0) {
-            FinishIteration(iteration_state);
-          }
-          --pending_rpcs_;
-        });
+      }
+      action_state->actionlist_state->RecordLatency(
+          action_state->rpc_index, action_state->rpc_service_index,
+          peer_instance, rpc_state);
+      if (--iteration_state->remaining_rpcs == 0) {
+        FinishIteration(iteration_state);
+      }
+      --pending_rpcs_;
+    };
+    pd_->InitiateRpc(
+        servers[peer_instance].pd_id, rpc_state, f);
     if (pending_rpcs_ > traffic_config_.overload_limits().max_pending_rpcs()) {
       CancelTraffic(absl::ResourceExhaustedError("Too many RPCs pending"));
     }

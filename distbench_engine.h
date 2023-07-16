@@ -117,6 +117,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int sample_generator_index = -1;
 
     int client_service_index = -1;
+    int multiserver_channel_index = -1;
   };
 
   struct PeerMetadata {
@@ -295,6 +296,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   void FinishIteration(std::shared_ptr<ActionIterationState> iteration_state);
 
   void RunRpcActionIteration(
+      std::shared_ptr<ActionIterationState> iteration_state);
+  void RunMultiServerChannelRpcActionIteration(
       std::shared_ptr<ActionIterationState> iteration_state);
   std::vector<int> PickRpcFanoutTargets(ActionIterationState* iteration_state);
 

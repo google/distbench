@@ -273,6 +273,10 @@ message GenericRequest {
 message GenericResponse {
   optional bytes payload = 1;
   optional string error_message = 2;
+
+  // For MultiServerChannels we need to know which server was chosen, even if
+  // the RPC layer does not expose that.
+  optional int32 server_instance = 3;
 }
 
 message ServerAddress {
