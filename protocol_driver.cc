@@ -67,6 +67,12 @@ class RealClock : public SimpleClock {
       ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) override {
     return mu->LockWhenWithDeadline(condition, deadline);
   }
+
+  bool MutexAwaitWithDeadline(absl::Mutex* mu,
+                              const absl::Condition& condition,
+                              absl::Time deadline) override {
+    return mu->AwaitWithDeadline(condition, deadline);
+  }
 };
 
 SimpleClock& ProtocolDriver::GetClock() {
