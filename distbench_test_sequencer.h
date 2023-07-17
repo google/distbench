@@ -28,7 +28,6 @@ struct RegisteredNode {
   NodeRegistration registration;
   std::unique_ptr<DistBenchNodeManager::Stub> stub;
   std::string node_alias;
-  bool idle = true;
   bool still_pending = true;
 };
 
@@ -79,6 +78,23 @@ class TestSequencer final : public DistBenchTestSequencer::Service {
 
   void CancelTraffic() ABSL_LOCKS_EXCLUDED(mutex_);
 
+  void MarkNodeActive(int i) {
+    absl::MutexLock m(&cancel_mutex_);
+    active_node_indices_.insert(i);
+  }
+
+  void MarkNodeInactive(int i) {
+    absl::MutexLock m(&cancel_mutex_);
+    active_node_indices_.erase(i);
+  }
+
+  std::set<int> GetActiveNodes() {
+    absl::MutexLock m(&cancel_mutex_);
+    return active_node_indices_;
+  }
+
+  absl::Mutex cancel_mutex_;
+  std::set<int> active_node_indices_ ABSL_GUARDED_BY(cancel_mutex_);
   absl::Mutex mutex_;
   std::vector<RegisteredNode> registered_nodes_ ABSL_GUARDED_BY(mutex_);
   std::map<std::string, int> node_alias_id_map_ ABSL_GUARDED_BY(mutex_);
