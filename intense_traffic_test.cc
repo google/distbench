@@ -64,44 +64,35 @@ void RunIntenseTrafficMaxDurationMaxIteration(const char* protocol) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
   TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/200);
+  LOG(INFO) << results.status().message();
+  ASSERT_OK(results.status());
 }
 
 void RunIntenseTrafficMaxDuration(const char* protocol) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
   TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
   auto* iterations =
       test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();
   iterations->clear_max_iteration_count();
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/200);
+  LOG(INFO) << results.status().message();
+  ASSERT_OK(results.status());
 }
 
 void RunIntenseTrafficMaxIteration(const char* protocol) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
   TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
   auto* iterations =
       test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();
   iterations->clear_max_iteration_count();
   iterations->clear_max_duration_us();
   iterations->set_max_iteration_count(2000);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/200);
+  LOG(INFO) << results.status().message();
+  ASSERT_OK(results.status());
 }
 
 TEST(IntenseTrafficTest, MaxDurationGrpc) {

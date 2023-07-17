@@ -270,40 +270,40 @@ int MainTestPreview(std::vector<char*>& arguments) {
   if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
 
   const std::string infile = absl::GetFlag(FLAGS_infile);
-  auto test_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
-  if (!test_sequence.ok()) {
-    std::cerr << "Error reading test sequence: " << test_sequence.status()
+  auto input_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
+  if (!input_sequence.ok()) {
+    std::cerr << "Error reading test sequence: " << input_sequence.status()
               << "\n";
     return 1;
   }
-  auto context = distbench::CreateContextWithDeadline(/*max_time_s=*/3000);
-  distbench::DistBenchTester tester;
-  distbench::TestSequenceResults results;
-  int num_nodes = 0;
-  for (const auto& test : test_sequence.value().tests()) {
-    int sum = 0;
-    for (const auto& service : test.services()) {
-      sum += service.count();
+  distbench::TestSequence test_sequence = input_sequence.value();
+  test_sequence.clear_tests();
+  for (auto test : input_sequence.value().tests()) {
+    if (!test.node_service_bundles().empty()) {
+      std::cout << "WARNING: node_service_bundles will be overwritten\n";
     }
-    if (sum > num_nodes) {
-      num_nodes = sum;
-    }
+    test.clear_node_service_bundles();
+    auto& bundles = *test.mutable_node_service_bundles();
+    bundles["node0"] = AllServiceInstances(test);
+    *test_sequence.add_tests() = std::move(test);
   }
-  absl::Status status = tester.Initialize(num_nodes);
+  const int TEST_TIMEOUT_S = /*max_time_s=*/3000;
+  distbench::DistBenchTester tester;
+  absl::Status status = tester.Initialize();
   if (!status.ok()) {
     std::cout << status;
     return 1;
   }
-  grpc::Status outcome = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence.value(), &results);
-  if (!outcome.ok()) {
-    std::cout << outcome;
+  auto results = tester.RunTestSequence(test_sequence, TEST_TIMEOUT_S);
+  if (!results.ok()) {
+    std::cout << results.status();
     return 1;
   }
 
   const std::string outfile = absl::GetFlag(FLAGS_outfile);
   if (!outfile.empty()) {
-    absl::Status save_status = SaveResultProtoToFile(outfile, results);
+    absl::Status save_status =
+        distbench::SaveResultProtoToFile(outfile, results.value());
     if (!save_status.ok()) {
       std::cerr << "Unable to save the resutls: " << save_status << "\n";
       return 1;

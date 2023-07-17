@@ -64,14 +64,11 @@ TEST(OpenLoopTest, CliqueTest) {
   auto* l2 = test->add_action_lists();
   l2->set_name("clique_query");
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -130,14 +127,11 @@ TEST(OpenLoopTest, ExponenentialDistributionTest) {
   auto* l2 = test->add_action_lists();
   l2->set_name("exp_query");
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -231,14 +225,11 @@ TEST(OpenLoopTest, ConstantDistributionTest) {
   auto* l2 = test->add_action_lists();
   l2->set_name("constant_query");
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];

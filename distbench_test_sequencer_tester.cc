@@ -21,11 +21,15 @@
 
 namespace distbench {
 
+namespace {
+
 std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s) {
   auto context = std::make_unique<grpc::ClientContext>();
   SetGrpcClientContextDeadline(context.get(), max_time_s);
   return context;
 }
+
+}  // namespace
 
 DistBenchTester::~DistBenchTester() {
   TestSequence test_sequence;
@@ -92,17 +96,23 @@ absl::Status DistBenchTester::Initialize(size_t num_nodes) {
 
 absl::StatusOr<TestSequenceResults> DistBenchTester::RunTestSequence(
     TestSequence test_sequence, int timeout_s) {
-  int num_nodes = 0;
+  int max_required_nodes = 0;
   for (const auto& test : test_sequence.tests()) {
-    int sum = 0;
+    int required_nodes = 0;
+    int num_bundles = test.node_service_bundles_size();
+    int num_bundled_services = 0;
     for (const auto& service : test.services()) {
-      sum += service.count();
+      required_nodes += service.count();
     }
-    if (sum > num_nodes) {
-      num_nodes = sum;
+    for (const auto& node_bundle : test.node_service_bundles()) {
+      num_bundled_services += node_bundle.second.services_size();
+    }
+    required_nodes = required_nodes - num_bundled_services + num_bundles;
+    if (required_nodes > max_required_nodes) {
+      max_required_nodes = required_nodes;
     }
   }
-  absl::Status resize_status = Resize(num_nodes);
+  absl::Status resize_status = Resize(max_required_nodes);
   if (!resize_status.ok()) {
     return resize_status;
   }
