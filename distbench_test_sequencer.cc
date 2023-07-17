@@ -141,15 +141,16 @@ void TestSequencer::CancelTraffic() {
     CancelTrafficRequest request;
     CancelTrafficResult response;
     RegisteredNode* node;
+    int node_index;
   };
   std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
   int rpc_count = 0;
-  for (auto& node_it : registered_nodes_) {
-    if (node_it.idle) continue;
-    LOG(INFO) << "Node " << node_it.node_alias << " was busy";
+  for (const auto& index : GetActiveNodes()) {
+    auto& node_it = registered_nodes_[index];
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
     rpc_state.node = &node_it;
+    rpc_state.node_index = index;
     SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
     rpc_state.rpc = node_it.stub->AsyncCancelTraffic(&rpc_state.context,
                                                      rpc_state.request, &cq);
@@ -166,7 +167,7 @@ void TestSequencer::CancelTraffic() {
         LOG(ERROR) << "Cancelling traffic " << finished_rpc->status << " on "
                    << finished_rpc->node->node_alias;
       }
-      finished_rpc->node->idle = true;
+      MarkNodeInactive(finished_rpc->node_index);
     }
   }
 }
@@ -475,7 +476,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     auto it = node_alias_id_map_.find(node_services.first);
     CHECK(it != node_alias_id_map_.end());
     RegisteredNode& node = registered_nodes_[it->second];
-    node.idle = false;
+    MarkNodeActive(it->second);
     SetGrpcClientContextDeadline(&rpc_state.context, timeout_seconds);
     rpc_state.rpc =
         node.stub->AsyncRunTraffic(&rpc_state.context, rpc_state.request, &cq);
@@ -512,6 +513,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     GetTrafficResultResponse response;
     RegisteredNode* node;
     std::string node_name;
+    int node_index;
   };
   std::vector<GetResultPendingRpc> pending_rpcs2(node_service_map.size());
   for (const auto& node_services : node_service_map) {
@@ -522,6 +524,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     CHECK(it != node_alias_id_map_.end());
     rpc_state.node = &registered_nodes_[it->second];
     SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/600);
+    rpc_state.node_index = it->second;
     rpc_state.request.set_clear_services(true);
     rpc_state.rpc = rpc_state.node->stub->AsyncGetTrafficResult(
         &rpc_state.context, rpc_state.request, &cq);
@@ -542,7 +545,7 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
                                        finished_rpc->node_name, " failed: "));
       }
       ret.MergeFrom(finished_rpc->response);
-      finished_rpc->node->idle = true;
+      MarkNodeInactive(finished_rpc->node_index);
     }
   }
 
@@ -561,17 +564,20 @@ void TestSequencer::Shutdown() {
     ShutdownNodeRequest request;
     ShutdownNodeResult response;
     RegisteredNode* node;
+    int node_index;
   };
   grpc::Status status;
   int rpc_count = 0;
   mutex_.Lock();
   std::vector<PendingRpc> pending_rpcs(registered_nodes_.size());
-  for (auto& node : registered_nodes_) {
+  for (size_t i = 0; i < registered_nodes_.size(); ++i) {
+    auto& node = registered_nodes_[i];
     if (node.still_pending) {
       continue;
     }
     auto& rpc_state = pending_rpcs[rpc_count];
     ++rpc_count;
+    rpc_state.node_index = i;
     rpc_state.node = &node;
     SetGrpcClientContextDeadline(&rpc_state.context, /*max_time_s=*/60);
     rpc_state.rpc = rpc_state.node->stub->AsyncShutdownNode(
@@ -589,7 +595,7 @@ void TestSequencer::Shutdown() {
       if (!finished_rpc->status.ok()) {
         status = finished_rpc->status;
       }
-      finished_rpc->node->idle = true;
+      MarkNodeInactive(finished_rpc->node_index);
     }
   }
   shutdown_requested_.TryToNotify();
