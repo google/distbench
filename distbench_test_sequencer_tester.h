@@ -21,7 +21,10 @@ std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s);
 
 struct DistBenchTester {
   ~DistBenchTester();
-  absl::Status Initialize(int num_nodes);
+  absl::Status Initialize(size_t num_nodes = 0);
+  absl::Status Resize(size_t num_nodes);
+  absl::StatusOr<TestSequenceResults> RunTestSequence(
+      TestSequence test_sequence, int timeout_s);
 
   std::unique_ptr<TestSequencer> test_sequencer;
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub;

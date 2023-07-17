@@ -46,14 +46,15 @@ DistBenchTester::~DistBenchTester() {
   SetOverloadAbortThreshhold(0);
 }
 
-absl::Status DistBenchTester::Initialize(int num_nodes) {
-  test_sequencer = std::make_unique<TestSequencer>();
-  distbench::TestSequencerOpts ts_opts = {};
-  int port = 0;
-  ts_opts.port = &port;
-  test_sequencer->Initialize(ts_opts);
+absl::Status DistBenchTester::Resize(size_t num_nodes) {
+  if (!test_sequencer) {
+    return absl::InvalidArgumentError("Call Initialize first");
+  }
+  if (num_nodes == nodes.size()) {
+    return absl::OkStatus();
+  }
   nodes.resize(num_nodes);
-  for (int i = 0; i < num_nodes; ++i) {
+  for (size_t i = 0; i < num_nodes; ++i) {
     distbench::NodeManagerOpts nm_opts = {};
     int port = 0;
     // Flip the order of the last few nodes:
@@ -66,6 +67,15 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
     auto ret = nodes[i]->Initialize(nm_opts);
     if (!ret.ok()) return ret;
   }
+  return absl::OkStatus();
+}
+
+absl::Status DistBenchTester::Initialize(size_t num_nodes) {
+  test_sequencer = std::make_unique<TestSequencer>();
+  distbench::TestSequencerOpts ts_opts = {};
+  int port = 0;
+  ts_opts.port = &port;
+  test_sequencer->Initialize(ts_opts);
   SetOverloadAbortCallback([this]() {
     for (const auto& node : nodes) {
       node->CancelTraffic(
@@ -78,7 +88,36 @@ absl::Status DistBenchTester::Initialize(int num_nodes) {
       grpc::CreateCustomChannel(test_sequencer->service_address(), client_creds,
                                 DistbenchCustomChannelArguments());
   test_sequencer_stub = DistBenchTestSequencer::NewStub(channel);
-  return absl::OkStatus();
+  return Resize(num_nodes);
+}
+
+absl::StatusOr<TestSequenceResults> DistBenchTester::RunTestSequence(
+      TestSequence test_sequence, int timeout_s) {
+  int num_nodes = 0;
+  for (const auto& test : test_sequence.tests()) {
+    int sum = 0;
+    for (const auto& service : test.services()) {
+      if (service.count() > num_nodes) {
+        sum += service.count();
+      }
+    }
+    if (sum > num_nodes) {
+      num_nodes = sum;
+    }
+  }
+  absl::Status resize_status = Resize(num_nodes);
+  if (!resize_status.ok()) {
+    return resize_status;
+  }
+  auto context = distbench::CreateContextWithDeadline(timeout_s);
+  TestSequenceResults results;
+  grpc::Status rpc_status = test_sequencer_stub->RunTestSequence(
+      context.get(), test_sequence, &results);
+  if (!rpc_status.ok()) {
+    return grpcStatusToAbslStatus(rpc_status);
+  }
+
+  return results;
 }
 
 }  // namespace distbench
