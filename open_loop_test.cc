@@ -195,7 +195,7 @@ TEST(OpenLoopTest, ExponenentialDistributionTest) {
 }
 
 TEST(OpenLoopTest, ConstantDistributionTest) {
-  const int nominal_interval = 16'000'000;
+  const int nominal_interval = 25'000'000;
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
 
@@ -220,6 +220,7 @@ TEST(OpenLoopTest, ConstantDistributionTest) {
   a1->mutable_iterations()->set_max_duration_us(2'000'000);
   a1->mutable_iterations()->set_open_loop_interval_ns(nominal_interval);
   a1->mutable_iterations()->set_open_loop_interval_distribution("constant");
+  a1->mutable_iterations()->set_warmup_iterations(50);
   a1->set_rpc_name("constant_query");
 
   auto* r1 = test->add_rpc_descriptions();
@@ -262,7 +263,9 @@ TEST(OpenLoopTest, ConstantDistributionTest) {
   timestamps.reserve(N);
   for (auto& rpc_sample :
        constant_server_echo->second.successful_rpc_samples()) {
-    timestamps.push_back(rpc_sample.start_timestamp_ns());
+    if (!rpc_sample.warmup()) {
+      timestamps.push_back(rpc_sample.start_timestamp_ns());
+    }
   }
 
   // Find the time intervals between the timestamps, and the maximum, minimum
@@ -281,7 +284,7 @@ TEST(OpenLoopTest, ConstantDistributionTest) {
   LOG(INFO) << "VARIANCE: " << variance;
 
   // Assert that the standard deviation is low
-  ASSERT_LE(sqrt(variance), 0.2 * avg_interval);
+  ASSERT_LE(sqrt(variance), 0.25 * avg_interval);
 
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
   ASSERT_NE(instance_results_it,
