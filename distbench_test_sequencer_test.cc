@@ -73,14 +73,11 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   auto* l2 = test->add_action_lists();
   l2->set_name("echo");
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/70);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/70);
+  ASSERT_OK(results.status());
 
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
   const auto& instance_results_it =
       test_results.service_logs().instance_logs().find("s1/0");
@@ -165,13 +162,10 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  auto& test_results = results.test_results(0);
+  auto& test_results = results.value().test_results(0);
   auto service_logs = test_results.service_logs();
   ASSERT_EQ(service_logs.instance_logs().size(), 1);
   EXPECT_EQ(service_logs.instance_logs().begin()->first, "client/0");
@@ -227,15 +221,14 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
   auto* l2 = test->add_action_lists();
   l2->set_name("echo");
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
-  ASSERT_EQ(results.test_results_size(), 1);
-  ASSERT_EQ(results.test_results(0).service_logs().instance_logs_size(), 1);
-  auto it = results.test_results(0).service_logs().instance_logs().begin();
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/200);
+  LOG(INFO) << results.status().message();
+  ASSERT_OK(results.status());
+  ASSERT_EQ(results.value().test_results_size(), 1);
+  ASSERT_EQ(results.value().test_results(0).service_logs().instance_logs_size(),
+            1);
+  auto it =
+      results.value().test_results(0).service_logs().instance_logs().begin();
   EXPECT_EQ(it->first, "s1/0");
   ASSERT_EQ(it->second.peer_logs_size(), 1);
   auto it2 = it->second.peer_logs().begin();
@@ -318,16 +311,17 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   auto* l4 = test->add_action_lists();
   l4->set_name("async_echo");
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/200);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  LOG(INFO) << status.error_message();
-  ASSERT_OK(status);
-  ASSERT_EQ(results.test_results_size(), 1);
-  ASSERT_EQ(results.test_results(0).service_logs().instance_logs_size(), 2);
-  auto it = results.test_results(0).service_logs().instance_logs().find("s1/0");
-  ASSERT_NE(it, results.test_results(0).service_logs().instance_logs().end());
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/200);
+  LOG(INFO) << results.status().message();
+  ASSERT_OK(results.status());
+
+  ASSERT_EQ(results.value().test_results_size(), 1);
+  ASSERT_EQ(results.value().test_results(0).service_logs().instance_logs_size(),
+            2);
+  auto it = results.value().test_results(0).service_logs().instance_logs().find(
+      "s1/0");
+  ASSERT_NE(
+      it, results.value().test_results(0).service_logs().instance_logs().end());
   ASSERT_EQ(it->second.peer_logs_size(), 1);
   auto it2 = it->second.peer_logs().begin();
   EXPECT_EQ(it2->first, "s2/0");
@@ -350,8 +344,10 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   EXPECT_GT(warmup_samples, 275);
   EXPECT_LT(warmup_samples, 392);
 
-  it = results.test_results(0).service_logs().instance_logs().find("s2/0");
-  ASSERT_NE(it, results.test_results(0).service_logs().instance_logs().end());
+  it = results.value().test_results(0).service_logs().instance_logs().find(
+      "s2/0");
+  ASSERT_NE(
+      it, results.value().test_results(0).service_logs().instance_logs().end());
   ASSERT_EQ(it->second.peer_logs_size(), 1);
   it2 = it->second.peer_logs().begin();
   EXPECT_EQ(it2->first, "s3/0");
@@ -427,14 +423,11 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   action->set_rpc_name("client_server_rpc");
   action->mutable_iterations()->set_max_iteration_count(20);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
   const auto& instance_results_it =
       test_results.service_logs().instance_logs().find("client/0");
@@ -506,14 +499,11 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
   action->set_rpc_name("client_server_rpc");
   action->mutable_iterations()->set_max_iteration_count(20);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
   const auto& instance_results_it =
       test_results.service_logs().instance_logs().find("client/0");
@@ -574,13 +564,10 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/15);
+  ASSERT_OK(results.status());
 
-  auto& test_results = results.test_results(0);
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 }
 
@@ -636,13 +623,10 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/15);
+  ASSERT_OK(results.status());
 
-  auto& test_results = results.test_results(0);
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 }
 
@@ -698,13 +682,10 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/30);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+  ASSERT_OK(results.status());
 
-  auto& test_results = results.test_results(0);
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 }
 
@@ -757,14 +738,11 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto context = CreateContextWithDeadline(/*max_time_s=*/30);
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(2));
-  TestSequenceResults results;
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
-  auto& test_results = results.test_results(0);
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+  ASSERT_OK(results.status());
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 
   // Verify that the samples have the correct trace_context.
@@ -876,14 +854,11 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto context = CreateContextWithDeadline(/*max_time_s=*/30);
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(6));
-  TestSequenceResults results;
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
-  auto& test_results = results.test_results(0);
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+  ASSERT_OK(results.status());
+  auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
 
   // Verify that the samples have the correct trace_context.

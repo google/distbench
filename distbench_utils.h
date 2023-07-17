@@ -205,6 +205,8 @@ absl::Status ValidateTestsSetting(const TestsSetting& settings);
 absl::Status ValidateTrafficConfig(
     const DistributedSystemDescription& traffic_config);
 
+ServiceBundle AllServiceInstances(
+    const DistributedSystemDescription& traffic_config);
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

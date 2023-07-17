@@ -17,15 +17,15 @@
 
 namespace distbench {
 
-std::unique_ptr<grpc::ClientContext> CreateContextWithDeadline(int max_time_s);
-
-struct DistBenchTester {
+class DistBenchTester {
+ public:
   ~DistBenchTester();
   absl::Status Initialize(size_t num_nodes = 0);
-  absl::Status Resize(size_t num_nodes);
   absl::StatusOr<TestSequenceResults> RunTestSequence(
       TestSequence test_sequence, int timeout_s);
 
+ private:
+  absl::Status Resize(size_t num_nodes);
   std::unique_ptr<TestSequencer> test_sequencer;
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub;
   std::vector<std::unique_ptr<NodeManager>> nodes;
