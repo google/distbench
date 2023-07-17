@@ -19,7 +19,6 @@
 #include "distbench_test_sequencer_tester.h"
 #include "distbench_thread_support.h"
 #include "distbench_utils.h"
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "protocol_driver_allocator.h"
@@ -28,7 +27,7 @@ namespace distbench {
 
 TEST(Fanout, round_robin) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(5));
+  ASSERT_OK(tester.Initialize());
 
   const std::string proto = R"(
 tests {
@@ -68,14 +67,9 @@ tests {
 })";
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
-
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/15);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
-
-  auto& test_results = results.test_results(0);
+  auto maybe_results = tester.RunTestSequence(*test_sequence, 15);
+  ASSERT_OK(maybe_results.status());
+  auto& test_results = maybe_results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 
   auto serv_log_it =
@@ -135,14 +129,9 @@ tests {
 })";
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
-
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, &results);
-  ASSERT_OK(status);
-
-  auto& test_results = results.test_results(0);
+  auto maybe_results = tester.RunTestSequence(*test_sequence, 75);
+  ASSERT_OK(maybe_results.status());
+  auto& test_results = maybe_results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
 
   const auto& log_summary = test_results.log_summary();
@@ -204,18 +193,6 @@ TestSequence GetFanoutConfig(std::string fanout_filter, std::string from,
   return test_sequence;
 }
 
-TestResult RunFanoutTest(TestSequence test_sequence) {
-  DistBenchTester tester;
-  CHECK(tester.Initialize(27 * test_sequence.tests(0).services_size()).ok());
-
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  CHECK(status.ok());
-  return results.test_results(0);
-}
-
 class RpcTracker {
  public:
   RpcTracker(TestResult test_result, std::string_view from,
@@ -253,8 +230,11 @@ void FanoutHelper(
     std::string fanout_filter, std::string from, std::string to,
     std::function<bool(GridIndex from, GridIndex to)> fanout_checker) {
   auto config = GetFanoutConfig(fanout_filter, from, to);
-  auto results = RunFanoutTest(config);
-  RpcTracker tracker(results, from, to);
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize());
+  auto maybe_results = tester.RunTestSequence(config, 120);
+  ASSERT_OK(maybe_results.status());
+  RpcTracker tracker(maybe_results.value().test_results(0), from, to);
 
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
