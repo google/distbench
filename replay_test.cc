@@ -31,16 +31,15 @@ void RunConfig(const std::string& config, TestSequenceResults* results) {
   auto test_sequence = ParseTestSequenceTextProto(config);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto context = CreateContextWithDeadline(/*max_time_s=*/30);
   DistBenchTester tester;
   int num_nodes = 0;
   for (const auto& service : (*test_sequence).tests(0).services()) {
     num_nodes += service.count();
   }
   ASSERT_OK(tester.Initialize(num_nodes));
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), *test_sequence, results);
-  ASSERT_OK(status);
+  auto outcome = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+  ASSERT_OK(outcome.status());
+  *results = outcome.value();
 }
 
 TEST(RpcReplayTrace, simple) {

@@ -222,14 +222,11 @@ TEST(DistBenchTestSequencer, ServerActivityTest) {
   AddActivitySettingStringTo(server_ac, "activity_func", "ConsumeCpu");
   AddActivitySettingIntTo(server_ac, "array_size", 10);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -271,18 +268,15 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  CheckCpuConsumeIterationCnt(results, 100, 2);
+  CheckCpuConsumeIterationCnt(results.value(), 100, 2);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -320,18 +314,15 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   params.array_size = 250;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results, 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -367,18 +358,15 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
   params.array_size = 2'000'000;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results, 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -413,18 +401,15 @@ TEST(DistBenchTestSequencer, PolluteInstructionCache) {
   params.activity_func = "PolluteInstructionCache";
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  CheckCpuConsumeIterationCnt(results, 100, 1);
+  CheckCpuConsumeIterationCnt(results.value(), 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -461,18 +446,15 @@ TEST(DistBenchTestSequencer, ConsumeCpuWithMaxIterationCount) {
   params.max_iteration_count = 10;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  CheckCpuConsumeIterationCnt(results, 10, 1, true);
+  CheckCpuConsumeIterationCnt(results.value(), 10, 1, true);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -508,18 +490,15 @@ TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
   params.activity_with_same_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_OK(status);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_OK(results.status());
 
-  CheckCpuConsumeIterationCnt(results, 100, 1);
+  CheckCpuConsumeIterationCnt(results.value(), 100, 1);
 
   // The remainder of this test checks the same
   // things as CliqueTest.
-  ASSERT_EQ(results.test_results().size(), 1);
-  auto& test_results = results.test_results(0);
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
 
   const auto& log_summary = test_results.log_summary();
   const auto& latency_summary = log_summary[1];
@@ -557,11 +536,8 @@ TEST(DistBenchTestSequencer, UnknownActivity) {
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_EQ(status.error_code(), grpc::ABORTED);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
 TEST(DistBenchTestSequencer, KnownActivityUnknownConfig) {
@@ -578,11 +554,8 @@ TEST(DistBenchTestSequencer, KnownActivityUnknownConfig) {
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_EQ(status.error_code(), grpc::ABORTED);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
 TEST(DistBenchTestSequencer, RedefineActivityConfig) {
@@ -600,11 +573,8 @@ TEST(DistBenchTestSequencer, RedefineActivityConfig) {
   params.duplicate_activity_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_EQ(status.error_code(), grpc::ABORTED);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
 TEST(DistBenchTestSequencer, PreCheckInvalidActivityConfig) {
@@ -621,11 +591,8 @@ TEST(DistBenchTestSequencer, PreCheckInvalidActivityConfig) {
   params.invalid_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  TestSequenceResults results;
-  auto context = CreateContextWithDeadline(/*max_time_s=*/75);
-  grpc::Status status = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence, &results);
-  ASSERT_EQ(status.error_code(), grpc::ABORTED);
+  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
 }  // namespace distbench

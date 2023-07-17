@@ -276,36 +276,22 @@ int MainTestPreview(std::vector<char*>& arguments) {
               << "\n";
     return 1;
   }
-  auto context = distbench::CreateContextWithDeadline(/*max_time_s=*/3000);
+  const int TEST_TIMEOUT_S = /*max_time_s=*/300;
   distbench::DistBenchTester tester;
-  distbench::TestSequenceResults results;
-  int num_nodes = 0;
-  for (const auto& test : test_sequence.value().tests()) {
-    int sum = 0;
-    for (const auto& service : test.services()) {
-      if (service.count() > num_nodes) {
-        sum += service.count();
-      }
-    }
-    if (sum > num_nodes) {
-      num_nodes = sum;
-    }
-  }
-  absl::Status status = tester.Initialize(num_nodes);
+  absl::Status status = tester.Initialize();
   if (!status.ok()) {
     std::cout << status;
     return 1;
   }
-  grpc::Status outcome = tester.test_sequencer_stub->RunTestSequence(
-      context.get(), test_sequence.value(), &results);
-  if (!outcome.ok()) {
-    std::cout << outcome;
+  auto results = tester.RunTestSequence(test_sequence.value(), TEST_TIMEOUT_S);
+  if (!results.ok()) {
+    std::cout << results.status();
     return 1;
   }
 
   const std::string outfile = absl::GetFlag(FLAGS_outfile);
   if (!outfile.empty()) {
-    absl::Status save_status = SaveResultProtoToFile(outfile, results);
+    absl::Status save_status = SaveResultProtoToFile(outfile, results.value());
     if (!save_status.ok()) {
       std::cerr << "Unable to save the resutls: " << save_status << "\n";
       return 1;
