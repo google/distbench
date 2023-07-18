@@ -18,6 +18,7 @@
 #include "absl/strings/str_join.h"
 #include "distbench_netutils.h"
 #include "distbench_summary.h"
+#include "distbench_utils.h"
 #include "glog/logging.h"
 
 namespace distbench {
@@ -208,13 +209,33 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
 absl::StatusOr<std::map<std::string, std::set<std::string>>>
 TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   absl::MutexLock m(&mutex_);
+  std::map<std::string, std::vector<Attribute>> node_attributes;
+  for (const auto& node : registered_nodes_) {
+    if (!node.still_pending) {
+      node_attributes[node.node_alias] =
+          std::vector<Attribute>(node.registration.attributes().begin(),
+                                 node.registration.attributes().end());
+    }
+  }
+  auto ret = ConstraintSolver(test, node_attributes);
+  if (!ret.ok()) return ret;
+  // Make sure there is an entry for every registered node:
+  for (const auto& node : registered_nodes_) {
+    if (!node.still_pending) {
+      ret.value()[node.node_alias];
+    }
+  }
+  return ret;
+}
+
+absl::StatusOr<std::map<std::string, std::set<std::string>>> ConstraintSolver(
+    const DistributedSystemDescription& test,
+    std::map<std::string, std::vector<Attribute>> node_attributes) {
   std::vector<std::string> all_services;
   std::set<std::string> unplaced_services;
   std::set<std::string> idle_nodes;
-  for (const auto& node : registered_nodes_) {
-    if (!node.still_pending) {
-      idle_nodes.insert(node.node_alias);
-    }
+  for (const auto& node : node_attributes) {
+    idle_nodes.insert(node.first);
   }
 
   int total_services = 0;
@@ -248,6 +269,24 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
     idle_nodes.erase(it);
   }
 
+  for (const auto& service : all_services) {
+    bool service_placed;
+    auto it = test.service_constraints().find(service);
+    if (it == test.service_constraints().end()) continue;
+    service_placed = false;
+    for (const auto& node : idle_nodes) {
+      if (CheckConstraintList(it->second, node_attributes[node])) {
+        node_service_map[node].insert(service);
+        idle_nodes.erase(node);
+        unplaced_services.erase(service);
+        service_placed = true;
+        break;
+      }
+    }
+    if (!service_placed)
+      return absl::NotFoundError(absl::StrCat(service, " couldn't be placed"));
+  }
+
   if (unplaced_services.empty()) {
     LOG(INFO) << "All services placed manually";
   } else {
@@ -261,35 +300,22 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
         remaining_services.push_back(service);
       }
     }
-    std::vector<std::string> remaining_nodes;
-    for (const auto& node : registered_nodes_) {
-      auto it = idle_nodes.find(node.node_alias);
-      if (it != idle_nodes.end()) {
-        remaining_nodes.push_back(node.node_alias);
-      }
-    }
     std::string failures;
     for (size_t i = 0; i < remaining_services.size(); ++i) {
-      if (i >= remaining_nodes.size()) {
+      if (idle_nodes.empty()) {
         LOG(INFO) << "Couldn't place service " << remaining_services[i];
         if (!failures.empty()) {
           absl::StrAppend(&failures, ", ");
         }
         absl::StrAppend(&failures, remaining_services[i]);
       } else {
-        node_service_map[remaining_nodes[i]].insert(remaining_services[i]);
+        node_service_map[*idle_nodes.begin()].insert(remaining_services[i]);
+        idle_nodes.erase(idle_nodes.begin());
       }
     }
     if (!failures.empty()) {
       return absl::NotFoundError(
           absl::StrCat("No idle node for placement of services: ", failures));
-    }
-  }
-
-  // Make sure there is an entry for every registered node:
-  for (const auto& node : registered_nodes_) {
-    if (!node.still_pending) {
-      node_service_map[node.node_alias];
     }
   }
 

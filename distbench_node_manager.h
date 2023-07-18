@@ -27,6 +27,7 @@ struct NodeManagerOpts {
   std::string default_data_plane_device;
   std::string control_plane_device;
   int* port;
+  std::vector<Attribute> attributes;
 };
 
 class NodeManager final : public DistBenchNodeManager::Service {
