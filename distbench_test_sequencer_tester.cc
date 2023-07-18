@@ -96,11 +96,15 @@ absl::StatusOr<TestSequenceResults> DistBenchTester::RunTestSequence(
   int num_nodes = 0;
   for (const auto& test : test_sequence.tests()) {
     int sum = 0;
+    int num_bundles = test.node_service_bundles_size();
+    int num_bundled_services = 0;
     for (const auto& service : test.services()) {
-      if (service.count() > num_nodes) {
-        sum += service.count();
-      }
+      sum += service.count();
     }
+    for (const auto& node_bundle : test.node_service_bundles()) {
+      num_bundled_services += node_bundle.second.services_size();
+    }
+    sum = sum - num_bundled_services + num_bundles;
     if (sum > num_nodes) {
       num_nodes = sum;
     }

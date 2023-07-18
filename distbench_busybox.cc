@@ -270,20 +270,31 @@ int MainTestPreview(std::vector<char*>& arguments) {
   if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
 
   const std::string infile = absl::GetFlag(FLAGS_infile);
-  auto test_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
-  if (!test_sequence.ok()) {
-    std::cerr << "Error reading test sequence: " << test_sequence.status()
+  auto input_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
+  if (!input_sequence.ok()) {
+    std::cerr << "Error reading test sequence: " << input_sequence.status()
               << "\n";
     return 1;
   }
-  const int TEST_TIMEOUT_S = /*max_time_s=*/300;
+  distbench::TestSequence test_sequence = input_sequence.value();
+  test_sequence.clear_tests();
+  for (auto test : input_sequence.value().tests()) {
+    if (test.node_service_bundles_size()) {
+      std::cout << "WARNING: node_service_bundles will be overwritten\n";
+    }
+    test.clear_node_service_bundles();
+    auto& bundles = *test.mutable_node_service_bundles();
+    bundles["node0"] = AllServiceInstances(test);
+    *test_sequence.add_tests() = std::move(test);
+  }
+  const int TEST_TIMEOUT_S = /*max_time_s=*/3000;
   distbench::DistBenchTester tester;
   absl::Status status = tester.Initialize();
   if (!status.ok()) {
     std::cout << status;
     return 1;
   }
-  auto results = tester.RunTestSequence(test_sequence.value(), TEST_TIMEOUT_S);
+  auto results = tester.RunTestSequence(test_sequence, TEST_TIMEOUT_S);
   if (!results.ok()) {
     std::cout << results.status();
     return 1;
@@ -291,7 +302,8 @@ int MainTestPreview(std::vector<char*>& arguments) {
 
   const std::string outfile = absl::GetFlag(FLAGS_outfile);
   if (!outfile.empty()) {
-    absl::Status save_status = SaveResultProtoToFile(outfile, results.value());
+    absl::Status save_status =
+        distbench::SaveResultProtoToFile(outfile, results.value());
     if (!save_status.ok()) {
       std::cerr << "Unable to save the resutls: " << save_status << "\n";
       return 1;

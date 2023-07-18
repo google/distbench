@@ -766,4 +766,16 @@ absl::StatusOr<TestSequence> GetCanonicalTestSequence(
   return ret;
 }
 
+ServiceBundle AllServiceInstances(
+    const DistributedSystemDescription& traffic_config) {
+  ServiceBundle bundles;
+  for (const auto& service : traffic_config.services()) {
+    for (int i = 0; i < service.count(); ++i) {
+      auto* addServices = bundles.add_services();
+      *addServices = GetInstanceName(service, i);
+    }
+  }
+  return bundles;
+}
+
 }  // namespace distbench
