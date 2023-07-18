@@ -308,7 +308,11 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
     reg.set_control_ip(ip);
   }
   reg.set_control_port(*opts_.port);
-
+  for (const auto& attr : opts_.attributes) {
+    auto new_attr = reg.add_attributes();
+    new_attr->set_name(attr.name());
+    new_attr->set_value(attr.value());
+  }
   grpc::ClientContext context;
   SetGrpcClientContextDeadline(&context, /*max_time_s=*/60);
   context.set_wait_for_ready(true);
