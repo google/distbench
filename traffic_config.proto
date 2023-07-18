@@ -66,6 +66,11 @@ message MultiServerChannel {
   repeated ConstraintSet constraint_sets = 4;
 }
 
+message ConstraintList {
+  // A node matches only if it satisfies all constraint sets (logical AND):
+  repeated ConstraintSet constraint_sets = 1;
+}
+
 message ConstraintSet {
   // A node satisifies this constraint set if it matches any of its
   // individual constraints (logical OR):
@@ -229,6 +234,7 @@ message DistributedSystemDescription {
   optional string name = 9;
   map<string, string> attributes = 10;
   repeated ServiceSpec services = 1;
+  map<string, ConstraintList> service_constraints = 15;
   map<string, ServiceBundle> node_service_bundles = 2;
 
   // In order to provide the users with an easy way of creating

@@ -205,6 +205,23 @@ absl::Status ValidateTestsSetting(const TestsSetting& settings);
 absl::Status ValidateTrafficConfig(
     const DistributedSystemDescription& traffic_config);
 
+// Functions to check constraints against attributes
+bool CheckConstraintList(const ConstraintList& constraint_list,
+                             const std::vector<Attribute>& attributes);
+
+bool CheckConstraintSet(const ConstraintSet& constraint_set,
+                        const std::vector<Attribute>& attributes);
+    
+bool CheckConstraint(const Constraint& constraint,
+                     const std::vector<Attribute>& attributes);
+
+bool CheckIntConstraint(const int64_t& int_value, const Attribute& attribute,
+                        const Constraint& constraint);
+
+bool CheckStringConstraint(const std::string& string_value,
+                           const Attribute& attribute,
+                           const Constraint& constraint);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

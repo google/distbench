@@ -766,4 +766,66 @@ absl::StatusOr<TestSequence> GetCanonicalTestSequence(
   return ret;
 }
 
+bool CheckStringConstraint(const std::string& string_value,
+                           const Attribute& attribute,
+                           const Constraint& constraint) {
+  switch (constraint.relation()) {
+    case Constraint_Relation_equal:
+      return attribute.value() == string_value;
+    case Constraint_Relation_not_equal:
+      return attribute.value() != string_value;
+  }
+  return false;
+}
+
+bool CheckIntConstraint(const int64_t& int_value, const Attribute& attribute,
+                        const Constraint& constraint) {
+  int64_t attribute_int_value;
+  if (!absl::SimpleAtoi(attribute.value(), &attribute_int_value)) return false;
+  switch (constraint.relation()) {
+    case Constraint_Relation_equal:
+      return attribute_int_value == int_value;
+    case Constraint_Relation_not_equal:
+      return attribute_int_value != int_value;
+    case Constraint_Relation_modulo_equal:
+      return attribute_int_value % constraint.modulus() == int_value;
+    case Constraint_Relation_modulo_not_equal:
+      return attribute_int_value % constraint.modulus() != int_value;
+  }
+  return false;
+}
+
+bool CheckConstraint(const Constraint& constraint,
+                     const std::vector<Attribute>& attributes) {
+  for (const auto& attribute : attributes) {
+    if (attribute.name() != constraint.attribute_name()) continue;
+
+    for (const auto& string_value : constraint.string_values()) {
+      if (CheckStringConstraint(string_value, attribute, constraint))
+        return true;
+    }
+
+    for (const auto& int_value : constraint.int64_values()) {
+      if (CheckIntConstraint(int_value, attribute, constraint)) return true;
+    }
+  }
+  return false;
+}
+
+bool CheckConstraintSet(const ConstraintSet& constraint_set,
+                        const std::vector<Attribute>& attributes) {
+  for (const auto& constraint : constraint_set.constraints()) {
+    if (CheckConstraint(constraint, attributes)) return true;
+  }
+  return false;
+}
+
+bool CheckConstraintList(const ConstraintList& constraint_list,
+                             const std::vector<Attribute>& attributes) {
+  for (const auto& constraint_set : constraint_list.constraint_sets()) {
+    if (!CheckConstraintSet(constraint_set, attributes)) return false;
+  }
+  return true;
+}
+
 }  // namespace distbench

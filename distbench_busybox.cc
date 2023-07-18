@@ -18,6 +18,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/strings/str_split.h"
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"
 #include "distbench_test_sequencer_tester.h"
@@ -371,11 +372,25 @@ int MainNodeManager(std::vector<char*>& arguments) {
         std::cerr << "  Got '" << arguments[0] << "' instead.\n";
         return 1;
       }
+      arguments.erase(arguments.begin());
+      std::cerr << "pre-assigned node: " << preassigned_node_id << "\n";
     }
-    std::cerr << "pre-assigned node: " << preassigned_node_id << "\n";
-    arguments.erase(arguments.begin());
   }
-  if (!CheckRemainingArguments(arguments, 0, 0)) return 2;
+  distbench::Attribute attribute;
+  std::vector<distbench::Attribute> attributes;
+  std::vector<std::string> key_value;
+  // In the following loop we are parsing the remaining arguments passed
+  // through the command line into pairs of name and value for the attributes
+  for (auto argument : arguments) {
+    key_value = absl::StrSplit(argument, absl::MaxSplits('=', 1));
+    if (key_value.size() == 1) {
+      std::cerr << "Error: unexpected command line argument: " << argument << "\n";
+      return 1;
+    }
+    attribute.set_name(key_value[0]);
+    attribute.set_value(key_value[1]);
+    attributes.push_back(attribute);
+  }
   int port = absl::GetFlag(FLAGS_port);
   const distbench::NodeManagerOpts opts = {
       .preassigned_node_id = preassigned_node_id,
@@ -384,6 +399,7 @@ int MainNodeManager(std::vector<char*>& arguments) {
           absl::GetFlag(FLAGS_default_data_plane_device),
       .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
       .port = &port,
+      .attributes = attributes,
   };
   distbench::NodeManager node_manager;
   absl::Status status = node_manager.Initialize(opts);

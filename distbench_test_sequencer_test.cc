@@ -969,6 +969,81 @@ tests {
   EXPECT_EQ(invocations_bitmask, (1 << 25) - 1);
 }
 
+TEST(DistBenchTestSequencer, AttributeBasedPlacement) {
+  std::vector<Attribute> attributes;
+  Attribute attribute;
+
+  attribute.set_name("rack");
+  attribute.set_value("A");
+  attributes.push_back(attribute);
+  attributes.push_back(attribute);
+  attribute.set_value("B");
+  attributes.push_back(attribute);
+  attributes.push_back(attribute);
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(2);
+  client->set_protocol_driver_options_name("lo_opts");
+
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(2);
+  server->set_protocol_driver_options_name("lo_opts");
+
+  ConstraintList constraint_list;
+  auto* constraint_set = constraint_list.add_constraint_sets();
+  auto* constraint_a = constraint_set->add_constraints();
+  constraint_a->set_attribute_name("rack");
+  constraint_a->set_relation(Constraint_Relation_equal);
+  constraint_a->add_string_values("A");
+
+  (*test->mutable_service_constraints())["server/0"] = constraint_list;
+  (*test->mutable_service_constraints())["client/0"] = constraint_list;
+
+  std::map<std::string, std::vector<Attribute>> node_attributes = {
+      {"node0", {attributes[0]}},
+      {"node1", {attributes[1]}},
+      {"node2", {attributes[2]}},
+      {"node3", {attributes[3]}},
+  };
+  auto maybe_map = ConstraintSolver(test_sequence.tests(0), node_attributes);
+  ASSERT_OK(maybe_map.status());
+
+  auto node_service_map = maybe_map.value();
+
+  ServiceBundle service_bundle_1, service_bundle_2;
+  service_bundle_1.add_services("server/0");
+  service_bundle_2.add_services("client/0");
+  EXPECT_EQ(node_service_map["node0"].size(), 1);
+  EXPECT_EQ(node_service_map["node1"].size(), 1);
+  EXPECT_EQ(node_service_map["node2"].size(), 1);
+  EXPECT_EQ(node_service_map["node3"].size(), 1);
+  EXPECT_TRUE(*node_service_map["node0"].begin() == "server/0" ||
+              *node_service_map["node0"].begin() == "client/0");
+  EXPECT_TRUE(*node_service_map["node1"].begin() == "server/0" ||
+              *node_service_map["node1"].begin() == "client/0");
+  EXPECT_TRUE(*node_service_map["node2"].begin() == "server/1" ||
+              *node_service_map["node2"].begin() == "client/1");
+  EXPECT_TRUE(*node_service_map["node3"].begin() == "server/1" ||
+              *node_service_map["node3"].begin() == "client/1");
+
+  // Unit test for failure. In this test there's only one node with 
+  // attribute rack equals A
+  node_attributes = {
+      {"node0", {attributes[0]}},
+      {"node1", {attributes[2]}},
+      {"node2", {attributes[2]}},
+      {"node3", {attributes[3]}},
+  };
+
+  maybe_map = ConstraintSolver(test_sequence.tests(0), node_attributes);
+  EXPECT_FALSE(maybe_map.ok());
+}
+
 TEST(DistBenchTestSequencer, MultiServerChannelsTest) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize(4));
