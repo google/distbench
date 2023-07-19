@@ -33,7 +33,7 @@ void RunConfig(const std::string& config, TestSequenceResults* results) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());
   auto maybe_results =
-      tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+      tester.RunTestSequence(*test_sequence, /*timeout_s=*/30);
   ASSERT_OK(maybe_results.status());
   *results = maybe_results.value();
 }

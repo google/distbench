@@ -222,7 +222,7 @@ TEST(DistBenchTestSequencer, ServerActivityTest) {
   AddActivitySettingStringTo(server_ac, "activity_func", "ConsumeCpu");
   AddActivitySettingIntTo(server_ac, "array_size", 10);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   ASSERT_EQ(results.value().test_results().size(), 1);
@@ -268,7 +268,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results.value(), 100, 2);
@@ -314,7 +314,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   params.array_size = 250;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results, 100, 1);
@@ -358,7 +358,7 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
   params.array_size = 2'000'000;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results, 100, 1);
@@ -401,7 +401,7 @@ TEST(DistBenchTestSequencer, PolluteInstructionCache) {
   params.activity_func = "PolluteInstructionCache";
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results.value(), 100, 1);
@@ -446,7 +446,7 @@ TEST(DistBenchTestSequencer, ConsumeCpuWithMaxIterationCount) {
   params.max_iteration_count = 10;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results.value(), 10, 1, true);
@@ -490,7 +490,7 @@ TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
   params.activity_with_same_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   CheckCpuConsumeIterationCnt(results.value(), 100, 1);
@@ -536,7 +536,7 @@ TEST(DistBenchTestSequencer, UnknownActivity) {
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
@@ -554,7 +554,7 @@ TEST(DistBenchTestSequencer, KnownActivityUnknownConfig) {
   params.array_size = 2500;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
@@ -573,7 +573,7 @@ TEST(DistBenchTestSequencer, RedefineActivityConfig) {
   params.duplicate_activity_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
@@ -591,7 +591,7 @@ TEST(DistBenchTestSequencer, PreCheckInvalidActivityConfig) {
   params.invalid_config = true;
   auto test_sequence = GetCliqueTestSequence(params);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_EQ(results.status().code(), absl::StatusCode::kAborted);
 }
 
