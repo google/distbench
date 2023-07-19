@@ -60,6 +60,37 @@ Options:
   specified in the test sequence proto. If unspecified by this flag or in the
   test sequence proto, it will default to 1 hour.
 
+## `check_test`
+
+This module is useful to test whether your textproto config file is valid. It
+will attempt to parse the file, then print the result.
+
+``` bash
+distbench check_test [--infile test_sequence.proto_text]
+```
+
+Options:
+- `--infile test_sequence.proto_text`: The protobuf filename of the test
+  sequence to submit to the 'check_test' module.
+
+## `test_preview`
+
+This module is useful if you would like to start developing an analysis tool
+ for your test(s). It will run a specified TestSequence on local host with a
+ single node manager. If a result filename is specified, the TestResult will be
+ saved (default stdout).
+``` bash
+distbench test_preview [--infile test_sequence.proto_text]
+                       [--outfile result.proto]
+```
+
+Options:
+- `--binary_output`: Save the test result protobuf in binary
+- `--infile test_sequence.proto_text`: The protobuf filename of the test
+  sequence to submit to the 'test_preview' module.
+- `--outfile result.proto`: The protobuf filename that is used to save the test
+  result. Specify `--binary_output` to save in binary mode.
+
 ## help
 
 Display a simple summary of the available commands.
