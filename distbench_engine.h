@@ -159,6 +159,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int rpc_service_index = -1;
     // index into the client_rpc_table_/server_rpc_table_;
     int rpc_index = -1;
+    int rpc_replay_trace_index = -1;
     int actionlist_index = -1;
     int activity_config_index = -1;
     std::vector<int> dependent_action_indices;
@@ -286,9 +287,16 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeRpcFanoutFilter(RpcDefinition& rpc_def);
   absl::Status InitializeRpcDefinitionsMap();
   absl::Status InitializeActivityConfigMap();
+  absl::Status InitializeRpcTraceMap();
 
   void RunActionList(int actionlist_index, ServerRpcState* incoming_rpc_state,
                      bool force_warmup = false);
+
+  RpcReplayTraceLog RunRpcReplayTrace(
+      int rpc_replay_trace_index, ServerRpcState* incoming_rpc_state,
+      std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary,
+      bool force_warmup);
+
   void InitiateAction(ActionState* action_state);
   void StartOpenLoopIteration(ActionState* action_state);
   void RunActivity(ActionState* action_state);
@@ -302,6 +310,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<int> PickRpcFanoutTargets(ActionIterationState* iteration_state);
 
   void AddActivityLogs(ServicePerformanceLog* sp_log);
+  void AddRpcReplayTraceLogs(ServicePerformanceLog* sp_log);
 
   std::atomic<int64_t> consume_cpu_iteration_cnt_ = 0;
 
@@ -325,6 +334,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   ServiceEndpointMap service_map_;
   std::string service_name_;
   ServiceSpec service_spec_;
+  int64_t traffic_start_time_ns_ = 0;
   std::set<std::string> dependent_services_;
   int service_index_;
   int service_instance_;
@@ -339,6 +349,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::map<std::string, PayloadSpec> payload_map_;
   std::map<std::string, RpcDefinition> rpc_map_;
   std::map<std::string, int> activity_config_indices_map_;
+  std::map<std::string, int> rpc_replay_trace_indices_map_;
   std::vector<ParsedActivityConfig> stored_activity_config_;
 
   std::unique_ptr<std::atomic<int>[]> actionlist_invocation_counts;
@@ -356,6 +367,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Mutex cumulative_activity_log_mu_;
   std::map<std::string, std::map<std::string, int64_t>>
       cumulative_activity_logs_;
+
+  absl::Mutex replay_logs_mutex;
+  std::vector<std::unique_ptr<RpcReplayTraceLog>> replay_logs_
+      ABSL_GUARDED_BY(replay_logs_mutex);
 
   std::map<std::string, int> sample_generator_indices_map_;
   std::vector<std::unique_ptr<DistributionSampleGenerator>>

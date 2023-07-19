@@ -106,6 +106,9 @@ void AddInstanceSummaryTo(std::vector<std::string>& ret,
     inst_summary.rx_payload_bytes += perf.request_size;
     instance_summary_map[target_name] = inst_summary;
   }
+  if (total_rpcs == 0) {
+    return;
+  }
 
   ret.push_back("Instance summary:");
   constexpr int64_t MiB = 1024 * 1024;
@@ -185,6 +188,10 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
   }
 
   std::vector<std::string> ret;
+  double total_time_seconds = (double)test_time / 1'000'000'000;
+  if (total_time_seconds == 0) {
+    return ret;
+  }
   ret.push_back("RPC latency summary:");
   for (auto& latencies : latency_map) {
     std::string str{};
@@ -194,7 +201,6 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
     ret.push_back(str);
   }
 
-  double total_time_seconds = (double)test_time / 1'000'000'000;
   AddCommunicationSummaryTo(ret, total_time_seconds, perf_map);
   AddInstanceSummaryTo(ret, total_time_seconds, perf_map, nb_warmup_samples,
                        nb_failed_samples);
