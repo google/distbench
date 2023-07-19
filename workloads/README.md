@@ -45,7 +45,7 @@ the `client_server_rpc` rpc 100 times:
 ```
 
 The `client_server_rpc` is defined as follows, the RPC is done from the client
-to the server. The request is defined has having 196B of payload and the
+to the server. The request is defined as having 196B of payload and the
 response will cary 256kB.
 ```yaml
   rpc_descriptions {
