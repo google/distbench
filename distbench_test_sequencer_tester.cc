@@ -39,7 +39,7 @@ DistBenchTester::~DistBenchTester() {
   grpc::Status status = test_sequencer_stub->RunTestSequence(
       context.get(), test_sequence, &results);
   if (!status.ok()) {
-    LOG(FATAL) << "Shutdown via RunTestSequence RPC failed " << status;
+    LOG(ERROR) << "Shutdown via RunTestSequence RPC failed " << status;
     test_sequencer->Shutdown();
   }
   test_sequencer->Wait();

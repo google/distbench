@@ -764,6 +764,7 @@ absl::Status DistBenchEngine::ConnectToPeers() {
           auto target_service = service_index_map_[service.name()];
           peer_ids.push_back(peers_[target_service][instance].pd_id);
         }
+        // ConstraintSolver();
         std::sort(peer_ids.begin(), peer_ids.end());
         peer_ids.erase(std::unique(peer_ids.begin(), peer_ids.end()),
                        peer_ids.end());
