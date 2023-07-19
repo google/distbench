@@ -466,11 +466,13 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     RunTrafficResponse response;
     std::string node_name;
   };
+  int64_t start_time = ToUnixNanos(absl::Now());
   grpc::Status status;
   std::vector<RunTrafficPendingRpc> pending_rpcs(node_service_map.size());
   int rpc_count = 0;
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
+    rpc_state.request.set_start_timestamp_ns(start_time);
     ++rpc_count;
     rpc_state.node_name = node_services.first;
     auto it = node_alias_id_map_.find(node_services.first);

@@ -739,6 +739,13 @@ GetCanonicalDistributedSystemDescription(
     }
     *ret.add_services() = maybe_service.value();
   }
+  auto sizes_map = EnumerateServiceSizes(traffic_config);
+  for (const auto& trace : traffic_config.rpc_replay_traces()) {
+    absl::Status status = ValidateRpcReplayTrace(trace, sizes_map);
+    if (!status.ok()) {
+      return status;
+    }
+  }
   return ret;
 }
 
@@ -776,6 +783,39 @@ ServiceBundle AllServiceInstances(
     }
   }
   return bundles;
+}
+
+absl::Status ValidateRpcReplayTrace(const RpcReplayTrace& trace,
+                                    std::map<std::string, int> service_sizes) {
+  if (!trace.has_client()) {
+    return absl::InvalidArgumentError("RpcReplayTrace must specify client");
+  }
+  if (!trace.has_server()) {
+    return absl::InvalidArgumentError("RpcReplayTrace must specify server");
+  }
+  auto client_it = service_sizes.find(trace.client());
+  auto server_it = service_sizes.find(trace.server());
+  if (client_it == service_sizes.end()) {
+    return absl::InvalidArgumentError("client service not defined");
+  }
+  if (server_it == service_sizes.end()) {
+    return absl::InvalidArgumentError("server service not defined");
+  }
+  int client_size = client_it->second;
+  int server_size = server_it->second;
+  for (int i = 0; i < trace.records_size(); ++i) {
+    RpcReplayTraceRecord record = trace.defaults();
+    record.MergeFrom(trace.records(i));
+    if (record.server_instance() > server_size) {
+      return absl::InvalidArgumentError(absl::StrFormat(
+          "RpcTrace %s record %d: server index too large", trace.name(), i));
+    }
+    if (record.client_instance() > client_size) {
+      return absl::InvalidArgumentError(absl::StrFormat(
+          "RpcTrace %s record %d: client index too large", trace.name(), i));
+    }
+  }
+  return absl::OkStatus();
 }
 
 }  // namespace distbench

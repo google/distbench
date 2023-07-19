@@ -407,6 +407,17 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "replay_test",
+    size = "medium",
+    srcs = ["replay_test.cc"],
+    shard_count = 1,
+    deps = [
+        ":distbench_test_sequencer_tester",
+        ":distbench_utils",
+    ],
+)
+
 cc_library(
     name = "distbench_node_manager_lib",
     srcs = ["distbench_node_manager.cc"],

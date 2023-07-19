@@ -195,6 +195,9 @@ absl::StatusOr<DistributionConfig> GetCanonicalDistributionConfig(
     const DistributionConfig& input_config,
     std::vector<std::string_view> canonical_fields);
 
+absl::Status ValidateRpcReplayTrace(const RpcReplayTrace& trace,
+                                    std::map<std::string, int> service_sizes);
+
 absl::Status ValidateDistributionConfig(const DistributionConfig& config);
 
 absl::Status ValidateTestsSetting(const TestsSetting& settings);

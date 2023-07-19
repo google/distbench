@@ -276,7 +276,13 @@ int MainTestPreview(std::vector<char*>& arguments) {
               << "\n";
     return 1;
   }
-  distbench::TestSequence test_sequence = input_sequence.value();
+  auto maybe_test_sequence = GetCanonicalTestSequence(input_sequence.value());
+  if (!maybe_test_sequence.ok()) {
+    std::cerr << "GetCanonicalTestSequence failed with error:"
+              << maybe_test_sequence.status() << "\n";
+    exit(1);
+  }
+  distbench::TestSequence test_sequence = maybe_test_sequence.value();
   test_sequence.clear_tests();
   for (auto test : input_sequence.value().tests()) {
     if (!test.node_service_bundles().empty()) {
@@ -291,22 +297,25 @@ int MainTestPreview(std::vector<char*>& arguments) {
   distbench::DistBenchTester tester;
   absl::Status status = tester.Initialize();
   if (!status.ok()) {
-    std::cout << status;
-    return 1;
+    std::cerr << "Initialize failed with error:" << status << "\n";
+    exit(1);
   }
   auto results = tester.RunTestSequence(test_sequence, TEST_TIMEOUT_S);
   if (!results.ok()) {
-    std::cout << results.status();
+    std::cerr << "RunTestSequence failed with error:" << results.status()
+              << "\n";
+    exit(1);
     return 1;
   }
 
   const std::string outfile = absl::GetFlag(FLAGS_outfile);
-  if (!outfile.empty()) {
-    absl::Status save_status =
-        distbench::SaveResultProtoToFile(outfile, results.value());
+  if (outfile.empty()) {
+    std::cout << results.value().DebugString();
+  } else {
+    absl::Status save_status = SaveResultProtoToFile(outfile, results.value());
     if (!save_status.ok()) {
       std::cerr << "Unable to save the resutls: " << save_status << "\n";
-      return 1;
+      exit(1);
     }
   }
   std::cout << "\nOutcome: Preview for " << infile << " was successful.\n\n";
