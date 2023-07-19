@@ -64,7 +64,7 @@ TEST(OpenLoopTest, CliqueTest) {
   auto* l2 = test->add_action_lists();
   l2->set_name("clique_query");
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   ASSERT_EQ(results.value().test_results().size(), 1);
@@ -127,7 +127,7 @@ TEST(OpenLoopTest, ExponenentialDistributionTest) {
   auto* l2 = test->add_action_lists();
   l2->set_name("exp_query");
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   ASSERT_EQ(results.value().test_results().size(), 1);
@@ -225,7 +225,7 @@ TEST(OpenLoopTest, ConstantDistributionTest) {
   auto* l2 = test->add_action_lists();
   l2->set_name("constant_query");
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   ASSERT_EQ(results.value().test_results().size(), 1);
