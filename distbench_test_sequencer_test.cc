@@ -1123,4 +1123,87 @@ tests {
   }
 }
 
+TEST(DistBenchTestSequencer, MultiServerChannelConstraintTest) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize(5));
+
+  const std::string proto = R"(
+tests {
+  services {
+    name: "client"
+    count: 1
+  }
+  services {
+    name: "server"
+    count: 4
+    protocol_driver_options_name: "loopback_pd"
+    multi_server_channels {
+      name: "MSC"
+      channel_settings { name: "policy", string_value: "round_robin" }
+      constraints {
+        constraint_sets {
+          constraints {
+            attribute_name: "index"
+            relation: EQUAL
+            int64_values: 1
+          }
+          constraints {
+            attribute_name: "index"
+            relation: EQUAL
+            int64_values: 2
+          }
+        }
+      }
+    }
+  }
+  rpc_descriptions {
+    name: "client_server_rpc"
+    client: "client"
+    server: "server"
+    multi_server_channel_name: "MSC"
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_queries"
+  }
+  actions {
+    name: "run_queries"
+    rpc_name: "client_server_rpc"
+    iterations {
+      max_iteration_count: 12
+      open_loop_interval_ns: 10000000
+    }
+  }
+  action_lists {
+    name: "client_server_rpc"
+  }
+  protocol_driver_options {
+    name: "loopback_pd"
+    netdev_name: "lo"
+  }
+})";
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
+
+  TestSequenceResults results;
+  auto maybe_results = tester.RunTestSequence(*test_sequence, 15);
+  ASSERT_OK(maybe_results.status());
+
+  const auto& test_results = maybe_results.value().test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  const auto& [client_name, client_log] =
+      *test_results.service_logs().instance_logs().begin();
+  ASSERT_EQ(client_log.peer_logs().size(), 2);
+  for (const auto& [server_name, per_server_log] : client_log.peer_logs()) {
+    LOG(INFO) << server_name;
+    LOG(INFO) << per_server_log.DebugString();
+    ASSERT_NE(server_name, "server/0");
+    ASSERT_NE(server_name, "server/3");
+    size_t num_samples = (*per_server_log.rpc_logs().begin())
+                             .second.successful_rpc_samples_size();
+    EXPECT_GE(num_samples, 5);
+    EXPECT_LE(num_samples, 7);
+  }
+}
+
 }  // namespace distbench

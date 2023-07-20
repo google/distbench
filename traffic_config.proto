@@ -62,7 +62,7 @@ message MultiServerChannel {
   // regardless of whether or not they satisfy the constraints below:
   repeated int32 selected_instances = 3 [packed = true];
 
-  optional ConstraintList channel_constraints = 4;
+  optional ConstraintList constraints = 4;
 }
 
 message ConstraintList {

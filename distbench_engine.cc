@@ -749,25 +749,35 @@ absl::Status DistBenchEngine::ConnectToPeers() {
   int msc = 0;
   for (const auto& service : traffic_config_.services()) {
     if (dependent_services_.count(service.name())) {
+      auto target_service = service_index_map_[service.name()];
       for (const auto& channel : service.multi_server_channels()) {
         std::vector<int> peer_ids;
         peer_ids.reserve(channel.selected_instances_size());
-        if (channel.selected_instances().empty()) {
-          return absl::InvalidArgumentError(
-              "must have at least one selected_instances field");
-        }
         for (const auto& instance : channel.selected_instances()) {
           if (instance >= service.count()) {
             return absl::InvalidArgumentError(
                 "selected_instances out of range for service");
           }
-          auto target_service = service_index_map_[service.name()];
           peer_ids.push_back(peers_[target_service][instance].pd_id);
         }
-        // ConstraintSolver();
+        if (channel.has_constraints()) {
+          for (int i = 0; i < service.count(); ++i) {
+            std::string instance_name = GetInstanceName(service, i);
+            auto it = service_map_.service_endpoints().find(instance_name);
+            CHECK(it != service_map_.service_endpoints().end());
+            if (CheckConstraintList(channel.constraints(),
+                                    it->second.attributes())) {
+              peer_ids.push_back(peers_[target_service][i].pd_id);
+            }
+          }
+        }
         std::sort(peer_ids.begin(), peer_ids.end());
         peer_ids.erase(std::unique(peer_ids.begin(), peer_ids.end()),
                        peer_ids.end());
+        if (peer_ids.empty()) {
+          return absl::InvalidArgumentError(
+              "No matching constraints, and no selected_instances field");
+        }
         auto msc_status = pd_->SetupMultiServerChannel(
             channel.channel_settings(), peer_ids, msc);
         if (!msc_status.ok()) {

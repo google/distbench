@@ -219,7 +219,7 @@ service DistBenchTestSequencer {
 message ServiceEndpoint {
   optional string endpoint_address = 1;
   optional string hostname = 2;
-  // ?repeated key-value for attributes?
+  repeated Attribute attributes = 3;
 }
 
 message ServiceEndpointMap {
