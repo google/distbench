@@ -317,13 +317,18 @@ int MainTestPreview(std::vector<char*>& arguments) {
   if (outfile.empty()) {
     std::cout << results.value().DebugString();
   } else {
-    absl::Status save_status = SaveResultProtoToFile(outfile, results.value());
+    absl::Status save_status;
+    if (absl::GetFlag(FLAGS_binary_output)) {
+      save_status = SaveResultProtoToFileBinary(outfile, results.value());
+    } else {
+      save_status = SaveResultProtoToFile(outfile, results.value());
+    }
     if (!save_status.ok()) {
-      std::cerr << "Unable to save the resutls: " << save_status << "\n";
+      std::cerr << "Unable to save the results: " << save_status << "\n";
       exit(1);
     }
   }
-  std::cout << "\nOutcome: Preview for " << infile << " was successful.\n\n";
+  std::cout << "\nResult: Preview for " << infile << " was successful.\n\n";
   return 0;
 }
 
