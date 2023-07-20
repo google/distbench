@@ -28,6 +28,8 @@
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 
+using ::google::protobuf::RepeatedPtrField;
+
 namespace std {
 ostream& operator<<(ostream& out, grpc::Status const& c) {
   return out << "(grpc::status: " << c.error_message() << ")";
@@ -267,8 +269,7 @@ struct rusage DoGetRusage() {
 }
 
 std::string GetNamedSettingString(
-    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>&
-        settings,
+    const RepeatedPtrField<distbench::NamedSetting>& settings,
     absl::string_view setting_name, std::string default_value) {
   for (const auto& setting : settings) {
     if (!setting.has_name()) {
@@ -303,8 +304,7 @@ std::string GetNamedClientSettingString(
 }
 
 int64_t GetNamedSettingInt64(
-    const ::google::protobuf::RepeatedPtrField<distbench::NamedSetting>&
-        settings,
+    const RepeatedPtrField<distbench::NamedSetting>& settings,
     absl::string_view setting_name, int64_t default_value) {
   for (const auto& setting : settings) {
     if (!setting.has_name()) {
@@ -852,7 +852,7 @@ bool CheckIntConstraint(const int64_t& int_value, const Attribute& attribute,
 }
 
 bool CheckConstraint(const Constraint& constraint,
-                     const std::vector<Attribute>& attributes) {
+                     const RepeatedPtrField<Attribute>& attributes) {
   for (const auto& attribute : attributes) {
     if (attribute.name() != constraint.attribute_name()) continue;
 
@@ -869,7 +869,7 @@ bool CheckConstraint(const Constraint& constraint,
 }
 
 bool CheckConstraintSet(const ConstraintSet& constraint_set,
-                        const std::vector<Attribute>& attributes) {
+                        const RepeatedPtrField<Attribute>& attributes) {
   for (const auto& constraint : constraint_set.constraints()) {
     if (CheckConstraint(constraint, attributes)) return true;
   }
@@ -877,7 +877,7 @@ bool CheckConstraintSet(const ConstraintSet& constraint_set,
 }
 
 bool CheckConstraintList(const ConstraintList& constraint_list,
-                         const std::vector<Attribute>& attributes) {
+                         const RepeatedPtrField<Attribute>& attributes) {
   for (const auto& constraint_set : constraint_list.constraint_sets()) {
     if (!CheckConstraintSet(constraint_set, attributes)) return false;
   }

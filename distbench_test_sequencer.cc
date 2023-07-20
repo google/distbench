@@ -21,6 +21,8 @@
 #include "distbench_utils.h"
 #include "glog/logging.h"
 
+using ::google::protobuf::RepeatedPtrField;
+
 namespace distbench {
 
 grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
@@ -209,12 +211,10 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
 absl::StatusOr<std::map<std::string, std::set<std::string>>>
 TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
   absl::MutexLock m(&mutex_);
-  std::map<std::string, std::vector<Attribute>> node_attributes;
+  std::map<std::string, RepeatedPtrField<Attribute>> node_attributes;
   for (const auto& node : registered_nodes_) {
     if (!node.still_pending) {
-      node_attributes[node.node_alias] =
-          std::vector<Attribute>(node.registration.attributes().begin(),
-                                 node.registration.attributes().end());
+      node_attributes[node.node_alias] = node.registration.attributes();
     }
   }
   auto ret = ConstraintSolver(test, node_attributes);
@@ -230,7 +230,7 @@ TestSequencer::PlaceServices(const DistributedSystemDescription& test) {
 
 absl::StatusOr<std::map<std::string, std::set<std::string>>> ConstraintSolver(
     const DistributedSystemDescription& test,
-    std::map<std::string, std::vector<Attribute>> node_attributes) {
+    std::map<std::string, RepeatedPtrField<Attribute>> node_attributes) {
   std::vector<std::string> all_services;
   std::set<std::string> unplaced_services;
   std::set<std::string> idle_nodes;
