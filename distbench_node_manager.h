@@ -102,6 +102,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   std::unique_ptr<grpc::Server> grpc_server_;
   std::string service_address_;
   NodeManagerOpts opts_;
+  NodeRegistration registration_info_;
   SafeNotification shutdown_requested_;
   absl::Mutex config_mutex_;
   NodeConfig config_ ABSL_GUARDED_BY(config_mutex_);

@@ -84,6 +84,27 @@ grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(maybe_address.value());
     service_entry.set_hostname(Hostname());
+    *service_entry.mutable_attributes() = registration_info_.attributes();
+    int dimensions = std::count(service_name.begin(), service_name.end(), '/');
+    Attribute* attribute;
+    if (dimensions == 1) {
+      attribute = service_entry.add_attributes();
+      attribute->set_name("index");
+      attribute->set_value(service_instance[1]);
+    }
+    if (dimensions > 1) {
+      attribute = service_entry.add_attributes();
+      attribute->set_name("x_index");
+      attribute->set_value(absl::StrCat(service_options.service_index.x));
+      attribute = service_entry.add_attributes();
+      attribute->set_name("y_index");
+      attribute->set_value(absl::StrCat(service_options.service_index.y));
+    }
+    if (dimensions > 2) {
+      attribute = service_entry.add_attributes();
+      attribute->set_name("z_index");
+      attribute->set_value(absl::StrCat(service_options.service_index.z));
+    }
   }
   return grpc::Status::OK;
 }
@@ -289,9 +310,8 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   LOG(INFO) << "NodeManager server listening on " << service_address_ << " on "
             << Hostname();
 
-  NodeRegistration reg;
-  reg.set_preassigned_node_id(opts_.preassigned_node_id);
-  reg.set_hostname(Hostname());
+  registration_info_.set_preassigned_node_id(opts_.preassigned_node_id);
+  registration_info_.set_hostname(Hostname());
   std::string ip = service_address_;
   if (ip.data()[0] == '[') {
     ip = ip.substr(1, ip.find(']') - 1);
@@ -305,11 +325,11 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
     }
   }
   if (!ip.empty()) {
-    reg.set_control_ip(ip);
+    registration_info_.set_control_ip(ip);
   }
-  reg.set_control_port(*opts_.port);
+  registration_info_.set_control_port(*opts_.port);
   for (const auto& attr : opts_.attributes) {
-    auto new_attr = reg.add_attributes();
+    auto new_attr = registration_info_.add_attributes();
     new_attr->set_name(attr.name());
     new_attr->set_value(attr.value());
   }
@@ -319,9 +339,9 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   absl::MutexLock m(&config_mutex_);
   LOG(INFO) << "Registering to test sequencer at "
             << opts_.test_sequencer_service_address;
-  LOG(INFO) << reg.DebugString();
+  LOG(INFO) << registration_info_.DebugString();
   grpc::Status status =
-      test_sequencer_stub->RegisterNode(&context, reg, &config_);
+      test_sequencer_stub->RegisterNode(&context, registration_info_, &config_);
   if (!status.ok()) {
     status = Annotate(
         status, absl::StrCat("While registering node to test sequencer(",
