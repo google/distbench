@@ -368,8 +368,6 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
 }
 
 TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
-  int nb_cliques = 2;
-
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());
 
@@ -452,8 +450,6 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
 }
 
 TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
-  int nb_cliques = 2;
-
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());
 
