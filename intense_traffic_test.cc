@@ -62,7 +62,7 @@ TestSequence IntenseTrafficTestSequence(const char* protocol) {
 
 void RunIntenseTrafficMaxDurationMaxIteration(const char* protocol) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
+  ASSERT_OK(tester.Initialize());
   TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
   auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/200);
   LOG(INFO) << results.status().message();
@@ -71,7 +71,7 @@ void RunIntenseTrafficMaxDurationMaxIteration(const char* protocol) {
 
 void RunIntenseTrafficMaxDuration(const char* protocol) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
+  ASSERT_OK(tester.Initialize());
   TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
   auto* iterations =
       test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();
@@ -83,7 +83,7 @@ void RunIntenseTrafficMaxDuration(const char* protocol) {
 
 void RunIntenseTrafficMaxIteration(const char* protocol) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
+  ASSERT_OK(tester.Initialize());
   TestSequence test_sequence = IntenseTrafficTestSequence(protocol);
   auto* iterations =
       test_sequence.mutable_tests(0)->mutable_actions(0)->mutable_iterations();

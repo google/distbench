@@ -42,12 +42,12 @@ TEST(DistBenchTestSequencer, Initialization) {
 
 TEST(DistBenchTestSequencer, EmptyGroup) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(0));
+  ASSERT_OK(tester.Initialize());
 }
 
 TEST(DistBenchTestSequencer, NonEmptyGroup) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(3));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -102,7 +102,7 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
 
 TEST(DistBenchTestSequencer, Overload) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
   const std::string proto = R"(
 tests {
   overload_limits {
@@ -189,7 +189,7 @@ tests {
 
 TEST(DistBenchTestSequencer, TestReservoirSampling) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -257,7 +257,7 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
 
 TEST(DistBenchTestSequencer, TestWarmupSampling) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(3));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -371,7 +371,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -455,7 +455,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -526,7 +526,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
 
 TEST(DistBenchTestSequencer, ProtocolDriverOptionsTest) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
 
   const std::string proto = R"(
 tests {
@@ -575,7 +575,7 @@ tests {
 
 TEST(DistBenchTestSequencer, ProtocolDriverOptionsGrpcInlineCallbackTest) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
 
   const std::string proto = R"(
 tests {
@@ -634,7 +634,7 @@ tests {
 
 TEST(DistBenchTestSequencer, ProtocolDriverOptionsGrpcHandoffPollingTest) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
 
   const std::string proto = R"(
 tests {
@@ -741,7 +741,7 @@ tests {
   ASSERT_TRUE(test_sequence.ok());
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
   auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
   ASSERT_OK(results.status());
   auto& test_results = results.value().test_results(0);
@@ -857,7 +857,7 @@ tests {
   ASSERT_TRUE(test_sequence.ok());
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
+  ASSERT_OK(tester.Initialize());
   auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
   ASSERT_OK(results.status());
   auto& test_results = results.value().test_results(0);
@@ -1055,7 +1055,7 @@ TEST(DistBenchTestSequencer, AttributeBasedPlacementFail) {
 
 TEST(DistBenchTestSequencer, MultiServerChannelsTest) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(4));
+  ASSERT_OK(tester.Initialize());
 
   const std::string proto = R"(
 tests {
@@ -1125,7 +1125,7 @@ tests {
 
 TEST(DistBenchTestSequencer, MultiServerChannelConstraintTest) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(5));
+  ASSERT_OK(tester.Initialize());
 
   const std::string proto = R"(
 tests {

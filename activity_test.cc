@@ -173,7 +173,7 @@ void CheckCpuConsumeIterationCnt(const TestSequenceResults& results,
 
 TEST(DistBenchTestSequencer, ServerActivityTest) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -257,7 +257,7 @@ TEST(DistBenchTestSequencer, CliqueOpenLoopRpcAntagonistTest) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -304,7 +304,7 @@ TEST(DistBenchTestSequencer, CliqueClosedLoopRpcAntagonistTest) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -348,7 +348,7 @@ TEST(DistBenchTestSequencer, PolluteDataCache) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -392,7 +392,7 @@ TEST(DistBenchTestSequencer, PolluteInstructionCache) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -435,7 +435,7 @@ TEST(DistBenchTestSequencer, ConsumeCpuWithMaxIterationCount) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -480,7 +480,7 @@ TEST(DistBenchTestSequencer, TwoActivitiesWithSameActivityConfig) {
   int nb_cliques = 2;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -527,7 +527,7 @@ TEST(DistBenchTestSequencer, UnknownActivity) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -544,7 +544,7 @@ TEST(DistBenchTestSequencer, KnownActivityUnknownConfig) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -562,7 +562,7 @@ TEST(DistBenchTestSequencer, RedefineActivityConfig) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;
@@ -581,7 +581,7 @@ TEST(DistBenchTestSequencer, PreCheckInvalidActivityConfig) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequenceParams params;
   params.nb_cliques = nb_cliques;

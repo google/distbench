@@ -73,7 +73,7 @@ absl::Status DistBenchTester::Resize(size_t num_nodes) {
   return absl::OkStatus();
 }
 
-absl::Status DistBenchTester::Initialize(size_t num_nodes) {
+absl::Status DistBenchTester::Initialize() {
   test_sequencer = std::make_unique<TestSequencer>();
   distbench::TestSequencerOpts ts_opts = {};
   int port = 0;
@@ -91,7 +91,7 @@ absl::Status DistBenchTester::Initialize(size_t num_nodes) {
       grpc::CreateCustomChannel(test_sequencer->service_address(), client_creds,
                                 DistbenchCustomChannelArguments());
   test_sequencer_stub = DistBenchTestSequencer::NewStub(channel);
-  return Resize(num_nodes);
+  return absl::OkStatus();
 }
 
 absl::StatusOr<TestSequenceResults> DistBenchTester::RunTestSequence(

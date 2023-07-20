@@ -20,7 +20,7 @@ namespace distbench {
 class DistBenchTester {
  public:
   ~DistBenchTester();
-  absl::Status Initialize(size_t num_nodes = 0);
+  absl::Status Initialize();
   absl::StatusOr<TestSequenceResults> RunTestSequence(
       TestSequence test_sequence, int timeout_s);
 
