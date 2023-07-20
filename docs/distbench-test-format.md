@@ -1,7 +1,7 @@
 # Distbench Traffic Pattern - Test Format
 
-The distbench are tests are defined using Protobuf using the
-[traffic_config.proto](../traffic_config.proto) specification.
+Distbench tests are specified in protocol buffers that are defined
+ in the [traffic_config.proto](../traffic_config.proto).
 
 This document decribes the different options available. The format is still
 evolving and subject to change.
@@ -29,6 +29,8 @@ in this document.
   and fanout involved.
 - `payload_descriptions`: define a payload that can be associated with an RPC.
 - `attributes`:
+- `distribution_config` : describe a distribution for random RPC `payload_size`,
+ `request_size`, or `response_size`.
   - `test_timeout`: Maximum time to run the test in seconds.
 
 **Note:** by convention, repeated fields in the proto are described by plural
@@ -153,6 +155,34 @@ to configure the client:
 The `grpc_async_callback` behaves as a grpc with `client_type=callback` and
 `server_type=handoff`; the `grpc_async_callback` is deprecated, use the grpc
 protocol driver with the correct `client_type` and `server_type` options.
+
+## message `DistributionConfig`
+
+This describes a (possibly) multi-dimensional joint distribution. For
+ convenience it is possible to describe a one dimension distribution as a CDF.
+ For the more general multi-dimensional case, each pmf point can describe
+ multiple dimensions of the distribution independently, with the meaning of
+ each dimension being described by the coresponding `field_names`.
+
+- `name` (string): name the DistributionConfig
+- `pmf_points`: This is used to define the probability mass function (PMF)
+ of a distribution.
+  - The pmf values of all the points in the distribution must add up to
+   (or be near) 1.0.
+  - The number of data_points must match the number of dimensions of
+   the joint distribution.
+- `cdf_points`: This can be used to define the cumulative distribution function
+ (CDF) of a distribution. 
+  - The cdf value of the last cdf_point must be equal to 1.0
+  - If the first point's cdf value is equal to zero, then the distribution is
+   interpreted as piece-wise uniform with the lower bound of each subsequent
+   interval being (the previous value + 1) automatically. E.g.
+   values of 5, 10, 25, 40 would define inclusive intervals of [5, 10],
+   [11, 25], [26, 40]. Note that N points define N-1 intervals.
+- `field_names` (string): The name(s) describing the meaning of each dimension.
+
+Examples of files with distributions in them can be found in the
+ [homa_cp_node_configs](../test_builder/homa_cp_node_configs) folder.
 
 ### Misc settings
 
