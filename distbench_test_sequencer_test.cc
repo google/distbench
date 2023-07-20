@@ -27,6 +27,8 @@
 
 namespace distbench {
 
+using ::google::protobuf::RepeatedPtrField;
+
 TEST(DistBenchTestSequencer, Constructor) { TestSequencer test_sequencer; }
 
 TEST(DistBenchTestSequencer, Initialization) {
@@ -945,16 +947,15 @@ tests {
 }
 
 TEST(DistBenchTestSequencer, AttributeBasedPlacement) {
-  std::vector<Attribute> attributes;
+  RepeatedPtrField<Attribute> rack_a_attributes;
+  RepeatedPtrField<Attribute> rack_b_attributes;
   Attribute attribute;
 
   attribute.set_name("rack");
   attribute.set_value("A");
-  attributes.push_back(attribute);
-  attributes.push_back(attribute);
+  *rack_a_attributes.Add() = attribute;
   attribute.set_value("B");
-  attributes.push_back(attribute);
-  attributes.push_back(attribute);
+  *rack_b_attributes.Add() = attribute;
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -979,11 +980,11 @@ TEST(DistBenchTestSequencer, AttributeBasedPlacement) {
   (*test->mutable_service_constraints())["server/0"] = constraint_list;
   (*test->mutable_service_constraints())["client/0"] = constraint_list;
 
-  std::map<std::string, std::vector<Attribute>> node_attributes = {
-      {"node0", {attributes[0]}},
-      {"node1", {attributes[1]}},
-      {"node2", {attributes[2]}},
-      {"node3", {attributes[3]}},
+  std::map<std::string, RepeatedPtrField<Attribute>> node_attributes = {
+      {"node0", rack_a_attributes},
+      {"node1", rack_a_attributes},
+      {"node2", rack_b_attributes},
+      {"node3", rack_b_attributes},
   };
   auto maybe_map = ConstraintSolver(test_sequence.tests(0), node_attributes);
   ASSERT_OK(maybe_map.status());
@@ -1005,17 +1006,50 @@ TEST(DistBenchTestSequencer, AttributeBasedPlacement) {
               *node_service_map["node2"].begin() == "client/1");
   EXPECT_TRUE(*node_service_map["node3"].begin() == "server/1" ||
               *node_service_map["node3"].begin() == "client/1");
+}
 
+TEST(DistBenchTestSequencer, AttributeBasedPlacementFail) {
   // Unit test for failure. In this test there's only one node with
   // attribute rack equals A
-  node_attributes = {
-      {"node0", {attributes[0]}},
-      {"node1", {attributes[2]}},
-      {"node2", {attributes[2]}},
-      {"node3", {attributes[3]}},
+  RepeatedPtrField<Attribute> rack_a_attributes;
+  RepeatedPtrField<Attribute> rack_b_attributes;
+  Attribute attribute;
+
+  attribute.set_name("rack");
+  attribute.set_value("A");
+  *rack_a_attributes.Add() = attribute;
+  attribute.set_value("B");
+  *rack_b_attributes.Add() = attribute;
+  std::map<std::string, RepeatedPtrField<Attribute>> node_attributes = {
+      {"node0", rack_a_attributes},
+      {"node1", rack_b_attributes},
+      {"node2", rack_b_attributes},
+      {"node3", rack_b_attributes},
   };
 
-  maybe_map = ConstraintSolver(test_sequence.tests(0), node_attributes);
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(2);
+  client->set_protocol_driver_options_name("lo_opts");
+
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(2);
+  server->set_protocol_driver_options_name("lo_opts");
+
+  ConstraintList constraint_list;
+  auto* constraint_set = constraint_list.add_constraint_sets();
+  auto* constraint_a = constraint_set->add_constraints();
+  constraint_a->set_attribute_name("rack");
+  constraint_a->set_relation(Constraint_Relation_EQUAL);
+  constraint_a->add_string_values("A");
+
+  (*test->mutable_service_constraints())["server/0"] = constraint_list;
+  (*test->mutable_service_constraints())["client/0"] = constraint_list;
+  auto maybe_map = ConstraintSolver(test_sequence.tests(0), node_attributes);
   EXPECT_FALSE(maybe_map.ok());
 }
 

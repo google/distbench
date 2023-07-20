@@ -212,14 +212,17 @@ ServiceBundle AllServiceInstances(
     const DistributedSystemDescription& traffic_config);
 
 // Functions to check constraints against attributes
-bool CheckConstraintList(const ConstraintList& constraint_list,
-                         const std::vector<Attribute>& attributes);
+bool CheckConstraintList(
+    const ConstraintList& constraint_list,
+    const google::protobuf::RepeatedPtrField<Attribute>& attributes);
 
-bool CheckConstraintSet(const ConstraintSet& constraint_set,
-                        const std::vector<Attribute>& attributes);
+bool CheckConstraintSet(
+    const ConstraintSet& constraint_set,
+    const google::protobuf::RepeatedPtrField<Attribute>& attributes);
 
-bool CheckConstraint(const Constraint& constraint,
-                     const std::vector<Attribute>& attributes);
+bool CheckConstraint(
+    const Constraint& constraint,
+    const google::protobuf::RepeatedPtrField<Attribute>& attributes);
 
 bool CheckIntConstraint(const int64_t& int_value, const Attribute& attribute,
                         const Constraint& constraint);

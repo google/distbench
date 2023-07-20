@@ -38,7 +38,8 @@ struct TestSequencerOpts {
 
 absl::StatusOr<std::map<std::string, std::set<std::string>>> ConstraintSolver(
     const DistributedSystemDescription& test,
-    std::map<std::string, std::vector<Attribute>> node_attributes);
+    std::map<std::string, google::protobuf::RepeatedPtrField<Attribute>>
+        node_attributes);
 
 class TestSequencer final : public DistBenchTestSequencer::Service {
  public:
