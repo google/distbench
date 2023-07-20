@@ -30,7 +30,7 @@ TEST(OpenLoopTest, CliqueTest) {
   int nb_cliques = 3;
 
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(nb_cliques));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -94,7 +94,7 @@ TEST(OpenLoopTest, CliqueTest) {
 TEST(OpenLoopTest, ExponenentialDistributionTest) {
   const int nominal_interval = 16'000'000;
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
@@ -191,7 +191,7 @@ TEST(OpenLoopTest, ExponenentialDistributionTest) {
 TEST(OpenLoopTest, ConstantDistributionTest) {
   const int nominal_interval = 25'000'000;
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(2));
+  ASSERT_OK(tester.Initialize());
 
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();

@@ -84,7 +84,7 @@ tests {
 
 TEST(Fanout, stochastic) {
   DistBenchTester tester;
-  ASSERT_OK(tester.Initialize(6));
+  ASSERT_OK(tester.Initialize());
 
   const std::string proto = R"(
 tests {
