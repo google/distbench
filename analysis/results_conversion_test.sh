@@ -5,7 +5,7 @@ BINDIR=$(dirname $0)
 RESULT_DIR="$PWD/analysis/golden_results"
 
 readonly test1=( \
-  "client_server_test/client_server_1x1x1-grpc_polling_inline.pb" \
+  "client_server_test/client_server_1x1x1-grpc_polling_inline.pb.gz" \
   "--consider_warmups" \
 )
 
@@ -33,7 +33,7 @@ tests=(test1 test2 test3 test4 test5)
 
 function custom_diff()
 {
-  diff -u -r -x '*.pb' -x '*.config' "$1" "$2"
+  diff -u -r -x '*.pb' -x '*.config' -x '*.gz' "$1" "$2"
 }
 
 set -x
