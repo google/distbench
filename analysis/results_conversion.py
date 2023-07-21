@@ -4,6 +4,7 @@ import traffic_config_pb2
 import os
 import argparse
 import numpy as np
+import gzip
 
 # This a script to process the results from the distbench results proto format
 # with the purpose of putting the results into a text file
@@ -261,19 +262,23 @@ class DistbenchResultsIO:
         self.tests_results = []
         self.output_formatter = output_formatter
 
-    def parse_from_binary(self):
+    def parse_file(self):
         test_sequence = distbench_pb2.TestSequenceResults()
         try:
-            with open(self.input_file, 'rb') as f:
-                var = f.read()
-                test_sequence.ParseFromString(var)
-                self.tests_results = test_sequence.test_results
+            gzip_file = gzip.open(self.input_file, 'rb')
+            file_contents = gzip_file.read()
         except:
-            print("Error parsing the file %s" % self.input_file)
-            exit()
+            try:
+                binary_file = open(self.input_file, 'rb')
+                file_contents = binary_file.read()
+            except:
+                print("Error parsing the file %s" % self.input_file)
+                exit()
+        test_sequence.ParseFromString(file_contents)
+        self.tests_results = test_sequence.test_results
 
     def create_all_test_directories(self):
-        self.parse_from_binary()
+        self.parse_file()
         for i, test in enumerate(self.tests_results):
             test_dir = self.output_directory + "/test_" + str(i)
             t = TestProcessor(test, self.output_formatter)
