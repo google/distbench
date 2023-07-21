@@ -60,6 +60,9 @@
 #    If this argument is omitted it is automatically determinied.
 #
 # For convenience feel free to edit the following 5 lines.
+#
+# NOTE: In case your local username does not match the cloudlab username
+# you can set the CLOUDLAB_USER environment variable.
 
 DEFAULT_CLUSTER_DOMAINNAME=distbench.uic-dcs-pg0.utah.cloudlab.us
 DEFAULT_GIT_REPO=https://github.com/google/distbench.git
@@ -85,8 +88,7 @@ function unknown_error_shutdown() {
 trap unknown_error_shutdown ERR
 
 ECHODELAY=0.005 source common_status.sh
-
-function clssh() { ssh -o 'StrictHostKeyChecking no' "${@}"; }
+function clssh() { ssh -o 'StrictHostKeyChecking no' -o "User ${CLOUDLAB_USER:-$USER}" "${@}"; }
 
 sh_files=(common_status.sh git_clone_or_update.sh)
 
