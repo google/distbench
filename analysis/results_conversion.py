@@ -13,6 +13,8 @@ class Formatter:
     def __init__(self, supress_header, consider_warmups):
         self.supress_header = supress_header
         self.consider_warmups = consider_warmups
+        self.warmup_samples = 0
+        self.total_samples = 0
 
     def format_file(self) -> list:
         pass
@@ -25,6 +27,9 @@ class DefaultFormatter(Formatter):
     def summarize(self, rpc_list):
         summary = []
         for rpc in rpc_list:
+            self.total_samples += 1
+            if(rpc.warmup):
+                self.warmup_samples += 1
             if(self.consider_warmups or not rpc.warmup):
                 summary.append(tuple([rpc.request_size, rpc.latency_ns]))
         return summary
@@ -44,6 +49,9 @@ class StatisticFormatter(Formatter):
     def summarize(self, rpc_list):
         summary = []
         for rpc in rpc_list:
+            self.total_samples += 1
+            if(rpc.warmup):
+                self.warmup_samples += 1
             if(self.consider_warmups or not rpc.warmup):
                 summary.append(tuple([rpc.request_size, rpc.latency_ns]))
         return summary
@@ -78,6 +86,9 @@ class TraceContextFormatter(Formatter):
     def summarize(self, rpc_list):
         summary = []
         for rpc in rpc_list:
+            self.total_samples += 1
+            if(rpc.warmup):
+                self.warmup_samples += 1
             if(self.consider_warmups or not rpc.warmup):
                 if not rpc.HasField("trace_context"):
                     continue
@@ -296,6 +307,10 @@ class DistbenchResultsIO:
             exit()
         fs.write(self.output_formatter.format_file(overall_summary))
         fs.close()
+        print("Total samples: ", d.output_formatter.total_samples)
+        print("Warmup samples: ", d.output_formatter.warmup_samples)
+        if (not d.output_formatter.consider_warmups):
+            print("Skipped samples: ", d.output_formatter.warmup_samples)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
