@@ -290,43 +290,45 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   std::unique_ptr<DistBenchTestSequencer::Stub> test_sequencer_stub =
       DistBenchTestSequencer::NewStub(channel);
 
-  service_address_ =
+  std::string listening_address =
       GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
   grpc::ServerBuilder builder;
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int32_t>::max());
   std::shared_ptr<grpc::ServerCredentials> server_creds =
       MakeServerCredentials();
-  builder.AddListeningPort(service_address_, server_creds, opts_.port);
+  builder.AddListeningPort(listening_address, server_creds, opts_.port);
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   builder.RegisterService(this);
   grpc_server_ = builder.BuildAndStart();
-  // Update the service_address_ with the obtained port
-  service_address_ =
+  // Update listening_address with the obtained port:
+  listening_address =
       GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
+  if (!absl::StartsWith(listening_address, "[::]") &&
+      !absl::StartsWith(listening_address, "0.0.0.0")) {
+    registration_info_.set_control_ip(listening_address);
+  }
+  if (opts_.service_address.empty()) {
+    if (!registration_info_.has_control_ip()) {
+      opts_.service_address =
+          absl::StrCat("dns:///", Hostname(), ":", *opts_.port);
+    } else if (listening_address[0] == '[') {
+      opts_.service_address =
+          absl::StrCat("ipv6:///", listening_address, ":", *opts_.port);
+    } else {
+      opts_.service_address =
+          absl::StrCat("ipv4:///", listening_address, ":", *opts_.port);
+    }
+  }
+  registration_info_.set_service_address(opts_.service_address);
   if (!grpc_server_) {
     Shutdown();
     return absl::UnknownError("NodeManager service failed to start");
   }
-  LOG(INFO) << "NodeManager server listening on " << service_address_ << " on "
-            << Hostname();
+  LOG(INFO) << "NodeManager server listening on " << opts_.service_address
+            << " on " << Hostname();
 
   registration_info_.set_preassigned_node_id(opts_.preassigned_node_id);
   registration_info_.set_hostname(Hostname());
-  std::string ip = service_address_;
-  if (ip.data()[0] == '[') {
-    ip = ip.substr(1, ip.find(']') - 1);
-    if (ip == "::") {
-      ip.clear();
-    }
-  } else {
-    ip = ip.substr(0, ip.find(':'));
-    if (ip == "0.0.0.0") {
-      ip.clear();
-    }
-  }
-  if (!ip.empty()) {
-    registration_info_.set_control_ip(ip);
-  }
   registration_info_.set_control_port(*opts_.port);
   for (const auto& attr : opts_.attributes) {
     auto new_attr = registration_info_.add_attributes();
