@@ -28,6 +28,12 @@ struct NodeManagerOpts {
   std::string control_plane_device;
   int* port;
   std::vector<Attribute> attributes;
+
+  // This can be used to configure the service address that this node manager
+  // will advertise, in case the default does not work (E.g. DNS is unable to
+  // resolve the hostname). This is passed to gRPC unmodified, so it must be
+  // a valid "target" (I.e. it must include a protocol, host and port).
+  std::string service_address;
 };
 
 class NodeManager final : public DistBenchNodeManager::Service {
@@ -37,7 +43,7 @@ class NodeManager final : public DistBenchNodeManager::Service {
   const NodeManagerOpts& GetOpts() { return opts_; }
   void Shutdown();
   void Wait();
-  const std::string& service_address() { return service_address_; }
+  const std::string& service_address() { return opts_.service_address; }
 
   NodeManager();
 
@@ -100,7 +106,6 @@ class NodeManager final : public DistBenchNodeManager::Service {
       ABSL_GUARDED_BY(mutex_);
 
   std::unique_ptr<grpc::Server> grpc_server_;
-  std::string service_address_;
   NodeManagerOpts opts_;
   NodeRegistration registration_info_;
   SafeNotification shutdown_requested_;

@@ -53,6 +53,10 @@ ABSL_FLAG(std::string, default_data_plane_device, "",
 ABSL_FLAG(absl::Duration, max_test_duration, absl::Hours(0),
           "Maximum time to wait for each test - will default to 1 hour if "
           "not specified by this flag or the test's test_timeout attribute");
+ABSL_FLAG(std::string, service_address, "",
+          "Incoming RPC address for the node_manager to report to the "
+          "test_sequencer. Useful if DNS cannot resolve the hostname. "
+          "Must include gRPC protocol host and port e.g. ipv4:///1.2.3.4:5678");
 
 int main(int argc, char** argv, char** envp) {
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
@@ -408,6 +412,7 @@ int MainNodeManager(std::vector<char*>& arguments) {
       .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
       .port = &port,
       .attributes = attributes,
+      .service_address = absl::GetFlag(FLAGS_service_address),
   };
   distbench::NodeManager node_manager;
   absl::Status status = node_manager.Initialize(opts);

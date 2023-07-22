@@ -199,6 +199,7 @@ message NodeRegistration {
   optional string hostname = 1;
   optional string control_ip = 2;
   optional int32 control_port = 3;
+  optional string service_address = 6;
   repeated Attribute attributes = 4;
   optional int32 preassigned_node_id = 5 [default = -1];
 }

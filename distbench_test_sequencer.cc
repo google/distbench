@@ -63,19 +63,8 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
   }
 
   std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
-  std::string node_service;
-  if (request->control_ip().empty()) {
-    node_service = absl::StrCat("dns:///", request->hostname(), ":",
-                                request->control_port());
-  } else if (absl::StrContains(request->control_ip(), ":")) {
-    node_service = absl::StrCat("ipv6:///[", request->control_ip(),
-                                "]:", request->control_port());
-  } else {
-    node_service = absl::StrCat("ipv4:///", request->control_ip(), ":",
-                                request->control_port());
-  }
   std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
-      node_service, creds, DistbenchCustomChannelArguments());
+      request->service_address(), creds, DistbenchCustomChannelArguments());
   auto stub = DistBenchNodeManager::NewStub(channel);
   if (stub) {
     response->set_node_id(node_id);
@@ -84,7 +73,7 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
     node.registration = *request;
     node.stub = std::move(stub);
     LOG(INFO) << "Connected to " << response->node_alias() << " @ "
-              << node_service;
+              << request->service_address();
     return grpc::Status::OK;
   } else {
     return grpc::Status(grpc::StatusCode::UNKNOWN,
