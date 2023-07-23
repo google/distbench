@@ -375,11 +375,11 @@ int MainNodeManager(std::vector<char*>& arguments) {
   int preassigned_node_id = -1;
   if (!arguments.empty()) {
     if (!strncmp(arguments[0], "node", 4)) {
-      preassigned_node_id = atoi(arguments[0] + 4);
-      if (absl::StrCat("node", preassigned_node_id) != arguments[0] ||
+      bool err = !absl::SimpleAtoi(arguments[0] + 4, &preassigned_node_id);
+      if (err || absl::StrCat("node", preassigned_node_id) != arguments[0] ||
           preassigned_node_id < 0) {
         std::cerr << "node_manager expected nodeN as pre-assigned_node_id\n";
-        std::cerr << "where N should be a positive integer.\n";
+        std::cerr << "where N should be a valid positive integer.\n";
         std::cerr << "  Got '" << arguments[0] << "' instead.\n";
         return 1;
       }
