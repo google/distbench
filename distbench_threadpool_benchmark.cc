@@ -24,6 +24,7 @@ namespace {
 
 using distbench::CreateThreadpool;
 
+#if 0
 void busy_wait(int usecs) {
   absl::Time start = absl::Now();
   while ((absl::Now() - start) < absl::Microseconds(usecs)) {
@@ -39,6 +40,7 @@ void ConsumeCpu(int size) {
   std::sort(rand_array.begin(), rand_array.end());
   for (auto num : rand_array) benchmark::DoNotOptimize(sum += num);
 }
+#endif
 
 void threadpool_test(std::string_view type, benchmark::State& state) {
   int n = state.range(0);
@@ -51,15 +53,16 @@ void threadpool_test(std::string_view type, benchmark::State& state) {
   }  // Complete the work of atp.
 }
 
+void BM_Null(benchmark::State& state) { threadpool_test("null", state); }
 void BM_Elastic(benchmark::State& state) { threadpool_test("elastic", state); }
 void BM_Simple(benchmark::State& state) { threadpool_test("simple", state); }
-void BM_Mercury(benchmark::State& state) { threadpool_test("mercury", state); }
-void BM_Null(benchmark::State& state) { threadpool_test("null", state); }
 
 BENCHMARK(BM_Null)->Range(1, 16384);
 BENCHMARK(BM_Elastic)->Range(1, 16384);
 BENCHMARK(BM_Simple)->Range(1, 16384);
+
 #ifdef WITH_MERCURY
+void BM_Mercury(benchmark::State& state) { threadpool_test("mercury", state); }
 BENCHMARK(BM_Mercury)->Range(1, 16384);
 #endif
 
