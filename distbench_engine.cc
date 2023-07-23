@@ -1379,7 +1379,7 @@ bool DistBenchEngine::ActionListState::DidSomeActionsFinish() {
   int pending_actions =
       atomic_load_explicit(&pending_action_count_, std::memory_order_relaxed);
   return !pending_actions || !finished_action_indices.empty();
-};
+}
 
 void DistBenchEngine::ActionListState::HandleFinishedActions() {
   if (!DidSomeActionsFinish()) {

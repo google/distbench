@@ -48,7 +48,7 @@ TEST_P(OverloadTest, Overload) {
     }
   }
   ASSERT_TRUE(overload_waiter.HasBeenNotified()) << &overload_waiter;
-};
+}
 
 INSTANTIATE_TEST_SUITE_P(OverloadTests, OverloadTest,
                          testing::Values("null", "elastic"));
@@ -58,12 +58,12 @@ class ThreadpoolTest : public testing::TestWithParam<std::string> {};
 TEST(ThreadpoolTest, BadType) {
   auto atp = CreateThreadpool("bad_type", 4);
   ASSERT_FALSE(atp.ok());
-};
+}
 
 TEST_P(ThreadpoolTest, Constructor) {
   auto atp = CreateThreadpool(GetParam(), 4);
   ASSERT_TRUE(atp.ok());
-};
+}
 
 TEST_P(ThreadpoolTest, PerformSimpleWork) {
   const int iterations = 1000;
@@ -76,7 +76,7 @@ TEST_P(ThreadpoolTest, PerformSimpleWork) {
     }
   }  // Complete the work of atp.
   ASSERT_EQ(work_counter, iterations);
-};
+}
 
 TEST_P(ThreadpoolTest, ParallelAddTest) {
   const int iterations = 1000;

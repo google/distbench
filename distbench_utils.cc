@@ -476,7 +476,7 @@ absl::Status ValidatePmfConfig(const DistributionConfig& config) {
         "The cumulative value of all PMFs ", cdf, " should be 1.0 +-1e-6)."));
   }
   return absl::OkStatus();
-};
+}
 
 absl::Status ValidateCdfConfig(const DistributionConfig& config) {
   auto prev_cdf = config.cdf_points(0).cdf();
@@ -514,7 +514,7 @@ absl::Status ValidateCdfConfig(const DistributionConfig& config) {
         config.name(), "'. It must be exactly equal to 1."));
   }
   return absl::OkStatus();
-};
+}
 
 }  // anonymous namespace
 
@@ -541,7 +541,7 @@ absl::Status ValidateDistributionConfig(const DistributionConfig& config) {
   if (pmf_present) return ValidatePmfConfig(config);
 
   return absl::InvalidArgumentError("We cannot get here.");
-};
+}
 
 // Get the canonical version of DistributionConfig from the config
 // provided by the user. The canonical version of the config has
