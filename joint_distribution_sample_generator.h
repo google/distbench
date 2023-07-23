@@ -27,7 +27,7 @@ namespace distbench {
 
 class DistributionSampleGenerator {
  public:
-  ~DistributionSampleGenerator(){};
+  ~DistributionSampleGenerator() {}
 
   absl::Status Initialize(const DistributionConfig& config);
   std::vector<int> GetRandomSample(absl::BitGen* generator);

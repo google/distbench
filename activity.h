@@ -38,7 +38,7 @@ absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(
 // for eg. RPC processing delays, CPU work, cache corruption, etc.
 class Activity {
  public:
-  virtual ~Activity(){};
+  virtual ~Activity() {}
 
   // Initializes the class members from configuration provided
   // in ActivityConfig.
