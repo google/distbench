@@ -14,10 +14,7 @@
 #ifndef DISTBENCH_JOINT_DISTRIBUTION_SAMPLE_GENERATOR_H_
 #define DISTBENCH_JOINT_DISTRIBUTION_SAMPLE_GENERATOR_H_
 
-#include <array>
-#include <chrono>
 #include <functional>
-#include <iostream>
 
 #include "absl/random/random.h"
 #include "absl/status/statusor.h"

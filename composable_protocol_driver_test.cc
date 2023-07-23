@@ -51,7 +51,7 @@ TEST_F(ComposableProtocolDriverTest, RpcCounterTest) {
       return std::function<void()>();
     } else {
       std::function<void()> fct = [=]() {
-        usleep(100'000);
+        absl::SleepFor(absl::Milliseconds(100));
         std::string str;
         s->request->SerializeToString(&str);
         s->SendResponseIfSet();

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef DISTBENCH_DISTBENCH_TEST_SEQUENCER_TESTER_H
+#define DISTBENCH_DISTBENCH_TEST_SEQUENCER_TESTER_H
+
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"
 
@@ -32,3 +35,5 @@ class DistBenchTester {
 };
 
 }  // namespace distbench
+
+#endif  // DISTBENCH_DISTBENCH_TEST_SEQUENCER_TESTER_H
