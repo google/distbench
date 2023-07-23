@@ -15,13 +15,13 @@
 #ifndef DISTBENCH_DISTBENCH_ENGINE_H_
 #define DISTBENCH_DISTBENCH_ENGINE_H_
 
-#include <thread>
 #include <unordered_set>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/random/random.h"
 #include "activity.h"
 #include "distbench.grpc.pb.h"
+#include "distbench_thread_support.h"
 #include "distbench_threadpool.h"
 #include "distbench_utils.h"
 #include "joint_distribution_sample_generator.h"

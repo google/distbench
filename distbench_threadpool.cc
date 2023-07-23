@@ -15,7 +15,6 @@
 #include "distbench_threadpool.h"
 
 #include <queue>
-#include <thread>
 
 #include "absl/synchronization/notification.h"
 #include "distbench_thread_support.h"
