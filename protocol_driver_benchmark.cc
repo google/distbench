@@ -80,8 +80,8 @@ void Echo(benchmark::State& state, std::string opts_string) {
         client_rpc_count--;
       });
     }
-    while (client_rpc_count)
-      ;
+    while (client_rpc_count) {
+    }
   }
   pd1->ShutdownClient();
 }

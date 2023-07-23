@@ -26,8 +26,8 @@ using distbench::CreateThreadpool;
 
 void busy_wait(int usecs) {
   absl::Time start = absl::Now();
-  while ((absl::Now() - start) < absl::Microseconds(usecs))
-    ;
+  while ((absl::Now() - start) < absl::Microseconds(usecs)) {
+  }
 }
 
 void ConsumeCpu(int size) {

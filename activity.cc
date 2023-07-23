@@ -274,8 +274,9 @@ ActivityLog PolluteDataCache::GetActivityLog() {
         result *= result;                      \
       }                                        \
       return result;                           \
-    } else                                     \
+    } else {                                   \
       return n;                                \
+    }                                          \
   }
 #define GENERATE_FUNC_OUTER_LOOP(z, n, text) \
   BOOST_PP_REPEAT(POLLUTE_ICACHE_LOOP_SIZE, GENERATE_FUNC_INNER_LOOP, n)

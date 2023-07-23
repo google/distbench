@@ -15,12 +15,12 @@
 #ifndef DISTBENCH_PROTOCOL_DRIVER_MERCURY_H_
 #define DISTBENCH_PROTOCOL_DRIVER_MERCURY_H_
 
+#include <thread>
+
 #include <mercury.h>
 #include <mercury_bulk.h>
 #include <mercury_macros.h>
 #include <mercury_proc_string.h>
-
-#include <thread>
 
 #include "distbench_netutils.h"
 #include "distbench_threadpool.h"
