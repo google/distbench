@@ -16,9 +16,9 @@ syntax = "proto2";
 
 package distbench;
 
-option cc_enable_arenas = true;
-
 import "traffic_config.proto";
+
+option cc_enable_arenas = true;
 
 message TestsSetting {
   optional bool keep_instance_log = 1 [default = true];
@@ -134,7 +134,7 @@ message RUsageStats {
 
 message ActivityMetric {
   optional string name = 1;
-  optional int64  value_int = 2;
+  optional int64 value_int = 2;
 }
 
 message ActivityLog {
@@ -235,21 +235,17 @@ message RunTrafficRequest {
 
 message RunTrafficResponse {}
 
-
 message GetTrafficResultRequest {
   optional bool clear_services = 1;
 }
-
 
 message CancelTrafficRequest {}
 
 message CancelTrafficResult {}
 
-
 message ShutdownNodeRequest {}
 
 message ShutdownNodeResult {}
-
 
 service DistBenchNodeManager {
   // Sets up services prior to running traffic:
@@ -262,7 +258,8 @@ service DistBenchNodeManager {
   rpc RunTraffic(RunTrafficRequest) returns (RunTrafficResponse) {}
 
   // Get the RunTraffic performance logs:
-  rpc GetTrafficResult(GetTrafficResultRequest) returns (GetTrafficResultResponse) {}
+  rpc GetTrafficResult(GetTrafficResultRequest)
+      returns (GetTrafficResultResponse) {}
 
   // Cancels a currently running traffic pattern immediately:
   rpc CancelTraffic(CancelTrafficRequest) returns (CancelTrafficResult) {}
