@@ -17,7 +17,6 @@
 #include <arpa/inet.h>
 #include <sys/mman.h>
 
-#include "distbench_thread_support.h"
 #include "external/homa_module/homa.h"
 #include "glog/logging.h"
 

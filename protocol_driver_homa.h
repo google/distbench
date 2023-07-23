@@ -15,9 +15,8 @@
 #ifndef DISTBENCH_PROTOCOL_DRIVER_HOMA_H_
 #define DISTBENCH_PROTOCOL_DRIVER_HOMA_H_
 
-#include <thread>
-
 #include "distbench_netutils.h"
+#include "distbench_thread_support.h"
 #include "distbench_utils.h"
 #include "external/homa_module/homa.h"
 #include "external/homa_module/homa_receiver.h"
