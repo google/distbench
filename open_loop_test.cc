@@ -264,18 +264,16 @@ TEST(OpenLoopTest, ConstantDistributionTest) {
   std::sort(timestamps.begin(), timestamps.end());
 
   double variance = 0;
-  double avg_interval =
-      (timestamps.back() - timestamps.front()) / (timestamps.size() - 1.0);
   for (size_t i = 0; i < timestamps.size() - 1; i++) {
     int64_t interval = timestamps[i + 1] - timestamps[i];
-    variance += pow(interval - avg_interval, 2);
-    LOG(INFO) << "deviation = " << interval - avg_interval;
+    variance += pow(interval - nominal_interval, 2);
+    LOG(INFO) << "deviation = " << interval - nominal_interval;
   }
   variance /= timestamps.size() - 1;
   LOG(INFO) << "VARIANCE: " << variance;
 
   // Assert that the standard deviation is low
-  ASSERT_LE(sqrt(variance), 0.25 * avg_interval);
+  ASSERT_LE(sqrt(variance), 0.25 * nominal_interval);
 
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
   ASSERT_NE(instance_results_it,
