@@ -34,6 +34,10 @@ struct NodeManagerOpts {
   // resolve the hostname). This is passed to gRPC unmodified, so it must be
   // a valid "target" (I.e. it must include a protocol, host and port).
   std::string service_address;
+
+  // If the hostname reported by gethostname is unresolvable this will override
+  // it for node manager registrations:
+  std::string service_hostname;
 };
 
 class NodeManager final : public DistBenchNodeManager::Service {

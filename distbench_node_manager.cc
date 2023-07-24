@@ -83,7 +83,7 @@ grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
     }
     auto& service_entry = service_map[service_name];
     service_entry.set_endpoint_address(maybe_address.value());
-    service_entry.set_hostname(Hostname());
+    service_entry.set_hostname(opts_.service_hostname);
     *service_entry.mutable_attributes() = registration_info_.attributes();
     int dimensions = std::count(service_name.begin(), service_name.end(), '/');
     Attribute* attribute;
@@ -277,6 +277,9 @@ NodeManager::~NodeManager() {
 
 absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   opts_ = opts;
+  if (opts_.service_hostname.empty()) {
+    opts_.service_hostname = Hostname();
+  }
   if (opts_.test_sequencer_service_address.empty()) {
     Shutdown();
     return absl::InvalidArgumentError(
@@ -312,7 +315,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   if (opts_.service_address.empty()) {
     if (!registration_info_.has_control_ip()) {
       opts_.service_address =
-          absl::StrCat("dns:///", Hostname(), ":", *opts_.port);
+          absl::StrCat("dns:///", opts_.service_hostname, ":", *opts_.port);
     } else if (listening_address[0] == '[') {
       opts_.service_address =
           absl::StrCat("ipv6:///", listening_address);
@@ -327,10 +330,10 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
     return absl::UnknownError("NodeManager service failed to start");
   }
   LOG(INFO) << "NodeManager server listening on " << opts_.service_address
-            << " on " << Hostname();
+            << " on " << opts_.service_hostname;
 
   registration_info_.set_preassigned_node_id(opts_.preassigned_node_id);
-  registration_info_.set_hostname(Hostname());
+  registration_info_.set_hostname(opts_.service_hostname);
   registration_info_.set_control_port(*opts_.port);
   for (const auto& attr : opts_.attributes) {
     auto new_attr = registration_info_.add_attributes();
