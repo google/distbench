@@ -23,7 +23,7 @@
 namespace distbench {
 
 absl::StatusOr<ProtocolDriverOptions> NodeManager::ResolveProtocolDriverAlias(
-    const std::string& protocol_name) {
+    const std::string& protocol_name) ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
   for (const auto& pd_opts_enum : traffic_config_.protocol_driver_options()) {
     if (pd_opts_enum.name() == protocol_name ||
         (protocol_name.empty() &&
@@ -36,11 +36,11 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::ResolveProtocolDriverAlias(
 }
 
 NodeManager::NodeManager() {
-  auto func =
-      [=](std::string protocol_name) -> absl::StatusOr<ProtocolDriverOptions> {
-    return ResolveProtocolDriverAlias(protocol_name);
-  };
-  SetProtocolDriverAliasResolver(func);
+  auto resolver = [=](std::string protocol_name)
+                      ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
+                        return ResolveProtocolDriverAlias(protocol_name);
+                      };
+  SetProtocolDriverAliasResolver(resolver);
 }
 
 grpc::Status NodeManager::ConfigureNode(grpc::ServerContext* context,
