@@ -305,7 +305,9 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
       GetBindAddressFromPort(opts_.control_plane_device, *opts_.port);
   if (!absl::StartsWith(listening_address, "[::]") &&
       !absl::StartsWith(listening_address, "0.0.0.0")) {
-    registration_info_.set_control_ip(listening_address);
+    std::string listening_ip =
+      GetBestAddress(opts_.control_plane_device).value().ToString();
+    registration_info_.set_control_ip(listening_ip);
   }
   if (opts_.service_address.empty()) {
     if (!registration_info_.has_control_ip()) {
@@ -313,10 +315,10 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
           absl::StrCat("dns:///", Hostname(), ":", *opts_.port);
     } else if (listening_address[0] == '[') {
       opts_.service_address =
-          absl::StrCat("ipv6:///", listening_address, ":", *opts_.port);
+          absl::StrCat("ipv6:///", listening_address);
     } else {
       opts_.service_address =
-          absl::StrCat("ipv4:///", listening_address, ":", *opts_.port);
+          absl::StrCat("ipv4:///", listening_address);
     }
   }
   registration_info_.set_service_address(opts_.service_address);
