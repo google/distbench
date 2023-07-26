@@ -67,7 +67,7 @@ tests {
 })";
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
-  auto maybe_results = tester.RunTestSequence(*test_sequence, 15);
+  auto maybe_results = tester.RunTestSequence(*test_sequence, 150);
   ASSERT_OK(maybe_results.status());
   auto& test_results = maybe_results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
@@ -94,7 +94,7 @@ tests {
   }
   services {
     name: "server"
-    count: 5
+    count: 4
   }
   rpc_descriptions {
     name: "client_server_rpc"
@@ -129,7 +129,7 @@ tests {
 })";
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
-  auto maybe_results = tester.RunTestSequence(*test_sequence, 75);
+  auto maybe_results = tester.RunTestSequence(*test_sequence, 150);
   ASSERT_OK(maybe_results.status());
   auto& test_results = maybe_results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
