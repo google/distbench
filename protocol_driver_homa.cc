@@ -22,6 +22,14 @@
 
 namespace distbench {
 
+namespace {
+
+// This is used instead of a zero-byte payload. No protobuf can
+// serialize to this value, so it is unambiguous.
+const char empty_message_placeholder[] = "\7";
+
+}
+
 ///////////////////////////////////
 // ProtocolDriverHoma Methods //
 ///////////////////////////////////
@@ -272,8 +280,11 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
 
   new_rpc->done_callback = done_callback;
   new_rpc->state = state;
-  new_rpc->serialized_request = "?";  // Homa can't send a 0 byte message :(
-  state->request.AppendToString(&new_rpc->serialized_request);
+  state->request.SerializeToString(&new_rpc->serialized_request);
+  if (new_rpc->serialized_request.empty()) {
+    // Homa can't send a 0 byte message :(
+    new_rpc->serialized_request = empty_message_placeholder;
+  }
   const char* const buf = new_rpc->serialized_request.data();
   const size_t buflen = new_rpc->serialized_request.size();
 #ifdef THREAD_SANITIZER
@@ -324,8 +335,10 @@ void ProtocolDriverHoma::ServerThread() {
     GenericRequest* request = new GenericRequest;
     char rx_buf[1048576];
     server_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
-    if (!request->ParseFromArray(rx_buf + 1, msg_length - 1)) {
-      LOG(ERROR) << "rx_buf did not parse as a GenericRequest";
+    if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
+      if (!request->ParseFromArray(rx_buf, msg_length)) {
+        LOG(ERROR) << "rx_buf did not parse as a GenericRequest";
+      }
     }
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
@@ -334,8 +347,12 @@ void ProtocolDriverHoma::ServerThread() {
       delete rpc_state;
     });
     rpc_state->SetSendResponseFunction([=, &pending_actionlist_threads]() {
-      std::string txbuf = "!";  // Homa can't send a 0 byte message :(
-      rpc_state->response.AppendToString(&txbuf);
+      std::string txbuf;
+      rpc_state->response.SerializeToString(&txbuf);
+      if (txbuf.empty()) {
+        // Homa can't send a 0 byte message :(
+        txbuf = empty_message_placeholder;
+      }
       int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
                                  txbuf.length(), &src_addr, rpc_id);
       if (error) {
@@ -380,9 +397,10 @@ void ProtocolDriverHoma::ClientCompletionThread() {
       char rx_buf[1048576];
       CHECK(!client_receiver_->is_request());
       client_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
-      if (!pending_rpc->state->response.ParseFromArray(rx_buf + 1,
-                                                       msg_length - 1)) {
-        LOG(ERROR) << "rx_buf did not parse as a GenericResponse";
+      if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
+        if (!pending_rpc->state->response.ParseFromArray(rx_buf, msg_length)) {
+          LOG(ERROR) << "rx_buf did not parse as a GenericResponse";
+        }
       }
     }
     pending_rpc->done_callback();
