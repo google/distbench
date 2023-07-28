@@ -488,7 +488,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
   for (float i = 0; i < 5; i++) {
     auto* cdf_point = req_dist->add_cdf_points();
     cdf_point->set_cdf(i / 4);
-    cdf_point->set_value(i * 11);
+    cdf_point->set_value((i + 1) * 11);
   }
   req_dist->add_field_names("payload_size");
 

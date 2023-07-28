@@ -41,6 +41,28 @@ enum kFieldNames {
   kResponsePayloadSizeField = 1,
 };
 
+template <typename T>
+void SetPayload(T* msg, size_t target_size) {
+  if (target_size == msg->ByteSizeLong()) {
+    return;
+  }
+  msg->clear_payload();
+  if (target_size > msg->ByteSizeLong()) {
+    msg->set_payload("");
+    ssize_t pad = target_size - msg->ByteSizeLong();
+    if (pad > 0) {
+      msg->set_payload(std::string(pad, 'D'));
+      if (msg->ByteSizeLong() != target_size) {
+        // This happens when the protobuf crosses 196 and 512 bytes.
+        // the varint encoding length gains a byte, screwing up the computation
+        pad += target_size - msg->ByteSizeLong();
+        msg->mutable_payload()->resize(pad, 'D');
+      }
+      CHECK_EQ(msg->ByteSizeLong(), target_size);
+    }
+  }
+}
+
 }  // namespace
 
 ThreadSafeDictionary::ThreadSafeDictionary() {
@@ -938,13 +960,11 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   }
   const auto& rpc_def = server_rpc.rpc_definition;
 
+  size_t response_payload_size = rpc_def.response_payload_size;
   if (state->request->has_response_payload_size()) {
-    state->response.set_payload(
-        std::string(state->request->response_payload_size(), 'D'));
-  } else {
-    state->response.set_payload(
-        std::string(rpc_def.response_payload_size, 'D'));
+    response_payload_size = state->request->response_payload_size();
   }
+  SetPayload(&state->response, response_payload_size);
 
   if (rpc_def.rpc_spec.has_multi_server_channel_name()) {
     state->response.set_server_instance(service_instance_);
@@ -1159,8 +1179,7 @@ struct RpcReplayTraceRunner {
             int pd_id = logical_to_pdid[record.server_instance()];
             CHECK_GE(pd_id, 0)
                 << "record.server_instance() = " << record.DebugString();
-            rpc_state->request.set_payload(
-                std::string(record.request_size(), 'D'));
+            SetPayload(&rpc_state->request, record.request_size());
             rpc_state->request.set_response_payload_size(
                 record.response_size());
             pd->InitiateRpc(pd_id, rpc_state, f);
@@ -1566,8 +1585,8 @@ void DistBenchEngine::ActionListState::RecordLatency(size_t rpc_index,
     sample->set_latency_weight(
         absl::ToInt64Nanoseconds(state->start_time - state->prior_start_time));
   }
-  sample->set_request_size(state->request.payload().size());
-  sample->set_response_size(state->response.payload().size());
+  sample->set_request_size(state->request.ByteSizeLong());
+  sample->set_response_size(state->response.ByteSizeLong());
   if (state->request.warmup()) {
     sample->set_warmup(true);
   }
@@ -1605,8 +1624,8 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
     packed_sample.latency_weight =
         absl::ToInt64Nanoseconds(state->start_time - state->prior_start_time);
   }
-  packed_sample.request_size = state->request.payload().size();
-  packed_sample.response_size = state->response.payload().size();
+  packed_sample.request_size = state->request.ByteSizeLong();
+  packed_sample.response_size = state->response.ByteSizeLong();
   if (state->request.has_trace_context()) {
     packed_sample.trace_context =
         ::google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
@@ -1883,54 +1902,50 @@ void DistBenchEngine::RunMultiServerChannelRpcActionIteration(
   int trace_count = client_rpc_table_[rpc_index].rpc_tracing_counter++;
   bool do_trace = (rpc_spec.tracing_interval() > 0) &&
                   !(trace_count % rpc_spec.tracing_interval());
-  GenericRequest common_request;
+  GenericRequest request;
   const ServerRpcState* const incoming_rpc_state =
       action_state->actionlist_state->incoming_rpc_state;
   if (incoming_rpc_state->request->has_trace_context()) {
     do_trace = true;
-    *common_request.mutable_trace_context() =
+    *request.mutable_trace_context() =
         incoming_rpc_state->request->trace_context();
   }
   if (do_trace) {
-    common_request.mutable_trace_context()->add_engine_ids(trace_id_);
-    common_request.mutable_trace_context()->add_actionlist_invocations(
+    request.mutable_trace_context()->add_engine_ids(trace_id_);
+    request.mutable_trace_context()->add_actionlist_invocations(
         action_state->actionlist_state->actionlist_invocation);
-    common_request.mutable_trace_context()->add_actionlist_indices(
+    request.mutable_trace_context()->add_actionlist_indices(
         action_state->actionlist_state->actionlist_index);
-    common_request.mutable_trace_context()->add_action_indices(
+    request.mutable_trace_context()->add_action_indices(
         action_state->action_index);
-    common_request.mutable_trace_context()->add_action_iterations(
+    request.mutable_trace_context()->add_action_iterations(
         iteration_state->iteration_number);
-    common_request.mutable_trace_context()->add_fanout_index(0);
+    request.mutable_trace_context()->add_fanout_index(0);
   }
-  common_request.set_rpc_index(rpc_index);
-  common_request.set_warmup(iteration_state->warmup);
+  request.set_rpc_index(rpc_index);
+  request.set_warmup(iteration_state->warmup);
 
-  if (rpc_def.sample_generator_index == -1) {
-    common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
-  } else {
+  size_t request_payload_size = rpc_def.request_payload_size;
+  if (rpc_def.sample_generator_index != -1) {
     // This RPC uses a distribution of sizes.
     auto sample = sample_generator_array_[rpc_def.sample_generator_index]
                       ->GetRandomSample(&iteration_state->rand_gen);
 
-    common_request.set_payload(
-        std::string(sample[kRequestPayloadSizeField], 'D'));
+    request_payload_size = sample[kRequestPayloadSizeField];
 
     if (sample.size() > kResponsePayloadSizeField) {
-      common_request.set_response_payload_size(
-          sample[kResponsePayloadSizeField]);
+      request.set_response_payload_size(sample[kResponsePayloadSizeField]);
     } else {
       // Only a 1D distribution, therefore we should also use the request size
       // as the response size.
-      common_request.set_response_payload_size(
-          sample[kRequestPayloadSizeField]);
+      request.set_response_payload_size(sample[kRequestPayloadSizeField]);
     }
   }
+  SetPayload(&request, request_payload_size);
 
   ++pending_rpcs_;
-  ClientRpcState* rpc_state;
-  rpc_state = &iteration_state->rpc_states[0];
-  rpc_state->request = std::move(common_request);
+  ClientRpcState* rpc_state = &iteration_state->rpc_states[0];
+  rpc_state->request = std::move(request);
 #ifndef NDEBUG
   CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
            rpc_state->request.trace_context().actionlist_invocations().size());
@@ -2016,15 +2031,13 @@ void DistBenchEngine::RunRpcActionIteration(
   common_request.set_rpc_index(rpc_index);
   common_request.set_warmup(iteration_state->warmup);
 
-  if (rpc_def.sample_generator_index == -1) {
-    common_request.set_payload(std::string(rpc_def.request_payload_size, 'D'));
-  } else {
+  size_t request_payload_size = rpc_def.request_payload_size;
+  if (rpc_def.sample_generator_index != -1) {
     // This RPC uses a distribution of sizes.
     auto sample = sample_generator_array_[rpc_def.sample_generator_index]
                       ->GetRandomSample(&iteration_state->rand_gen);
 
-    common_request.set_payload(
-        std::string(sample[kRequestPayloadSizeField], 'D'));
+    request_payload_size = sample[kRequestPayloadSizeField];
 
     if (sample.size() > kResponsePayloadSizeField) {
       common_request.set_response_payload_size(
@@ -2050,6 +2063,7 @@ void DistBenchEngine::RunRpcActionIteration(
       if (do_trace) {
         rpc_state->request.mutable_trace_context()->add_fanout_index(i);
       }
+      SetPayload(&rpc_state->request, request_payload_size);
 #ifndef NDEBUG
       CHECK_EQ(
           rpc_state->request.trace_context().engine_ids().size(),
