@@ -28,7 +28,7 @@ namespace {
 // serialize to this value, so it is unambiguous.
 const char empty_message_placeholder[] = "\7";
 
-}
+}  // namespace
 
 ///////////////////////////////////
 // ProtocolDriverHoma Methods //
