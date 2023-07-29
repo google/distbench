@@ -448,6 +448,7 @@ cc_library(
         ":joint_distribution_sample_generator",
         ":grpc_wrapper",
         ":protocol_driver_api",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/random",
