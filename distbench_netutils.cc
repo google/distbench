@@ -56,7 +56,7 @@ std::vector<DeviceIpAddress> GetAllAddresses(std::string_view netdev) {
     if (ifa->ifa_addr == NULL) continue;
 
     family = ifa->ifa_addr->sa_family;
-    if (family == AF_PACKET) continue;
+    if (family != AF_INET && family != AF_INET6) continue;
 
     int s;
     s = getnameinfo(ifa->ifa_addr,
