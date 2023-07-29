@@ -746,6 +746,13 @@ GetCanonicalDistributedSystemDescription(
       return status;
     }
   }
+  for (const auto& actionlist : traffic_config.action_lists()) {
+    for (const auto& [name, proc] : actionlist.predicate_probabilities()) {
+      if (absl::StartsWith("!", name)) {
+        return absl::InvalidArgumentError("predicates cannot start with '!'");
+      }
+    }
+  }
   return ret;
 }
 

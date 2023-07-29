@@ -1262,6 +1262,18 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   s.incoming_rpc_state = incoming_rpc_state;
   s.action_list = &action_lists_[actionlist_index];
   bool sent_response_early = false;
+  if (s.action_list->proto.predicate_probabilities_size()) {
+    absl::BitGen bitgen;
+    absl::uniform_real_distribution<double> random_float(0.0, 1.0);
+    for (const auto& [name, probability] :
+         s.action_list->proto.predicate_probabilities()) {
+      if (random_float(bitgen) > probability) {
+        s.predicates_.insert(name);
+      } else {
+        s.predicates_.insert(absl::StrCat("!", name));
+      }
+    }
+  }
 
   // Allocate peer_logs_ for performance gathering, if needed:
   if (s.action_list->has_rpcs) {
@@ -1296,11 +1308,13 @@ void DistBenchEngine::RunActionList(int actionlist_index,
       }
       auto deps = s.action_list->list_actions[i].dependent_action_indices;
       bool deps_ready = true;
+      bool should_skip = false;
       for (const auto& dep : deps) {
         if (!s.state_table[dep].finished) {
           deps_ready = false;
           break;
         }
+        should_skip |= s.state_table[dep].skipped;
       }
       if (!deps_ready) continue;
       s.state_table[i].action_index = i;
@@ -1328,10 +1342,24 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           s.FinishAction(i);
         };
       }
+      if (!should_skip) {
+        for (const auto& predicate :
+             s.state_table[i].action->proto.predicates()) {
+          if (s.predicates_.find(predicate) == s.predicates_.end()) {
+            should_skip = true;
+            break;
+          }
+        }
+      }
       s.state_table[i].actionlist_state = &s;
       atomic_fetch_add_explicit(&s.pending_action_count_, 1,
                                 std::memory_order_relaxed);
-      InitiateAction(&s.state_table[i]);
+      if (should_skip) {
+        s.state_table[i].skipped = true;
+        s.state_table[i].all_done_callback();
+      } else {
+        InitiateAction(&s.state_table[i]);
+      }
     }
     absl::Time next_iteration_time = absl::InfiniteFuture();
     bool done = true;

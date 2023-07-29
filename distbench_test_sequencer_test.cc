@@ -1202,4 +1202,114 @@ tests {
   }
 }
 
+TEST(DistBenchTestSequencer, PredicateTest) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize());
+
+  const std::string proto = R"(
+tests {
+  services {
+    name: "client"
+    count: 1
+  }
+  services {
+    name: "server_A"
+    count: 1
+  }
+  services {
+    name: "server_B"
+    count: 1
+  }
+  services {
+    name: "server_C"
+    count: 1
+  }
+  rpc_descriptions {
+    name: "client_server_rpc_A"
+    client: "client"
+    server: "server_A"
+  }
+  rpc_descriptions {
+    name: "client_server_rpc_B"
+    client: "client"
+    server: "server_B"
+  }
+  rpc_descriptions {
+    name: "client_server_rpc_C"
+    client: "client"
+    server: "server_C"
+  }
+  action_lists {
+    name: "client"
+    action_names: "run_queries"
+  }
+  actions {
+    name: "run_queries"
+    action_list_name: "do_AB_query"
+    iterations {
+      max_iteration_count: 1000
+    }
+  }
+  action_lists {
+    name: "do_AB_query"
+    action_names: "query_A"
+    action_names: "query_B"
+    action_names: "query_C"
+    predicate_probabilities { key: "the_predicate" value: 0.75}
+  }
+  actions {
+    name: "query_A"
+    rpc_name: "client_server_rpc_A"
+    predicates: "the_predicate"
+  }
+  actions {
+    name: "query_B"
+    rpc_name: "client_server_rpc_B"
+    predicates: "!the_predicate"
+  }
+  actions {
+    name: "query_C"
+    rpc_name: "client_server_rpc_C"
+    dependencies: "query_A"
+    dependencies: "query_B"
+  }
+  action_lists {
+    name: "client_server_rpc_A"
+  }
+  action_lists {
+    name: "client_server_rpc_B"
+  }
+  action_lists {
+    name: "client_server_rpc_C"
+  }
+  protocol_driver_options {
+    name: "default_protocol_driver_options"
+    netdev_name: "lo"
+  }
+})";
+  auto test_sequence = ParseTestSequenceTextProto(proto);
+  ASSERT_TRUE(test_sequence.ok());
+
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/15);
+  ASSERT_OK(results.status());
+
+  auto& test_results = results.value().test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  const auto& [client_name, client_log] =
+      *test_results.service_logs().instance_logs().begin();
+  ASSERT_EQ(client_log.peer_logs().size(), 2);
+  std::map<std::string, int> rpc_counts;
+  for (const auto& [server_name, per_server_log] : client_log.peer_logs()) {
+    ASSERT_EQ(per_server_log.rpc_logs_size(), 1);
+    const auto& samples =
+        (*per_server_log.rpc_logs().begin()).second.successful_rpc_samples();
+    rpc_counts[server_name] = samples.size();
+  }
+  EXPECT_EQ(rpc_counts["server_A/0"] + rpc_counts["server_B/0"], 1000);
+  EXPECT_GT(rpc_counts["server_A/0"], 220);
+  EXPECT_LT(rpc_counts["server_A/0"], 280);
+  EXPECT_GT(rpc_counts["server_B/0"], 720);
+  EXPECT_LT(rpc_counts["server_B/0"], 780);
+}
+
 }  // namespace distbench

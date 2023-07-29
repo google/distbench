@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/random/random.h"
 #include "activity.h"
 #include "distbench.grpc.pb.h"
@@ -186,6 +187,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionState {
     bool started = false;
     bool finished = false;
+    bool skipped = false;
     ActionListState* actionlist_state;
 
     absl::Mutex iteration_mutex;
@@ -277,6 +279,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     bool warmup_;
     std::atomic<int> pending_action_count_ = 0;
     std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
+    absl::flat_hash_set<std::string> predicates_;
   };
 
   absl::Status InitializeConfig(

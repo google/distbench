@@ -199,6 +199,7 @@ message Action {
   }
   optional bool send_response_when_done = 10;
   optional bool cancel_traffic_when_done = 11 [default = false];
+  repeated string predicates = 12;
 }
 
 message ActionList {
@@ -208,6 +209,16 @@ message ActionList {
   // choose the samples to retain via reservoir sampling.
   // Setting this to zero will retain all samples, but may hurt performance.
   optional int64 max_rpc_samples = 3 [default = 0];
+
+  // Each time an ActionList is run any predicates that it defines will be
+  // assigned true or false values based on their associated probability.
+  // Execution of each action in the list can then be predicated upon
+  // the values of these named predicates or their complement
+  // (these are expressed as "name" or "!name").
+  // If an action specifies a predicate that evaluates to false it will be
+  // skipped, and any actions that depend on skipped actions will also be
+  // skipped.
+  map<string, float> predicate_probabilities = 4;
 }
 
 message NamedSetting {
