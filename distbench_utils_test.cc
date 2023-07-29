@@ -14,6 +14,9 @@
 
 #include "distbench_utils.h"
 
+#include <sys/socket.h>
+
+#include "distbench_netutils.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
@@ -340,4 +343,23 @@ TEST(DistributionSampleGeneratorTest,
                 "value:'20' at index '1' in CDF:'MyReqPayloadDC'."));
 }
 
+TEST(IP6to4IsPrivate, Private6to4) {
+  DeviceIpAddress addr("2002:ad3:e902::1", "eth0", AF_INET6);
+  EXPECT_TRUE(addr.isPrivate());
+}
+
+TEST(IP6to4IsPrivate, NotPrivate6to4) {
+  DeviceIpAddress addr("2002:1ad3:e902::1", "eth0", AF_INET6);
+  EXPECT_FALSE(addr.isPrivate());
+}
+
+TEST(IP6to4IsPrivate, Private6) {
+  DeviceIpAddress addr("fc00:1ad3:e902::1", "eth0", AF_INET6);
+  EXPECT_TRUE(addr.isPrivate());
+}
+
+TEST(IP6to4IsPrivate, NotPrivate6) {
+  DeviceIpAddress addr("1234:1ad3:e902::1", "eth0", AF_INET6);
+  EXPECT_FALSE(addr.isPrivate());
+}
 }  // namespace distbench

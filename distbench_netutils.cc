@@ -34,6 +34,8 @@
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_split.h"
 #include "glog/logging.h"
 
 ABSL_FLAG(bool, prefer_ipv4, false,
@@ -135,10 +137,17 @@ bool DeviceIpAddress::isIPv4() const { return net_family_ == AF_INET; }
 bool DeviceIpAddress::isLoopback() const { return device_ == "lo"; }
 
 bool DeviceIpAddress::isPrivate() const {
-  return absl::StartsWith(ip_, "10.") ||
+  std::string ip = ip_;
+  uint32_t upper, lower;
+  // Attempt to unpack 6to4 addresses:
+  if (2 == sscanf(ip_.data(), "2002:%x:%x:", &upper, &lower)) {
+    ip = absl::StrFormat("%d.%d.%d.%d", upper >> 8, upper & 0xff, lower >> 8,
+                         lower & 0xff);
+  }
+  return absl::StartsWith(ip, "10.") ||
          // Technically this should go all the way to 172.31:
-         absl::StartsWith(ip_, "172.16") || absl::StartsWith(ip_, "192.168") ||
-         absl::StartsWith(ip_, "fc00:") || absl::StartsWith(ip_, "fd00:");
+         absl::StartsWith(ip, "172.16") || absl::StartsWith(ip, "192.168") ||
+         absl::StartsWith(ip, "fc00:") || absl::StartsWith(ip, "fd00:");
 }
 
 bool DeviceIpAddress::isLinkLocal() const {

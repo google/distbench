@@ -124,6 +124,7 @@ cc_test(
     ],
     deps = [
         ":distbench_utils",
+        ":distbench_netutils",
         ":gtest_utils"
     ],
 )
