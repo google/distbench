@@ -67,7 +67,8 @@ tests {
 })";
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
-  auto maybe_results = tester.RunTestSequence(*test_sequence, 150);
+  auto maybe_results =
+      tester.RunTestSequence(*test_sequence, /*timeout_s=*/150);
   ASSERT_OK(maybe_results.status());
   auto& test_results = maybe_results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
@@ -129,7 +130,8 @@ tests {
 })";
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
-  auto maybe_results = tester.RunTestSequence(*test_sequence, 150);
+  auto maybe_results =
+      tester.RunTestSequence(*test_sequence, /*timeout_s=*/150);
   ASSERT_OK(maybe_results.status());
   auto& test_results = maybe_results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
@@ -232,7 +234,7 @@ void FanoutHelper(
   auto config = GetFanoutConfig(fanout_filter, from, to);
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());
-  auto maybe_results = tester.RunTestSequence(config, 120);
+  auto maybe_results = tester.RunTestSequence(config, /*timeout_s=*/120);
   ASSERT_OK(maybe_results.status());
   RpcTracker tracker(maybe_results.value().test_results(0), from, to);
 

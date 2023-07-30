@@ -75,7 +75,7 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   auto* l2 = test->add_action_lists();
   l2->set_name("echo");
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/70);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/70);
   ASSERT_OK(results.status());
 
   ASSERT_EQ(results.value().test_results().size(), 1);
@@ -164,7 +164,7 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   auto& test_results = results.value().test_results(0);
@@ -223,7 +223,7 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
   auto* l2 = test->add_action_lists();
   l2->set_name("echo");
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/200);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/200);
   LOG(INFO) << results.status().message();
   ASSERT_OK(results.status());
   ASSERT_EQ(results.value().test_results_size(), 1);
@@ -313,7 +313,7 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
   auto* l4 = test->add_action_lists();
   l4->set_name("async_echo");
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/200);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/200);
   LOG(INFO) << results.status().message();
   ASSERT_OK(results.status());
 
@@ -423,7 +423,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   action->set_rpc_name("client_server_rpc");
   action->mutable_iterations()->set_max_iteration_count(20);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   ASSERT_EQ(results.value().test_results().size(), 1);
@@ -497,7 +497,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
   action->set_rpc_name("client_server_rpc");
   action->mutable_iterations()->set_max_iteration_count(20);
 
-  auto results = tester.RunTestSequence(test_sequence, /*max_time_s=*/75);
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   ASSERT_EQ(results.value().test_results().size(), 1);
@@ -562,7 +562,7 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/15);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/15);
   ASSERT_OK(results.status());
 
   auto& test_results = results.value().test_results(0);
@@ -621,7 +621,7 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/15);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/15);
   ASSERT_OK(results.status());
 
   auto& test_results = results.value().test_results(0);
@@ -680,7 +680,7 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/30);
   ASSERT_OK(results.status());
 
   auto& test_results = results.value().test_results(0);
@@ -738,7 +738,7 @@ tests {
 
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());
-  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/30);
   ASSERT_OK(results.status());
   auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
@@ -854,7 +854,7 @@ tests {
 
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());
-  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/30);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/30);
   ASSERT_OK(results.status());
   auto& test_results = results.value().test_results(0);
   ASSERT_EQ(test_results.service_logs().instance_logs_size(), 3);
@@ -1101,7 +1101,7 @@ tests {
   ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
-  auto maybe_results = tester.RunTestSequence(*test_sequence, 15);
+  auto maybe_results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/75);
   ASSERT_OK(maybe_results.status());
 
   const auto& test_results = maybe_results.value().test_results(0);
@@ -1182,7 +1182,7 @@ tests {
   ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
-  auto maybe_results = tester.RunTestSequence(*test_sequence, 15);
+  auto maybe_results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/75);
   ASSERT_OK(maybe_results.status());
 
   const auto& test_results = maybe_results.value().test_results(0);
