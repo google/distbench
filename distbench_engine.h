@@ -398,6 +398,11 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
 };
 
+// This function tests if traffic_config could initialize tables in
+// DistBenchEngine. Used by distbench_busybox.cc in MainCheckTest().
+absl::Status ValidateTrafficConfig(
+    const DistributedSystemDescription& traffic_config);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_ENGINE_H_
