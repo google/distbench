@@ -1397,5 +1397,108 @@ function multi_level_rpc_traffic_pattern_setup() {
   }"
 }
 
+################################################################################
+# Setup the test config proto for the variable_response_multi_level_rpc traffic pattern:
+# Arguments:
+#   None
+# Inherits and mutates:
+#   RESULTS_COLLECTION_TIMEOUT
+#   params_dict (associative array)
+################################################################################
+function variable_response_multi_level_rpc_traffic_pattern_setup() {
+  local -i TEST_DURATION="${params_dict[test_duration]}"
+  params_dict[test_timeout]="$((TEST_DURATION + RESULTS_COLLECTION_TIMEOUT))"
+
+  set_parameter_default qps 10000
+  set_parameter_default root_count 4
+  set_parameter_default leaf_count 20
+  set_parameter_default lower_size 1024
+  set_parameter_default upper_size 64000
+  local QPS="${params_dict[qps]}"
+  local ROOT_COUNT="${params_dict[root_count]}"
+  local LEAF_COUNT="${params_dict[leaf_count]}"
+  local LOWER="${params_dict[lower_size]}"
+  local UPPER="${params_dict[upper_size]}"
+  validate_integer 1 QPS ROOT_COUNT LEAF_COUNT LOWER UPPER
+  local TRAFFIC_ALIAS="homa_multi_level_rpc_${ROOT_COUNT}x${LEAF_COUNT}x${QPS}"
+  local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
+  params_dict[traffic_pattern]="variable_response_multi_level_rpc"
+  params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
+  params_dict[test_name]="${TEST_NAME}"
+  params_dict[traffic_pattern_options_proto]="\
+  name: '${TEST_NAME}'
+  services {
+    name: 'load_balancer'
+    count: 1
+  }
+  services {
+    name: 'root'
+    count: ${ROOT_COUNT}
+  }
+  services {
+    name: 'leaf'
+    count: ${LEAF_COUNT}
+  }
+  action_lists {
+    name: 'load_balancer'
+    action_names: 'do_closed_loop_root_queries'
+    max_rpc_samples: 10000000
+  }
+  actions {
+    name: 'do_closed_loop_root_queries'
+    iterations {
+      max_duration_us: ${TEST_DURATION}000000
+      open_loop_interval_ns: $(( 1000000000 / QPS ))
+      warmup_iterations: $((3 * QPS))
+    }
+    rpc_name: 'root_query'
+  }
+  rpc_descriptions {
+    name: 'root_query'
+    client: 'load_balancer'
+    server: 'root'
+    fanout_filter: 'round_robin'
+    request_payload_name: 'root_request_payload'
+    response_payload_name: 'root_response_payload'
+  }
+  action_lists {
+    name: 'root_query'
+    action_names: 'root_query_fanout'
+    max_rpc_samples: 256
+  }
+  actions {
+    name: 'root_query_fanout'
+    rpc_name: 'leaf_query'
+  }
+  rpc_descriptions {
+    name: 'leaf_query'
+    client: 'root'
+    server: 'leaf'
+    fanout_filter: 'all'
+    distribution_config_name: 'leaf_payload'
+  }
+  action_lists {
+    name: 'leaf_query'
+    # no actions, NOP
+  }
+  payload_descriptions {
+    name: 'root_request_payload'
+    size: 1024
+  }
+  payload_descriptions {
+    name: 'root_response_payload'
+    size: 1024
+  }
+  overload_limits {
+    max_threads: 10000
+  }
+  distribution_config{
+    name: 'leaf_payload'
+    field_names: 'request_payload_size'
+    field_names: 'response_payload_size'
+    pmf_points{ pmf: 1.0 data_points{ exact: 1024} data_points{ lower: ${LOWER} upper: ${UPPER} }}
+  }"
+}
+
 # Invoke the main routine now that all the helper functions are defined:
 main "$@"
