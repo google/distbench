@@ -294,6 +294,10 @@ message GenericRequest {
   // For replay RPCs we don't invoke a real service routine, but simulate
   // delay with this instead:
   optional int64 server_processing_time_ns = 6;
+
+  // This does not mean anything, and if present is always false.
+  // It's only use is to produce protobufs that encode to an exact length.
+  optional bool trim = 7;
 }
 
 message GenericResponse {
@@ -303,6 +307,10 @@ message GenericResponse {
   // For MultiServerChannels we need to know which server was chosen, even if
   // the RPC layer does not expose that.
   optional int32 server_instance = 3;
+
+  // This does not mean anything, and if present is always false.
+  // It's only use is to produce protobufs that encode to an exact length.
+  optional bool trim = 7;
 }
 
 message ServerAddress {

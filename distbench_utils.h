@@ -225,6 +225,30 @@ bool CheckStringConstraint(const std::string& string_value,
                            const Attribute& attribute,
                            const Constraint& constraint);
 
+template <typename T>
+void SetSerializedSize(T* msg, size_t target_size) {
+  if (target_size == msg->ByteSizeLong()) {
+    return;
+  }
+  msg->clear_payload();
+  msg->clear_trim();
+  if (target_size > msg->ByteSizeLong()) {
+    msg->set_payload("");
+    ssize_t pad = target_size - msg->ByteSizeLong();
+    if (pad > 0) {
+      msg->set_payload(std::string(pad, 'D'));
+      while (msg->ByteSizeLong() != target_size) {
+        if (msg->ByteSizeLong() < target_size) {
+          msg->set_trim(false);
+        }
+        pad += target_size - msg->ByteSizeLong();
+        msg->mutable_payload()->resize(pad, 'D');
+      }
+    }
+  }
+}
+
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

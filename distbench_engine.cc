@@ -41,28 +41,6 @@ enum kFieldNames {
   kResponsePayloadSizeField = 1,
 };
 
-template <typename T>
-void SetPayload(T* msg, size_t target_size) {
-  if (target_size == msg->ByteSizeLong()) {
-    return;
-  }
-  msg->clear_payload();
-  if (target_size > msg->ByteSizeLong()) {
-    msg->set_payload("");
-    ssize_t pad = target_size - msg->ByteSizeLong();
-    if (pad > 0) {
-      msg->set_payload(std::string(pad, 'D'));
-      if (msg->ByteSizeLong() != target_size) {
-        // This happens when the protobuf crosses 196 and 512 bytes.
-        // the varint encoding length gains a byte, screwing up the computation
-        pad += target_size - msg->ByteSizeLong();
-        msg->mutable_payload()->resize(pad, 'D');
-      }
-      CHECK_EQ(msg->ByteSizeLong(), target_size);
-    }
-  }
-}
-
 }  // namespace
 
 ThreadSafeDictionary::ThreadSafeDictionary() {
@@ -964,7 +942,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   if (state->request->has_response_payload_size()) {
     response_payload_size = state->request->response_payload_size();
   }
-  SetPayload(&state->response, response_payload_size);
+  SetSerializedSize(&state->response, response_payload_size);
 
   if (rpc_def.rpc_spec.has_multi_server_channel_name()) {
     state->response.set_server_instance(service_instance_);
@@ -1179,7 +1157,7 @@ struct RpcReplayTraceRunner {
             int pd_id = logical_to_pdid[record.server_instance()];
             CHECK_GE(pd_id, 0)
                 << "record.server_instance() = " << record.DebugString();
-            SetPayload(&rpc_state->request, record.request_size());
+            SetSerializedSize(&rpc_state->request, record.request_size());
             rpc_state->request.set_response_payload_size(
                 record.response_size());
             pd->InitiateRpc(pd_id, rpc_state, f);
@@ -1969,7 +1947,7 @@ void DistBenchEngine::RunMultiServerChannelRpcActionIteration(
       request.set_response_payload_size(sample[kRequestPayloadSizeField]);
     }
   }
-  SetPayload(&request, request_payload_size);
+  SetSerializedSize(&request, request_payload_size);
 
   ++pending_rpcs_;
   ClientRpcState* rpc_state = &iteration_state->rpc_states[0];
@@ -2091,7 +2069,7 @@ void DistBenchEngine::RunRpcActionIteration(
       if (do_trace) {
         rpc_state->request.mutable_trace_context()->add_fanout_index(i);
       }
-      SetPayload(&rpc_state->request, request_payload_size);
+      SetSerializedSize(&rpc_state->request, request_payload_size);
 #ifndef NDEBUG
       CHECK_EQ(
           rpc_state->request.trace_context().engine_ids().size(),
