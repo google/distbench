@@ -31,7 +31,7 @@ class DefaultFormatter(Formatter):
             if(rpc.warmup):
                 self.warmup_samples += 1
             if(self.consider_warmups or not rpc.warmup):
-                summary.append(tuple([rpc.request_size, rpc.latency_ns]))
+                summary.append(tuple([rpc.request_size, rpc.latency_ns/1000]))
         return summary
 
     # this function takes datasets in the intermediate format, possibly a concatenation
