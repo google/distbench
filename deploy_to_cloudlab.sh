@@ -513,7 +513,7 @@ echo_green "The test sequencer and node managers should now be up and running."
 echo_yellow "You should now be able to send tests to localhost:11000 E.g."
 echo_cyan "  'test_builder client_server -s localhost:11000 -o my_data_dir'"
 echo_yellow "Debug logs can be fetched via"
-echo_cyan "  'scp ${NODE0}:distbench*.log my_log_dir'"
+echo_cyan "  'scp ${USER}@${NODE0}:distbench*.log my_log_dir'"
 
 jobs &> /dev/null # this /should/ not be necessary, but wait -n is buggy
 wait -n
