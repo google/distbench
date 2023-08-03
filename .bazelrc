@@ -5,8 +5,18 @@ build --action_env=ASAN_OPTIONS=halt_on_error=true
 build --repo_env=CC=gcc-11
 build --repo_env=CXX=g++-11
 
-build --cxxopt='-std=c++17'
-build --host_cxxopt='-std=c++17'
+build --cxxopt='-std=c++20'
+
+# host_cxxopt is used for building upb. Must be C++14 or later.
+# It might seem to make sense to use the same flags for both host_cxxopt
+# and cxx_opt, but it turns out that c++14 mode builds slightly faster.
+build --host_cxxopt='-std=c++14'
+
+# This flag is needed to build upb(micro protobuf) in C++20 mode.
+# If we build in C++14 or C++17 mode its not needed, but it still suppresses
+# hundreds of distracting warnings.
+build --cxxopt='-Wno-deprecated-enum-enum-conversion'
+build --host_cxxopt='-Wno-deprecated-enum-enum-conversion'
 
 # Statically link libstdc++ and libgcc.
 build --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-lm
