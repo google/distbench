@@ -1,4 +1,5 @@
 ##### Simple, optional repos in the local filesystem:
+##### These are only available after running setup_mercury.sh
 new_local_repository(
     name = "mercury",
     path = "external_repos/opt/mercury",
@@ -11,14 +12,15 @@ new_local_repository(
     build_file = "libfabric.BUILD",
 )
 
+##### Helper function to fetch code via http:
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 ##### Http repositories that do not require invoking any imported functions:
 http_archive(
   name = "com_google_benchmark",
-  sha256 = "ef0fab8058be682e382e155eeda1b22e1747fd6606e22e0c1b19f6da91e8b52d",
-  strip_prefix = "benchmark-69054ae50e07e9de7cb27f9e2d1d355f74605524",
-  url = "https://github.com/google/benchmark/archive/69054ae50e07e9de7cb27f9e2d1d355f74605524.zip"
+  sha256 = "2aab2980d0376137f969d92848fbb68216abb07633034534fc8c65cc4e7a0e93",
+  strip_prefix = "benchmark-1.8.2",
+  url = "https://github.com/google/benchmark/archive/refs/tags/v1.8.2.tar.gz",
 )
 
 http_archive(
@@ -35,19 +37,20 @@ http_archive(
     url = "https://github.com/google/glog/archive/v0.6.0.zip"
 )
 
+##### Unfortunately this does not compile against the latest grpc.
 http_archive(
     name = "grpc_homa",
-    sha256 = "839f5c02a9a70b1a7422ec925b694f0a0126557208ee9240039f991f067455e3",
-    strip_prefix = "grpc_homa-168787ef6473717a8c58bbe8347da71f63b86106",
-    url = "https://github.com/PlatformLab/grpc_homa/archive/168787ef6473717a8c58bbe8347da71f63b86106.tar.gz",
+    sha256 = "2c0fe4669620f1a685bedf2f8ad0547cccb9155d1f4b304c5f7ce362d3b92d05",
+    strip_prefix = "grpc_homa-homa-2.0",
+    url = "https://github.com/PlatformLab/grpc_homa/archive/refs/tags/homa-2.0.tar.gz",
     build_file = "@//:grpc_homa.BUILD",
 )
 
 http_archive(
     name = "homa_module",
-    sha256 = "d9877e3bc4395e1556046f3730f47a8c5294ba573ce9404a977d24caf6571348",
-    strip_prefix = "HomaModule-a889ebc0d9c2a2437fc41323da01422e8314f6db",
-    url = "https://github.com/PlatformLab/HomaModule/archive/a889ebc0d9c2a2437fc41323da01422e8314f6db.tar.gz",
+    sha256 = "fb806e08f91c55207598e3232156b448f2589f1d8513ccd7fdb1270739b2fcbe",
+    strip_prefix = "HomaModule-e27f064f22775c581592c49b91ade60b83d5e899",
+    url = "https://github.com/PlatformLab/HomaModule/archive/e27f064f22775c581592c49b91ade60b83d5e899.tar.gz",
     build_file = "@//:homa_module.BUILD",
 )
 
@@ -55,10 +58,9 @@ http_archive(
 ##### grpc_deps() and grpc_extra_deps().
 http_archive(
     name = "com_github_grpc_grpc",
-    sha256 = "f6dc2dd2feba67e63a1fdaad961659c8c44ffe8cf00bff6fb9966fadd53f3b77",
-    strip_prefix = "grpc-c0d1c393d9365664d47df41746e992ae97b651ef",
-    # Release 1.56.2
-    url = "https://github.com/grpc/grpc/archive/c0d1c393d9365664d47df41746e992ae97b651ef.tar.gz",
+    sha256 = "931f07db9d48cff6a6007c1033ba6d691fe655bea2765444bc1ad974dfc840aa",
+    strip_prefix = "grpc-1.56.2",
+    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.56.2.tar.gz",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
@@ -68,22 +70,14 @@ grpc_extra_deps()
 ##### Boost rules: Imports more deps via boost_deps()
 http_archive(
     name = "com_github_nelhage_rules_boost",
-    sha256 = "a023496468931c8d64abc4ba036f985f3977da03a7f7680282d7e6d9e42ff27d",
-    url = "https://github.com/nelhage/rules_boost/archive/2cd6e7b540403fe737a10f90bc53de86a16a6eed.tar.gz",
-    strip_prefix = "rules_boost-2cd6e7b540403fe737a10f90bc53de86a16a6eed",
+    sha256 = "1198cb810d18d2a86abbd4c3d71665375e2c6a2ba4044b4f9d7b2f28e6ed898e",
+    strip_prefix = "rules_boost-33461a3c666af36d7a080e4fd6f554725df44132",
+    url = "https://github.com/nelhage/rules_boost/archive/33461a3c666af36d7a080e4fd6f554725df44132.tar.gz",
 )
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 boost_deps()
 
-##### This is used to perform a version check on our bazel dialect via the
-##### versions.check() function. comes last to avoid needing explicit
-##### dependencies that could become conflicts in the future.
-http_archive(
-    name = "bazel_skylib",
-    sha256 = "07b4117379dde7ab382345c3b0f5edfc6b7cff6c93756eac63da121e0bbcc5de",
-    strip_prefix = "bazel-skylib-1.1.1",
-    url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.1.1/bazel-skylib-1.1.1.tar.gz",
-)
+##### Perform a version check on our bazel dialect:
 load("@bazel_skylib//lib:versions.bzl", "versions")
 versions.check(
     minimum_bazel_version = "4.2.1",
