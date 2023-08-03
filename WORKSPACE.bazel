@@ -17,52 +17,48 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
   name = "com_google_benchmark",
   sha256 = "ef0fab8058be682e382e155eeda1b22e1747fd6606e22e0c1b19f6da91e8b52d",
-  urls = ["https://github.com/google/benchmark/archive/69054ae50e07e9de7cb27f9e2d1d355f74605524.zip"],
   strip_prefix = "benchmark-69054ae50e07e9de7cb27f9e2d1d355f74605524",
+  url = "https://github.com/google/benchmark/archive/69054ae50e07e9de7cb27f9e2d1d355f74605524.zip"
 )
 
 http_archive(
     name = "com_github_gflags_gflags",
     sha256 = "34af2f15cf7367513b352bdcd2493ab14ce43692d2dcd9dfc499492966c64dcf",
     strip_prefix = "gflags-2.2.2",
-    urls = ["https://github.com/gflags/gflags/archive/v2.2.2.tar.gz"],
+    url = "https://github.com/gflags/gflags/archive/v2.2.2.tar.gz"
 )
 
 http_archive(
     name = "com_github_google_glog",
     sha256 = "122fb6b712808ef43fbf80f75c52a21c9760683dae470154f02bddfc61135022",
     strip_prefix = "glog-0.6.0",
-    urls = ["https://github.com/google/glog/archive/v0.6.0.zip"],
+    url = "https://github.com/google/glog/archive/v0.6.0.zip"
 )
 
 http_archive(
     name = "grpc_homa",
     sha256 = "839f5c02a9a70b1a7422ec925b694f0a0126557208ee9240039f991f067455e3",
-    urls = [
-        "https://github.com/PlatformLab/grpc_homa/archive/168787ef6473717a8c58bbe8347da71f63b86106.tar.gz"
-    ],
-    build_file = "@//:grpc_homa.BUILD",
     strip_prefix = "grpc_homa-168787ef6473717a8c58bbe8347da71f63b86106",
+    url = "https://github.com/PlatformLab/grpc_homa/archive/168787ef6473717a8c58bbe8347da71f63b86106.tar.gz",
+    build_file = "@//:grpc_homa.BUILD",
 )
 
 http_archive(
     name = "homa_module",
     sha256 = "d9877e3bc4395e1556046f3730f47a8c5294ba573ce9404a977d24caf6571348",
-    urls = [
-        "https://github.com/PlatformLab/HomaModule/archive/a889ebc0d9c2a2437fc41323da01422e8314f6db.tar.gz"
-    ],
-    build_file = "@//:homa_module.BUILD",
     strip_prefix = "HomaModule-a889ebc0d9c2a2437fc41323da01422e8314f6db",
+    url = "https://github.com/PlatformLab/HomaModule/archive/a889ebc0d9c2a2437fc41323da01422e8314f6db.tar.gz",
+    build_file = "@//:homa_module.BUILD",
 )
 
 ##### GRPC rules: This imports a lot of dependencies for us via
 ##### grpc_deps() and grpc_extra_deps().
 http_archive(
     name = "com_github_grpc_grpc",
-    urls = [
-        "https://github.com/grpc/grpc/archive/c0d1c393d9365664d47df41746e992ae97b651ef.tar.gz", # Release 1.56.2
-    ],
+    sha256 = "f6dc2dd2feba67e63a1fdaad961659c8c44ffe8cf00bff6fb9966fadd53f3b77",
     strip_prefix = "grpc-c0d1c393d9365664d47df41746e992ae97b651ef",
+    # Release 1.56.2
+    url = "https://github.com/grpc/grpc/archive/c0d1c393d9365664d47df41746e992ae97b651ef.tar.gz",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
@@ -86,9 +82,7 @@ http_archive(
     name = "bazel_skylib",
     sha256 = "07b4117379dde7ab382345c3b0f5edfc6b7cff6c93756eac63da121e0bbcc5de",
     strip_prefix = "bazel-skylib-1.1.1",
-    urls = [
-        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.1.1/bazel-skylib-1.1.1.tar.gz",
-    ],
+    url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.1.1/bazel-skylib-1.1.1.tar.gz",
 )
 load("@bazel_skylib//lib:versions.bzl", "versions")
 versions.check(
