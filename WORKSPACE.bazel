@@ -1,49 +1,19 @@
-##### Protobuf Rules for Bazel
-##### See https://github.com/bazelbuild/rules_proto
+##### Simple, optional repos in the local filesystem:
+new_local_repository(
+    name = "mercury",
+    path = "external_repos/opt/mercury",
+    build_file = "mercury.BUILD",
+)
+
+new_local_repository(
+    name = "libfabric",
+    path = "external_repos/opt/libfabric",
+    build_file = "libfabric.BUILD",
+)
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-##### gRPC Rules for Bazel
-http_archive(
-    name = "com_github_grpc_grpc",
-    urls = [
-        "https://github.com/grpc/grpc/archive/c0d1c393d9365664d47df41746e992ae97b651ef.tar.gz", # Release 1.56.2
-    ],
-    strip_prefix = "grpc-c0d1c393d9365664d47df41746e992ae97b651ef",
-)
-load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
-grpc_deps()
-
-load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
-grpc_extra_deps()
-
-http_archive(
-  name = "rules_cc",
-  urls = ["https://github.com/bazelbuild/rules_cc/archive/262ebec3c2296296526740db4aefce68c80de7fa.zip"],
-  strip_prefix = "rules_cc-262ebec3c2296296526740db4aefce68c80de7fa",
-)
-
-http_archive(
-    name = "bazel_skylib",
-    sha256 = "07b4117379dde7ab382345c3b0f5edfc6b7cff6c93756eac63da121e0bbcc5de",
-    strip_prefix = "bazel-skylib-1.1.1",
-    urls = [
-        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.1.1/bazel-skylib-1.1.1.tar.gz",
-    ],
-)
-
-load("@bazel_skylib//lib:versions.bzl", "versions")
-
-versions.check(
-    minimum_bazel_version = "4.2.1",
-    maximum_bazel_version = "5.4.0",
-)
-
-http_archive(
-  name = "com_google_googletest",
-  urls = ["https://github.com/google/googletest/archive/011959aafddcd30611003de96cfd8d7a7685c700.zip"],
-  strip_prefix = "googletest-011959aafddcd30611003de96cfd8d7a7685c700",
-)
-
+##### Http repositories that do not require invoking any imported functions:
 http_archive(
   name = "com_google_benchmark",
   sha256 = "ef0fab8058be682e382e155eeda1b22e1747fd6606e22e0c1b19f6da91e8b52d",
@@ -63,18 +33,6 @@ http_archive(
     sha256 = "122fb6b712808ef43fbf80f75c52a21c9760683dae470154f02bddfc61135022",
     strip_prefix = "glog-0.6.0",
     urls = ["https://github.com/google/glog/archive/v0.6.0.zip"],
-)
-
-new_local_repository(
-    name = "mercury",
-    path = "external_repos/opt/mercury",
-    build_file = "mercury.BUILD",
-)
-
-new_local_repository(
-    name = "libfabric",
-    path = "external_repos/opt/libfabric",
-    build_file = "libfabric.BUILD",
 )
 
 http_archive(
@@ -97,6 +55,21 @@ http_archive(
     strip_prefix = "HomaModule-a889ebc0d9c2a2437fc41323da01422e8314f6db",
 )
 
+##### GRPC rules: This imports a lot of dependencies for us via
+##### grpc_deps() and grpc_extra_deps().
+http_archive(
+    name = "com_github_grpc_grpc",
+    urls = [
+        "https://github.com/grpc/grpc/archive/c0d1c393d9365664d47df41746e992ae97b651ef.tar.gz", # Release 1.56.2
+    ],
+    strip_prefix = "grpc-c0d1c393d9365664d47df41746e992ae97b651ef",
+)
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+grpc_extra_deps()
+
+##### Boost rules: Imports more deps via boost_deps()
 http_archive(
     name = "com_github_nelhage_rules_boost",
     sha256 = "a023496468931c8d64abc4ba036f985f3977da03a7f7680282d7e6d9e42ff27d",
@@ -105,3 +78,20 @@ http_archive(
 )
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 boost_deps()
+
+##### This is used to perform a version check on our bazel dialect via the
+##### versions.check() function. comes last to avoid needing explicit
+##### dependencies that could become conflicts in the future.
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "07b4117379dde7ab382345c3b0f5edfc6b7cff6c93756eac63da121e0bbcc5de",
+    strip_prefix = "bazel-skylib-1.1.1",
+    urls = [
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.1.1/bazel-skylib-1.1.1.tar.gz",
+    ],
+)
+load("@bazel_skylib//lib:versions.bzl", "versions")
+versions.check(
+    minimum_bazel_version = "4.2.1",
+    maximum_bazel_version = "5.4.0",
+)
