@@ -6,6 +6,7 @@ build --repo_env=CC=gcc-11
 build --repo_env=CXX=g++-11
 
 build --cxxopt='-std=c++17'
+build --host_cxxopt='-std=c++17'
 
 # Statically link libstdc++ and libgcc.
 build --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-lm

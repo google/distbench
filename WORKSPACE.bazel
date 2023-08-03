@@ -2,26 +2,13 @@
 ##### See https://github.com/bazelbuild/rules_proto
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-http_archive(
-    name = "rules_proto",
-    sha256 = "9fc210a34f0f9e7cc31598d109b5d069ef44911a82f507d5a88716db171615a8",
-    strip_prefix = "rules_proto-f7a30f6f80006b591fa7c437fe5a951eb10bcbcf",
-    urls = [
-        "https://github.com/bazelbuild/rules_proto/archive/f7a30f6f80006b591fa7c437fe5a951eb10bcbcf.tar.gz",
-    ],
-)
-load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
-rules_proto_dependencies()
-rules_proto_toolchains()
-
 ##### gRPC Rules for Bazel
 http_archive(
     name = "com_github_grpc_grpc",
-    sha256 = "bba65891b8c8eaea9f10b0ccccb4b6173590aee36937f5b52e8665720bcaa4c1",
     urls = [
-        "https://github.com/grpc/grpc/archive/b0f37a22bbae12a4b225a88be6d18d5e41dce881.tar.gz",  # Release 1.43
+        "https://github.com/grpc/grpc/archive/c0d1c393d9365664d47df41746e992ae97b651ef.tar.gz", # Release 1.56.2
     ],
-    strip_prefix = "grpc-b0f37a22bbae12a4b225a88be6d18d5e41dce881",
+    strip_prefix = "grpc-c0d1c393d9365664d47df41746e992ae97b651ef",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
