@@ -61,7 +61,7 @@ function bazel_install {
 
 # This overrides -repo_env=CC=gcc-11 --repo_env=CXX=g++-11 from .bazelrc:
 function bazel_basic {
-  bazel "${@}" --repo_env=CC=gcc --repo_env=CXX=g++
+  bazel "${@}"
 }
 
 BAZEL_VERSION=5.4.0
@@ -71,9 +71,6 @@ cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
 
 print_header_and_run "Downloading and installing Bazel version $BAZEL_VERSION" \
   bazel_install
-
-print_header_and_run "Installing libnum-dev" \
-  apt-get install libnuma-dev -y
 
 print_header_and_run "Logging host lsb version" \
   lsb_release -a
@@ -87,8 +84,14 @@ print_header_and_run "Logging host ip addresses" \
 print_header_and_run "Logging gcc version" \
   gcc --version
 
+print_header_and_run "Adding repo for g++-11" \
+  add-apt-repository -y ppa:ubuntu-toolchain-r/test
+
+print_header_and_run "Installing libnuma-dev g++-11 gcc-11" \
+  apt-get install libnuma-dev g++-11 gcc-11 -y
+
 print_header_and_run "Logging g++ version" \
-  g++ --version
+  g++-11 --version
 
 print_header_and_run "Logging Bazel version" \
   bazel --version
