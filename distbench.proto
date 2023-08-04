@@ -282,35 +282,35 @@ service ConnectionSetup {
 }
 
 message GenericRequest {
-  optional bytes payload = 1;
   // rpc_index if present provides an index into the actionlist table for
   // synthesized RPCs. Replay RPCs do not speciy rpc_index.
-  optional int32 rpc_index = 2;
-  optional TraceContext trace_context = 3;
-  optional bool warmup = 4;
+  optional int32 rpc_index = 1;
+  optional TraceContext trace_context = 2;
+  optional bool warmup = 3;
 
-  optional int64 response_payload_size = 5;
+  optional int64 response_payload_size = 4;
 
   // For replay RPCs we don't invoke a real service routine, but simulate
   // delay with this instead:
-  optional int64 server_processing_time_ns = 6;
+  optional int64 server_processing_time_ns = 5;
 
   // This does not mean anything, and if present is always false.
   // It's only use is to produce protobufs that encode to an exact length.
   optional bool trim = 7;
+  optional bytes payload = 8 [ctype = CORD];
 }
 
 message GenericResponse {
-  optional bytes payload = 1;
-  optional string error_message = 2;
+  optional string error_message = 1;
 
   // For MultiServerChannels we need to know which server was chosen, even if
   // the RPC layer does not expose that.
-  optional int32 server_instance = 3;
+  optional int32 server_instance = 2;
 
   // This does not mean anything, and if present is always false.
   // It's only use is to produce protobufs that encode to an exact length.
   optional bool trim = 7;
+  optional bytes payload = 8 [ctype = CORD];
 }
 
 message ServerAddress {
