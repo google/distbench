@@ -18,6 +18,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "absl/strings/str_split.h"
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"
@@ -26,17 +27,6 @@
 #include "distbench_utils.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
-
-namespace {
-bool CheckRemainingArguments(std::vector<char*> remaining_arguments,
-                             size_t min_expected, size_t max_expected);
-int MainRunTests(std::vector<char*>& arguments);
-int MainCheckTest(std::vector<char*>& arguments);
-int MainTestPreview(std::vector<char*>& arguments);
-int MainTestSequencer(std::vector<char*>& arguments);
-int MainNodeManager(std::vector<char*>& arguments);
-void Usage();
-}  // anonymous namespace
 
 ABSL_FLAG(int, port, 10'000, "port to listen on");
 ABSL_FLAG(std::string, test_sequencer, "", "host:port of test sequencer");
@@ -58,48 +48,49 @@ ABSL_FLAG(std::string, service_address, "",
           "test_sequencer. Useful if DNS cannot resolve the hostname. "
           "Must include gRPC protocol host and port e.g. ipv4:///1.2.3.4:5678");
 
-int main(int argc, char** argv, char** envp) {
-  std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
-  distbench::InitLibs(argv[0]);
+namespace {
 
-  bool args_ok = CheckRemainingArguments(remaining_arguments, 2,
-                                         std::numeric_limits<size_t>::max());
-  if (!args_ok) return 1;
+const char usage_string[] =
+    R"(Usage: distbench mode [required mode options] [additional flags]
 
-  char* distbench_module = remaining_arguments[1];
+  mode: (test_sequencer|node_manager|run_tests|check_test|test_preview|help)
 
-  // Remove argv[0] and distbench_module
-  remaining_arguments.erase(remaining_arguments.begin(),
-                            remaining_arguments.begin() + 2);
+  See https://github.com/google/distbench/blob/main/docs/quick-overview.md
+  for a description of these modes.
 
-  if (!strcmp(distbench_module, "test_sequencer")) {
-    return MainTestSequencer(remaining_arguments);
-  } else if (!strcmp(distbench_module, "node_manager")) {
-    return MainNodeManager(remaining_arguments);
-  } else if (!strcmp(distbench_module, "run_tests")) {
-    return MainRunTests(remaining_arguments);
-  } else if (!strcmp(distbench_module, "check_test")) {
-    return MainCheckTest(remaining_arguments);
-  } else if (!strcmp(distbench_module, "test_preview")) {
-    return MainTestPreview(remaining_arguments);
-  } else if (!strcmp(distbench_module, "help")) {
-    Usage();
-    return 0;
-  } else {
-    std::cerr << "Unrecognized distbench module: " << distbench_module << "\n";
-    Usage();
-    return 1;
-  }
+  distbench test_sequencer [--port=port_number]
+      --port=port_number    The port for the test_sequencer to listen on.
+
+  distbench node_manager [--test_sequencer=host:port] [--port=port_number]
+      --test_sequencer=h:p  The host:port of the test_sequencer to connect to.
+      --port=port_number    The port for the node_manager to listen on.
+
+  distbench run_tests --test_sequencer=host:port  [--infile test_sequence.proto_text]
+      [--outfile result.proto_text]
+      [--binary_output]
+
+  distbench check_test  [--infile test_sequence.proto_text] "
+
+  distbench test_preview
+      [--infile test_sequence.proto_text]
+      [--outfile result.proto_text]
+
+  distbench help
+
+For more information about various flags, run
+  distbench --helpfull)";
+
+void PrintUsageToStderrAndExit(int exit_val) {
+  std::cerr << usage_string << "\n";
+  exit(exit_val);
 }
 
-namespace {
-bool CheckRemainingArguments(std::vector<char*> remaining_arguments,
+void ValidateArgumentsOrExit(std::vector<char*> remaining_arguments,
                              size_t min_expected, size_t max_expected) {
   size_t nb_arguments = remaining_arguments.size();
   if (nb_arguments < min_expected) {
     std::cerr << "Not enough arguments provided\n";
-    Usage();
-    return false;
+    PrintUsageToStderrAndExit(1);
   }
 
   if (nb_arguments > max_expected) {
@@ -108,11 +99,8 @@ bool CheckRemainingArguments(std::vector<char*> remaining_arguments,
       std::cerr << "Error: unexpected command line argument: " << *it << "\n";
     }
     std::cerr << "\n";
-    Usage();
-    return false;
+    PrintUsageToStderrAndExit(1);
   }
-
-  return true;
 }
 
 // Returns the sum of the specified test_timeout for all tests.
@@ -154,7 +142,7 @@ void SetAllTestTimeoutAttributesTo(distbench::TestSequence* test_sequence,
 }
 
 int MainRunTests(std::vector<char*>& arguments) {
-  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
+  ValidateArgumentsOrExit(arguments, 0, 0);
 
   const std::string infile = absl::GetFlag(FLAGS_infile);
   auto test_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
@@ -238,7 +226,7 @@ int MainRunTests(std::vector<char*>& arguments) {
 }
 
 int MainCheckTest(std::vector<char*>& arguments) {
-  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
+  ValidateArgumentsOrExit(arguments, 0, 0);
 
   const std::string infile = absl::GetFlag(FLAGS_infile);
   auto test_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
@@ -272,7 +260,7 @@ int MainCheckTest(std::vector<char*>& arguments) {
 }
 
 int MainTestPreview(std::vector<char*>& arguments) {
-  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
+  ValidateArgumentsOrExit(arguments, 0, 0);
 
   const std::string infile = absl::GetFlag(FLAGS_infile);
   auto input_sequence = distbench::ParseTestSequenceProtoFromFile(infile);
@@ -333,7 +321,7 @@ int MainTestPreview(std::vector<char*>& arguments) {
 }
 
 int MainTestSequencer(std::vector<char*>& arguments) {
-  if (!CheckRemainingArguments(arguments, 0, 0)) return 1;
+  ValidateArgumentsOrExit(arguments, 0, 0);
   int port = absl::GetFlag(FLAGS_port);
   distbench::TestSequencerOpts opts = {
       .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
@@ -434,41 +422,46 @@ int MainNodeManager(std::vector<char*>& arguments) {
   return !status.ok();
 }
 
-void Usage() {
-  std::cerr << "Usage: distbench module [options]\n";
-  std::cerr << "\n";
-  std::cerr << "  module: the module to start (test_sequencer|node_manager)\n";
-  std::cerr << "\n";
-  std::cerr << "  distbench test_sequencer [--port=port_number]\n";
-  std::cerr << "      --port=port_number    The port for the "
-               "test_sequencer to listen on.\n";
-  std::cerr << "\n";
-  std::cerr << "  distbench node_manager [--test_sequencer=host:port] "
-               "[--port=port_number]\n";
-  std::cerr << "      --test_sequencer=h:p  The host:port of the "
-               "test_sequencer to connect to.\n";
-  std::cerr << "      --port=port_number    The port for the "
-               "node_manager to listen on.\n";
-
-  std::cerr << "\n";
-  std::cerr << "  distbench run_tests "
-               "--test_sequencer=host:port "
-               "[--infile test_sequence.proto_text] "
-               "[--outfile result.proto_text] "
-               "[--binary_output]"
-               "\n";
-  std::cerr << "\n";
-  std::cerr << "  distbench check_test "
-               "[--infile test_sequence.proto_text] "
-               "\n";
-  std::cerr << "  distbench test_preview "
-               "[--infile test_sequence.proto_text] "
-               "[--outfile result.proto_text]"
-               "\n";
-  std::cerr << "\n";
-  std::cerr << "  distbench help\n";
-  std::cerr << "\n";
-  std::cerr << "For more options information, do\n";
-  std::cerr << "  distbench --helpfull\n";
-}
 }  // anonymous namespace
+
+int main(int argc, char** argv, char** envp) {
+  // handle "distbench -h"
+  bool dash_h = false;
+  for (int i = 0; i < argc; ++i) {
+    std::cerr << "argv[" << i << "] '" << argv[i] << "'\n";
+    dash_h |= !strcmp(argv[i], "-h");
+  }
+  if (dash_h) {
+    std::cout << usage_string << "\n";
+    exit(0);
+  }
+  absl::SetProgramUsageMessage(usage_string);
+  std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
+  distbench::InitLibs(argv[0]);
+
+  ValidateArgumentsOrExit(remaining_arguments, 2,
+                          std::numeric_limits<size_t>::max());
+  char* distbench_module = remaining_arguments[1];
+
+  // Remove argv[0] and distbench_module
+  remaining_arguments.erase(remaining_arguments.begin(),
+                            remaining_arguments.begin() + 2);
+
+  if (!strcmp(distbench_module, "test_sequencer")) {
+    return MainTestSequencer(remaining_arguments);
+  } else if (!strcmp(distbench_module, "node_manager")) {
+    return MainNodeManager(remaining_arguments);
+  } else if (!strcmp(distbench_module, "run_tests")) {
+    return MainRunTests(remaining_arguments);
+  } else if (!strcmp(distbench_module, "check_test")) {
+    return MainCheckTest(remaining_arguments);
+  } else if (!strcmp(distbench_module, "test_preview")) {
+    return MainTestPreview(remaining_arguments);
+  } else if (!strcmp(distbench_module, "help")) {
+    std::cout << usage_string << "\n";
+    exit(0);
+  } else {
+    std::cerr << "Unrecognized distbench mode: " << distbench_module << "\n";
+    PrintUsageToStderrAndExit(1);
+  }
+}
