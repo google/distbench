@@ -1,6 +1,15 @@
 #!/bin/bash
-#This script downloads the homaModule on all the nodes in the specified cluster
-#Assumes your key for cloudlab is named cloudlab
+# This tool downloads the homaModule on all the nodes in the specified cluster
+#
+# NOTE: In order for this tool to work, you must have a key named 'cloudlab' in
+# ~/.ssh and a corresponding public key uploaded onto cloudlab. This allows you
+# to ssh to other nodes from node0. To do this:
+#   1. Run 'ssh-keygen' in your ssh directory
+#   2. Name the key pair 'cloudlab'
+#   3. Upload the public key, 'cloudlab.pub' to cloudlab at 
+#      https://www.cloudlab.us/ by clicking the 'manage SSH keys'
+#      option on the menu that appears when you click your username
+
 if [[ $# -ne 2 ]]; then
   echo usage:$0 user@cloudlabhost num_nodes > /dev/stderr
   exit 1
