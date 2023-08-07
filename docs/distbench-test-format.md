@@ -182,7 +182,7 @@ This describes a (possibly) multi-dimensional joint distribution. For
 - `field_names` (string): The name(s) describing the meaning of each dimension.
 
 Examples of files with distributions in them can be found in the
- [homa_cp_node_configs](../test_builder/homa_cp_node_configs) folder.
+ [homa_cp_node_configs](../homa_experiments/homa_cp_node_configs) folder.
 
 ### Misc settings
 
