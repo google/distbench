@@ -71,75 +71,6 @@ class GrpcPollingClientDriver : public ProtocolDriverClient {
   grpc::CompletionQueue cq_;
 };
 
-class GrpcInlineServerDriver : public ProtocolDriverServer {
- public:
-  GrpcInlineServerDriver();
-  ~GrpcInlineServerDriver() override;
-
-  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
-                          int* port) override;
-
-  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
-                      handler) override;
-  absl::StatusOr<std::string> HandlePreConnect(
-      std::string_view remote_connection_info, int peer) override;
-  void ShutdownServer() override;
-  void HandleConnectFailure(std::string_view local_connection_info) override;
-
-  std::vector<TransportStat> GetTransportStats() override;
-
- private:
-  std::unique_ptr<Traffic::Service> traffic_service_;
-  std::unique_ptr<grpc::Server> server_;
-  int server_port_ = 0;
-  DeviceIpAddress server_ip_address_;
-  std::string server_socket_address_;
-  std::string transport_;
-};
-
-class ProtocolDriverGrpc : public ProtocolDriver {
- public:
-  ProtocolDriverGrpc();
-  ~ProtocolDriverGrpc() override;
-
-  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
-                          int* port) override;
-
-  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
-                      handler) override;
-  void SetNumPeers(int num_peers) override;
-  void SetNumMultiServerChannels(int num_channels) override;
-
-  // Connects to the actual GRPC service.
-  absl::Status HandleConnect(std::string remote_connection_info,
-                             int peer) override;
-
-  // Returns the address of the GRPC service.
-  absl::StatusOr<std::string> HandlePreConnect(
-      std::string_view remote_connection_info, int peer) override;
-  void HandleConnectFailure(std::string_view local_connection_info) override;
-
-  absl::Status SetupMultiServerChannel(
-      const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
-      const std::vector<int>& peer_ids, int channel_id) override;
-
-  void InitiateRpcToMultiServerChannel(
-      int channel_index, ClientRpcState* state,
-      std::function<void(void)> done_callback) override;
-
-  void InitiateRpc(int peer_index, ClientRpcState* state,
-                   std::function<void(void)> done_callback) override;
-  void ChurnConnection(int peer) override;
-  void ShutdownServer() override;
-  void ShutdownClient() override;
-
-  std::vector<TransportStat> GetTransportStats() override;
-
- private:
-  std::unique_ptr<distbench::ProtocolDriverClient> client_;
-  std::unique_ptr<distbench::ProtocolDriverServer> server_;
-};
-
 class GrpcCallbackClientDriver : public ProtocolDriverClient {
  public:
   GrpcCallbackClientDriver();
@@ -179,6 +110,32 @@ class GrpcCallbackClientDriver : public ProtocolDriverClient {
   std::atomic<int> pending_rpcs_ = 0;
   std::vector<std::unique_ptr<Traffic::Stub>> grpc_client_stubs_;
   std::vector<std::unique_ptr<Traffic::Stub>> multiserver_stubs_;
+  std::string transport_;
+};
+
+class GrpcInlineServerDriver : public ProtocolDriverServer {
+ public:
+  GrpcInlineServerDriver();
+  ~GrpcInlineServerDriver() override;
+
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                          int* port) override;
+
+  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
+                      handler) override;
+  absl::StatusOr<std::string> HandlePreConnect(
+      std::string_view remote_connection_info, int peer) override;
+  void ShutdownServer() override;
+  void HandleConnectFailure(std::string_view local_connection_info) override;
+
+  std::vector<TransportStat> GetTransportStats() override;
+
+ private:
+  std::unique_ptr<Traffic::Service> traffic_service_;
+  std::unique_ptr<grpc::Server> server_;
+  int server_port_ = 0;
+  DeviceIpAddress server_ip_address_;
+  std::string server_socket_address_;
   std::string transport_;
 };
 
@@ -242,6 +199,49 @@ class GrpcPollingServerDriver : public ProtocolDriverServer {
   SafeNotification handler_set_;
   std::string transport_;
   std::thread handle_rpcs_;
+};
+
+class ProtocolDriverGrpc : public ProtocolDriver {
+ public:
+  ProtocolDriverGrpc();
+  ~ProtocolDriverGrpc() override;
+
+  absl::Status Initialize(const ProtocolDriverOptions& pd_opts,
+                          int* port) override;
+
+  void SetHandler(std::function<std::function<void()>(ServerRpcState* state)>
+                      handler) override;
+  void SetNumPeers(int num_peers) override;
+  void SetNumMultiServerChannels(int num_channels) override;
+
+  // Connects to the actual GRPC service.
+  absl::Status HandleConnect(std::string remote_connection_info,
+                             int peer) override;
+
+  // Returns the address of the GRPC service.
+  absl::StatusOr<std::string> HandlePreConnect(
+      std::string_view remote_connection_info, int peer) override;
+  void HandleConnectFailure(std::string_view local_connection_info) override;
+
+  absl::Status SetupMultiServerChannel(
+      const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
+      const std::vector<int>& peer_ids, int channel_id) override;
+
+  void InitiateRpcToMultiServerChannel(
+      int channel_index, ClientRpcState* state,
+      std::function<void(void)> done_callback) override;
+
+  void InitiateRpc(int peer_index, ClientRpcState* state,
+                   std::function<void(void)> done_callback) override;
+  void ChurnConnection(int peer) override;
+  void ShutdownServer() override;
+  void ShutdownClient() override;
+
+  std::vector<TransportStat> GetTransportStats() override;
+
+ private:
+  std::unique_ptr<distbench::ProtocolDriverClient> client_;
+  std::unique_ptr<distbench::ProtocolDriverServer> server_;
 };
 
 }  // namespace distbench
