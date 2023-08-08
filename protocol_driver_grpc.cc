@@ -342,11 +342,11 @@ absl::Status GrpcInlineServerDriver::Initialize(
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
-  server_ = builder.BuildAndStart();
+  grpc_server_ = builder.BuildAndStart();
 
   server_port_ = *port;
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  if (!server_) {
+  if (!grpc_server_) {
     return absl::UnknownError("Grpc Traffic service failed to start");
   }
 
@@ -373,7 +373,7 @@ void GrpcCommonServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
 void GrpcInlineServerDriver::ShutdownServer() {
-  if (server_) server_->Shutdown();
+  if (grpc_server_) grpc_server_->Shutdown();
 }
 
 std::vector<TransportStat> GrpcInlineServerDriver::GetTransportStats() {
@@ -640,11 +640,11 @@ absl::Status GrpcHandoffServerDriver::Initialize(
   builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_service_.get());
-  server_ = builder.BuildAndStart();
+  grpc_server_ = builder.BuildAndStart();
 
   server_port_ = *port;
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  if (!server_) {
+  if (!grpc_server_) {
     return absl::UnknownError(
         "Grpc Async Callback Traffic service failed to start");
   }
@@ -659,8 +659,8 @@ void GrpcHandoffServerDriver::SetHandler(
 }
 
 void GrpcHandoffServerDriver::ShutdownServer() {
-  if (server_ != nullptr) {
-    server_->Shutdown();
+  if (grpc_server_ != nullptr) {
+    grpc_server_->Shutdown();
   }
 }
 
@@ -786,11 +786,11 @@ absl::Status GrpcPollingServerDriver::Initialize(
   ApplyServerSettingsToGrpcBuilder(&builder, pd_opts);
   builder.RegisterService(traffic_async_service_.get());
   server_cq_ = builder.AddCompletionQueue();
-  server_ = builder.BuildAndStart();
+  grpc_server_ = builder.BuildAndStart();
 
   server_port_ = *port;
   server_socket_address_ = SocketAddressForIp(server_ip_address_, *port);
-  if (!server_) {
+  if (!grpc_server_) {
     return absl::UnknownError("Grpc Traffic service failed to start");
   }
 
@@ -808,8 +808,8 @@ void GrpcPollingServerDriver::SetHandler(
 
 void GrpcPollingServerDriver::ShutdownServer() {
   handler_set_.TryToNotify();
-  if (server_) {
-    server_->Shutdown();
+  if (grpc_server_) {
+    grpc_server_->Shutdown();
     server_shutdown_detected_.WaitForNotification();
   }
   if (server_cq_) {

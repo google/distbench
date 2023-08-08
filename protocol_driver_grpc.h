@@ -107,7 +107,7 @@ class GrpcCommonServerDriver : public ProtocolDriverServer {
   void HandleConnectFailure(std::string_view local_connection_info) override;
 
  protected:
-  std::unique_ptr<grpc::Server> server_;
+  std::unique_ptr<grpc::Server> grpc_server_;
   int server_port_ = 0;
   DeviceIpAddress server_ip_address_;
   std::string server_socket_address_;
