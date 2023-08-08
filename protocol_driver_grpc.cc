@@ -86,6 +86,10 @@ absl::StatusOr<std::shared_ptr<grpc::ServerCredentials>> CreateServerCreds(
 
 }  // anonymous namespace
 
+GrpcCommonClientDriver::GrpcCommonClientDriver() {}
+
+GrpcCommonClientDriver::~GrpcCommonClientDriver() {}
+
 // Client =====================================================================
 GrpcPollingClientDriver::GrpcPollingClientDriver() {}
 GrpcPollingClientDriver::~GrpcPollingClientDriver() { ShutdownClient(); }
@@ -98,12 +102,12 @@ absl::Status GrpcPollingClientDriver::Initialize(
   return absl::OkStatus();
 }
 
-void GrpcPollingClientDriver::SetNumPeers(int num_peers) {
+void GrpcCommonClientDriver::SetNumPeers(int num_peers) {
   grpc_client_stubs_.resize(num_peers);
   peer_connection_info_.resize(num_peers);
 }
 
-absl::Status GrpcPollingClientDriver::HandleConnect(
+absl::Status GrpcCommonClientDriver::HandleConnect(
     std::string remote_connection_info, int peer) {
   CHECK_GE(peer, 0);
   CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
@@ -134,7 +138,7 @@ struct PendingRpc {
 };
 }  // anonymous namespace
 
-absl::Status GrpcPollingClientDriver::SetupMultiServerChannel(
+absl::Status GrpcCommonClientDriver::SetupMultiServerChannel(
     const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
     const std::vector<int>& peer_ids, int channel_id) {
   CHECK_GE(channel_id, 0);
@@ -162,39 +166,7 @@ absl::Status GrpcPollingClientDriver::SetupMultiServerChannel(
   return absl::OkStatus();
 }
 
-absl::Status GrpcCallbackClientDriver::SetupMultiServerChannel(
-    const ::google::protobuf::RepeatedPtrField<NamedSetting>& settings,
-    const std::vector<int>& peer_ids, int channel_id) {
-  CHECK_GE(channel_id, 0);
-  CHECK_LT(static_cast<size_t>(channel_id), multiserver_stubs_.size());
-  if (transport_ != "tcp") {
-    return absl::UnimplementedError("MultiServerChannel only works for tcp");
-  }
-  std::string addresses;
-  for (const auto& peer_id : peer_ids) {
-    CHECK_LT(static_cast<size_t>(peer_id), peer_connection_info_.size());
-    ServerAddress addr;
-    addr.ParseFromString(peer_connection_info_[peer_id]);
-    if (!addresses.empty()) {
-      addresses += ",";
-    }
-    addresses += addr.socket_address();
-  }
-  auto channel_args = DistbenchCustomChannelArguments();
-  channel_args.SetLoadBalancingPolicyName(
-      GetNamedSettingString(settings, "policy", "round_robin"));
-  std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
-  std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(
-      AddGrpcProtocol(addresses), creds, channel_args);
-  multiserver_stubs_[channel_id] = Traffic::NewStub(channel);
-  return absl::OkStatus();
-}
-
-void GrpcPollingClientDriver::SetNumMultiServerChannels(int num_channels) {
-  multiserver_stubs_.resize(num_channels);
-}
-
-void GrpcCallbackClientDriver::SetNumMultiServerChannels(int num_channels) {
+void GrpcCommonClientDriver::SetNumMultiServerChannels(int num_channels) {
   multiserver_stubs_.resize(num_channels);
 }
 
@@ -386,7 +358,7 @@ void GrpcInlineServerDriver::SetHandler(
   static_cast<TrafficService*>(traffic_service_.get())->SetHandler(handler);
 }
 
-absl::StatusOr<std::string> GrpcInlineServerDriver::HandlePreConnect(
+absl::StatusOr<std::string> GrpcCommonServerDriver::HandlePreConnect(
     std::string_view remote_connection_info, int peer) {
   ServerAddress addr;
   addr.set_ip_address(server_ip_address_.ip());
@@ -397,7 +369,7 @@ absl::StatusOr<std::string> GrpcInlineServerDriver::HandlePreConnect(
   return ret;
 }
 
-void GrpcInlineServerDriver::HandleConnectFailure(
+void GrpcCommonServerDriver::HandleConnectFailure(
     std::string_view local_connection_info) {}
 
 void GrpcInlineServerDriver::ShutdownServer() {
@@ -420,10 +392,10 @@ absl::Status ProtocolDriverGrpc::Initialize(
       GetNamedClientSettingString(pd_opts, "client_type", default_client_type);
   if (client_type == "polling") {
     client_ =
-        std::unique_ptr<ProtocolDriverClient>(new GrpcPollingClientDriver());
+        std::unique_ptr<GrpcCommonClientDriver>(new GrpcPollingClientDriver());
   } else if (client_type == "callback") {
     client_ =
-        std::unique_ptr<ProtocolDriverClient>(new GrpcCallbackClientDriver());
+        std::unique_ptr<GrpcCommonClientDriver>(new GrpcCallbackClientDriver());
   } else {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid GRPC client_type (", client_type, ")"));
@@ -437,10 +409,10 @@ absl::Status ProtocolDriverGrpc::Initialize(
       GetNamedServerSettingString(pd_opts, "server_type", default_server_type);
   if (server_type == "inline") {
     server_ =
-        std::unique_ptr<ProtocolDriverServer>(new GrpcInlineServerDriver());
+        std::unique_ptr<GrpcCommonServerDriver>(new GrpcInlineServerDriver());
   } else if (server_type == "handoff") {
     server_ =
-        std::unique_ptr<ProtocolDriverServer>(new GrpcHandoffServerDriver());
+        std::unique_ptr<GrpcCommonServerDriver>(new GrpcHandoffServerDriver());
   } else if (server_type == "polling") {
     auto threadpool_size = GetNamedServerSettingInt64(
         pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
@@ -450,7 +422,7 @@ absl::Status ProtocolDriverGrpc::Initialize(
     if (!tp.ok()) {
       return tp.status();
     }
-    server_ = std::unique_ptr<ProtocolDriverServer>(
+    server_ = std::unique_ptr<GrpcCommonServerDriver>(
         new GrpcPollingServerDriver(std::move(tp.value())));
   } else {
     return absl::InvalidArgumentError("Invalid GRPC server_type");
@@ -541,26 +513,6 @@ absl::Status GrpcCallbackClientDriver::Initialize(
     const ProtocolDriverOptions& pd_opts) {
   transport_ =
       GetNamedServerSettingString(pd_opts, "transport", kDefaultTransport);
-  return absl::OkStatus();
-}
-
-void GrpcCallbackClientDriver::SetNumPeers(int num_peers) {
-  grpc_client_stubs_.resize(num_peers);
-  peer_connection_info_.resize(num_peers);
-}
-
-absl::Status GrpcCallbackClientDriver::HandleConnect(
-    std::string remote_connection_info, int peer) {
-  CHECK_GE(peer, 0);
-  CHECK_LT(static_cast<size_t>(peer), grpc_client_stubs_.size());
-  peer_connection_info_[peer] = remote_connection_info;
-  ServerAddress addr;
-  addr.ParseFromString(remote_connection_info);
-  auto maybe_channel = CreateClientChannel(addr.socket_address(), transport_);
-  if (!maybe_channel.ok()) {
-    return maybe_channel.status();
-  }
-  grpc_client_stubs_[peer] = Traffic::NewStub(maybe_channel.value());
   return absl::OkStatus();
 }
 
@@ -706,20 +658,6 @@ void GrpcHandoffServerDriver::SetHandler(
       ->SetHandler(handler);
 }
 
-absl::StatusOr<std::string> GrpcHandoffServerDriver::HandlePreConnect(
-    std::string_view remote_connection_info, int peer) {
-  ServerAddress addr;
-  addr.set_ip_address(server_ip_address_.ip());
-  addr.set_port(server_port_);
-  addr.set_socket_address(server_socket_address_);
-  std::string ret;
-  addr.AppendToString(&ret);
-  return ret;
-}
-
-void GrpcHandoffServerDriver::HandleConnectFailure(
-    std::string_view local_connection_info) {}
-
 void GrpcHandoffServerDriver::ShutdownServer() {
   if (server_ != nullptr) {
     server_->Shutdown();
@@ -768,7 +706,7 @@ class PollingRpcHandlerFsm {
       responder_.Finish(response_, grpc::Status::OK, this);
     });
     IncRef();
-    rpc_state_.SetFreeStateFunction([=]() { DecRefAndMaybeDelete(); });
+    rpc_state_.SetFreeStateFunction([this]() { DecRefAndMaybeDelete(); });
     if (*handler_) {
       auto remaining_work = (*handler_)(&rpc_state_);
       if (remaining_work) {
@@ -857,7 +795,7 @@ absl::Status GrpcPollingServerDriver::Initialize(
   }
 
   // Proceed to the server's main loop.
-  handle_rpcs_ = RunRegisteredThread("RpcHandler", [=]() { HandleRpcs(); });
+  handle_rpcs_ = RunRegisteredThread("RpcHandler", [this]() { HandleRpcs(); });
   handle_rpcs_started_.WaitForNotification();
   return absl::OkStatus();
 }
@@ -867,20 +805,6 @@ void GrpcPollingServerDriver::SetHandler(
   handler_ = handler;
   handler_set_.TryToNotify();
 }
-
-absl::StatusOr<std::string> GrpcPollingServerDriver::HandlePreConnect(
-    std::string_view remote_connection_info, int peer) {
-  ServerAddress addr;
-  addr.set_ip_address(server_ip_address_.ip());
-  addr.set_port(server_port_);
-  addr.set_socket_address(server_socket_address_);
-  std::string ret;
-  addr.AppendToString(&ret);
-  return ret;
-}
-
-void GrpcPollingServerDriver::HandleConnectFailure(
-    std::string_view local_connection_info) {}
 
 void GrpcPollingServerDriver::ShutdownServer() {
   handler_set_.TryToNotify();
