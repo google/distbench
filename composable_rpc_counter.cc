@@ -51,7 +51,7 @@ absl::Status ComposableRpcCounter::Initialize(
 
 void ComposableRpcCounter::SetHandler(
     std::function<std::function<void()>(ServerRpcState* state)> handler) {
-  auto server_handler = [=](ServerRpcState* state) {
+  auto server_handler = [this, handler](ServerRpcState* state) {
     std::atomic_fetch_add_explicit(&server_rpc_cnt_, 1,
                                    std::memory_order_relaxed);
     return handler(state);

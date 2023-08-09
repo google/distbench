@@ -961,7 +961,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   }
 
   ++detached_actionlist_threads_;
-  return [=]() {
+  return [this, handler_actionlist_index, state]() {
     RunActionList(handler_actionlist_index, state);
     --detached_actionlist_threads_;
   };

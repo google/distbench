@@ -36,7 +36,7 @@ absl::StatusOr<ProtocolDriverOptions> NodeManager::ResolveProtocolDriverAlias(
 }
 
 NodeManager::NodeManager() {
-  auto resolver = [=](std::string protocol_name)
+  auto resolver = [this](std::string protocol_name)
                       ABSL_SHARED_LOCKS_REQUIRED(mutex_) {
                         return ResolveProtocolDriverAlias(protocol_name);
                       };

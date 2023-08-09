@@ -122,9 +122,9 @@ absl::Status ProtocolDriverHoma::Initialize(
   server_port_ = *port;
 
   client_completion_thread_ = RunRegisteredThread(
-      "HomaClient", [=]() { this->ClientCompletionThread(); });
+      "HomaClient", [this]() { this->ClientCompletionThread(); });
   server_thread_ =
-      RunRegisteredThread("HomaServer", [=]() { this->ServerThread(); });
+      RunRegisteredThread("HomaServer", [this]() { this->ServerThread(); });
   return absl::OkStatus();
 }
 
@@ -346,21 +346,22 @@ void ProtocolDriverHoma::ServerThread() {
       delete rpc_state->request;
       delete rpc_state;
     });
-    rpc_state->SetSendResponseFunction([=, &pending_actionlist_threads]() {
-      std::string txbuf;
-      rpc_state->response.SerializeToString(&txbuf);
-      if (txbuf.empty()) {
-        // Homa can't send a 0 byte message :(
-        txbuf = empty_message_placeholder;
-      }
-      int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
-                                 txbuf.length(), &src_addr, rpc_id);
-      if (error) {
-        LOG(ERROR) << "homa_reply for " << rpc_id
-                   << " returned error: " << strerror(errno);
-      }
-      --pending_actionlist_threads;
-    });
+    rpc_state->SetSendResponseFunction(
+        [=, this, &pending_actionlist_threads]() {
+          std::string txbuf;
+          rpc_state->response.SerializeToString(&txbuf);
+          if (txbuf.empty()) {
+            // Homa can't send a 0 byte message :(
+            txbuf = empty_message_placeholder;
+          }
+          int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
+                                     txbuf.length(), &src_addr, rpc_id);
+          if (error) {
+            LOG(ERROR) << "homa_reply for " << rpc_id
+                       << " returned error: " << strerror(errno);
+          }
+          --pending_actionlist_threads;
+        });
     auto fct_action_list_thread = rpc_handler_(rpc_state);
     ++pending_actionlist_threads;
     if (fct_action_list_thread)
