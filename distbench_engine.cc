@@ -1422,7 +1422,7 @@ void DistBenchEngine::ActionListState::CancelActivities() {
   bool finished_some_actions = false;
   for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
-    if (action_state->finished) {
+    if (action_state->finished || !action_state->started) {
       continue;
     }
     if (action_state->action->proto.has_activity_config_name()) {
