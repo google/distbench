@@ -14,6 +14,8 @@
 
 #include "distbench_test_sequencer.h"
 
+#include <fnmatch.h>
+
 #include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
 #include "distbench_netutils.h"
@@ -258,10 +260,30 @@ absl::StatusOr<std::map<std::string, std::set<std::string>>> ConstraintSolver(
     idle_nodes.erase(it);
   }
 
+  google::protobuf::Map<std::string, ConstraintList> constraints;
+
+  for (const auto& [key, value] : test.service_constraints()) {
+    if (key.find('*') != std::string::npos) {
+      for (const auto& service : all_services) {
+        if (!fnmatch(key.c_str(), service.c_str(), FNM_PATHNAME)) {
+          if (test.service_constraints().find(service) !=
+              test.service_constraints().end()) {
+            LOG(WARNING) << "not overriding explicit constraints for "
+                         << service;
+            continue;
+          }
+          constraints[service] = value;
+        }
+      }
+    } else {
+      constraints[key] = value;
+    }
+  }
+
   for (const auto& service : all_services) {
     bool service_placed;
-    auto it = test.service_constraints().find(service);
-    if (it == test.service_constraints().end()) continue;
+    auto it = constraints.find(service);
+    if (it == constraints.end()) continue;
     service_placed = false;
     for (const auto& node : idle_nodes) {
       if (CheckConstraintList(it->second, node_attributes[node])) {
@@ -312,7 +334,15 @@ absl::StatusOr<std::map<std::string, std::set<std::string>>> ConstraintSolver(
   for (const auto& node : node_service_map) {
     if (node.second.empty()) continue;
 
-    LOG(INFO) << node.first << ": " << absl::StrJoin(node.second, ",");
+    std::string attributes;
+    for (const auto& attribute : node_attributes[node.first]) {
+      if (!attributes.empty()) {
+        attributes += ", ";
+      }
+      attributes += attribute.ShortDebugString();
+    }
+    LOG(INFO) << node.first << ": [" << absl::StrJoin(node.second, ",") << "] {"
+              << attributes << "}";
   }
   return node_service_map;
 }

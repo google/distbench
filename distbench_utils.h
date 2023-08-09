@@ -248,7 +248,6 @@ void SetSerializedSize(T* msg, size_t target_size) {
   }
 }
 
-
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

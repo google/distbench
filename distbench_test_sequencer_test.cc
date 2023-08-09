@@ -942,6 +942,60 @@ tests {
   EXPECT_EQ(invocations_bitmask, (1 << 25) - 1);
 }
 
+TEST(DistBenchTestSequencer, WildcardAttributeBasedPlacement) {
+  RepeatedPtrField<Attribute> rack_a_attributes;
+  RepeatedPtrField<Attribute> rack_b_attributes;
+  Attribute attribute;
+
+  attribute.set_name("rack");
+  attribute.set_value("A");
+  *rack_a_attributes.Add() = attribute;
+  attribute.set_value("B");
+  *rack_b_attributes.Add() = attribute;
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(10);
+  client->set_x_size(2);
+  client->set_y_size(5);
+
+  ConstraintList constraint_list;
+  auto* constraint_set = constraint_list.add_constraint_sets();
+  auto* constraint_a = constraint_set->add_constraints();
+  constraint_a->set_attribute_name("rack");
+  constraint_a->set_relation(Constraint_Relation_EQUAL);
+  constraint_a->add_string_values("B");
+  (*test->mutable_service_constraints())["client/0/*"] = constraint_list;
+
+  constraint_a->clear_string_values();
+  constraint_a->add_string_values("A");
+  (*test->mutable_service_constraints())["client/1/*"] = constraint_list;
+
+  std::map<std::string, RepeatedPtrField<Attribute>> node_attributes = {
+      {"node0", rack_a_attributes}, {"node1", rack_a_attributes},
+      {"node2", rack_a_attributes}, {"node3", rack_a_attributes},
+      {"node4", rack_a_attributes}, {"node5", rack_b_attributes},
+      {"node6", rack_b_attributes}, {"node7", rack_b_attributes},
+      {"node8", rack_b_attributes}, {"node9", rack_b_attributes},
+  };
+  LOG(INFO) << test->DebugString();
+  auto maybe_map = ConstraintSolver(test_sequence.tests(0), node_attributes);
+  ASSERT_OK(maybe_map.status());
+  EXPECT_EQ(maybe_map.value()["node0"], std::set<std::string>{"client/1/0"});
+  EXPECT_EQ(maybe_map.value()["node1"], std::set<std::string>{"client/1/1"});
+  EXPECT_EQ(maybe_map.value()["node2"], std::set<std::string>{"client/1/2"});
+  EXPECT_EQ(maybe_map.value()["node3"], std::set<std::string>{"client/1/3"});
+  EXPECT_EQ(maybe_map.value()["node4"], std::set<std::string>{"client/1/4"});
+  EXPECT_EQ(maybe_map.value()["node5"], std::set<std::string>{"client/0/0"});
+  EXPECT_EQ(maybe_map.value()["node6"], std::set<std::string>{"client/0/1"});
+  EXPECT_EQ(maybe_map.value()["node7"], std::set<std::string>{"client/0/2"});
+  EXPECT_EQ(maybe_map.value()["node8"], std::set<std::string>{"client/0/3"});
+  EXPECT_EQ(maybe_map.value()["node9"], std::set<std::string>{"client/0/4"});
+}
+
 TEST(DistBenchTestSequencer, AttributeBasedPlacement) {
   RepeatedPtrField<Attribute> rack_a_attributes;
   RepeatedPtrField<Attribute> rack_b_attributes;
