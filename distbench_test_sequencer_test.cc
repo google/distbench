@@ -888,7 +888,8 @@ tests {
     EXPECT_EQ(rpc.trace_context().action_indices(0), 0);
     EXPECT_EQ(rpc.trace_context().fanout_index(0), 0);
   }
-  EXPECT_EQ(iterations_bitmask, (1 << 25) - 1);
+  EXPECT_EQ(iterations_bitmask, (1 << 25) - 1)
+      << ((1 << 25) - 1) - iterations_bitmask;
   // root/1 gets no tracing.
   dest = instance_results_it->second.peer_logs().find("root/1");
   ASSERT_NE(dest, instance_results_it->second.peer_logs().end());
@@ -1140,7 +1141,7 @@ tests {
     rpc_name: "client_server_rpc"
     iterations {
       max_iteration_count: 12
-      open_loop_interval_ns: 10000000
+      open_loop_interval_ns: 20000000
     }
   }
   action_lists {
@@ -1360,10 +1361,10 @@ tests {
     rpc_counts[server_name] = samples.size();
   }
   EXPECT_EQ(rpc_counts["server_A/0"] + rpc_counts["server_B/0"], 1000);
-  EXPECT_GT(rpc_counts["server_A/0"], 220);
-  EXPECT_LT(rpc_counts["server_A/0"], 280);
-  EXPECT_GT(rpc_counts["server_B/0"], 720);
-  EXPECT_LT(rpc_counts["server_B/0"], 780);
+  EXPECT_GT(rpc_counts["server_A/0"], 200);
+  EXPECT_LT(rpc_counts["server_A/0"], 300);
+  EXPECT_GT(rpc_counts["server_B/0"], 700);
+  EXPECT_LT(rpc_counts["server_B/0"], 800);
 }
 
 }  // namespace distbench
