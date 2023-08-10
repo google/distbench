@@ -2062,29 +2062,26 @@ void DistBenchEngine::RunRpcActionIteration(
     int peer_instance = current_targets[i];
     ++pending_rpcs_;
     ClientRpcState* rpc_state;
-    {
-      absl::MutexLock m(&peers_[rpc_service_index][peer_instance].mutex);
-      rpc_state = &iteration_state->rpc_states[i];
-      rpc_state->request = common_request;
-      if (do_trace) {
-        rpc_state->request.mutable_trace_context()->add_fanout_index(i);
-      }
-      SetSerializedSize(&rpc_state->request, request_payload_size);
+    rpc_state = &iteration_state->rpc_states[i];
+    rpc_state->request = common_request;
+    if (do_trace) {
+      rpc_state->request.mutable_trace_context()->add_fanout_index(i);
+    }
+    SetSerializedSize(&rpc_state->request, request_payload_size);
 #ifndef NDEBUG
-      CHECK_EQ(
-          rpc_state->request.trace_context().engine_ids().size(),
-          rpc_state->request.trace_context().actionlist_invocations().size());
-      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
-               rpc_state->request.trace_context().actionlist_indices().size());
-      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
-               rpc_state->request.trace_context().action_indices().size());
-      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
-               rpc_state->request.trace_context().action_iterations().size());
-      CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
-               rpc_state->request.trace_context().fanout_index().size());
-      // CHECK_EQ(0, rpc_state->request.trace_context().iterations().size());
+    CHECK_EQ(
+        rpc_state->request.trace_context().engine_ids().size(),
+        rpc_state->request.trace_context().actionlist_invocations().size());
+    CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+             rpc_state->request.trace_context().actionlist_indices().size());
+    CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+             rpc_state->request.trace_context().action_indices().size());
+    CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+             rpc_state->request.trace_context().action_iterations().size());
+    CHECK_EQ(rpc_state->request.trace_context().engine_ids().size(),
+             rpc_state->request.trace_context().fanout_index().size());
+    // CHECK_EQ(0, rpc_state->request.trace_context().iterations().size());
 #endif
-    }  // End of MutexLock m
     rpc_state->prior_start_time = rpc_state->start_time;
     rpc_state->start_time = clock_->Now();
     auto f = [this, rpc_state, iteration_state, peer_instance]() mutable {
