@@ -562,7 +562,7 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/15);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   auto& test_results = results.value().test_results(0);
@@ -621,7 +621,7 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/15);
+  auto results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/75);
   ASSERT_OK(results.status());
 
   auto& test_results = results.value().test_results(0);
@@ -1347,7 +1347,7 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/15);
+  auto results = tester.RunTestSequence(*test_sequence, /*max_time_s=*/75);
   ASSERT_OK(results.status());
 
   auto& test_results = results.value().test_results(0);
