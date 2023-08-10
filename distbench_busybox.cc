@@ -275,17 +275,6 @@ int MainTestPreview(std::vector<char*>& arguments) {
               << maybe_test_sequence.status() << "\n";
     exit(1);
   }
-  distbench::TestSequence test_sequence = maybe_test_sequence.value();
-  test_sequence.clear_tests();
-  for (auto test : input_sequence.value().tests()) {
-    if (!test.node_service_bundles().empty()) {
-      std::cout << "WARNING: node_service_bundles will be overwritten\n";
-    }
-    test.clear_node_service_bundles();
-    auto& bundles = *test.mutable_node_service_bundles();
-    bundles["node0"] = AllServiceInstances(test);
-    *test_sequence.add_tests() = std::move(test);
-  }
   const int TEST_TIMEOUT_S = /*max_time_s=*/3000;
   distbench::DistBenchTester tester;
   absl::Status status = tester.Initialize();
@@ -293,7 +282,8 @@ int MainTestPreview(std::vector<char*>& arguments) {
     std::cerr << "Initialize failed with error:" << status << "\n";
     exit(1);
   }
-  auto results = tester.RunTestSequence(test_sequence, TEST_TIMEOUT_S);
+  auto results = tester.RunTestSequenceOnSingleNodeManager(
+      maybe_test_sequence.value(), TEST_TIMEOUT_S);
   if (!results.ok()) {
     std::cerr << "RunTestSequence failed with error:" << results.status()
               << "\n";

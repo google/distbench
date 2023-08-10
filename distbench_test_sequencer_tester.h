@@ -26,6 +26,8 @@ class DistBenchTester {
   absl::Status Initialize();
   absl::StatusOr<TestSequenceResults> RunTestSequence(
       TestSequence test_sequence, int timeout_s);
+  absl::StatusOr<TestSequenceResults> RunTestSequenceOnSingleNodeManager(
+      TestSequence test_sequence, int timeout_s);
 
  private:
   absl::Status Resize(size_t num_nodes);

@@ -1156,7 +1156,8 @@ tests {
   ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
-  auto maybe_results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/75);
+  auto maybe_results = tester.RunTestSequenceOnSingleNodeManager(
+      *test_sequence, /*timeout_s=*/75);
   ASSERT_OK(maybe_results.status());
 
   const auto& test_results = maybe_results.value().test_results(0);
@@ -1237,7 +1238,8 @@ tests {
   ASSERT_TRUE(test_sequence.ok());
 
   TestSequenceResults results;
-  auto maybe_results = tester.RunTestSequence(*test_sequence, /*timeout_s=*/75);
+  auto maybe_results = tester.RunTestSequenceOnSingleNodeManager(
+      *test_sequence, /*timeout_s=*/75);
   ASSERT_OK(maybe_results.status());
 
   const auto& test_results = maybe_results.value().test_results(0);
