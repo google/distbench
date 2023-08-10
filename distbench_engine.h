@@ -306,6 +306,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
   void StartIteration(std::shared_ptr<ActionIterationState> iteration_state);
   void FinishIteration(std::shared_ptr<ActionIterationState> iteration_state);
 
+  void RunRpcActionIterationCommon(
+      std::shared_ptr<ActionIterationState> iteration_state,
+      std::vector<int> targets, bool multiserver);
+
   void RunRpcActionIteration(
       std::shared_ptr<ActionIterationState> iteration_state);
   void RunMultiServerChannelRpcActionIteration(
