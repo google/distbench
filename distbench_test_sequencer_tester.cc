@@ -128,4 +128,21 @@ absl::StatusOr<TestSequenceResults> DistBenchTester::RunTestSequence(
   return results;
 }
 
+absl::StatusOr<TestSequenceResults>
+DistBenchTester::RunTestSequenceOnSingleNodeManager(TestSequence test_sequence,
+                                                    int timeout_s) {
+  auto input_sequence = test_sequence;
+  test_sequence.clear_tests();
+  for (auto test : input_sequence.tests()) {
+    if (!test.node_service_bundles().empty()) {
+      std::cout << "WARNING: node_service_bundles will be overwritten\n";
+    }
+    test.clear_node_service_bundles();
+    auto& bundles = *test.mutable_node_service_bundles();
+    bundles["node0"] = AllServiceInstances(test);
+    *test_sequence.add_tests() = std::move(test);
+  }
+  return RunTestSequence(test_sequence, timeout_s);
+}
+
 }  // namespace distbench
