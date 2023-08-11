@@ -1413,7 +1413,7 @@ function variable_response_multi_level_rpc_traffic_pattern_setup() {
   set_parameter_default root_count 4
   set_parameter_default leaf_count 20
   set_parameter_default exact_size "" "For convenience you can set the exact size to an integer"
-  if [[ -v params_dict[exact_size] ]]; then
+  if [[ -v params_dict[exact_size] && -n "${params_dict[exact_size]}" ]]; then
     if [[ -v params_dict[lower_size] || -v params_dict[upper_size] ]]; then
       log_stderr "Only exact_size OR lower_size and upper_size can be specified"
       exit 14
