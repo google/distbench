@@ -59,6 +59,38 @@ class DefaultFormatter(Formatter):
     return output_str
 
 
+class HomaFormatter(Formatter):
+  """Inherits from Formatter class.
+
+  It takes the distbench results and puts all the rpc's sizes and 
+  latencies in microseconds into a text file.
+  """
+
+  # this function takes a list of rpc and
+  # converts them into an intermediate format
+  def summarize(self, rpc_list):
+    summary = []
+    for rpc in rpc_list:
+      self.total_samples += 1
+      if rpc.warmup:
+        self.warmup_samples += 1
+      if self.consider_warmups or not rpc.warmup:
+        summary.append(tuple([rpc.request_size, rpc.latency_ns]))
+    return summary
+
+  # this function takes datasets in the intermediate format,
+  # possibly a concatenation
+  # of high level summaries, and converts them into a string which
+  # can be written into a file
+  def format_file(self, summary):
+    output_str = ""
+    if not self.supress_header:
+      output_str += "{: <15} {: <}\n".format("Request_size", "Latency_us")
+    for item in summary:
+      output_str += "{: <15} {: <}\n".format(item[0], item[1] / 1000)
+    return output_str
+
+
 class StatisticFormatter(Formatter):
   """Takes the rpc's, groups them by sizes and puts statistics info about each message size in a text file."""
 
@@ -466,6 +498,8 @@ if __name__ == "__main__":
     formatter = TraceContextFormatter(
         supress_header_flag, consider_warmups_flag
     )
+  elif output_format_flag == "homa":
+    formatter = HomaFormatter(supress_header_flag, consider_warmups_flag)
   else:
     print("Output format %s not supported" % output_format_flag)
     exit()
