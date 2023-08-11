@@ -101,31 +101,31 @@ function run_distbench {
     case $(basename ${f}) in
     *-homa.pb.gz)
       ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_homa_${WORKLOAD}.rtts;;
+      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_homa_${WORKLOAD}.rtts --output_format=homa;;
 
     *-grpc_polling_inline.pb.gz) 
       ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_polling_${WORKLOAD}.rtts;;
+      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_polling_${WORKLOAD}.rtts --output_format=homa;;
 
     *-grpc_polling_polling.pb.gz) 
       ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_inline_${WORKLOAD}.rtts;;
+      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_inline_${WORKLOAD}.rtts --output_format=homa;;
 
     *-grpc_polling_handoff.pb.gz) 
       ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_handoff_${WORKLOAD}.rtts;;
+      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_handoff_${WORKLOAD}.rtts --output_format=homa;;
 
     *-grpc_polling_inline_homa.pb.gz) 
       ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_polling_homa_${WORKLOAD}.rtts;;
+      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_polling_homa_${WORKLOAD}.rtts --output_format=homa;;
 
     *-grpc_polling_polling_homa.pb.gz) 
       ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_inline_homa_${WORKLOAD}.rtts;;
+      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_inline_homa_${WORKLOAD}.rtts --output_format=homa;;
 
     *-grpc_polling_handoff_homa.pb.gz) 
       ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_handoff_homa_${WORKLOAD}.rtts;;
+      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_handoff_homa_${WORKLOAD}.rtts --output_format=homa;;
     esac      
   done
 }
