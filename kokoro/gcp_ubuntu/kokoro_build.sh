@@ -105,6 +105,9 @@ print_header_and_run "Bazel fetch" \
 print_header_and_run "Bazel test test_builder" \
   bazel_basic test test_builder:all
 
+print_header_and_run "Bazel test analysis" \
+  bazel_basic test analysis:all
+
 print_header_and_run "Bazel build" \
   bazel_basic build :all --//:with-mercury
 
