@@ -154,7 +154,7 @@ Test configuration metadata:
 #   Arguments to pass on to the echo command.
 ################################################################################
 function log_stderr() {
-  echo -e > /dev/stderr "$@"
+  echo -e "$@" 1>&2
 }
 
 ################################################################################
