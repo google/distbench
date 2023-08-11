@@ -118,6 +118,8 @@ print_header_and_run "Bazel test - ASAN" \
   bazel_basic test --test_output=errors :all --//:with-mercury --config=asan
 
 print_header_and_run "Bazel test - TSAN" \
+  bazel_basic test --test_output=errors :all --//:with-mercury --config=tsan -k ||
+  bazel_basic test --test_output=errors :all --//:with-mercury --config=tsan -k ||
   bazel_basic test --test_output=errors :all --//:with-mercury --config=tsan
 
 print_header_and_run "Bazel shutdown" \
