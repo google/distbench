@@ -65,6 +65,15 @@ test_builder -o . clique:mercury:transport=custom_transport
 test_builder -o . clique:mercury:threadpool_size=16:ipv6
 test_builder -o . clique:mercury:threadpool_type=elastic:ipv4
 
+test_builder -o . variable_response_multi_level_rpc:grpc
+test_builder -o . variable_response_multi_level_rpc:homa
+test_builder -o . variable_response_multi_level_rpc:qps=5000
+test_builder -o . variable_response_multi_level_rpc:root_size=5
+test_builder -o . variable_response_multi_level_rpc:leaf_size=34
+test_builder -o . variable_response_multi_level_rpc:exact_size=35000
+test_builder -o . variable_response_multi_level_rpc:lower_size=1000
+test_builder -o . variable_response_multi_level_rpc:upper_size=65000
+
 # Generate a parameter sweep:
 test_builder -o - parameter_sweep rpc_interval_us 4000 1000 8000 clique \
   > sweep1.config
