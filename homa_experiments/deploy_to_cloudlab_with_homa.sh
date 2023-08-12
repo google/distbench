@@ -17,23 +17,27 @@
 #
 # NOTE: In case your local username does not match the cloudlab username
 # you can set the CLOUDLAB_USER environment variable.
-set -ex
+set -eu
 PATH+=":$PWD"
 
-if [[ $# -ne 2 ]]; then
-  echo usage:$0 user@cloudlabhost num_nodes > /dev/stderr
+if [[ $# -ne 1 ]]; then
+  echo usage:$0 user@cloudlabhost > /dev/stderr
   exit 1
 fi
 
-USER_HOST="$1"
-NUM_NODES=$2
-echo "Installing homa module on cluster"
-./install_homa.sh ${USER_HOST} ${NUM_NODES}
+function clssh() { ssh -o 'StrictHostKeyChecking no' -o "User ${CLOUDLAB_USER:-$USER}" "${@}"; }
 
+USER_HOST="$1"
 echo "Getting cluster domain name"
-CLUSTER_DOMAINNAME="$(ssh $USER_HOST hostname | cut -f 2- -d.)"
+CLUSTER_DOMAINNAME="$(clssh $USER_HOST hostname | cut -f 2- -d.)"
+echo "Getting cluster size"
+NUM_NODES="$(clssh $USER_HOST cat /etc/hosts | grep node | grep ^10 | wc -l)"
+echo -e "\n\nYour cluster seems to be named ${CLUSTER_DOMAINNAME} and consist of ${NUM_NODES} nodes\n"
 GIT_REPO=https://github.com/google/distbench.git
 GIT_BRANCH=main
+
+echo "Installing homa module on cluster"
+./install_homa.sh ${USER_HOST} ${NUM_NODES}
 
 cd ..
 echo "Deploying to cloudlab"
