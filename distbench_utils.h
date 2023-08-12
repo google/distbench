@@ -231,6 +231,8 @@ bool CheckStringConstraint(const std::string& string_value,
 size_t GetPaddingForSerializedSize(GenericRequestResponse* msg,
                                    size_t target_size);
 
+size_t MetaDataLength(std::string_view msg_fragment, size_t original_length);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
