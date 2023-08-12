@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <sys/mman.h>
 
+#include "distbench_payload.h"
 #include "external/homa_module/homa.h"
 #include "glog/logging.h"
 
