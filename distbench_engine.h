@@ -22,6 +22,7 @@
 #include "absl/random/random.h"
 #include "activity.h"
 #include "distbench.grpc.pb.h"
+#include "distbench_payload.h"
 #include "distbench_thread_support.h"
 #include "distbench_threadpool.h"
 #include "distbench_utils.h"
@@ -42,12 +43,6 @@ class ThreadSafeDictionary {
   std::vector<std::string> contents_;
   absl::flat_hash_map<std::string, size_t> contents_map_;
   mutable absl::Mutex mutex_;
-};
-
-class PayloadAllocator {
- public:
-  virtual absl::Cord AllocPayloadCord(size_t size);
-  void AddPadding(GenericRequestResponse* msg, size_t padding);
 };
 
 class DistBenchEngine : public ConnectionSetup::Service {

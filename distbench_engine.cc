@@ -43,21 +43,6 @@ enum kFieldNames {
 
 }  // namespace
 
-absl::Cord PayloadAllocator::AllocPayloadCord(size_t size) {
-  if (size > 0) {
-    return absl::Cord(std::move(std::string(size, 'D')));
-  }
-  return absl::Cord(std::move(std::string(0, 'D')));
-}
-
-void PayloadAllocator::AddPadding(GenericRequestResponse* msg,
-                                  size_t target_size) {
-  size_t padding = GetPaddingForSerializedSize(msg, target_size);
-  if (padding > 0) {
-    msg->set_payload(AllocPayloadCord(padding));
-  }
-}
-
 ThreadSafeDictionary::ThreadSafeDictionary() {
   absl::MutexLock m(&mutex_);
   contents_.reserve(100);
