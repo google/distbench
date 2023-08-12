@@ -1896,8 +1896,7 @@ void DistBenchEngine::StartIteration(
 // This works fine for 1-at-a-time closed-loop iterations:
 void DistBenchEngine::RunRpcActionIterationCommon(
     std::shared_ptr<ActionIterationState> iteration_state,
-    std::vector<int> targets,
-    bool multiserver) {
+    std::vector<int> targets, bool multiserver) {
   ActionState* action_state = iteration_state->action_state;
   if (targets.empty()) {
     FinishIteration(iteration_state);
@@ -1982,7 +1981,8 @@ void DistBenchEngine::RunRpcActionIterationCommon(
 #endif
     rpc_state->prior_start_time = rpc_state->start_time;
     rpc_state->start_time = clock_->Now();
-    auto f = [this, multiserver, rpc_state, iteration_state, peer_instance]() mutable {
+    auto f = [this, multiserver, rpc_state, iteration_state,
+              peer_instance]() mutable {
       ActionState* action_state = iteration_state->action_state;
       rpc_state->end_time = clock_->Now();
       if (!rpc_state->response.error_message().empty()) {
@@ -2023,7 +2023,8 @@ void DistBenchEngine::RunMultiServerChannelRpcActionIteration(
   ActionState* action_state = iteration_state->action_state;
   const int rpc_index = action_state->rpc_index;
   const auto& rpc_def = client_rpc_table_[rpc_index].rpc_definition;
-  RunRpcActionIterationCommon(iteration_state, {rpc_def.multiserver_channel_index}, true);
+  RunRpcActionIterationCommon(iteration_state,
+                              {rpc_def.multiserver_channel_index}, true);
 }
 
 void DistBenchEngine::RunRpcActionIteration(
