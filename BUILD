@@ -17,7 +17,7 @@ bool_flag(
 
 bool_flag(
     name = "with-homa",
-    build_setting_default = False,
+    build_setting_default = True,
 )
 
 bool_flag(
