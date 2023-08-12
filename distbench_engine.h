@@ -22,6 +22,7 @@
 #include "absl/random/random.h"
 #include "activity.h"
 #include "distbench.grpc.pb.h"
+#include "distbench_payload.h"
 #include "distbench_thread_support.h"
 #include "distbench_threadpool.h"
 #include "distbench_utils.h"
@@ -358,6 +359,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::map<std::string, int> activity_config_indices_map_;
   std::map<std::string, int> rpc_replay_trace_indices_map_;
   std::vector<ParsedActivityConfig> stored_activity_config_;
+
+  std::unique_ptr<PayloadAllocator> payload_allocator_;
 
   std::unique_ptr<std::atomic<int>[]> actionlist_invocation_counts;
 

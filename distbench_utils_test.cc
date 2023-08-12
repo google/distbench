@@ -363,26 +363,4 @@ TEST(IP6to4IsPrivate, NotPrivate6) {
   EXPECT_FALSE(addr.isPrivate());
 }
 
-TEST(SetSerializedSize, LargeRangesExact) {
-  GenericRequestResponse request;
-  // Interesting things happen near powers of 128, so we test near
-  // 128, 128^2, 128^3, 128^4
-  for (int i = 1; i < 5; ++i) {
-    int size = 1 << (7 * i);
-    // We test a range of values in the vicinity of each power of 128:
-    for (int j = -16; j < 16; ++j) {
-      SetSerializedSize(&request, size + j);
-      ASSERT_EQ(request.ByteSizeLong(), size + j);
-    }
-  }
-}
-
-TEST(SetSerializedSize, SmallRangeCloseEnough) {
-  GenericRequestResponse request;
-  for (int i = 0; i < 256; ++i) {
-    SetSerializedSize(&request, i);
-    ASSERT_GE(request.ByteSizeLong(), i);
-  }
-}
-
 }  // namespace distbench

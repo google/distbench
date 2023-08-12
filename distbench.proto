@@ -319,6 +319,19 @@ message GenericRequestResponse {
   // It's only use is to produce protobufs that encode to an exact length.
   optional bool trim = 14;
   optional bytes payload = 15 [ctype = CORD];
+
+  ////////////////////////////
+  // Unit-Test Only fields: //
+  ////////////////////////////
+
+  optional fixed32 before_payload32 = 12;
+  optional fixed64 before_payload64 = 13;
+  optional fixed32 after_payload32 = 16;
+  optional fixed64 after_payload64 = 17;
+
+  // No new fields can be added with tags greater than 15. Do not do it.
+  // It will break MetaDataLength().
+  reserved 18 to 1000000;
 }
 
 message ServerAddress {

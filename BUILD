@@ -99,6 +99,34 @@ cc_library(
 )
 
 cc_library(
+    name = "distbench_payload",
+    srcs = [
+        "distbench_payload.cc",
+    ],
+    hdrs = [
+        "distbench_payload.h",
+    ],
+    deps = [
+        ":distbench_cc_proto",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_github_google_glog//:glog"
+    ],
+)
+
+cc_test(
+    name = "distbench_payload_test",
+    size = "medium",
+    srcs = [
+        "distbench_payload_test.cc",
+    ],
+    deps = [
+        ":distbench_payload",
+        ":gtest_utils"
+    ],
+)
+
+cc_library(
     name = "distbench_utils",
     srcs = [
         "distbench_utils.cc",
@@ -248,6 +276,7 @@ cc_library(
     ],
     deps = [
         ":distbench_netutils",
+        ":distbench_payload",
         ":distbench_thread_support",
         ":distbench_utils",
         ":protocol_driver_api",
@@ -443,6 +472,7 @@ cc_library(
         ":activity_api",
         ":distbench_cc_grpc_proto",
         ":distbench_netutils",
+        ":distbench_payload",
         ":distbench_thread_support",
         ":distbench_threadpool_lib",
         ":joint_distribution_sample_generator",
