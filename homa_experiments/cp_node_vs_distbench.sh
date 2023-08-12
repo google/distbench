@@ -42,7 +42,7 @@ eval set -- "${parsed_opts}"
 
 while getopts "${ALLOWED_OPTS}" flag "$@"; do
   case "${flag}" in
-    x) EXPERIMENTS+="${OPTARG}" ;;
+    x) EXPERIMENTS+=("${OPTARG}") ;;
     n) NUMBER_OF_NODES="${OPTARG}" ;;
     w) WORKLOAD="${OPTARG}" ;;
     b) GBPS="${OPTARG}" ;;
@@ -52,15 +52,13 @@ while getopts "${ALLOWED_OPTS}" flag "$@"; do
   esac
 done
 
-if [${OUTPUT_DIRECTORY} == '']; then
+if [ ${OUTPUT_DIRECTORY} == '' ]; then
   echo "You must specify an output directory (-o)"
   exit;
 fi
 
-if [ ${#EXPERIMENTS[@]} -gt 0 ]
+if [ ${#EXPERIMENTS[@]} -ne 0 ]
 then
-echo ''
-else
 EXPERIMENTS=("homa", "grpc")
 fi
 
