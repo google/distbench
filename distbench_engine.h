@@ -44,6 +44,12 @@ class ThreadSafeDictionary {
   mutable absl::Mutex mutex_;
 };
 
+class PayloadAllocator {
+ public:
+  virtual absl::Cord AllocPayloadCord(size_t size);
+  void AddPadding(GenericRequestResponse* msg, size_t padding);
+};
+
 class DistBenchEngine : public ConnectionSetup::Service {
  public:
   explicit DistBenchEngine(std::unique_ptr<ProtocolDriver> pd);
@@ -358,6 +364,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::map<std::string, int> activity_config_indices_map_;
   std::map<std::string, int> rpc_replay_trace_indices_map_;
   std::vector<ParsedActivityConfig> stored_activity_config_;
+
+  std::unique_ptr<PayloadAllocator> payload_allocator_;
 
   std::unique_ptr<std::atomic<int>[]> actionlist_invocation_counts;
 

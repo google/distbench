@@ -891,4 +891,55 @@ bool CheckConstraintList(const ConstraintList& constraint_list,
   return true;
 }
 
+size_t GetPaddingForSerializedSize(GenericRequestResponse* msg,
+                                   size_t target_size) {
+  if (target_size == msg->ByteSizeLong()) {
+    return 0;
+  }
+  msg->clear_payload();
+  msg->clear_trim();
+  if (target_size <= msg->ByteSizeLong()) {
+    return 0;
+  }
+
+  msg->set_payload(std::move(std::string()));
+  size_t start_size = msg->ByteSizeLong();
+  if (start_size >= target_size) {
+    return 0;
+  }
+
+  auto VarIntSize = [](uint64_t val) {
+    int ret = 1;
+    while (val >= 128) {
+      val >>= 7;
+      ret++;
+    }
+    return ret;
+  };
+
+  ssize_t pad = target_size - start_size;
+  ssize_t field_length_delta = VarIntSize(pad) - VarIntSize(0);
+
+  if (field_length_delta > 0) {
+    // This only happens when the payload length is > 128, so it is always
+    // safe to shorten it. The problem is that if the length is just over
+    // 128^N then shortening it may reduce the number of bytes in the length,
+    // which would leave the proto 1 byte too short. Adding one byte will then
+    // make it 1 byte too long again. To avoid oscilating around the desired
+    // length we set the trim field, which adds 2 bytes to the encoding.
+    ssize_t new_pad = pad - field_length_delta;
+
+    // This should always be 0 or 1:
+    ssize_t field_length_delta2 = VarIntSize(pad) - VarIntSize(new_pad);
+
+    if (field_length_delta2 > 0) {
+      new_pad += field_length_delta2;
+      msg->set_trim(false);
+      new_pad -= 2;
+    }
+    pad = new_pad;
+  }
+  return pad;
+}
+
 }  // namespace distbench

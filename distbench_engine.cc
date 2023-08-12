@@ -43,6 +43,21 @@ enum kFieldNames {
 
 }  // namespace
 
+absl::Cord PayloadAllocator::AllocPayloadCord(size_t size) {
+  if (size > 0) {
+    return absl::Cord(std::move(std::string(size, 'D')));
+  }
+  return absl::Cord(std::move(std::string(0, 'D')));
+}
+
+void PayloadAllocator::AddPadding(GenericRequestResponse* msg,
+                                  size_t target_size) {
+  size_t padding = GetPaddingForSerializedSize(msg, target_size);
+  if (padding > 0) {
+    msg->set_payload(AllocPayloadCord(padding));
+  }
+}
+
 ThreadSafeDictionary::ThreadSafeDictionary() {
   absl::MutexLock m(&mutex_);
   contents_.reserve(100);
@@ -118,6 +133,7 @@ absl::Status DistBenchEngine::InitializePayloadsMap() {
     payload_map_[payload_spec_name] = payload_spec;
   }
 
+  payload_allocator_ = std::make_unique<PayloadAllocator>();
   return absl::OkStatus();
 }
 
@@ -942,7 +958,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   if (state->request->has_response_payload_size()) {
     response_payload_size = state->request->response_payload_size();
   }
-  SetSerializedSize(&state->response, response_payload_size);
+  payload_allocator_->AddPadding(&state->response, response_payload_size);
 
   if (rpc_def.rpc_spec.has_multi_server_channel_name()) {
     state->response.set_server_instance(service_instance_);
@@ -1093,6 +1109,7 @@ struct RpcReplayTraceRunner {
   }
 
   RpcReplayTraceLog Run(int local_instance, int64_t traffic_start_time_ns) {
+    PayloadAllocator replay_payload_allocator;
     SetupDependencies(local_instance, traffic_start_time_ns);
     while (true) {
       rpc_mutex.Lock();
@@ -1157,7 +1174,8 @@ struct RpcReplayTraceRunner {
             int pd_id = logical_to_pdid[record.server_instance()];
             CHECK_GE(pd_id, 0)
                 << "record.server_instance() = " << record.DebugString();
-            SetSerializedSize(&rpc_state->request, record.request_size());
+            replay_payload_allocator.AddPadding(&rpc_state->request,
+                                                record.request_size());
             rpc_state->request.set_response_payload_size(
                 record.response_size());
             pd->InitiateRpc(pd_id, rpc_state, f);
@@ -1964,7 +1982,7 @@ void DistBenchEngine::RunRpcActionIterationCommon(
     if (do_trace) {
       rpc_state->request.mutable_trace_context()->add_fanout_index(i);
     }
-    SetSerializedSize(&rpc_state->request, request_payload_size);
+    payload_allocator_->AddPadding(&rpc_state->request, request_payload_size);
 #ifndef NDEBUG
     CHECK_EQ(
         rpc_state->request.trace_context().engine_ids().size(),
