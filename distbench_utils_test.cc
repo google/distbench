@@ -364,7 +364,7 @@ TEST(IP6to4IsPrivate, NotPrivate6) {
 }
 
 TEST(SetSerializedSize, LargeRangesExact) {
-  GenericRequest request;
+  GenericRequestResponse request;
   // Interesting things happen near powers of 128, so we test near
   // 128, 128^2, 128^3, 128^4
   for (int i = 1; i < 5; ++i) {
@@ -378,7 +378,7 @@ TEST(SetSerializedSize, LargeRangesExact) {
 }
 
 TEST(SetSerializedSize, SmallRangeCloseEnough) {
-  GenericRequest request;
+  GenericRequestResponse request;
   for (int i = 0; i < 256; ++i) {
     SetSerializedSize(&request, i);
     ASSERT_GE(request.ByteSizeLong(), i);

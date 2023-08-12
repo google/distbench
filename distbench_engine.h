@@ -140,7 +140,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   };
 
   struct SimulatedServerRpc {
-    std::vector<GenericResponse> response_table;
+    std::vector<GenericRequestResponse> response_table;
     int handler_actionlist_index = -1;
     RpcDefinition rpc_definition;
     bool allowed = false;
@@ -148,7 +148,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   struct SimulatedClientRpc {
     int service_index;
-    std::vector<GenericRequest> request_table;
+    std::vector<GenericRequestResponse> request_table;
     RpcDefinition rpc_definition;
     std::atomic<int64_t> rpc_tracing_counter = 0;
     std::vector<int> pending_requests_per_peer;
