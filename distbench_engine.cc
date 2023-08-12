@@ -799,7 +799,7 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
     if (service_name_ == traffic_config_.action_lists(i).name()) {
       LOG(INFO) << engine_name_ << ": Running";
-      const GenericRequest* fake_request = new GenericRequest;
+      const GenericRequestResponse* fake_request = new GenericRequestResponse;
       ServerRpcState* top_level_state = new ServerRpcState{};
       top_level_state->request = fake_request;
       top_level_state->have_dedicated_thread = true;
@@ -1642,8 +1642,8 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
 void DistBenchEngine::InitiateAction(ActionState* action_state) {
   auto& action = *action_state->action;
   if (action.rpc_replay_trace_index >= 0) {
-    std::shared_ptr<const GenericRequest> copied_request =
-        std::make_shared<GenericRequest>(
+    std::shared_ptr<const GenericRequestResponse> copied_request =
+        std::make_shared<GenericRequestResponse>(
             *action_state->actionlist_state->incoming_rpc_state->request);
     int rpc_replay_trace_index = action.rpc_replay_trace_index;
     action_state->iteration_function =
@@ -1686,8 +1686,8 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
           });
         };
   } else if (action.actionlist_index >= 0) {
-    std::shared_ptr<const GenericRequest> copied_request =
-        std::make_shared<GenericRequest>(
+    std::shared_ptr<const GenericRequestResponse> copied_request =
+        std::make_shared<GenericRequestResponse>(
             *action_state->actionlist_state->incoming_rpc_state->request);
     int actionlist_index = action.actionlist_index;
     action_state->iteration_function =
@@ -1912,7 +1912,7 @@ void DistBenchEngine::RunRpcActionIterationCommon(
   int trace_count = client_rpc_table_[rpc_index].rpc_tracing_counter++;
   bool do_trace = (rpc_spec.tracing_interval() > 0) &&
                   !(trace_count % rpc_spec.tracing_interval());
-  GenericRequest common_request;
+  GenericRequestResponse common_request;
   const ServerRpcState* const incoming_rpc_state =
       action_state->actionlist_state->incoming_rpc_state;
   if (incoming_rpc_state->request->has_trace_context()) {

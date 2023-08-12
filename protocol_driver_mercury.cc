@@ -210,8 +210,8 @@ void ProtocolDriverMercury::PrintMercuryVersion() {
 
 namespace {
 struct PendingRpc {
-  GenericRequest request;
-  GenericResponse response;
+  GenericRequestResponse request;
+  GenericRequestResponse response;
   std::function<void(void)> done_callback;
   ClientRpcState* state;
   ProtocolDriverMercury* this_pd;
@@ -367,7 +367,8 @@ hg_return_t ProtocolDriverMercury::RpcServerCallback(hg_handle_t handle) {
   ServerRpcState* rpc_state = new ServerRpcState();
   rpc_state->have_dedicated_thread = false;
 
-  distbench::GenericRequest* request = new distbench::GenericRequest();
+  distbench::GenericRequestResponse* request =
+      new distbench::GenericRequestResponse();
   bool success = request->ParseFromString(input.string);
   if (!success) {
     LOG(ERROR) << "Unable to decode payload !";
