@@ -263,7 +263,7 @@ absl::StatusOr<std::map<std::string, std::set<std::string>>> ConstraintSolver(
   google::protobuf::Map<std::string, ConstraintList> constraints;
 
   for (const auto& [key, value] : test.service_constraints()) {
-    if (key.find('*') != std::string::npos) {
+    if (absl::StrContains(key, '*')) {
       for (const auto& service : all_services) {
         if (!fnmatch(key.c_str(), service.c_str(), FNM_PATHNAME)) {
           if (test.service_constraints().find(service) !=
