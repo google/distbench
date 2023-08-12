@@ -27,8 +27,8 @@
 namespace distbench {
 
 struct ClientRpcState {
-  GenericRequest request;
-  GenericResponse response;
+  GenericRequestResponse request;
+  GenericRequestResponse response;
   absl::Time prior_start_time = absl::InfinitePast();
   absl::Time start_time = absl::InfinitePast();
   absl::Time end_time;
@@ -36,8 +36,8 @@ struct ClientRpcState {
 };
 
 struct ServerRpcState {
-  const GenericRequest* request;
-  GenericResponse response;
+  const GenericRequestResponse* request;
+  GenericRequestResponse response;
   bool have_dedicated_thread = false;
 
   void SetSendResponseFunction(

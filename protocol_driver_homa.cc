@@ -332,12 +332,12 @@ void ProtocolDriverHoma::ServerThread() {
     const sockaddr_in_union src_addr = *server_receiver_->src_addr();
     const uint64_t rpc_id = server_receiver_->id();
 
-    GenericRequest* request = new GenericRequest;
+    GenericRequestResponse* request = new GenericRequestResponse;
     char rx_buf[1048576];
     server_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
     if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
       if (!request->ParseFromArray(rx_buf, msg_length)) {
-        LOG(ERROR) << "rx_buf did not parse as a GenericRequest";
+        LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
       }
     }
     ServerRpcState* rpc_state = new ServerRpcState;
