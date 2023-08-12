@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+
 #include "distbench_utils.h"
 #include "glog/logging.h"
 #include "google/protobuf/text_format.h"
@@ -157,6 +159,44 @@ TEST_P(ProtocolDriverTest, SelfEcho) {
     ++client_rpc_count;
     EXPECT_EQ(rpc_state.request.payload(), rpc_state.response.payload());
     EXPECT_EQ(rpc_state.response.payload(), "ping!");
+  });
+  pd->ShutdownClient();
+  EXPECT_EQ(server_rpc_count, 1);
+  EXPECT_EQ(client_rpc_count, 1);
+}
+
+TEST_P(ProtocolDriverTest, LargeSelfEcho) {
+  ProtocolDriverOptions pdo = PdoFromString(GetParam());
+  int port = 0;
+  auto maybe_pd = AllocateProtocolDriver(pdo, &port);
+  ASSERT_OK(maybe_pd.status());
+  auto& pd = maybe_pd.value();
+  pd->SetNumPeers(1);
+  std::atomic<int> server_rpc_count = 0;
+  pd->SetHandler([&](ServerRpcState* s) {
+    ++server_rpc_count;
+    s->response.set_payload(s->request->payload());
+    s->SendResponseIfSet();
+    s->FreeStateIfSet();
+    return std::function<void()>();
+  });
+  std::string addr = pd->HandlePreConnect("", 0).value();
+  ASSERT_OK(pd->HandleConnect(addr, 0));
+
+  std::atomic<int> client_rpc_count = 0;
+  ClientRpcState rpc_state;
+
+  // This should be 18, but fails due to MTU bug in homa module at large sizes.
+  std::vector<char> temp(1 << 15);
+  std::generate(temp.begin(), temp.end(), [n = 0]() mutable { return n++; });
+  std::string large_payload(temp.data(), temp.size());
+  rpc_state.request.set_payload(large_payload);
+  pd->InitiateRpc(0, &rpc_state, [&]() {
+    ++client_rpc_count;
+    EXPECT_EQ(rpc_state.request.payload().size(),
+              rpc_state.response.payload().size());
+    EXPECT_EQ(rpc_state.request.payload(), rpc_state.response.payload());
+    EXPECT_EQ(rpc_state.response.payload(), large_payload);
   });
   pd->ShutdownClient();
   EXPECT_EQ(server_rpc_count, 1);

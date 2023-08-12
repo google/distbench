@@ -17,6 +17,7 @@
 
 #include "distbench_netutils.h"
 #include "distbench_thread_support.h"
+#include "distbench_threadpool.h"
 #include "distbench_utils.h"
 #include "external/homa_module/homa.h"
 #include "external/homa_module/homa_receiver.h"
@@ -26,7 +27,7 @@ namespace distbench {
 
 struct PendingHomaRpc {
   ClientRpcState* state;
-  std::string serialized_request;
+  absl::Cord serialized_request;
   std::function<void(void)> done_callback;
 };
 
@@ -62,14 +63,12 @@ class ProtocolDriverHoma : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  void ClientCompletionThread();
+  void ClientCompletionThread(int thread_number);
   void ServerThread();
 
   const size_t kHomaBufferSize = 1000 * HOMA_BPAGE_SIZE;
   void* client_buffer_ = nullptr;
   void* server_buffer_ = nullptr;
-  std::unique_ptr<homa::receiver> client_receiver_;
-  std::unique_ptr<homa::receiver> server_receiver_;
 
   int homa_client_sock_ = -1;
   int homa_server_sock_ = -1;
@@ -81,8 +80,8 @@ class ProtocolDriverHoma : public ProtocolDriver {
   std::atomic<int> pending_rpcs_ = 0;
 
   std::string netdev_name_;
-  std::thread client_completion_thread_;
-  std::thread server_thread_;
+  std::vector<std::thread> client_completion_threads_;
+  std::vector<std::thread> server_threads_;
   SafeNotification handler_set_;
   SafeNotification shutting_down_server_;
   SafeNotification shutting_down_client_;
@@ -90,6 +89,10 @@ class ProtocolDriverHoma : public ProtocolDriver {
   std::function<std::function<void()>(ServerRpcState* state)> rpc_handler_;
 
   std::vector<sockaddr_in_union> peer_addresses_;
+  std::unique_ptr<AbstractThreadpool> actionlist_thread_pool_;
+
+  bool ping_pong_ = false;
+  bool nocopy_ = false;
 };
 
 }  // namespace distbench
