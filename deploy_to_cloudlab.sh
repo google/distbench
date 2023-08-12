@@ -444,7 +444,7 @@ echo_magenta "\\nBuilding distbench binary..."
 bazel build -c opt :distbench \
   --//:with-mercury=true \
   --//:with-homa=true \
-  --//:with-homa-grpc=true \
+  --//:with-homa-grpc=false \
   --repo_env=CC=${CC} \
   --repo_env=CXX=${CXX}
 popd
