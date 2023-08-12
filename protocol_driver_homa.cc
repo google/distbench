@@ -337,7 +337,8 @@ void ProtocolDriverHoma::ServerThread() {
     char rx_buf[1048576];
     server_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
     if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
-      if (!request->ParseFromArray(rx_buf, msg_length)) {
+      if (!request->ParseFromArray(
+              rx_buf, MetaDataLength({rx_buf, msg_length}, msg_length))) {
         LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
       }
     }
@@ -396,11 +397,12 @@ void ProtocolDriverHoma::ClientCompletionThread() {
       pending_rpc->state->success = false;
     } else {
       pending_rpc->state->success = true;
-      char rx_buf[1048576];
       CHECK(!client_receiver_->is_request());
+      char rx_buf[1048576];
       client_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
       if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
-        if (!pending_rpc->state->response.ParseFromArray(rx_buf, msg_length)) {
+        if (!pending_rpc->state->response.ParseFromArray(
+                rx_buf, MetaDataLength({rx_buf, msg_length}, msg_length))) {
           LOG(ERROR) << "rx_buf did not parse as a GenericResponse";
         }
       }
