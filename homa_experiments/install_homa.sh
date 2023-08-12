@@ -9,12 +9,24 @@
 #   3. Upload the public key, 'cloudlab.pub' to cloudlab at 
 #      https://www.cloudlab.us/ by clicking the 'manage SSH keys'
 #      option on the menu that appears when you click your username
+set -eu
 
 if [[ $# -ne 2 ]]; then
   echo usage:$0 user@cloudlabhost num_nodes > /dev/stderr
   exit 1
 fi
-scp ~/.ssh/cloudlab "$1":~/.ssh/id_rsa
+if [[ ! -f "${HOME}/.ssh/cloudlab" ]]; then
+  #echo "Creating a cloudlab-specific ssh key file in ${HOME}/.ssh/cloudlab"
+  #ssh-keygen -f ~/.ssh/cloudlab -N ""
+  echo "No cloudlab-specific key found. please run the following command:"
+  echo 'ssh-keygen -f ~/.ssh/cloudlab -N ""'
+  echo  "and then upload ${HOME}/.ssh/cloudlab.pub to the cloudlab ssh key page at"
+  echo "https://www.cloudlab.us/ssh-keys.php"
+  echo "***You will need to restart your experiment before this key will work**"
+  exit 1;
+fi
+
+scp ${HOME}/.ssh/cloudlab "$1":~/.ssh/id_rsa
 NUM_NODES=$2
 ssh -o 'StrictHostKeyChecking no' \
   "$1" \
