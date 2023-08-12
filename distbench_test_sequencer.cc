@@ -92,6 +92,10 @@ grpc::Status TestSequencer::RunTestSequence(grpc::ServerContext* context,
                         std::string(maybe_test_sequence.status().message()));
   }
 
+  if (shutdown_requested_.HasBeenNotified()) {
+    return grpc::Status(grpc::StatusCode::ABORTED, "Shutting down");
+  }
+
   std::shared_ptr<absl::Notification> prior_notification;
   CancelTraffic();
   mutex_.Lock();
@@ -176,6 +180,9 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
         return grpc::Status(grpc::StatusCode::ABORTED,
                             "Cancelled by new test sequence.");
       }
+    }
+    if (shutdown_requested_.HasBeenNotified()) {
+      return grpc::Status(grpc::StatusCode::ABORTED, "Cancelled by shutdown.");
     }
     auto maybe_result = DoRunTest(context, test);
     LOG(INFO) << "DoRunTest status: " << maybe_result.status();

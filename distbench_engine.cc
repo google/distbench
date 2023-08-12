@@ -101,6 +101,7 @@ DistBenchEngine::~DistBenchEngine() {
     }
     pd_->ShutdownClient();
   }
+  CHECK_EQ(pending_rpcs_, 0);
 }
 
 // Initialize the payload map and perform basic validation
