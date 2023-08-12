@@ -160,7 +160,8 @@ class GrpcPollingServerDriver : public GrpcCommonServerDriver {
                       handler) override;
   void ShutdownServer() override;
   std::vector<TransportStat> GetTransportStats() override;
-  void ProcessGenericRpc(GenericRequest* request, GenericResponse* response);
+  void ProcessGenericRpc(GenericRequestResponse* request,
+                         GenericRequestResponse* response);
   void HandleRpcs();
 
  private:

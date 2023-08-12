@@ -129,10 +129,10 @@ std::vector<TransportStat> GrpcPollingClientDriver::GetTransportStats() {
 namespace {
 struct PendingRpc {
   grpc::ClientContext context;
-  std::unique_ptr<grpc::ClientAsyncResponseReader<GenericResponse>> rpc;
+  std::unique_ptr<grpc::ClientAsyncResponseReader<GenericRequestResponse>> rpc;
   grpc::Status status;
-  GenericRequest request;
-  GenericResponse response;
+  GenericRequestResponse request;
+  GenericRequestResponse response;
   std::function<void(void)> done_callback;
   ClientRpcState* state;
 };
@@ -293,8 +293,8 @@ class TrafficService : public Traffic::Service {
   }
 
   grpc::Status GenericRpc(grpc::ServerContext* context,
-                          const GenericRequest* request,
-                          GenericResponse* response) override {
+                          const GenericRequestResponse* request,
+                          GenericRequestResponse* response) override {
     ServerRpcState rpc_state;
     rpc_state.have_dedicated_thread = true;
     rpc_state.request = request;
@@ -578,9 +578,10 @@ class TrafficServiceAsyncCallback
     handler_set_.TryToNotify();
   }
 
-  grpc::ServerUnaryReactor* GenericRpc(grpc::CallbackServerContext* context,
-                                       const GenericRequest* request,
-                                       GenericResponse* response) override {
+  grpc::ServerUnaryReactor* GenericRpc(
+      grpc::CallbackServerContext* context,
+      const GenericRequestResponse* request,
+      GenericRequestResponse* response) override {
     auto* reactor = context->DefaultReactor();
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
@@ -743,12 +744,12 @@ class PollingRpcHandlerFsm {
     FINISHED_SENDING_RESPONSE
   };
 
-  GenericRequest request_;
-  GenericResponse response_;
+  GenericRequestResponse request_;
+  GenericRequestResponse response_;
   Traffic::AsyncService* service_;
   grpc::ServerCompletionQueue* cq_;
   std::function<std::function<void()>(ServerRpcState* state)>* handler_;
-  grpc::ServerAsyncResponseWriter<GenericResponse> responder_;
+  grpc::ServerAsyncResponseWriter<GenericRequestResponse> responder_;
   grpc::ServerContext ctx_;
   AbstractThreadpool* thread_pool_;
   CallState state_;
