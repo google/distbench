@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <sys/mman.h>
 
+#include "absl/base/internal/sysinfo.h"
 #include "distbench_payload.h"
 #include "external/homa_module/homa.h"
 #include "glog/logging.h"
@@ -29,6 +30,68 @@ namespace {
 // serialize to this value, so it is unambiguous.
 const char empty_message_placeholder[] = "\7";
 
+std::string_view PeekAtMessage(homa::receiver* r) {
+  return {r->get<char>(0), r->contiguous(0)};
+}
+
+bool SlowParse(homa::receiver* r, size_t msg_length,
+               GenericRequestResponse* out) {
+  char rx_buf[1048576];
+  r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
+  if (msg_length == 1 && rx_buf[0] == empty_message_placeholder[0]) {
+    msg_length = 0;
+  }
+  return !out->ParseFromArray(
+      rx_buf, MetaDataLength({rx_buf, msg_length}, msg_length));
+}
+
+bool FastParse(homa::receiver* r, size_t msg_length,
+               GenericRequestResponse* out) {
+  // Try the fast way:
+  std::string_view initial_chunk = PeekAtMessage(r);
+  if (initial_chunk.length() == 1 &&
+      initial_chunk[0] == empty_message_placeholder[0]) {
+    return true;
+  }
+
+  if (msg_length <= 4096 && initial_chunk.length() == msg_length) {
+    bool ret = out->ParseFromArray(initial_chunk.data(), msg_length);
+    return ret;
+  }
+
+  size_t metadata_length = MetaDataLength(initial_chunk, msg_length);
+  // size_t metadata_length = msg_length;
+  if (metadata_length <= initial_chunk.length()) {
+    bool ret = out->ParseFromArray(initial_chunk.data(), metadata_length);
+    absl::Cord payload;
+    size_t offset = 0;
+    for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+      size_t contig = r->contiguous(offset);
+      absl::string_view s(r->get<char>(offset), contig);
+      offset += contig;
+      //payload.Append(absl::Cord(s));
+      payload.Append(absl::MakeCordFromExternal(s, [](){}));
+      if (offset == msg_length) {
+        out->set_payload(std::move(payload));
+        break;
+      }
+    }
+    return ret;
+  }
+
+  // Fall back to the slow way (should not be possible):
+  return SlowParse(r, msg_length, out);
+}
+
+bool Parse(homa::receiver* r, size_t msg_length,
+           GenericRequestResponse* out, bool avoid_copy) {
+  if (avoid_copy) {
+    return FastParse(r, msg_length, out);
+  } else {
+    return SlowParse(r, msg_length, out);
+  }
+}
+
 }  // namespace
 
 ///////////////////////////////////
@@ -39,13 +102,40 @@ ProtocolDriverHoma::ProtocolDriverHoma() {}
 
 absl::Status ProtocolDriverHoma::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
-  if (pd_opts.has_netdev_name()) {
-    netdev_name_ = pd_opts.netdev_name();
-  }
+  std::set<std::string> known_settings = {
+    "threadpool_type",
+    "threadpool_size",
+    "ping_pong",
+    "nocopy",
+    "client_threads",
+    "server_threads"
+  };
 
   for (const auto& setting : pd_opts.server_settings()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("unknown protocol driver option: ", setting.name()));
+    if (known_settings.find(setting.name()) == known_settings.end()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("unknown protocol driver option: ", setting.name()));
+    }
+  }
+
+  auto threadpool_size = GetNamedServerSettingInt64(
+      pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
+  auto threadpool_type =
+      GetNamedServerSettingString(pd_opts, "threadpool_type", "elastic");
+
+  ping_pong_ = GetNamedServerSettingInt64(pd_opts, "ping_pong", false);
+  nocopy_ = GetNamedServerSettingInt64(pd_opts, "nocopy", true);
+  int client_threads = GetNamedServerSettingInt64(pd_opts, "client_threads", 2);
+  int server_threads = GetNamedServerSettingInt64(pd_opts, "server_threads", 3);
+
+  auto tp = CreateThreadpool(threadpool_type, threadpool_size);
+  if (!tp.ok()) {
+    return tp.status();
+  }
+  actionlist_thread_pool_ = std::move(tp.value());
+
+  if (pd_opts.has_netdev_name()) {
+    netdev_name_ = pd_opts.netdev_name();
   }
 
   auto maybe_ip = IpAddressForDevice(netdev_name_, pd_opts.ip_version());
@@ -65,8 +155,6 @@ absl::Status ProtocolDriverHoma::Initialize(
   arg.length = kHomaBufferSize;
   setsockopt(homa_client_sock_, IPPROTO_HOMA, SO_HOMA_SET_BUF, &arg,
              sizeof(arg));
-  client_receiver_ =
-      std::make_unique<homa::receiver>(homa_client_sock_, client_buffer_);
   homa_server_sock_ = socket(af, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_HOMA);
   if (homa_server_sock_ < 0) {
     return absl::UnknownError(
@@ -78,8 +166,18 @@ absl::Status ProtocolDriverHoma::Initialize(
   arg.length = kHomaBufferSize;
   setsockopt(homa_server_sock_, IPPROTO_HOMA, SO_HOMA_SET_BUF, &arg,
              sizeof(arg));
-  server_receiver_ =
-      std::make_unique<homa::receiver>(homa_server_sock_, server_buffer_);
+
+  // Must be started after setting up server_buffer_, client_buffer_
+  client_completion_threads_.reserve(client_threads);
+  server_threads_.reserve(server_threads);
+  for (int i = 0; i < client_threads; ++i) {
+    client_completion_threads_.push_back(RunRegisteredThread(
+        "HomaClient", [this, i]() { this->ClientCompletionThread(i); }));
+  }
+  for (int i = 0; i < client_threads; ++i) {
+    server_threads_.push_back(RunRegisteredThread(
+          "HomaServer", [this]() { this->ServerThread(); }));
+  }
 
   sockaddr_in_union bind_addr = {};
   int bind_err = 0;
@@ -122,10 +220,6 @@ absl::Status ProtocolDriverHoma::Initialize(
   }
   server_port_ = *port;
 
-  client_completion_thread_ = RunRegisteredThread(
-      "HomaClient", [this]() { this->ClientCompletionThread(); });
-  server_thread_ =
-      RunRegisteredThread("HomaServer", [this]() { this->ServerThread(); });
   return absl::OkStatus();
 }
 
@@ -200,8 +294,8 @@ void ProtocolDriverHoma::ChurnConnection(int peer) {
 void ProtocolDriverHoma::ShutdownServer() {
   handler_set_.TryToNotify();
   if (shutting_down_server_.TryToNotify()) {
-    if (server_thread_.joinable()) {
-      // Initiate RPC to our own server sock, to wake up the server_thread_:
+    for (size_t i = 0; i < server_threads_.size(); ++i) {
+      // Initiate RPC to our own server sock, to wake up the server_thread:
       char buf[1] = {};
       uint64_t kernel_rpc_number;
       sockaddr_in_union loopback;
@@ -222,12 +316,15 @@ void ProtocolDriverHoma::ShutdownServer() {
         LOG(INFO) << "homa_send result: " << res << " errno: " << errno
                   << " kernel_rpc_number " << kernel_rpc_number;
       }
-      server_thread_.join();
     }
-    server_receiver_.reset();
-    if (server_buffer_) {
-      munmap(server_buffer_, kHomaBufferSize);
-      server_buffer_ = nullptr;
+    for (auto& server_thread : server_threads_) {
+      if (server_thread.joinable()) {
+        server_thread.join();
+      }
+      if (server_buffer_) {
+        munmap(server_buffer_, kHomaBufferSize);
+        server_buffer_ = nullptr;
+      }
     }
     close(homa_server_sock_);
     homa_server_sock_ = -1;
@@ -236,9 +333,9 @@ void ProtocolDriverHoma::ShutdownServer() {
 
 void ProtocolDriverHoma::ShutdownClient() {
   if (shutting_down_client_.TryToNotify()) {
-    if (client_completion_thread_.joinable()) {
+    for (size_t i = 0; i < client_completion_threads_.size(); ++i) {
       // Initiate RPC to our own client sock, then cancel it to wake up
-      // the client_completion_thread_:
+      // the client_completion_thread:
       char buf[1] = {};
       uint64_t kernel_rpc_number;
       sockaddr_in_union loopback;
@@ -252,6 +349,7 @@ void ProtocolDriverHoma::ShutdownClient() {
       } else {
         loopback.in4.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
       }
+      LOG(INFO) << "sending a shutdown RPC";
       int64_t res = homa_send(homa_client_sock_, buf, 1, &loopback,
                               &kernel_rpc_number, 0);
       if (res < 0) {
@@ -259,13 +357,18 @@ void ProtocolDriverHoma::ShutdownClient() {
                   << " kernel_rpc_number " << kernel_rpc_number;
       }
 
+      LOG(INFO) << "cancelling that shutdown RPC";
       homa_abort(homa_client_sock_, kernel_rpc_number, EINTR);
-      client_completion_thread_.join();
+    }
+
+    for (auto& client_completion_thread : client_completion_threads_) {
+      if (client_completion_thread.joinable()) {
+        client_completion_thread.join();
+      }
     }
     while (pending_rpcs_) {
       sched_yield();
     }
-    client_receiver_.reset();
     if (client_buffer_) {
       munmap(client_buffer_, kHomaBufferSize);
       client_buffer_ = nullptr;
@@ -281,13 +384,13 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
 
   new_rpc->done_callback = done_callback;
   new_rpc->state = state;
-  state->request.SerializeToString(&new_rpc->serialized_request);
+  new_rpc->serialized_request = SerializeToCord(&state->request, nocopy_);
+  CHECK_EQ(new_rpc->serialized_request.size(), state->request.ByteSizeLong());
   if (new_rpc->serialized_request.empty()) {
     // Homa can't send a 0 byte message :(
     new_rpc->serialized_request = empty_message_placeholder;
   }
-  const char* const buf = new_rpc->serialized_request.data();
-  const size_t buflen = new_rpc->serialized_request.size();
+  std::vector<iovec> request_buf = Cord2Iovectors(new_rpc->serialized_request);
 #ifdef THREAD_SANITIZER
   __tsan_release(new_rpc);
 #endif
@@ -296,7 +399,7 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   uint64_t kernel_rpc_number;
 
   int64_t res =
-      homa_send(homa_client_sock_, buf, buflen, &peer_addresses_[peer_index],
+      homa_sendv(homa_client_sock_, request_buf.data(), request_buf.size(), &peer_addresses_[peer_index],
                 &kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
   if (res < 0) {
     LOG(INFO) << "homa_send result: " << res << " errno: " << errno
@@ -309,12 +412,13 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
 }
 
 void ProtocolDriverHoma::ServerThread() {
-  std::atomic<int> pending_actionlist_threads = 0;
+  std::atomic<int> pending_responses = 0;
+  homa::receiver server_receiver(homa_server_sock_, server_buffer_);
 
   handler_set_.WaitForNotification();
   while (1) {
     errno = 0;
-    ssize_t msg_length = server_receiver_->receive(HOMA_RECVMSG_REQUEST, 0);
+    ssize_t msg_length = server_receiver.receive(HOMA_RECVMSG_REQUEST, 0);
     if (shutting_down_server_.HasBeenNotified()) {
       break;
     }
@@ -329,17 +433,32 @@ void ProtocolDriverHoma::ServerThread() {
       LOG(ERROR) << "server homa_recv got zero length request.";
       continue;
     }
-    CHECK(server_receiver_->is_request());
-    const sockaddr_in_union src_addr = *server_receiver_->src_addr();
-    const uint64_t rpc_id = server_receiver_->id();
+    CHECK(server_receiver.is_request());
+    const sockaddr_in_union src_addr = *server_receiver.src_addr();
+    const uint64_t rpc_id = server_receiver.id();
+
+    // ping-pong bypasses distbench_engine:
+    if (ping_pong_) {
+      struct iovec vecs[HOMA_MAX_BPAGES];
+      ssize_t offset = 0;
+      for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+        vecs[i].iov_base = server_receiver.get<char>(offset);
+        vecs[i].iov_len = server_receiver.contiguous(offset);
+        offset += vecs[i].iov_len;
+        if (offset == msg_length) {
+          homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
+          break;
+        }
+      }
+      if (offset != msg_length) {
+        LOG(FATAL) << "wtf? " << offset << " out of " << msg_length;
+      }
+      continue;
+    }
 
     GenericRequestResponse* request = new GenericRequestResponse;
-    char rx_buf[1048576];
-    server_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
-    if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
-      if (!request->ParseFromArray(rx_buf, msg_length)) {
-        LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
-      }
+    if (!Parse(&server_receiver, msg_length, request, nocopy_)) {
+      LOG(ERROR) << "rx_buf did not Parse as a GenericRequestResponse";
     }
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
@@ -348,36 +467,40 @@ void ProtocolDriverHoma::ServerThread() {
       delete rpc_state;
     });
     rpc_state->SetSendResponseFunction(
-        [=, this, &pending_actionlist_threads]() {
-          std::string txbuf;
-          rpc_state->response.SerializeToString(&txbuf);
-          if (txbuf.empty()) {
+        [=, this, &pending_responses]() {
+          absl::Cord buffer = SerializeToCord(&rpc_state->response, nocopy_);
+          std::vector<iovec> buf = Cord2Iovectors(buffer);
+          int64_t error;
+          if (buf.empty()) {
             // Homa can't send a 0 byte message :(
-            txbuf = empty_message_placeholder;
+            error = homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
+          } else {
+            error = homa_replyv(homa_server_sock_, buf.data(), buf.size(),
+                                &src_addr, rpc_id);
           }
-          int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
-                                     txbuf.length(), &src_addr, rpc_id);
           if (error) {
             LOG(ERROR) << "homa_reply for " << rpc_id
                        << " returned error: " << strerror(errno);
           }
-          --pending_actionlist_threads;
+          --pending_responses;
         });
+    ++pending_responses;
     auto fct_action_list_thread = rpc_handler_(rpc_state);
-    ++pending_actionlist_threads;
-    if (fct_action_list_thread)
-      RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread)
-          .detach();
+
+    if (fct_action_list_thread) {
+      actionlist_thread_pool_->AddTask(fct_action_list_thread);
+    }
   }
-  while (pending_actionlist_threads) {
+  while (pending_responses) {
     sched_yield();
   }
 }
 
-void ProtocolDriverHoma::ClientCompletionThread() {
-  while (!shutting_down_client_.HasBeenNotified() || pending_rpcs_) {
+void ProtocolDriverHoma::ClientCompletionThread(int thread_number) {
+  homa::receiver client_receiver(homa_client_sock_, client_buffer_);
+  while (!shutting_down_client_.HasBeenNotified() || (pending_rpcs_ && !thread_number)) {
     errno = 0;
-    ssize_t msg_length = client_receiver_->receive(HOMA_RECVMSG_RESPONSE, 0);
+    ssize_t msg_length = client_receiver.receive(HOMA_RECVMSG_RESPONSE, 0);
     int recv_errno = errno;
     if (msg_length < 0) {
       if (recv_errno != EINTR && recv_errno != EAGAIN) {
@@ -387,7 +510,7 @@ void ProtocolDriverHoma::ClientCompletionThread() {
     }
 
     PendingHomaRpc* pending_rpc = reinterpret_cast<PendingHomaRpc*>(
-        client_receiver_->completion_cookie());
+        client_receiver.completion_cookie());
 #ifdef THREAD_SANITIZER
     __tsan_acquire(pending_rpc);
 #endif
@@ -396,13 +519,9 @@ void ProtocolDriverHoma::ClientCompletionThread() {
       pending_rpc->state->success = false;
     } else {
       pending_rpc->state->success = true;
-      char rx_buf[1048576];
-      CHECK(!client_receiver_->is_request());
-      client_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
-      if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
-        if (!pending_rpc->state->response.ParseFromArray(rx_buf, msg_length)) {
-          LOG(ERROR) << "rx_buf did not parse as a GenericResponse";
-        }
+      CHECK(!client_receiver.is_request());
+      if (!Parse(&client_receiver, msg_length, &pending_rpc->state->response, nocopy_)) {
+        LOG(ERROR) << "rx_buf did not Parse as a GenericRequestResponse";
       }
     }
     pending_rpc->done_callback();
