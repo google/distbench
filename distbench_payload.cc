@@ -32,13 +32,12 @@ namespace distbench {
 
 namespace {
 
-bool read_varint(const char** start, const char* end, int64_t* out) {
+bool ReadVarInt(const char** start, const char* end, int64_t* out) {
   int64_t ret = 0;
   const char* cursor = *start;
   int64_t bits = 0;
   unsigned char byte;
   do {
-    LOG(INFO) << "consuming " << absl::StrFormat("0x%x", *cursor);
     byte = *cursor;
     ++cursor;
     ret |= (byte & 0x7f) << bits;
@@ -46,12 +45,20 @@ bool read_varint(const char** start, const char* end, int64_t* out) {
   } while ((byte++ >= 128) && (bits < 64) && cursor < end);
 
   if (bits >= 64) return false;
-  if (byte > 128) return false;
+  if (byte >= 128) return false;
 
   *start = cursor;
   *out = ret;
-  LOG(INFO) << "returning " << absl::StrFormat("0x%x", ret);
   return true;
+}
+
+int VarIntSize(uint64_t val) {
+  int ret = 1;
+  while (val >= 128) {
+    val >>= 7;
+    ret++;
+  }
+  return ret;
 }
 
 }  // namespace
@@ -62,36 +69,28 @@ size_t MetaDataLength(std::string_view msg_fragment, size_t original_length) {
   while (cursor < end) {
     int64_t tag;
     const char* field_start = cursor;
-    if (!read_varint(&cursor, end, &tag)) {
+    if (!ReadVarInt(&cursor, end, &tag)) {
       return original_length;
     }
     int64_t field_id = tag >> 3;
     int type = tag & 0x7;
-    LOG(INFO) << "field_id = " << field_id;
-    LOG(INFO) << "wire type = " << type;
     int64_t value;
     switch (type) {
       case 0:
-        if (!read_varint(&cursor, end, &value)) {
+        if (!ReadVarInt(&cursor, end, &value)) {
           return original_length;
         }
-        LOG(INFO) << "throwing away value of " << value;
         break;
 
       case 2:
-        if (!read_varint(&cursor, end, &value)) {
+        if (!ReadVarInt(&cursor, end, &value)) {
           return original_length;
         }
-        LOG(INFO) << "skipping ahead " << absl::StrFormat("0x%x", value);
         cursor += value;
         if (field_id == 0xf) {
           if (end <= cursor) {
-            LOG(INFO) << "looks like this was payload, reducing to "
-                      << field_start - msg_fragment.data();
             return field_start - msg_fragment.data();
           } else {
-            LOG(INFO)
-                << "looks like there is something after payload, giving up";
             return original_length;
           }
         }
@@ -115,7 +114,8 @@ size_t MetaDataLength(std::string_view msg_fragment, size_t original_length) {
     }
   }
 
-  CHECK_EQ(cursor, end);
+  CHECK_EQ(cursor - end, 0)
+      << msg_fragment.length() << " of " << original_length;
 
   return original_length;
 }
@@ -136,15 +136,6 @@ size_t GetPaddingForSerializedSize(GenericRequestResponse* msg,
   if (start_size >= target_size) {
     return 0;
   }
-
-  auto VarIntSize = [](uint64_t val) {
-    int ret = 1;
-    while (val >= 128) {
-      val >>= 7;
-      ret++;
-    }
-    return ret;
-  };
 
   ssize_t pad = target_size - start_size;
   ssize_t field_length_delta = VarIntSize(pad) - VarIntSize(0);
