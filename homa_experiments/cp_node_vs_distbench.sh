@@ -16,10 +16,26 @@ shopt -s inherit_errexit
 NUMBER_OF_NODES=5
 WORKLOAD='w5'
 GBPS=1
-TEST_DURATION=10
+TEST_DURATION=30
 OUTPUT_DIRECTORY=''
 DNS=${1}
 EXPERIMENTS=()
+
+DISTBENCH_SRC=$(readlink -f $(dirname $(which $0))/..)
+
+if ! which dist_to_proto &> /dev/null; then
+  echo "dist_to_proto not found in path"
+  echo "build and install it from https://github.com/PlatformLab/HomaModule"
+  echo "It is found in the utils/ directory"
+  exit 1
+fi
+
+RESULTS_CONVERSION="${DISTBENCH_SRC}/bazel-bin/analysis/results_conversion"
+
+if [[ ! -x ${RESULTS_CONVERSION} ]]; then
+  echo "$RESULTS_CONVERSION not an executable file, trying to build it"
+  (cd ${DISTBENCH_SRC} && bazel  build //analysis:results_conversion) || exit 1
+fi
 
 function print_usage_and_exit {
   echo "To run an experiment you must pass as first argument the USER@HOSTNAME 
@@ -33,7 +49,7 @@ function print_usage_and_exit {
         -o output_directory (necessary)
         The script also assumes you have deploy_to_cloudlab,sh running in another terminal
         and homa is installed in the cloudlab cluster" 
-  exit;
+  exit
 }
 
 ALLOWED_OPTS="x:n:w:b:s:o:"
@@ -54,8 +70,10 @@ done
 
 if [ ${OUTPUT_DIRECTORY} == '' ]; then
   echo "You must specify an output directory (-o)"
-  exit;
+  exit
 fi
+
+mkdir -p "${OUTPUT_DIRECTORY}/reports"
 
 if [ ${#EXPERIMENTS[@]} -ne 0 ]
 then
@@ -63,16 +81,16 @@ EXPERIMENTS=("homa", "grpc")
 fi
 
 function run_cp_node {
-  echo "Running cp_node experiments";
+  echo "Running cp_node experiments"
   ssh -o 'StrictHostKeyChecking no' \
     "${DNS}" \
     bash  << EOF
   #This runs on the remote system:
   homaModule/util/cp_vs_tcp -n ${NUMBER_OF_NODES} -w ${WORKLOAD} --client-ports 1 --server-ports 1 -s ${TEST_DURATION}\
-  --tcp-client-ports 1 --port-threads 1 -b ${GBPS} -l ~/logs;
+      --tcp-client-ports 1 --port-threads 1 -b ${GBPS} -l ~/logs
 EOF
 
-  scp ${DNS}:~/logs/*.rtts "${OUTPUT_DIRECTORY}";
+  scp ${DNS}:~/logs/*.rtts "${OUTPUT_DIRECTORY}"
   cat ${OUTPUT_DIRECTORY}/homa_${WORKLOAD}-*.rtts > ${OUTPUT_DIRECTORY}/homa_${WORKLOAD}.rtts
   cat ${OUTPUT_DIRECTORY}/tcp_${WORKLOAD}-*.rtts > ${OUTPUT_DIRECTORY}/tcp_${WORKLOAD}.rtts
   rm ${OUTPUT_DIRECTORY}/homa_${WORKLOAD}-*.rtts
@@ -83,50 +101,33 @@ function run_distbench {
   echo "running distbench experiments"
   IFS='@'
   user_hostname=(${DNS})
-  unset IFS;
+  unset IFS
 
-  TEMPDIR=$(mktemp -d)
   NEW_EXPERIMENTS="${EXPERIMENTS[@]%,}"
   for exp in ${NEW_EXPERIMENTS[@]} 
   do
-    ~/distbench/test_builder/test_builder "homa_cp_node:${exp}" \
-    -c gbps=${GBPS}:workload=${WORKLOAD}:node_count=${NUMBER_OF_NODES}:test_duration=${TEST_DURATION} \
-    -o ${OUTPUT_DIRECTORY} -s localhost:11000;
-  done
+    echo "$exp"
+    TEMPDIR=$(mktemp -d)
+    ${DISTBENCH_SRC}/test_builder/test_builder "homa_cp_node:${exp}" \
+        -c gbps=${GBPS}:workload=${WORKLOAD}:node_count=${NUMBER_OF_NODES}:test_duration=${TEST_DURATION} \
+        -o ${TEMPDIR} -s localhost:11000
 
-  for f in ${OUTPUT_DIRECTORY}/*.pb.gz;
-  do
-    case $(basename ${f}) in
-    *-homa.pb.gz)
-      ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_homa_${WORKLOAD}.rtts --output_format=homa;;
-
-    *-grpc_polling_inline.pb.gz) 
-      ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_polling_${WORKLOAD}.rtts --output_format=homa;;
-
-    *-grpc_polling_polling.pb.gz) 
-      ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_inline_${WORKLOAD}.rtts --output_format=homa;;
-
-    *-grpc_polling_handoff.pb.gz) 
-      ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_handoff_${WORKLOAD}.rtts --output_format=homa;;
-
-    *-grpc_polling_inline_homa.pb.gz) 
-      ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_polling_homa_${WORKLOAD}.rtts --output_format=homa;;
-
-    *-grpc_polling_polling_homa.pb.gz) 
-      ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_inline_homa_${WORKLOAD}.rtts --output_format=homa;;
-
-    *-grpc_polling_handoff_homa.pb.gz) 
-      ~/distbench/bazel-bin/analysis/results_conversion --input_file=${f} --output_directory=${TEMPDIR} --supress_header;
-      mv ${TEMPDIR}/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_grpc_handoff_homa_${WORKLOAD}.rtts --output_format=homa;;
-    esac      
+    ${RESULTS_CONVERSION} \
+        --input_file=$(ls ${TEMPDIR}/*.pb.gz) \
+        --output_directory=${TEMPDIR}/analysis \
+        --supress_header \
+        --output_format=homa
+    mv ${TEMPDIR}/analysis/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_homa_${WORKLOAD}.rtts
+    rm -rf "${TEMPDIR}/analysis"
+    cp "${TEMPDIR}/"* "${OUTPUT_DIRECTORY}"
+    rm -rf "${TEMPDIR}"
   done
 }
 
 run_cp_node
 run_distbench
+
+${DISTBENCH_SRC}/homa_experiments/cp_node_analysis.py \
+    --directory="${OUTPUT_DIRECTORY}" \
+    --workload="${WORKLOAD}" \
+    --gbps="${GBPS}"
