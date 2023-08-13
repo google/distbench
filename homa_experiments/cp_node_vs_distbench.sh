@@ -16,7 +16,7 @@ shopt -s inherit_errexit
 NUMBER_OF_NODES=5
 WORKLOAD='w5'
 GBPS=1
-TEST_DURATION=30
+TEST_DURATION=120
 OUTPUT_DIRECTORY=''
 DNS=${1}
 EXPERIMENTS=()
@@ -87,7 +87,7 @@ function run_cp_node {
     bash  << EOF
   #This runs on the remote system:
   homaModule/util/cp_vs_tcp -n ${NUMBER_OF_NODES} -w ${WORKLOAD} --client-ports 1 --server-ports 1 -s ${TEST_DURATION}\
-      --tcp-client-ports 1 --port-threads 1 -b ${GBPS} -l ~/logs
+      --tcp-client-ports 1 --tcp-server-ports=1 --port-threads 1 -b ${GBPS} -l ~/logs --port-receivers 1
 EOF
 
   scp ${DNS}:~/logs/*.rtts "${OUTPUT_DIRECTORY}"
@@ -117,7 +117,7 @@ function run_distbench {
         --output_directory=${TEMPDIR}/analysis \
         --supress_header \
         --output_format=homa
-    mv ${TEMPDIR}/analysis/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_homa_${WORKLOAD}.rtts
+    mv ${TEMPDIR}/analysis/overall_summary.txt ${OUTPUT_DIRECTORY}/distbench_${exp}_${WORKLOAD}.rtts
     rm -rf "${TEMPDIR}/analysis"
     cp "${TEMPDIR}/"* "${OUTPUT_DIRECTORY}"
     rm -rf "${TEMPDIR}"
@@ -131,3 +131,5 @@ ${DISTBENCH_SRC}/homa_experiments/cp_node_analysis.py \
     --directory="${OUTPUT_DIRECTORY}" \
     --workload="${WORKLOAD}" \
     --gbps="${GBPS}"
+
+evince "${OUTPUT_DIRECTORY}/reports/test_rtts_p99_${WORKLOAD}.pdf"
