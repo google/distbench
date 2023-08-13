@@ -308,6 +308,34 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   }
 }
 
+namespace {
+
+std::string_view PeekAtMessage(homa::receiver* r) {
+  return {r->get<char>(0), r->contiguous(0)};
+}
+
+bool FastParse(homa::receiver* r, size_t msg_length,
+               GenericRequestResponse* out) {
+  // Try the fast way:
+  std::string_view initial_chunk = PeekAtMessage(r);
+  if (initial_chunk.length() == 1 &&
+      initial_chunk[0] == empty_message_placeholder[0]) {
+    return false;
+  }
+
+  size_t metadata_length = MetaDataLength(initial_chunk, msg_length);
+  if (metadata_length <= initial_chunk.length()) {
+    return out->ParseFromArray(initial_chunk.data(), metadata_length);
+  }
+
+  // Fall back to the slow way (should not be possible):
+  char rx_buf[1048576];
+  r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
+  return out->ParseFromArray(rx_buf, msg_length);
+}
+
+}  // namespace
+
 void ProtocolDriverHoma::ServerThread() {
   std::atomic<int> pending_actionlist_threads = 0;
 
@@ -334,13 +362,8 @@ void ProtocolDriverHoma::ServerThread() {
     const uint64_t rpc_id = server_receiver_->id();
 
     GenericRequestResponse* request = new GenericRequestResponse;
-    char rx_buf[1048576];
-    server_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
-    if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
-      if (!request->ParseFromArray(
-              rx_buf, MetaDataLength({rx_buf, msg_length}, msg_length))) {
-        LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
-      }
+    if (!FastParse(server_receiver_.get(), msg_length, request)) {
+      LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
     }
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
@@ -398,13 +421,9 @@ void ProtocolDriverHoma::ClientCompletionThread() {
     } else {
       pending_rpc->state->success = true;
       CHECK(!client_receiver_->is_request());
-      char rx_buf[1048576];
-      client_receiver_->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
-      if (msg_length != 1 || rx_buf[0] != empty_message_placeholder[0]) {
-        if (!pending_rpc->state->response.ParseFromArray(
-                rx_buf, MetaDataLength({rx_buf, msg_length}, msg_length))) {
-          LOG(ERROR) << "rx_buf did not parse as a GenericResponse";
-        }
+      if (!FastParse(client_receiver_.get(), msg_length,
+                     &pending_rpc->state->response)) {
+        LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
       }
     }
     pending_rpc->done_callback();
