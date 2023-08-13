@@ -9,11 +9,11 @@
 # NOTE: In order for this tool to work, you must have a key named 'cloudlab' in
 # ~/.ssh and a corresponding public key uploaded onto cloudlab. This allows you
 # to ssh to other nodes from node0. To do this:
-#   1. Run 'ssh-keygen' in your ssh directory
-#   2. Name the key pair 'cloudlab'
-#   3. Upload the public key, 'cloudlab.pub' to cloudlab at
+#   1. Run 'ssh-keygen -f ~/.ssh/cloudlab -N ""'
+#   2. Upload the public key, 'cloudlab.pub' to cloudlab at
 #      https://www.cloudlab.us/ by clicking the 'manage SSH keys'
 #      option on the menu that appears when you click your username
+#   3. Restart any cloudlab experiments that you may have started.
 #
 # NOTE: In case your local username does not match the cloudlab username
 # you can set the CLOUDLAB_USER environment variable.
