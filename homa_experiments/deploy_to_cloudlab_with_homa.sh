@@ -18,7 +18,8 @@
 # NOTE: In case your local username does not match the cloudlab username
 # you can set the CLOUDLAB_USER environment variable.
 set -eu
-PATH+=":$PWD"
+PATH+=":$(dirname $(which $0))"
+PATH+=":$(dirname $(which $0))/.."
 
 if [[ $# -ne 1 ]]; then
   echo usage:$0 user@cloudlabhost > /dev/stderr
@@ -33,12 +34,11 @@ CLUSTER_DOMAINNAME="$(clssh $USER_HOST hostname | cut -f 2- -d.)"
 echo "Getting cluster size"
 NUM_NODES="$(clssh $USER_HOST cat /etc/hosts | grep node | grep ^10 | wc -l)"
 echo -e "\n\nYour cluster seems to be named ${CLUSTER_DOMAINNAME} and consist of ${NUM_NODES} nodes\n"
-GIT_REPO=https://github.com/google/distbench.git
-GIT_BRANCH=main
+GIT_REPO=localnocheck
+GIT_BRANCH=reduce_parse_times
 
 echo "Installing homa module on cluster"
-./install_homa.sh ${USER_HOST} ${NUM_NODES}
+install_homa.sh ${USER_HOST} ${NUM_NODES}
 
-cd ..
 echo "Deploying to cloudlab"
-./deploy_to_cloudlab.sh ${CLUSTER_DOMAINNAME} ${GIT_REPO} ${GIT_BRANCH} ${NUM_NODES}
+deploy_to_cloudlab.sh ${CLUSTER_DOMAINNAME} ${GIT_REPO} ${GIT_BRANCH} ${NUM_NODES}
