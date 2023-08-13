@@ -215,16 +215,16 @@ def start_rtt_plot(title, max_y, x_experiment=None, size=10,
     if title != "":
         ax.set_title(title, size=size)
     ax.set_xlim(0, 1.0)
-    ax.set_yscale("log")
-    ax.set_ylim(1, max_y)
+    # ax.set_yscale("log")
+    ax.set_ylim(100, max_y)
     ax.tick_params(right=True, which="both", direction="in", length=5)
     ticks = []
     labels = []
-    y = 1
+    y = 0
     while y <= max_y:
         ticks.append(y)
         labels.append("%d" % (y))
-        y = y*10
+        y = y + 500
     ax.set_yticks(ticks)
     ax.set_yticklabels(labels, size=size)
     if show_bot_label:
@@ -401,6 +401,7 @@ if __name__ == "__main__":
     experiments["tcp"] = "tcp_" + workload
     experiments["dctcp"] = "dctcp_" + workload
     experiments["distbench_homa"] = "distbench_homa_" + workload
+    experiments["distbench_grpc"] = "distbench_grpc_" + workload
     experiments["distbench_grpc_polling"] = "distbench_grpc_polling_" + workload
     experiments["distbench_grpc_inline"] = "distbench_grpc_inline_" + workload
     experiments["distbench_grpc_handoff"] = "distbench_grpc_handoff_" + workload
@@ -421,7 +422,7 @@ if __name__ == "__main__":
                                                , percentiles["p99.9"]))
         histogram_large_messages(directory, value, 640000, experiments_info[value])
         histogram_short_messages(directory, value, 1000, experiments_info[value])
-    ax = start_rtt_plot("Latencies per sizes", 100000)
+    ax = start_rtt_plot("Latencies per sizes", 4000)
     for key, value in experiments.items():
         plot_rtts(ax, value, "p99", key + "_p99")
     ax.legend(loc="upper right", prop={'size': 5})
