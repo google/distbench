@@ -320,7 +320,7 @@ bool FastParse(homa::receiver* r, size_t msg_length,
   std::string_view initial_chunk = PeekAtMessage(r);
   if (initial_chunk.length() == 1 &&
       initial_chunk[0] == empty_message_placeholder[0]) {
-    return false;
+    return true;
   }
 
   size_t metadata_length = MetaDataLength(initial_chunk, msg_length);
@@ -360,6 +360,11 @@ void ProtocolDriverHoma::ServerThread() {
     CHECK(server_receiver_->is_request());
     const sockaddr_in_union src_addr = *server_receiver_->src_addr();
     const uint64_t rpc_id = server_receiver_->id();
+
+    if (true) {
+      homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
+      continue;
+    }
 
     GenericRequestResponse* request = new GenericRequestResponse;
     if (!FastParse(server_receiver_.get(), msg_length, request)) {
