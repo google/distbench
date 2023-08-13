@@ -415,8 +415,8 @@ void ProtocolDriverHoma::ServerThread() {
     auto fct_action_list_thread = rpc_handler_(rpc_state);
     ++pending_actionlist_threads;
     if (fct_action_list_thread)
-      RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread)
-          .detach();
+      fct_action_list_thread();
+      //RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread).detach();
   }
   while (pending_actionlist_threads) {
     sched_yield();
