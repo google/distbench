@@ -362,6 +362,24 @@ void ProtocolDriverHoma::ServerThread() {
     const uint64_t rpc_id = server_receiver_->id();
 
     if (true) {
+      struct iovec vecs[HOMA_MAX_BPAGES];
+      size_t offset = 0;
+      for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+        vecs[i].iov_base = server_receiver_->get<char>(offset);
+        vecs[i].iov_len = server_receiver_->contiguous(offset);
+        offset += vecs[i].iov_len;
+        if (offset == msg_length) {
+          homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
+          break;
+        }
+      }
+      if (offset != msg_length) {
+        LOG(FATAL) << "wtf? " << offset << " out of " << msg_length;
+      }
+      continue;
+    }
+
+    if (true) {
       homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
       continue;
     }
