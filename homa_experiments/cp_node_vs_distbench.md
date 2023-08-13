@@ -4,11 +4,13 @@ The cp_node_vs_distbench.sh script allows you to run the cp_node experiments on 
 
 You have run the distbench deploy_to_cloudlab.sh script in another terminal and homa installed in the cluster. You also need to build distbench and the analysis directory.
 
-The script takes the DNS (USER@HOSTNAME) as first optional argument and the flags to specify the parameters of the experiment are:
+## Environment variables:
+-   **CLOUDLAB_USER** (optional) remote user name to use for ssh/scp.
 
 ## Flags
--    **-x** experiments you wanna run in distbench (-x homa -x grpc -x grpc:server_type=$SERVER_TYPE -x grpc:server_type=SERVER_TYPE:transport=homa etc. Default: homa and grpc)
--    **-n** number of nodes (default = 10)
+-    **-h** host to run homa experiment scripts from
+-    **-x** experiments you want to run in distbench (-x homa -x grpc -x grpc:server_type=$SERVER_TYPE -x grpc:server_type=SERVER_TYPE:transport=homa etc. Default: homa and grpc)
+-    **-n** number of nodes (default = determined from /etc/hosts on the given host)
 -    **-w** workload (default = w5)
 -    **-b** Gbps for the test (default = 1)
 -    **-s** seconds to run the tests (default = 10)
@@ -16,5 +18,5 @@ The script takes the DNS (USER@HOSTNAME) as first optional argument and the flag
 
 ## Usage:
 ```bash
-    ./cp_node_vs_distbench.sh [USER@HOSTNAME] [options]
+    ./cp_node_vs_distbench.sh [HOSTNAME] [options]
 ```
