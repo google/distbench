@@ -361,7 +361,8 @@ void ProtocolDriverHoma::ServerThread() {
     const sockaddr_in_union src_addr = *server_receiver_->src_addr();
     const uint64_t rpc_id = server_receiver_->id();
 
-    if (true) {
+    // ping-pong bypasses distbench_engine:
+    if (false) {
       struct iovec vecs[HOMA_MAX_BPAGES];
       size_t offset = 0;
       for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
@@ -379,7 +380,8 @@ void ProtocolDriverHoma::ServerThread() {
       continue;
     }
 
-    if (true) {
+    // sends back zero byte placeholder response:
+    if (false) {
       homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
       continue;
     }
