@@ -414,9 +414,29 @@ void ProtocolDriverHoma::ServerThread() {
         });
     auto fct_action_list_thread = rpc_handler_(rpc_state);
     ++pending_actionlist_threads;
-    if (fct_action_list_thread)
-      fct_action_list_thread();
+    if (fct_action_list_thread) {
+      // fct_action_list_thread();
       //RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread).detach();
+    }
+    if (true) {
+      struct iovec vecs[HOMA_MAX_BPAGES];
+      size_t offset = 0;
+      for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+        vecs[i].iov_base = server_receiver_->get<char>(offset);
+        vecs[i].iov_len = server_receiver_->contiguous(offset);
+        offset += vecs[i].iov_len;
+        if (offset == msg_length) {
+          homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
+          break;
+        }
+      }
+      if (offset != msg_length) {
+        LOG(FATAL) << "wtf? " << offset << " out of " << msg_length;
+      }
+      delete rpc_state->request;
+      delete rpc_state;
+      continue;
+    }
   }
   while (pending_actionlist_threads) {
     sched_yield();
