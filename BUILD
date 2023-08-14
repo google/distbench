@@ -278,6 +278,7 @@ cc_library(
         ":distbench_netutils",
         ":distbench_payload",
         ":distbench_thread_support",
+        ":distbench_threadpool_lib",
         ":distbench_utils",
         ":protocol_driver_api",
         "@homa_module//:homa_api",

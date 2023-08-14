@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <sys/mman.h>
 
+#include "absl/base/internal/sysinfo.h"
 #include "distbench_payload.h"
 #include "external/homa_module/homa.h"
 #include "glog/logging.h"
@@ -39,6 +40,16 @@ ProtocolDriverHoma::ProtocolDriverHoma() {}
 
 absl::Status ProtocolDriverHoma::Initialize(
     const ProtocolDriverOptions& pd_opts, int* port) {
+  auto threadpool_size = GetNamedServerSettingInt64(
+      pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
+  auto threadpool_type =
+      GetNamedServerSettingString(pd_opts, "threadpool_type", "null");
+
+  auto tp = CreateThreadpool(threadpool_type, threadpool_size);
+  if (!tp.ok()) {
+    return tp.status();
+  }
+  thread_pool_ = std::move(tp.value());
   if (pd_opts.has_netdev_name()) {
     netdev_name_ = pd_opts.netdev_name();
   }
@@ -323,6 +334,10 @@ bool FastParse(homa::receiver* r, size_t msg_length,
     return true;
   }
 
+  if (initial_chunk.length() == msg_length) {
+    return out->ParseFromArray(initial_chunk.data(), msg_length);
+  }
+
   size_t metadata_length = MetaDataLength(initial_chunk, msg_length);
   if (metadata_length <= initial_chunk.length()) {
     return out->ParseFromArray(initial_chunk.data(), metadata_length);
@@ -332,12 +347,23 @@ bool FastParse(homa::receiver* r, size_t msg_length,
   char rx_buf[1048576];
   r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
   return out->ParseFromArray(rx_buf, msg_length);
+//        struct iovec vecs[HOMA_MAX_BPAGES];
+//        size_t offset = 0;
+//        for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+//          vecs[i].iov_base = server_receiver_->get<char>(offset);
+//          vecs[i].iov_len = server_receiver_->contiguous(offset);
+//          offset += vecs[i].iov_len;
+//          if (offset == msg_length) {
+//            homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
+//            break;
+//          }
+//        }
 }
 
 }  // namespace
 
 void ProtocolDriverHoma::ServerThread() {
-  std::atomic<int> pending_actionlist_threads = 0;
+  std::atomic<int> pending_responses = 0;
 
   handler_set_.WaitForNotification();
   while (1) {
@@ -397,28 +423,32 @@ void ProtocolDriverHoma::ServerThread() {
       delete rpc_state;
     });
     rpc_state->SetSendResponseFunction(
-        [=, this, &pending_actionlist_threads]() {
+        [=, this, &pending_responses]() {
           std::string txbuf;
           rpc_state->response.SerializeToString(&txbuf);
           if (txbuf.empty()) {
             // Homa can't send a 0 byte message :(
             txbuf = empty_message_placeholder;
           }
+          LOG(INFO) << "responding";
           int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
                                      txbuf.length(), &src_addr, rpc_id);
           if (error) {
             LOG(ERROR) << "homa_reply for " << rpc_id
                        << " returned error: " << strerror(errno);
           }
-          --pending_actionlist_threads;
+          --pending_responses;
         });
+    ++pending_responses;
+    auto start = absl::Now();
     auto fct_action_list_thread = rpc_handler_(rpc_state);
-    ++pending_actionlist_threads;
+    LOG(INFO) << "took " << absl::Now() - start;
+
     if (fct_action_list_thread) {
-      // fct_action_list_thread();
-      //RunRegisteredThread("DedicatedActionListThread", fct_action_list_thread).detach();
+      thread_pool_->AddTask(fct_action_list_thread);
     }
-    if (true) {
+    if (false) {
+      LOG(INFO) << "wgh";
       struct iovec vecs[HOMA_MAX_BPAGES];
       size_t offset = 0;
       for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
@@ -438,7 +468,7 @@ void ProtocolDriverHoma::ServerThread() {
       continue;
     }
   }
-  while (pending_actionlist_threads) {
+  while (pending_responses) {
     sched_yield();
   }
 }

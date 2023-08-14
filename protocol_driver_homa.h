@@ -17,6 +17,7 @@
 
 #include "distbench_netutils.h"
 #include "distbench_thread_support.h"
+#include "distbench_threadpool.h"
 #include "distbench_utils.h"
 #include "external/homa_module/homa.h"
 #include "external/homa_module/homa_receiver.h"
@@ -90,6 +91,7 @@ class ProtocolDriverHoma : public ProtocolDriver {
   std::function<std::function<void()>(ServerRpcState* state)> rpc_handler_;
 
   std::vector<sockaddr_in_union> peer_addresses_;
+  std::unique_ptr<AbstractThreadpool> thread_pool_;
 };
 
 }  // namespace distbench
