@@ -49,6 +49,7 @@ NullThreadpool::~NullThreadpool() {
 }
 
 void NullThreadpool::AddTask(std::function<void()> task) {
+  LOG(INFO) << "task";
   {
     absl::MutexLock m(&mutex_);
     ++active_threads_;
