@@ -422,7 +422,7 @@ if __name__ == "__main__":
                                                , percentiles["p99.9"]))
         histogram_large_messages(directory, value, 640000, experiments_info[value])
         histogram_short_messages(directory, value, 1000, experiments_info[value])
-    ax = start_rtt_plot("Latencies per sizes", 4000)
+    ax = start_rtt_plot("Latencies per sizes", 15000)
     for key, value in experiments.items():
         plot_rtts(ax, value, "p99", key + "_p99")
     ax.legend(loc="upper right", prop={'size': 5})
