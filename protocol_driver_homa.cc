@@ -327,6 +327,7 @@ std::string_view PeekAtMessage(homa::receiver* r) {
 
 bool FastParse(homa::receiver* r, size_t msg_length,
                GenericRequestResponse* out) {
+  auto start = absl::Now();
   // Try the fast way:
   std::string_view initial_chunk = PeekAtMessage(r);
   if (initial_chunk.length() == 1 &&
@@ -334,31 +335,55 @@ bool FastParse(homa::receiver* r, size_t msg_length,
     return true;
   }
 
-  if (initial_chunk.length() == msg_length) {
-    return out->ParseFromArray(initial_chunk.data(), msg_length);
+  if (msg_length <= 4096 && initial_chunk.length() == msg_length) {
+    bool ret =  out->ParseFromArray(initial_chunk.data(), msg_length);
+    //auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
+    return ret;
   }
 
   size_t metadata_length = MetaDataLength(initial_chunk, msg_length);
+  // size_t metadata_length = msg_length;
   if (metadata_length <= initial_chunk.length()) {
-    return out->ParseFromArray(initial_chunk.data(), metadata_length);
+    bool ret = out->ParseFromArray(initial_chunk.data(), metadata_length);
+    absl::Cord payload;
+    size_t offset = 0;
+    for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+      size_t contig = r->contiguous(offset);
+      absl::string_view s(r->get<char>(offset), contig);
+      offset += contig;
+      //payload.Append(absl::Cord(s));
+      payload.Append(absl::MakeCordFromExternal(s, [](){}));
+      if (offset == msg_length) {
+        out->set_payload(std::move(payload));
+        break;
+      }
+    }
+    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
+    return ret;
   }
 
   // Fall back to the slow way (should not be possible):
   char rx_buf[1048576];
   r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
   return out->ParseFromArray(rx_buf, msg_length);
-//        struct iovec vecs[HOMA_MAX_BPAGES];
-//        size_t offset = 0;
-//        for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
-//          vecs[i].iov_base = server_receiver_->get<char>(offset);
-//          vecs[i].iov_len = server_receiver_->contiguous(offset);
-//          offset += vecs[i].iov_len;
-//          if (offset == msg_length) {
-//            homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
-//            break;
-//          }
-//        }
 }
+
+#if 0
+void FastUnparse(GenericRequestResponse* in, std::vector<struct iovec>* out) {
+
+  struct iovec vecs[HOMA_MAX_BPAGES];
+  size_t offset = 0;
+  for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+    vecs[i].iov_base = server_receiver_->get<char>(offset);
+    vecs[i].iov_len = server_receiver_->contiguous(offset);
+    offset += vecs[i].iov_len;
+    if (offset == msg_length) {
+      homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
+      break;
+    }
+  }
+}
+#endif
 
 }  // namespace
 
@@ -369,6 +394,7 @@ void ProtocolDriverHoma::ServerThread() {
   while (1) {
     errno = 0;
     ssize_t msg_length = server_receiver_->receive(HOMA_RECVMSG_REQUEST, 0);
+    auto start = absl::Now();
     if (shutting_down_server_.HasBeenNotified()) {
       break;
     }
@@ -430,9 +456,9 @@ void ProtocolDriverHoma::ServerThread() {
             // Homa can't send a 0 byte message :(
             txbuf = empty_message_placeholder;
           }
-          LOG(INFO) << "responding";
-          int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(),
-                                     txbuf.length(), &src_addr, rpc_id);
+          //int64_t error = homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
+            //txbuf = empty_message_placeholder;
+            int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(), txbuf.length(), &src_addr, rpc_id);
           if (error) {
             LOG(ERROR) << "homa_reply for " << rpc_id
                        << " returned error: " << strerror(errno);
@@ -440,15 +466,13 @@ void ProtocolDriverHoma::ServerThread() {
           --pending_responses;
         });
     ++pending_responses;
-    auto start = absl::Now();
     auto fct_action_list_thread = rpc_handler_(rpc_state);
-    LOG(INFO) << "took " << absl::Now() - start;
+    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start;
 
     if (fct_action_list_thread) {
       thread_pool_->AddTask(fct_action_list_thread);
     }
     if (false) {
-      LOG(INFO) << "wgh";
       struct iovec vecs[HOMA_MAX_BPAGES];
       size_t offset = 0;
       for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
