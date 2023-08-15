@@ -368,22 +368,47 @@ bool FastParse(homa::receiver* r, size_t msg_length,
   return out->ParseFromArray(rx_buf, msg_length);
 }
 
-#if 0
-void FastUnparse(GenericRequestResponse* in, std::vector<struct iovec>* out) {
+struct IovecBuffer {
+  absl::Cord buffer;
+  std::vector<iovec> iovecs;
+};
 
-  struct iovec vecs[HOMA_MAX_BPAGES];
-  size_t offset = 0;
-  for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
-    vecs[i].iov_base = server_receiver_->get<char>(offset);
-    vecs[i].iov_len = server_receiver_->contiguous(offset);
-    offset += vecs[i].iov_len;
-    if (offset == msg_length) {
-      homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
-      break;
-    }
-  }
+std::string MakeVarint(uint64_t val) {
+  std::string ret(10, '\0');
+  char* cursor = ret.data();
+  do {
+    *cursor = val & 0x7f;
+    val >>= 7;
+    ++cursor;
+  } while (val);
+  ret.resize(cursor - ret.data());
+  return ret;
 }
-#endif
+
+IovecBuffer FastUnparse(GenericRequestResponse* in) {
+  IovecBuffer ret;
+  GenericRequestResponse copy = *in;
+  copy.clear_payload();
+  // Need to insert proto field tag and length!!!!
+  ret.buffer = copy.SerializeAsString() + MakeVarint((0xf << 3) | 0x2) + MakeVarint(in->payload().size());
+
+
+  ret.buffer.Append(in->payload());
+
+  int num_chunks = 0;
+  for (const auto& chunk : in->payload().Chunks()) {
+    ++num_chunks;
+  }
+
+  ret.iovecs.reserve(num_chunks);
+
+  for (const auto& chunk : in->payload().Chunks()) {
+    iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
+    ret.iovecs.push_back(t);
+  }
+
+  return ret;
+}
 
 }  // namespace
 
