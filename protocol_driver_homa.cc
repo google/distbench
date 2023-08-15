@@ -93,7 +93,10 @@ std::string MakeVarint(uint64_t val) {
   return ret;
 }
 
-absl::Cord SerializeToCord(GenericRequestResponse* in) {
+absl::Cord SerializeToCord(GenericRequestResponse* in, bool avoid_copy) {
+  if (!avoid_copy) {
+    return absl::Cord(in->SerializeAsString());
+  }
   absl::Cord ret;
   GenericRequestResponse copy = *in;
   copy.clear_payload();
@@ -120,41 +123,20 @@ absl::Cord SerializeToCord(GenericRequestResponse* in) {
 }
 
 struct IovecBuffer {
-  absl::Cord buffer;
   std::vector<iovec> iovecs;
 };
 
 IovecBuffer Cord2IovecBuffer(absl::Cord* in) {
   IovecBuffer ret;
-  ret.buffer = *in;
 
   int num_chunks = 0;
-  for (const auto& chunk : ret.buffer.Chunks()) {
+  for (const auto& chunk : in->Chunks()) {
     ++num_chunks;
   }
 
   ret.iovecs.reserve(num_chunks);
 
-  for (const auto& chunk : ret.buffer.Chunks()) {
-    iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
-    ret.iovecs.push_back(t);
-  }
-
-  return ret;
-}
-
-IovecBuffer GenericRequestResponse2IovecBuffer(GenericRequestResponse* in) {
-  IovecBuffer ret;
-  ret.buffer = SerializeToCord(in);
-
-  int num_chunks = 0;
-  for (const auto& chunk : ret.buffer.Chunks()) {
-    ++num_chunks;
-  }
-
-  ret.iovecs.reserve(num_chunks);
-
-  for (const auto& chunk : ret.buffer.Chunks()) {
+  for (const auto& chunk : in->Chunks()) {
     iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
     ret.iovecs.push_back(t);
   }
@@ -176,6 +158,10 @@ absl::Status ProtocolDriverHoma::Initialize(
       pd_opts, "threadpool_size", absl::base_internal::NumCPUs());
   auto threadpool_type =
       GetNamedServerSettingString(pd_opts, "threadpool_type", "null");
+
+  ping_pong_ = GetNamedServerSettingInt64(pd_opts, "ping_pong", true);
+  send_empty_responses_ = GetNamedServerSettingInt64(pd_opts, "send_empty_responses", false);
+  avoid_payload_copy_ = GetNamedServerSettingInt64(pd_opts, "avoid_payload_copy", true);
 
   auto tp = CreateThreadpool(threadpool_type, threadpool_size);
   if (!tp.ok()) {
@@ -424,7 +410,7 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
 
   new_rpc->done_callback = done_callback;
   new_rpc->state = state;
-  new_rpc->serialized_request = SerializeToCord(&state->request);
+  new_rpc->serialized_request = SerializeToCord(&state->request, avoid_payload_copy_);
   if (new_rpc->serialized_request.empty()) {
     // Homa can't send a 0 byte message :(
     new_rpc->serialized_request = empty_message_placeholder;
@@ -457,7 +443,7 @@ void ProtocolDriverHoma::ServerThread() {
   while (1) {
     errno = 0;
     ssize_t msg_length = server_receiver_->receive(HOMA_RECVMSG_REQUEST, 0);
-    auto start = absl::Now();
+    //auto start = absl::Now();
     if (shutting_down_server_.HasBeenNotified()) {
       break;
     }
@@ -477,7 +463,7 @@ void ProtocolDriverHoma::ServerThread() {
     const uint64_t rpc_id = server_receiver_->id();
 
     // ping-pong bypasses distbench_engine:
-    if (false) {
+    if (ping_pong_) {
       struct iovec vecs[HOMA_MAX_BPAGES];
       ssize_t offset = 0;
       for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
@@ -492,12 +478,12 @@ void ProtocolDriverHoma::ServerThread() {
       if (offset != msg_length) {
         LOG(FATAL) << "wtf? " << offset << " out of " << msg_length;
       }
-      auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
+      // // auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
       continue;
     }
 
     // sends back zero byte placeholder response:
-    if (false) {
+    if (send_empty_responses_) {
       homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
       continue;
     }
@@ -505,6 +491,11 @@ void ProtocolDriverHoma::ServerThread() {
     GenericRequestResponse* request = new GenericRequestResponse;
     if (!FastParse(server_receiver_.get(), msg_length, request)) {
       LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
+    }
+    if (!avoid_payload_copy_) {
+      absl::Cord flat = request->payload();
+      flat.Flatten();
+      request->set_payload(std::move(flat));
     }
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
@@ -514,14 +505,15 @@ void ProtocolDriverHoma::ServerThread() {
     });
     rpc_state->SetSendResponseFunction(
         [=, this, &pending_responses]() {
-          IovecBuffer buf = GenericRequestResponse2IovecBuffer(&rpc_state->response);
+          absl::Cord buffer = SerializeToCord(&rpc_state->response, avoid_payload_copy_);
+          IovecBuffer buf = Cord2IovecBuffer(&buffer);
           int64_t error;
-          if (buf.buffer.empty()) {
+          if (buf.iovecs.empty()) {
             // Homa can't send a 0 byte message :(
             error = homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
           } else {
             error = homa_replyv(homa_server_sock_, buf.iovecs.data(), buf.iovecs.size(), &src_addr, rpc_id);
-    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << buf.buffer.size() << " bytes";
+    // auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << buffer.size() << " bytes";
           }
           if (error) {
             LOG(ERROR) << "homa_reply for " << rpc_id
@@ -534,25 +526,6 @@ void ProtocolDriverHoma::ServerThread() {
 
     if (fct_action_list_thread) {
       thread_pool_->AddTask(fct_action_list_thread);
-    }
-    if (false) {
-      struct iovec vecs[HOMA_MAX_BPAGES];
-      ssize_t offset = 0;
-      for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
-        vecs[i].iov_base = server_receiver_->get<char>(offset);
-        vecs[i].iov_len = server_receiver_->contiguous(offset);
-        offset += vecs[i].iov_len;
-        if (offset == msg_length) {
-          homa_replyv(homa_server_sock_, vecs, i + 1, &src_addr, rpc_id);
-          break;
-        }
-      }
-      if (offset != msg_length) {
-        LOG(FATAL) << "wtf? " << offset << " out of " << msg_length;
-      }
-      delete rpc_state->request;
-      delete rpc_state;
-      continue;
     }
   }
   while (pending_responses) {
@@ -586,6 +559,11 @@ void ProtocolDriverHoma::ClientCompletionThread() {
       if (!FastParse(client_receiver_.get(), msg_length,
                      &pending_rpc->state->response)) {
         LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
+      }
+      if (!avoid_payload_copy_) {
+        absl::Cord flat = pending_rpc->state->response.payload();
+        flat.Flatten();
+        pending_rpc->state->response.set_payload(std::move(flat));
       }
     }
     pending_rpc->done_callback();

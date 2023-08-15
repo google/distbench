@@ -92,6 +92,10 @@ class ProtocolDriverHoma : public ProtocolDriver {
 
   std::vector<sockaddr_in_union> peer_addresses_;
   std::unique_ptr<AbstractThreadpool> thread_pool_;
+
+  bool ping_pong_ = false;
+  bool send_empty_responses_ = false;
+  bool avoid_payload_copy_ = false;
 };
 
 }  // namespace distbench
