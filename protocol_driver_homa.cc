@@ -161,7 +161,7 @@ absl::Status ProtocolDriverHoma::Initialize(
 
   ping_pong_ = GetNamedServerSettingInt64(pd_opts, "ping_pong", false);
   send_empty_responses_ = GetNamedServerSettingInt64(pd_opts, "send_empty_responses", false);
-  avoid_payload_copy_ = GetNamedServerSettingInt64(pd_opts, "avoid_payload_copy", true);
+  avoid_payload_copy_ = GetNamedServerSettingInt64(pd_opts, "avoid_payload_copy", false);
 
   auto tp = CreateThreadpool(threadpool_type, threadpool_size);
   if (!tp.ok()) {
