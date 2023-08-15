@@ -27,7 +27,7 @@ namespace distbench {
 
 struct PendingHomaRpc {
   ClientRpcState* state;
-  std::string serialized_request;
+  absl::Cord serialized_request;
   std::function<void(void)> done_callback;
 };
 

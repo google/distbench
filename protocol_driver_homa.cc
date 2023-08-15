@@ -30,6 +30,138 @@ namespace {
 // serialize to this value, so it is unambiguous.
 const char empty_message_placeholder[] = "\7";
 
+std::string_view PeekAtMessage(homa::receiver* r) {
+  return {r->get<char>(0), r->contiguous(0)};
+}
+
+bool FastParse(homa::receiver* r, size_t msg_length,
+               GenericRequestResponse* out) {
+  auto start = absl::Now();
+  // Try the fast way:
+  std::string_view initial_chunk = PeekAtMessage(r);
+  if (initial_chunk.length() == 1 &&
+      initial_chunk[0] == empty_message_placeholder[0]) {
+    return true;
+  }
+
+  if (msg_length <= 4096 && initial_chunk.length() == msg_length) {
+    bool ret =  out->ParseFromArray(initial_chunk.data(), msg_length);
+    //auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
+    return ret;
+  }
+
+  size_t metadata_length = MetaDataLength(initial_chunk, msg_length);
+  // size_t metadata_length = msg_length;
+  if (metadata_length <= initial_chunk.length()) {
+    bool ret = out->ParseFromArray(initial_chunk.data(), metadata_length);
+    absl::Cord payload;
+    size_t offset = 0;
+    for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
+      size_t contig = r->contiguous(offset);
+      absl::string_view s(r->get<char>(offset), contig);
+      offset += contig;
+      //payload.Append(absl::Cord(s));
+      payload.Append(absl::MakeCordFromExternal(s, [](){}));
+      if (offset == msg_length) {
+        out->set_payload(std::move(payload));
+        break;
+      }
+    }
+    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
+    return ret;
+  }
+
+  // Fall back to the slow way (should not be possible):
+  char rx_buf[1048576];
+  r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
+  return out->ParseFromArray(rx_buf, msg_length);
+}
+
+std::string MakeVarint(uint64_t val) {
+  std::string ret(10, '\0');
+  char* cursor = ret.data();
+  do {
+    if (val > 127) {
+      *cursor = val | 0x80;
+    } else {
+      *cursor = val;
+    }
+    val >>= 7;
+    ++cursor;
+  } while (val);
+  ret.resize(cursor - ret.data());
+  return ret;
+}
+
+absl::Cord SerializeToCord(GenericRequestResponse* in) {
+  absl::Cord ret;
+  GenericRequestResponse copy = *in;
+  copy.clear_payload();
+  // Insert metadata and payload proto field tag and length:
+  if (in->has_payload()) {
+    ret = absl::StrCat(copy.SerializeAsString(), MakeVarint((0xf << 3) | 0x2), MakeVarint(in->payload().size()));
+  } else {
+    ret = copy.SerializeAsString();
+  }
+  ret.Append(in->payload());
+
+  #if 0
+  std::string flat1(ret.Flatten());
+  std::string flat2 = in->SerializeAsString();
+  CHECK_EQ(flat1.length(), flat2.length());
+  LOG(INFO) << flat1.length();
+  CHECK_EQ(flat1, flat2);
+  GenericRequestResponse request;
+  if (!request.ParseFromArray(flat2.data(), flat2.length())) {
+    LOG(FATAL) << "rx_buf did not parse as a GenericRequestResponse";
+  }
+  #endif
+  return ret;
+}
+
+struct IovecBuffer {
+  absl::Cord buffer;
+  std::vector<iovec> iovecs;
+};
+
+IovecBuffer Cord2IovecBuffer(absl::Cord* in) {
+  IovecBuffer ret;
+  ret.buffer = *in;
+
+  int num_chunks = 0;
+  for (const auto& chunk : ret.buffer.Chunks()) {
+    ++num_chunks;
+  }
+
+  ret.iovecs.reserve(num_chunks);
+
+  for (const auto& chunk : ret.buffer.Chunks()) {
+    iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
+    ret.iovecs.push_back(t);
+  }
+
+  return ret;
+}
+
+IovecBuffer GenericRequestResponse2IovecBuffer(GenericRequestResponse* in) {
+  IovecBuffer ret;
+  ret.buffer = SerializeToCord(in);
+
+  int num_chunks = 0;
+  for (const auto& chunk : ret.buffer.Chunks()) {
+    ++num_chunks;
+  }
+
+  ret.iovecs.reserve(num_chunks);
+
+  for (const auto& chunk : ret.buffer.Chunks()) {
+    iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
+    ret.iovecs.push_back(t);
+  }
+
+  return ret;
+}
+
 }  // namespace
 
 ///////////////////////////////////
@@ -292,13 +424,12 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
 
   new_rpc->done_callback = done_callback;
   new_rpc->state = state;
-  state->request.SerializeToString(&new_rpc->serialized_request);
+  new_rpc->serialized_request = SerializeToCord(&state->request);
   if (new_rpc->serialized_request.empty()) {
     // Homa can't send a 0 byte message :(
     new_rpc->serialized_request = empty_message_placeholder;
   }
-  const char* const buf = new_rpc->serialized_request.data();
-  const size_t buflen = new_rpc->serialized_request.size();
+  IovecBuffer request_buf = Cord2IovecBuffer(&new_rpc->serialized_request);
 #ifdef THREAD_SANITIZER
   __tsan_release(new_rpc);
 #endif
@@ -307,7 +438,7 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   uint64_t kernel_rpc_number;
 
   int64_t res =
-      homa_send(homa_client_sock_, buf, buflen, &peer_addresses_[peer_index],
+      homa_sendv(homa_client_sock_, request_buf.iovecs.data(), request_buf.iovecs.size(), &peer_addresses_[peer_index],
                 &kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
   if (res < 0) {
     LOG(INFO) << "homa_send result: " << res << " errno: " << errno
@@ -318,99 +449,6 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
     done_callback();
   }
 }
-
-namespace {
-
-std::string_view PeekAtMessage(homa::receiver* r) {
-  return {r->get<char>(0), r->contiguous(0)};
-}
-
-bool FastParse(homa::receiver* r, size_t msg_length,
-               GenericRequestResponse* out) {
-  auto start = absl::Now();
-  // Try the fast way:
-  std::string_view initial_chunk = PeekAtMessage(r);
-  if (initial_chunk.length() == 1 &&
-      initial_chunk[0] == empty_message_placeholder[0]) {
-    return true;
-  }
-
-  if (msg_length <= 4096 && initial_chunk.length() == msg_length) {
-    bool ret =  out->ParseFromArray(initial_chunk.data(), msg_length);
-    //auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
-    return ret;
-  }
-
-  size_t metadata_length = MetaDataLength(initial_chunk, msg_length);
-  // size_t metadata_length = msg_length;
-  if (metadata_length <= initial_chunk.length()) {
-    bool ret = out->ParseFromArray(initial_chunk.data(), metadata_length);
-    absl::Cord payload;
-    size_t offset = 0;
-    for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
-      size_t contig = r->contiguous(offset);
-      absl::string_view s(r->get<char>(offset), contig);
-      offset += contig;
-      //payload.Append(absl::Cord(s));
-      payload.Append(absl::MakeCordFromExternal(s, [](){}));
-      if (offset == msg_length) {
-        out->set_payload(std::move(payload));
-        break;
-      }
-    }
-    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
-    return ret;
-  }
-
-  // Fall back to the slow way (should not be possible):
-  char rx_buf[1048576];
-  r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
-  return out->ParseFromArray(rx_buf, msg_length);
-}
-
-struct IovecBuffer {
-  absl::Cord buffer;
-  std::vector<iovec> iovecs;
-};
-
-std::string MakeVarint(uint64_t val) {
-  std::string ret(10, '\0');
-  char* cursor = ret.data();
-  do {
-    *cursor = val & 0x7f;
-    val >>= 7;
-    ++cursor;
-  } while (val);
-  ret.resize(cursor - ret.data());
-  return ret;
-}
-
-IovecBuffer FastUnparse(GenericRequestResponse* in) {
-  IovecBuffer ret;
-  GenericRequestResponse copy = *in;
-  copy.clear_payload();
-  // Need to insert proto field tag and length!!!!
-  ret.buffer = copy.SerializeAsString() + MakeVarint((0xf << 3) | 0x2) + MakeVarint(in->payload().size());
-
-
-  ret.buffer.Append(in->payload());
-
-  int num_chunks = 0;
-  for (const auto& chunk : in->payload().Chunks()) {
-    ++num_chunks;
-  }
-
-  ret.iovecs.reserve(num_chunks);
-
-  for (const auto& chunk : in->payload().Chunks()) {
-    iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
-    ret.iovecs.push_back(t);
-  }
-
-  return ret;
-}
-
-}  // namespace
 
 void ProtocolDriverHoma::ServerThread() {
   std::atomic<int> pending_responses = 0;
@@ -441,7 +479,7 @@ void ProtocolDriverHoma::ServerThread() {
     // ping-pong bypasses distbench_engine:
     if (false) {
       struct iovec vecs[HOMA_MAX_BPAGES];
-      size_t offset = 0;
+      ssize_t offset = 0;
       for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
         vecs[i].iov_base = server_receiver_->get<char>(offset);
         vecs[i].iov_len = server_receiver_->contiguous(offset);
@@ -475,15 +513,15 @@ void ProtocolDriverHoma::ServerThread() {
     });
     rpc_state->SetSendResponseFunction(
         [=, this, &pending_responses]() {
-          std::string txbuf;
-          rpc_state->response.SerializeToString(&txbuf);
-          if (txbuf.empty()) {
+          IovecBuffer buf = GenericRequestResponse2IovecBuffer(&rpc_state->response);
+          int64_t error;
+          if (buf.buffer.empty()) {
             // Homa can't send a 0 byte message :(
-            txbuf = empty_message_placeholder;
+            error = homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
+          } else {
+            error = homa_replyv(homa_server_sock_, buf.iovecs.data(), buf.iovecs.size(), &src_addr, rpc_id);
+    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << buf.buffer.size() << " bytes";
           }
-          //int64_t error = homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
-            //txbuf = empty_message_placeholder;
-            int64_t error = homa_reply(homa_server_sock_, txbuf.c_str(), txbuf.length(), &src_addr, rpc_id);
           if (error) {
             LOG(ERROR) << "homa_reply for " << rpc_id
                        << " returned error: " << strerror(errno);
@@ -492,14 +530,13 @@ void ProtocolDriverHoma::ServerThread() {
         });
     ++pending_responses;
     auto fct_action_list_thread = rpc_handler_(rpc_state);
-    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start;
 
     if (fct_action_list_thread) {
       thread_pool_->AddTask(fct_action_list_thread);
     }
     if (false) {
       struct iovec vecs[HOMA_MAX_BPAGES];
-      size_t offset = 0;
+      ssize_t offset = 0;
       for (int i = 0; i < HOMA_MAX_BPAGES; ++i) {
         vecs[i].iov_base = server_receiver_->get<char>(offset);
         vecs[i].iov_len = server_receiver_->contiguous(offset);
