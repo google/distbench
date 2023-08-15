@@ -36,7 +36,7 @@ std::string_view PeekAtMessage(homa::receiver* r) {
 
 bool FastParse(homa::receiver* r, size_t msg_length,
                GenericRequestResponse* out) {
-  auto start = absl::Now();
+  //auto start = absl::Now();
   // Try the fast way:
   std::string_view initial_chunk = PeekAtMessage(r);
   if (initial_chunk.length() == 1 &&
@@ -67,7 +67,7 @@ bool FastParse(homa::receiver* r, size_t msg_length,
         break;
       }
     }
-    auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
+    //auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
     return ret;
   }
 
@@ -492,6 +492,7 @@ void ProtocolDriverHoma::ServerThread() {
       if (offset != msg_length) {
         LOG(FATAL) << "wtf? " << offset << " out of " << msg_length;
       }
+      auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
       continue;
     }
 
