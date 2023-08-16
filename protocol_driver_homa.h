@@ -69,8 +69,6 @@ class ProtocolDriverHoma : public ProtocolDriver {
   const size_t kHomaBufferSize = 1000 * HOMA_BPAGE_SIZE;
   void* client_buffer_ = nullptr;
   void* server_buffer_ = nullptr;
-  std::unique_ptr<homa::receiver> client_receiver_;
-  std::unique_ptr<homa::receiver> server_receiver_;
 
   int homa_client_sock_ = -1;
   int homa_server_sock_ = -1;
@@ -82,8 +80,8 @@ class ProtocolDriverHoma : public ProtocolDriver {
   std::atomic<int> pending_rpcs_ = 0;
 
   std::string netdev_name_;
-  std::thread client_completion_thread_;
-  std::thread server_thread_;
+  std::vector<std::thread> client_completion_threads_;
+  std::vector<std::thread> server_threads_;
   SafeNotification handler_set_;
   SafeNotification shutting_down_server_;
   SafeNotification shutting_down_client_;
@@ -91,7 +89,7 @@ class ProtocolDriverHoma : public ProtocolDriver {
   std::function<std::function<void()>(ServerRpcState* state)> rpc_handler_;
 
   std::vector<sockaddr_in_union> peer_addresses_;
-  std::unique_ptr<AbstractThreadpool> thread_pool_;
+  std::unique_ptr<AbstractThreadpool> actionlist_thread_pool_;
 
   bool ping_pong_ = false;
   bool send_empty_responses_ = false;
