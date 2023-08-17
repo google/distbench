@@ -14,11 +14,11 @@
 
 #include <atomic>
 
+#include "absl/log/log.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "benchmark/benchmark.h"
 #include "distbench_threadpool.h"
-#include "glog/logging.h"
 
 namespace {
 

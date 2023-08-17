@@ -14,7 +14,7 @@
 
 #include "distbench_payload.h"
 
-#include "glog/logging.h"
+#include "absl/log/log.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 

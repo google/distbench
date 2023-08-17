@@ -1,11 +1,11 @@
-#include <glog/logging.h>
-
 #include <cstdio>
 
+#include "absl/log/initialize.h"
+#include "absl/log/log.h"
 #include "benchmark/benchmark.h"
 
 int main(int argc, char** argv) {
-  google::InitGoogleLogging(argv[0]);
+  absl::InitializeLog();
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
   return 0;

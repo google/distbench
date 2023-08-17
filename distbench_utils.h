@@ -94,7 +94,7 @@ std::map<std::string, int> EnumerateRpcs(
 absl::StatusOr<ServiceSpec> GetServiceSpec(
     std::string_view name, const DistributedSystemDescription& config);
 
-void InitLibs(const char* argv0);
+void InitLibs();
 
 std::string Hostname();
 

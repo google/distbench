@@ -14,10 +14,10 @@
 
 #include "distbench_test_sequencer_tester.h"
 
+#include "absl/log/log.h"
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"
 #include "distbench_thread_support.h"
-#include "glog/logging.h"
 
 namespace distbench {
 

@@ -16,12 +16,13 @@
 
 #include <fnmatch.h>
 
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_join.h"
 #include "distbench_netutils.h"
 #include "distbench_summary.h"
 #include "distbench_utils.h"
-#include "glog/logging.h"
 
 using ::google::protobuf::RepeatedPtrField;
 
