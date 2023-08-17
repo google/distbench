@@ -878,16 +878,77 @@ function mercury_protocol_driver_setup() {
 #   params_dict (associative array)
 ################################################################################
 function homa_protocol_driver_setup() {
+  set_parameter_default threadpool_type "" "simple, elastic, or nullstring."
+  set_parameter_default threadpool_size "0" "1, 2, 3, etc. and 0 for NumCPUs() threads."
+  set_parameter_default client_threads 1 "number of dedicated threads to poll for RPC responses"
+  set_parameter_default server_threads 1 "number of dedicated threads to poll for RPC requests"
+  set_parameter_default nocopy 1 "Avoid copying messages into linear buffers"
+  set_parameter_default ping_pong 0 "Skip the RPC handler code, just send back the rpc request as the response"
+  local THREADPOOL_TYPE="${params_dict[threadpool_type]:-}"
+  local THREADPOOL_SIZE="${params_dict[threadpool_size]}"
+  local CLIENT_THREADS="${params_dict[client_threads]}"
+  local SERVER_THREADS="${params_dict[server_threads]}"
+  local NOCOPY="${params_dict[nocopy]}"
+  local PING_PONG="${params_dict[ping_pong]}"
+  validate_integer 1 CLIENT_THREADS SERVER_THREADS
+  validate_integer 0 THREADPOOL_SIZE NOCOPY PING_PONG NOCOPY
+  params_dict[protocol_driver]="homa"
   params_dict[protocol_alias]="homa"
+  if [[ "${PING_PONG}" != "0" ]]
+  then
+    params_dict[protocol_alias]+="_pingpong"
+  elif [[ "${NOCOPY}" != "0" ]]
+  then
+    params_dict[protocol_alias]+="_nocopy"
+  fi
   if [[ -v params_dict[ip_version] ]]
    then params_dict[protocol_alias]+="_ipv${params_dict[ip_version]}"
   fi
-  params_dict[protocol_driver]="homa"
+  params_dict[protocol_alias]+="_${SERVER_THREADS}x${CLIENT_THREADS}x${THREADPOOL_SIZE}"
   params_dict[protocol_driver_options_proto]="  protocol_driver_options {
     name: 'default_protocol_driver_options'
-    protocol_name: 'homa'$(maybe_emit_ip_version)
+    protocol_name: 'homa'"
+  if [[ -n "${THREADPOOL_TYPE}" ]]
+  then
+    params_dict[protocol_alias]+="_${THREADPOOL_TYPE}"
+    params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'threadpool_type'
+      string_value: '${THREADPOOL_TYPE}'
+    }"
+  fi
+  if [[ "${THREADPOOL_SIZE}" != "0" ]]
+  then
+    params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'threadpool_size'
+      int64_value: ${THREADPOOL_SIZE}
+    }"
+  fi
+  params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'server_threads'
+      int64_value: ${SERVER_THREADS}
+    }"
+  params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'client_threads'
+      int64_value: ${CLIENT_THREADS}
+    }"
+  params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'nocopy'
+      int64_value: ${NOCOPY}
+    }"
+  params_dict[protocol_driver_options_proto]+="
+    server_settings {
+      name: 'ping_pong'
+      int64_value: ${PING_PONG}
+    }"
+  params_dict[protocol_driver_options_proto]+="$(maybe_emit_ip_version)
   }"
 }
+
 ################################################################################
 # Setup the test config proto for the clique traffic pattern:
 # Arguments:
