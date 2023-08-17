@@ -9,7 +9,7 @@ function compare_golden_file() {
   local invocation="$(head -n 1 "$1" | cut -f 7- "-d ")"
   # Invoke the current code with the same arguments and compare its output to
   # the reference output:
-  diff -u -I '^# produced by ' <(../test_builder -o - ${invocation}) "$1"
+  diff -u -I '^# produced by ' "$1" <(../test_builder -o - ${invocation})
 }
 
 test_builder/test_builder -h
