@@ -34,6 +34,17 @@ std::string_view PeekAtMessage(homa::receiver* r) {
   return {r->get<char>(0), r->contiguous(0)};
 }
 
+bool SlowParse(homa::receiver* r, size_t msg_length,
+               GenericRequestResponse* out) {
+  char rx_buf[1048576];
+  r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
+  if (msg_length == 1 && rx_buf[0] == empty_message_placeholder[0]) {
+    msg_length = 0;
+  }
+  return !out->ParseFromArray(
+      rx_buf, MetaDataLength({rx_buf, msg_length}, msg_length));
+}
+
 bool FastParse(homa::receiver* r, size_t msg_length,
                GenericRequestResponse* out) {
   //auto start = absl::Now();
@@ -75,6 +86,15 @@ bool FastParse(homa::receiver* r, size_t msg_length,
   char rx_buf[1048576];
   r->copy_out((void*)rx_buf, 0, sizeof(rx_buf));
   return out->ParseFromArray(rx_buf, msg_length);
+}
+
+bool Parse(homa::receiver* r, size_t msg_length,
+           GenericRequestResponse* out, bool avoid_copy) {
+  if (avoid_copy) {
+    return FastParse(r, msg_length, out);
+  } else {
+    return SlowParse(r, msg_length, out);
+  }
 }
 
 std::string MakeVarint(uint64_t val) {
@@ -130,7 +150,7 @@ IovecBuffer Cord2IovecBuffer(absl::Cord* in) {
   IovecBuffer ret;
 
   int num_chunks = 0;
-  for (const auto& chunk : in->Chunks()) {
+  for (ABSL_ATTRIBUTE_UNUSED const auto& chunk : in->Chunks()) {
     ++num_chunks;
   }
 
@@ -158,8 +178,7 @@ absl::Status ProtocolDriverHoma::Initialize(
     "threadpool_type",
     "threadpool_size",
     "ping_pong",
-    "send_empty_responses",
-    "avoid_payload_copy",
+    "nocopy",
     "client_threads",
     "server_threads"
   };
@@ -177,8 +196,7 @@ absl::Status ProtocolDriverHoma::Initialize(
       GetNamedServerSettingString(pd_opts, "threadpool_type", "null");
 
   ping_pong_ = GetNamedServerSettingInt64(pd_opts, "ping_pong", false);
-  send_empty_responses_ = GetNamedServerSettingInt64(pd_opts, "send_empty_responses", false);
-  avoid_payload_copy_ = GetNamedServerSettingInt64(pd_opts, "avoid_payload_copy", true);
+  nocopy_ = GetNamedServerSettingInt64(pd_opts, "nocopy", true);
   int client_threads = GetNamedServerSettingInt64(pd_opts, "client_threads", 2);
   int server_threads = GetNamedServerSettingInt64(pd_opts, "server_threads", 3);
 
@@ -187,7 +205,6 @@ absl::Status ProtocolDriverHoma::Initialize(
     return tp.status();
   }
   actionlist_thread_pool_ = std::move(tp.value());
-
 
   if (pd_opts.has_netdev_name()) {
     netdev_name_ = pd_opts.netdev_name();
@@ -227,7 +244,7 @@ absl::Status ProtocolDriverHoma::Initialize(
   server_threads_.reserve(server_threads);
   for (int i = 0; i < client_threads; ++i) {
     client_completion_threads_.push_back(RunRegisteredThread(
-        "HomaClient", [this]() { this->ClientCompletionThread(); }));
+        "HomaClient", [this, i]() { this->ClientCompletionThread(i); }));
   }
   for (int i = 0; i < client_threads; ++i) {
     server_threads_.push_back(RunRegisteredThread(
@@ -349,7 +366,7 @@ void ProtocolDriverHoma::ChurnConnection(int peer) {
 void ProtocolDriverHoma::ShutdownServer() {
   handler_set_.TryToNotify();
   if (shutting_down_server_.TryToNotify()) {
-    for (int i = 0; i < server_threads_.size(); ++i) {
+    for (size_t i = 0; i < server_threads_.size(); ++i) {
       // Initiate RPC to our own server sock, to wake up the server_thread:
       char buf[1] = {};
       uint64_t kernel_rpc_number;
@@ -388,7 +405,7 @@ void ProtocolDriverHoma::ShutdownServer() {
 
 void ProtocolDriverHoma::ShutdownClient() {
   if (shutting_down_client_.TryToNotify()) {
-    for (int i = 0; i < client_completion_threads_.size(); ++i) {
+    for (size_t i = 0; i < client_completion_threads_.size(); ++i) {
       // Initiate RPC to our own client sock, then cancel it to wake up
       // the client_completion_thread:
       char buf[1] = {};
@@ -439,7 +456,7 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
 
   new_rpc->done_callback = done_callback;
   new_rpc->state = state;
-  new_rpc->serialized_request = SerializeToCord(&state->request, avoid_payload_copy_);
+  new_rpc->serialized_request = SerializeToCord(&state->request, nocopy_);
   CHECK_EQ(new_rpc->serialized_request.size(), state->request.ByteSizeLong());
   if (new_rpc->serialized_request.empty()) {
     // Homa can't send a 0 byte message :(
@@ -515,20 +532,9 @@ void ProtocolDriverHoma::ServerThread() {
       continue;
     }
 
-    // sends back zero byte placeholder response:
-    if (send_empty_responses_) {
-      homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
-      continue;
-    }
-
     GenericRequestResponse* request = new GenericRequestResponse;
-    if (!FastParse(server_receiver_.get(), msg_length, request)) {
-      LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
-    }
-    if (!avoid_payload_copy_) {
-      absl::Cord flat = request->payload();
-      flat.Flatten();
-      request->set_payload(std::move(flat));
+    if (!Parse(server_receiver_.get(), msg_length, request, nocopy_)) {
+      LOG(ERROR) << "rx_buf did not Parse as a GenericRequestResponse";
     }
     ServerRpcState* rpc_state = new ServerRpcState;
     rpc_state->request = request;
@@ -538,7 +544,7 @@ void ProtocolDriverHoma::ServerThread() {
     });
     rpc_state->SetSendResponseFunction(
         [=, this, &pending_responses]() {
-          absl::Cord buffer = SerializeToCord(&rpc_state->response, avoid_payload_copy_);
+          absl::Cord buffer = SerializeToCord(&rpc_state->response, nocopy_);
           IovecBuffer buf = Cord2IovecBuffer(&buffer);
           int64_t error;
           if (buf.iovecs.empty()) {
@@ -566,12 +572,11 @@ void ProtocolDriverHoma::ServerThread() {
   }
 }
 
-void ProtocolDriverHoma::ClientCompletionThread() {
+void ProtocolDriverHoma::ClientCompletionThread(int thread_number) {
   std::unique_ptr<homa::receiver> client_receiver_;
-  LOG(INFO) << (uint64_t) client_buffer_;
   client_receiver_ =
       std::make_unique<homa::receiver>(homa_client_sock_, client_buffer_);
-  while (!shutting_down_client_.HasBeenNotified() || pending_rpcs_) {
+  while (!shutting_down_client_.HasBeenNotified() || (pending_rpcs_ && !thread_number)) {
     errno = 0;
     ssize_t msg_length = client_receiver_->receive(HOMA_RECVMSG_RESPONSE, 0);
     int recv_errno = errno;
@@ -593,14 +598,8 @@ void ProtocolDriverHoma::ClientCompletionThread() {
     } else {
       pending_rpc->state->success = true;
       CHECK(!client_receiver_->is_request());
-      if (!FastParse(client_receiver_.get(), msg_length,
-                     &pending_rpc->state->response)) {
-        LOG(ERROR) << "rx_buf did not parse as a GenericRequestResponse";
-      }
-      if (!avoid_payload_copy_) {
-        absl::Cord flat = pending_rpc->state->response.payload();
-        flat.Flatten();
-        pending_rpc->state->response.set_payload(std::move(flat));
+      if (!Parse(client_receiver_.get(), msg_length, &pending_rpc->state->response, nocopy_)) {
+        LOG(ERROR) << "rx_buf did not Parse as a GenericRequestResponse";
       }
     }
     pending_rpc->done_callback();

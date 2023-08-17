@@ -63,7 +63,7 @@ class ProtocolDriverHoma : public ProtocolDriver {
   void ShutdownClient() override;
 
  private:
-  void ClientCompletionThread();
+  void ClientCompletionThread(int thread_number);
   void ServerThread();
 
   const size_t kHomaBufferSize = 1000 * HOMA_BPAGE_SIZE;
@@ -92,8 +92,7 @@ class ProtocolDriverHoma : public ProtocolDriver {
   std::unique_ptr<AbstractThreadpool> actionlist_thread_pool_;
 
   bool ping_pong_ = false;
-  bool send_empty_responses_ = false;
-  bool avoid_payload_copy_ = false;
+  bool nocopy_ = false;
 };
 
 }  // namespace distbench
