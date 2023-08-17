@@ -17,13 +17,14 @@
 #include <queue>
 
 #include "absl/base/internal/sysinfo.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 #include "distbench_netutils.h"
 #include "distbench_thread_support.h"
-#include "glog/logging.h"
 
 namespace distbench {
 

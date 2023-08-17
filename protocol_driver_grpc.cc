@@ -17,8 +17,9 @@
 #include <memory>
 
 #include "absl/base/internal/sysinfo.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "distbench_thread_support.h"
-#include "glog/logging.h"
 
 #if WITH_HOMA_GRPC
 #include "homa_client.h"

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "absl/log/log.h"
 #include "distbench_utils.h"
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "protocol_driver_allocator.h"

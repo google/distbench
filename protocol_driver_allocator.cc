@@ -14,8 +14,8 @@
 
 #include "protocol_driver_allocator.h"
 
+#include "absl/log/log.h"
 #include "composable_rpc_counter.h"
-#include "glog/logging.h"
 #include "protocol_driver_double_barrel.h"
 #include "protocol_driver_grpc.h"
 #ifdef WITH_HOMA

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "absl/log/log.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
 #include "distbench_node_manager.h"
@@ -19,7 +20,6 @@
 #include "distbench_test_sequencer_tester.h"
 #include "distbench_thread_support.h"
 #include "distbench_utils.h"
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 #include "protocol_driver_allocator.h"

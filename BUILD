@@ -53,7 +53,7 @@ cc_library(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
     ],
 )
 
@@ -70,7 +70,7 @@ cc_library(
         ":traffic_config_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
     ],
 )
 
@@ -110,7 +110,8 @@ cc_library(
         ":distbench_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
     ],
 )
 
@@ -140,7 +141,8 @@ cc_library(
         ":traffic_config_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:initialize",
     ],
 )
 
@@ -232,6 +234,7 @@ cc_library(
         ":distbench_threadpool_lib",
         ":grpc_wrapper",
         ":protocol_driver_api",
+        "@com_google_absl//absl/log:check",
     ] + select({
         ":with_homa_grpc": ["@grpc_homa//:homa_lib"],
         "//conditions:default": [],
@@ -257,6 +260,7 @@ cc_library(
         ":protocol_driver_api",
         "@mercury//:mercury",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/log:check",
     ],
 )
 
@@ -284,6 +288,7 @@ cc_library(
         "@homa_module//:homa_api",
         "@homa_module//:homa_receiver",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/log:check",
     ],
 )
 
@@ -295,7 +300,8 @@ cc_library(
     ],
     deps = [
         "@com_google_googletest//:gtest",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:initialize",
     ],
 )
 
@@ -304,7 +310,8 @@ cc_library(
     srcs = ["benchmark_utils.cc"],
     deps = [
         "@com_google_benchmark//:benchmark",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:initialize",
     ],
 )
 
@@ -318,7 +325,7 @@ cc_test(
         ":gtest_utils",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
     ] + select({
         ":with_homa": [":protocol_driver_homa"],
         "//conditions:default": [],
@@ -333,7 +340,7 @@ cc_binary(
         ":benchmark_utils",
         ":protocol_driver_allocator",
         "@com_google_googletest//:gtest",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
     ],
 )
 
@@ -380,6 +387,7 @@ cc_library(
         ":distbench_utils",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/log:check",
     ],
 )
 
@@ -462,6 +470,7 @@ cc_library(
         ":protocol_driver_allocator_api",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/log:check",
     ],
 )
 
@@ -483,6 +492,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/random",
+        "@com_google_absl//absl/log:check",
     ],
 )
 
@@ -492,7 +502,7 @@ cc_library(
     hdrs = ["distbench_threadpool.h"],
     deps = [
         ":distbench_thread_support",
-        "@com_github_google_glog//:glog",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/strings",
@@ -609,7 +619,7 @@ cc_test(
         ":gtest_utils",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
     ],
 )
 
@@ -637,7 +647,7 @@ cc_library(
         ":distbench_utils",
         ":simple_clock",
         "@com_google_benchmark//:benchmark",
-        "@com_github_google_glog//:glog",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/random",
@@ -665,7 +675,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/random",
-        "@com_github_google_glog//:glog"
+        "@com_google_absl//absl/log",
     ],
 )
 
