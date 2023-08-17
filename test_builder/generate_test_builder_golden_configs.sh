@@ -48,25 +48,23 @@ test_builder -o . tripartite:client_count=2
 test_builder -o . tripartite:index_count=2
 test_builder -o . tripartite:data_count=12
 
-test_builder -o . client_server:ipv4
-test_builder -o . client_server:ipv6
-test_builder -o . clique:ipv4
-test_builder -o . clique:ipv6
-test_builder -o . multi_level_rpc:ipv4
-test_builder -o . multi_level_rpc:ipv6
-test_builder -o . tripartite:ipv4
-test_builder -o . tripartite:ipv6
+test_builder -o . clique:grpc:ipv4
+test_builder -o . clique:grpc:ipv6
 
-test_builder -o . clique:grpc
 test_builder -o . clique:homa
+test_builder -o . clique:homa:ipv4
+test_builder -o . clique:homa:ipv6
+
+test_builder -o . clique:mercury
+test_builder -o . clique:mercury:ipv4
+test_builder -o . clique:mercury:ipv6
 test_builder -o . clique:mercury
 test_builder -o . clique:mercury:transport=ofi+tcp
 test_builder -o . clique:mercury:transport=custom_transport
-test_builder -o . clique:mercury:threadpool_size=16:ipv6
-test_builder -o . clique:mercury:threadpool_type=elastic:ipv4
+test_builder -o . clique:mercury:threadpool_size=16
+test_builder -o . clique:mercury:threadpool_type=elastic
 
-test_builder -o . variable_response_multi_level_rpc:grpc
-test_builder -o . variable_response_multi_level_rpc:homa
+test_builder -o . variable_response_multi_level_rpc
 test_builder -o . variable_response_multi_level_rpc:qps=5000
 test_builder -o . variable_response_multi_level_rpc:root_size=5
 test_builder -o . variable_response_multi_level_rpc:leaf_size=34
