@@ -340,7 +340,7 @@ function process_test_configs() {
       run_all_tests
     fi
   else
-    echo "# produced by $0 ${INVOCATION}"
+    echo "# produced by $(basename $0) ${INVOCATION}"
     local test_name
     for test_name in "${test_names[@]}"; do
       echo "${test_sequence_protos[${test_name}]}"
@@ -619,7 +619,7 @@ function save_test_protos() {
   for test_name in "${test_names[@]}"; do
     local test_file="${CONFIG_LABEL_PREFIX}${test_name}.config"
     rm -f "${test_file}"
-    echo "# produced by $0 ${INVOCATION}" > "${test_file}"
+    echo "# produced by $(basename $0) ${INVOCATION}" > "${test_file}"
     echo "${test_sequence_protos[${test_name}]}" >> "${test_file}"
     log_stderr "Individual test config saved in ${test_file}"
     # Allow the files to be sorted by creation time even on systems
@@ -630,7 +630,7 @@ function save_test_protos() {
   if [[ ${#test_sequence_protos[@]} -gt 1 ]]; then
     local test_sequence_file="${CONFIG_LABEL_PREFIX}test_sequence.config"
     rm -f "${test_sequence_file}"
-    echo "# produced by $0 ${INVOCATION}" > "${test_sequence_file}"
+    echo "# produced by $(basename $0) ${INVOCATION}" > "${test_sequence_file}"
     for test_name in "${test_names[@]}"; do
       echo "${test_sequence_protos[${test_name}]}" >> "${test_sequence_file}"
     done
