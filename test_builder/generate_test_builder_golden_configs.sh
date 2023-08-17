@@ -54,6 +54,14 @@ test_builder -o . clique:grpc:ipv6
 test_builder -o . clique:homa
 test_builder -o . clique:homa:ipv4
 test_builder -o . clique:homa:ipv6
+test_builder -o . clique:homa:threadpool_type=simple
+test_builder -o . clique:homa:threadpool_size=2
+test_builder -o . clique:homa:ping_pong=0
+test_builder -o . clique:homa:ping_pong=1
+test_builder -o . clique:homa:client_threads=2
+test_builder -o . clique:homa:server_threads=3
+test_builder -o . clique:homa:nocopy=0
+test_builder -o . clique:homa:nocopy=1
 
 test_builder -o . clique:mercury
 test_builder -o . clique:mercury:ipv4
