@@ -21,10 +21,11 @@
 
 #include "absl/base/const_init.h"
 #include "absl/base/internal/sysinfo.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/strings/str_replace.h"
 #include "absl/synchronization/mutex.h"
 #include "distbench_thread_support.h"
-#include "glog/logging.h"
 
 namespace {
 ABSL_CONST_INIT absl::Mutex mercury_init_mutex(absl::kConstInit);
@@ -129,7 +130,7 @@ absl::Status ProtocolDriverMercury::Initialize(
 
 #ifndef THREAD_SANITIZER
   PrintMercuryVersion();
-  VLOG(1) << "Mercury Traffic server listening on " << server_socket_address_;
+  LOG(INFO) << "Mercury Traffic server listening on " << server_socket_address_;
 #endif
   client_progress_thread_ = RunRegisteredThread(
       "MercuryClientPoll", [=, this]() { this->ClientPollingThread(); });
@@ -201,11 +202,8 @@ void ProtocolDriverMercury::PrintMercuryVersion() {
   unsigned patch;
   absl::MutexLock l(&mercury_init_mutex);
 
-  static bool already_done = false;
-  if (already_done) return;
-  already_done = true;
   HG_Version_get(&major, &minor, &patch);
-  VLOG(1) << "Mercury version " << major << "." << minor << "." << patch;
+  LOG(INFO) << "Mercury version " << major << "." << minor << "." << patch;
 }
 
 namespace {

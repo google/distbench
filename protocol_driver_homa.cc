@@ -18,9 +18,10 @@
 #include <sys/mman.h>
 
 #include "absl/base/internal/sysinfo.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "distbench_payload.h"
 #include "external/homa_module/homa.h"
-#include "glog/logging.h"
 
 namespace distbench {
 

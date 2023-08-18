@@ -427,7 +427,7 @@ int main(int argc, char** argv, char** envp) {
   }
   absl::SetProgramUsageMessage(usage_string);
   std::vector<char*> remaining_arguments = absl::ParseCommandLine(argc, argv);
-  distbench::InitLibs(argv[0]);
+  distbench::InitLibs();
 
   ValidateArgumentsOrExit(remaining_arguments, 2,
                           std::numeric_limits<size_t>::max());

@@ -15,8 +15,8 @@
 #include "protocol_driver_double_barrel.h"
 
 #include "absl/base/internal/sysinfo.h"
+#include "absl/log/log.h"
 #include "distbench_utils.h"
-#include "glog/logging.h"
 #include "google/protobuf/repeated_field.h"
 #include "protocol_driver_allocator.h"
 

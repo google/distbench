@@ -14,8 +14,6 @@
 
 #include "protocol_driver.h"
 
-#include "glog/logging.h"
-
 namespace distbench {
 
 void ServerRpcState::SetSendResponseFunction(

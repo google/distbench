@@ -21,10 +21,12 @@
 #include <fstream>
 #include <streambuf>
 
+#include "absl/log/globals.h"
+#include "absl/log/initialize.h"
+#include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
-#include "glog/logging.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 
@@ -65,9 +67,11 @@ std::shared_ptr<grpc::ServerCredentials> MakeServerCredentials() {
   return grpc::InsecureServerCredentials();
 }
 
-void InitLibs(const char* argv0) {
+void InitLibs() {
   // Extra library initialization can go here
-  ::google::InitGoogleLogging(argv0);
+  absl::InitializeLog();
+  absl::SetMinLogLevel(absl::LogSeverityAtLeast::kInfo);
+  absl::SetStderrThreshold(absl::LogSeverity::kInfo);
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 

@@ -33,10 +33,10 @@
 
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
+#include "absl/log/log.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
-#include "glog/logging.h"
 
 ABSL_FLAG(bool, prefer_ipv4, false,
           "Prefer IPv4 addresses to IPv6 addresses when both are available");
