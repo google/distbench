@@ -133,9 +133,9 @@ absl::Status ProtocolDriverMercury::Initialize(
   LOG(INFO) << "Mercury Traffic server listening on " << server_socket_address_;
 #endif
   client_progress_thread_ = RunRegisteredThread(
-      "MercuryClientPoll", [=]() { this->ClientPollingThread(); });
+      "MercuryClientPoll", [=, this]() { this->ClientPollingThread(); });
   server_progress_thread_ = RunRegisteredThread(
-      "MercuryServerPoll", [=]() { this->ServerPollingThread(); });
+      "MercuryServerPoll", [=, this]() { this->ServerPollingThread(); });
   return absl::OkStatus();
 }
 
