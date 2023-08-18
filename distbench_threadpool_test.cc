@@ -17,9 +17,9 @@
 #include <atomic>
 
 #include "absl/base/internal/sysinfo.h"
+#include "absl/log/log.h"
 #include "absl/synchronization/notification.h"
 #include "distbench_thread_support.h"
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 

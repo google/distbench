@@ -16,8 +16,8 @@
 
 #include <sys/socket.h>
 
+#include "absl/log/log.h"
 #include "distbench_netutils.h"
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 

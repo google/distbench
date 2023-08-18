@@ -14,10 +14,11 @@
 
 #include "distbench_node_manager.h"
 
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/strings/str_split.h"
 #include "distbench_netutils.h"
 #include "distbench_thread_support.h"
-#include "glog/logging.h"
 #include "protocol_driver_allocator.h"
 
 namespace distbench {

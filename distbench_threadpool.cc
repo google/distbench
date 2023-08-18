@@ -16,9 +16,9 @@
 
 #include <queue>
 
+#include "absl/log/log.h"
 #include "absl/synchronization/notification.h"
 #include "distbench_thread_support.h"
-#include "glog/logging.h"
 
 #ifdef WITH_MERCURY
 #include <mercury_thread_pool.h>
