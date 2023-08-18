@@ -74,7 +74,7 @@ void AddCommunicationSummaryTo(
 void AddInstanceSummaryTo(std::vector<std::string>& ret,
                           double total_time_seconds,
                           std::map<t_string_pair, rpc_traffic_summary> perf_map,
-                          int64_t nb_warmup_samples,
+                          int64_t nb_samples, int64_t nb_warmup_samples,
                           int64_t nb_failed_samples) {
   std::map<std::string, instance_summary> instance_summary_map;
   int64_t total_rpcs = 0;
@@ -124,6 +124,7 @@ void AddInstanceSummaryTo(std::vector<std::string>& ret,
 
   std::string str{};
   ret.push_back("Global summary:");
+  ret.push_back(absl::StrCat("  Total samples: ", nb_samples));
   ret.push_back(absl::StrCat("  Failed samples: ", nb_failed_samples));
   ret.push_back(absl::StrCat("  Warmup samples: ", nb_warmup_samples));
   absl::StrAppendFormat(&str, "  Total time: %3.3fs", total_time_seconds);
@@ -143,6 +144,7 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
   std::map<std::string, std::vector<int64_t>> latency_map;
   std::map<t_string_pair, rpc_traffic_summary> perf_map;
   int64_t test_time = 0;
+  int64_t nb_samples = 0;
   int64_t nb_warmup_samples = 0;
   int64_t nb_failed_samples = 0;
 
@@ -159,6 +161,8 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
         std::vector<int64_t>& latencies = latency_map[rpc_name];
         perf_record.nb_rpcs += rpc_log.second.successful_rpc_samples().size();
         nb_failed_samples += rpc_log.second.failed_rpc_samples().size();
+        nb_samples += rpc_log.second.failed_rpc_samples().size();
+        nb_samples += rpc_log.second.successful_rpc_samples().size();
         for (const auto& sample : rpc_log.second.successful_rpc_samples()) {
           int64_t rpc_start_timestamp_ns = sample.start_timestamp_ns();
           int64_t rpc_latency_ns = sample.latency_ns();
@@ -202,8 +206,8 @@ std::vector<std::string> SummarizeTestResult(const TestResult& test_result) {
   }
 
   AddCommunicationSummaryTo(ret, total_time_seconds, perf_map);
-  AddInstanceSummaryTo(ret, total_time_seconds, perf_map, nb_warmup_samples,
-                       nb_failed_samples);
+  AddInstanceSummaryTo(ret, total_time_seconds, perf_map, nb_samples,
+                       nb_warmup_samples, nb_failed_samples);
   return ret;
 }
 
