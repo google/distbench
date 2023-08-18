@@ -749,9 +749,9 @@ function maybe_emit_ip_version() {
 function grpc_protocol_driver_setup() {
   set_parameter_default client_type "polling" "callback polling"
   set_parameter_default server_type "inline" "handoff inline polling"
-  set_parameter_default threadpool_type "" "simple, elastic, or nullstring."
+  set_parameter_default threadpool_type "" "simple, elastic, null, or '' for default."
   set_parameter_default threadpool_size "0" "1, 2, 3, etc. and 0 for NumCPUs() threads."
-  set_parameter_default transport "" "tcp, homa, or nullstring for default."
+  set_parameter_default transport "" "tcp, homa, or '' for default."
   local CLIENT_TYPE="${params_dict[client_type]}"
   local SERVER_TYPE="${params_dict[server_type]}"
   local THREADPOOL_TYPE="${params_dict[threadpool_type]:-}"
@@ -818,7 +818,7 @@ function grpc_protocol_driver_setup() {
 #   params_dict (associative array)
 ################################################################################
 function mercury_protocol_driver_setup() {
-  set_parameter_default threadpool_type "" "simple, elastic, or nullstring."
+  set_parameter_default threadpool_type "" "simple, elastic, null, or '' for default."
   set_parameter_default threadpool_size "0" "1, 2, 3, etc. and 0 for NumCPUs() threads."
   set_parameter_default transport "ofi+tcp" "ofi+tcp something_else"
   local THREADPOOL_TYPE="${params_dict[threadpool_type]:-}"
@@ -878,7 +878,7 @@ function mercury_protocol_driver_setup() {
 #   params_dict (associative array)
 ################################################################################
 function homa_protocol_driver_setup() {
-  set_parameter_default threadpool_type "" "simple, elastic, or nullstring."
+  set_parameter_default threadpool_type "" "simple, elastic, null, or '' for default."
   set_parameter_default threadpool_size "0" "1, 2, 3, etc. and 0 for NumCPUs() threads."
   set_parameter_default client_threads 1 "number of dedicated threads to poll for RPC responses"
   set_parameter_default server_threads 1 "number of dedicated threads to poll for RPC requests"
