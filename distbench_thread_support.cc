@@ -72,9 +72,13 @@ std::thread RunRegisteredThread(std::string_view thread_name,
     --abort_current_threads;
   });
   if (abort_callback_notification) {
+    // If we are going to signal an abort it happens inside the new thread.
+    // We must wait for that thread to be up and running at least, but we don't
+    // actually need to wait for the abort callback to return, as this may
+    // result in deadlock. So We wait for 5 second and continue;
     abort_callback_started.WaitForNotification();
     abort_callback_notification->WaitForNotificationWithTimeout(
-        absl::Milliseconds(1000));
+        absl::Milliseconds(5000));
   }
   return ret;
 }
