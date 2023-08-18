@@ -673,6 +673,8 @@ std::vector<TransportStat> GrpcHandoffServerDriver::GetTransportStats() {
 }
 
 namespace {
+// Rewrite this to be like
+// https://grpc.github.io/grpc/cpp/grpcpp_2generic_2async__generic__service_8h_source.html
 class PollingRpcHandlerFsm {
  public:
   PollingRpcHandlerFsm(
