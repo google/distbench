@@ -48,7 +48,6 @@ bool SlowParse(homa::receiver* r, size_t msg_length,
 
 bool FastParse(homa::receiver* r, size_t msg_length,
                GenericRequestResponse* out) {
-  //auto start = absl::Now();
   // Try the fast way:
   std::string_view initial_chunk = PeekAtMessage(r);
   if (initial_chunk.length() == 1 &&
@@ -57,8 +56,7 @@ bool FastParse(homa::receiver* r, size_t msg_length,
   }
 
   if (msg_length <= 4096 && initial_chunk.length() == msg_length) {
-    bool ret =  out->ParseFromArray(initial_chunk.data(), msg_length);
-    //auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
+    bool ret = out->ParseFromArray(initial_chunk.data(), msg_length);
     return ret;
   }
 
@@ -79,7 +77,6 @@ bool FastParse(homa::receiver* r, size_t msg_length,
         break;
       }
     }
-    //auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
     return ret;
   }
 
@@ -425,7 +422,6 @@ void ProtocolDriverHoma::ServerThread() {
   while (1) {
     errno = 0;
     ssize_t msg_length = server_receiver.receive(HOMA_RECVMSG_REQUEST, 0);
-    //auto start = absl::Now();
     if (shutting_down_server_.HasBeenNotified()) {
       break;
     }
@@ -460,7 +456,6 @@ void ProtocolDriverHoma::ServerThread() {
       if (offset != msg_length) {
         LOG(FATAL) << "wtf? " << offset << " out of " << msg_length;
       }
-      // // auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << msg_length << " bytes";
       continue;
     }
 
@@ -485,7 +480,6 @@ void ProtocolDriverHoma::ServerThread() {
           } else {
             error = homa_replyv(homa_server_sock_, buf.data(), buf.size(),
                                 &src_addr, rpc_id);
-            // auto stop = absl::Now(); LOG(INFO) << "took " << stop - start << " for " << buffer.size() << " bytes";
           }
           if (error) {
             LOG(ERROR) << "homa_reply for " << rpc_id
