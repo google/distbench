@@ -15,6 +15,8 @@
 #ifndef DISTBENCH_DISTBENCH_PAYLOAD_H_
 #define DISTBENCH_DISTBENCH_PAYLOAD_H_
 
+#include <sys/uio.h>
+
 #include "distbench.pb.h"
 
 namespace distbench {
@@ -32,6 +34,12 @@ size_t GetPaddingForSerializedSize(GenericRequestResponse* msg,
                                    size_t target_size);
 
 size_t MetaDataLength(std::string_view msg_fragment, size_t original_length);
+
+std::string MakeVarint(uint64_t val);
+
+absl::Cord SerializeToCord(GenericRequestResponse* in, bool avoid_copy);
+
+std::vector<iovec> Cord2Iovectors(const absl::Cord& in);
 
 }  // namespace distbench
 
