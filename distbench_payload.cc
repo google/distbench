@@ -178,4 +178,55 @@ void PayloadAllocator::AddPadding(GenericRequestResponse* msg,
   }
 }
 
+std::string MakeVarint(uint64_t val) {
+  std::string ret(10, '\0');
+  char* cursor = ret.data();
+  do {
+    if (val > 127) {
+      *cursor = val | 0x80;
+    } else {
+      *cursor = val;
+    }
+    val >>= 7;
+    ++cursor;
+  } while (val);
+  ret.resize(cursor - ret.data());
+  return ret;
+}
+
+absl::Cord SerializeToCord(GenericRequestResponse* in, bool avoid_copy) {
+  if (!avoid_copy) {
+    return absl::Cord(std::move(in->SerializeAsString()));
+  }
+  absl::Cord ret;
+  GenericRequestResponse copy = *in;
+  copy.clear_payload();
+  // Insert metadata and payload proto field tag and length:
+  if (in->has_payload()) {
+    ret = absl::StrCat(copy.SerializeAsString(), MakeVarint((0xf << 3) | 0x2), MakeVarint(in->payload().size()));
+  } else {
+    ret = copy.SerializeAsString();
+  }
+  ret.Append(in->payload());
+  return ret;
+}
+
+std::vector<iovec> Cord2Iovectors(const absl::Cord& in) {
+  std::vector<iovec> ret;
+
+  int num_chunks = 0;
+  for (ABSL_ATTRIBUTE_UNUSED const auto& chunk : in.Chunks()) {
+    ++num_chunks;
+  }
+
+  ret.reserve(num_chunks);
+
+  for (const auto& chunk : in.Chunks()) {
+    iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
+    ret.push_back(t);
+  }
+
+  return ret;
+}
+
 }  // namespace distbench

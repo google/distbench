@@ -95,73 +95,6 @@ bool Parse(homa::receiver* r, size_t msg_length,
   }
 }
 
-std::string MakeVarint(uint64_t val) {
-  std::string ret(10, '\0');
-  char* cursor = ret.data();
-  do {
-    if (val > 127) {
-      *cursor = val | 0x80;
-    } else {
-      *cursor = val;
-    }
-    val >>= 7;
-    ++cursor;
-  } while (val);
-  ret.resize(cursor - ret.data());
-  return ret;
-}
-
-absl::Cord SerializeToCord(GenericRequestResponse* in, bool avoid_copy) {
-  if (!avoid_copy) {
-    return absl::Cord(std::move(in->SerializeAsString()));
-  }
-  absl::Cord ret;
-  GenericRequestResponse copy = *in;
-  copy.clear_payload();
-  // Insert metadata and payload proto field tag and length:
-  if (in->has_payload()) {
-    ret = absl::StrCat(copy.SerializeAsString(), MakeVarint((0xf << 3) | 0x2), MakeVarint(in->payload().size()));
-  } else {
-    ret = copy.SerializeAsString();
-  }
-  ret.Append(in->payload());
-
-  #if 0
-  std::string flat1(ret.Flatten());
-  std::string flat2 = in->SerializeAsString();
-  CHECK_EQ(flat1.length(), flat2.length());
-  LOG(INFO) << flat1.length();
-  CHECK_EQ(flat1, flat2);
-  GenericRequestResponse request;
-  if (!request.ParseFromArray(flat2.data(), flat2.length())) {
-    LOG(FATAL) << "rx_buf did not parse as a GenericRequestResponse";
-  }
-  #endif
-  return ret;
-}
-
-struct IovecBuffer {
-  std::vector<iovec> iovecs;
-};
-
-IovecBuffer Cord2IovecBuffer(absl::Cord* in) {
-  IovecBuffer ret;
-
-  int num_chunks = 0;
-  for (ABSL_ATTRIBUTE_UNUSED const auto& chunk : in->Chunks()) {
-    ++num_chunks;
-  }
-
-  ret.iovecs.reserve(num_chunks);
-
-  for (const auto& chunk : in->Chunks()) {
-    iovec t = {const_cast<char*>(chunk.data()), chunk.length()};
-    ret.iovecs.push_back(t);
-  }
-
-  return ret;
-}
-
 }  // namespace
 
 ///////////////////////////////////
@@ -460,7 +393,7 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
     // Homa can't send a 0 byte message :(
     new_rpc->serialized_request = empty_message_placeholder;
   }
-  IovecBuffer request_buf = Cord2IovecBuffer(&new_rpc->serialized_request);
+  std::vector<iovec> request_buf = Cord2Iovectors(new_rpc->serialized_request);
 #ifdef THREAD_SANITIZER
   __tsan_release(new_rpc);
 #endif
@@ -469,7 +402,7 @@ void ProtocolDriverHoma::InitiateRpc(int peer_index, ClientRpcState* state,
   uint64_t kernel_rpc_number;
 
   int64_t res =
-      homa_sendv(homa_client_sock_, request_buf.iovecs.data(), request_buf.iovecs.size(), &peer_addresses_[peer_index],
+      homa_sendv(homa_client_sock_, request_buf.data(), request_buf.size(), &peer_addresses_[peer_index],
                 &kernel_rpc_number, reinterpret_cast<uint64_t>(new_rpc));
   if (res < 0) {
     LOG(INFO) << "homa_send result: " << res << " errno: " << errno
@@ -539,14 +472,14 @@ void ProtocolDriverHoma::ServerThread() {
     rpc_state->SetSendResponseFunction(
         [=, this, &pending_responses]() {
           absl::Cord buffer = SerializeToCord(&rpc_state->response, nocopy_);
-          IovecBuffer buf = Cord2IovecBuffer(&buffer);
+          std::vector<iovec> buf = Cord2Iovectors(buffer);
           int64_t error;
-          if (buf.iovecs.empty()) {
+          if (buf.empty()) {
             // Homa can't send a 0 byte message :(
             error = homa_reply(homa_server_sock_, empty_message_placeholder, 1, &src_addr, rpc_id);
           } else {
-            error = homa_replyv(homa_server_sock_, buf.iovecs.data(),
-                                buf.iovecs.size(), &src_addr, rpc_id);
+            error = homa_replyv(homa_server_sock_, buf.data(), buf.size(),
+                                &src_addr, rpc_id);
           }
           if (error) {
             LOG(ERROR) << "homa_reply for " << rpc_id
