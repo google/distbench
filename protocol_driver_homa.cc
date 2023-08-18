@@ -478,10 +478,10 @@ void ProtocolDriverHoma::ServerThread() {
       --pending_responses;
     });
     ++pending_responses;
-    auto fct_action_list_thread = rpc_handler_(rpc_state);
+    auto rpc_handler_thread_function = rpc_handler_(rpc_state);
 
-    if (fct_action_list_thread) {
-      actionlist_thread_pool_->AddTask(fct_action_list_thread);
+    if (rpc_handler_thread_function) {
+      actionlist_thread_pool_->AddTask(rpc_handler_thread_function);
     }
   }
   while (pending_responses) {
