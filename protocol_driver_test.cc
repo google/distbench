@@ -105,14 +105,14 @@ TEST_P(ProtocolDriverTest, Invoke) {
       s->FreeStateIfSet();
       return std::function<void()>();
     } else {
-      std::function<void()> fct = [=]() {
+      std::function<void()> rpc_handler_thread_function = [=]() {
         absl::SleepFor(absl::Milliseconds(100));
         std::string str;
         s->request->SerializeToString(&str);
         s->SendResponseIfSet();
         s->FreeStateIfSet();
       };
-      return fct;
+      return rpc_handler_thread_function;
     }
   });
   std::string addr = pd->HandlePreConnect("", 0).value();

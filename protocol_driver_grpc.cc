@@ -199,8 +199,8 @@ void GrpcCallbackClientDriver::InitiateRpcToMultiServerChannel(
   new_rpc->state = state;
   new_rpc->request = std::move(state->request);
 
-  auto callback_fct = [this, new_rpc,
-                       done_callback](const grpc::Status& status) {
+  auto response_handler = [this, new_rpc,
+                           done_callback](const grpc::Status& status) {
     new_rpc->status = status;
     new_rpc->state->success = status.ok();
     if (new_rpc->state->success) {
@@ -219,7 +219,8 @@ void GrpcCallbackClientDriver::InitiateRpcToMultiServerChannel(
   };
 
   multiserver_stubs_[channel_index]->experimental_async()->GenericRpc(
-      &new_rpc->context, &new_rpc->request, &new_rpc->response, callback_fct);
+      &new_rpc->context, &new_rpc->request, &new_rpc->response,
+      response_handler);
 }
 
 void GrpcPollingClientDriver::InitiateRpc(
@@ -533,8 +534,8 @@ void GrpcCallbackClientDriver::InitiateRpc(
   new_rpc->state = state;
   new_rpc->request = std::move(state->request);
 
-  auto callback_fct = [this, new_rpc,
-                       done_callback](const grpc::Status& status) {
+  auto response_handler = [this, new_rpc,
+                           done_callback](const grpc::Status& status) {
     new_rpc->status = status;
     new_rpc->state->success = status.ok();
     if (new_rpc->state->success) {
@@ -553,7 +554,8 @@ void GrpcCallbackClientDriver::InitiateRpc(
   };
 
   grpc_client_stubs_[peer_index]->experimental_async()->GenericRpc(
-      &new_rpc->context, &new_rpc->request, &new_rpc->response, callback_fct);
+      &new_rpc->context, &new_rpc->request, &new_rpc->response,
+      response_handler);
 }
 
 void GrpcCallbackClientDriver::ChurnConnection(int peer) {}
