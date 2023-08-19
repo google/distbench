@@ -727,6 +727,18 @@ std::string GetInstanceName(const ServiceSpec& service_spec, int instance) {
   return absl::StrCat(service_spec.name(), "/", index.x);
 }
 
+absl::Status ValidateIterations(const Iterations& iterations) {
+  std::set<std::string> allowed = {"", "constant", "exponential", "sync_burst",
+                                   "sync_burst_spread"};
+  if (allowed.find(iterations.open_loop_interval_distribution()) ==
+      allowed.end()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown open_loop_interval_distribution: ",
+                     iterations.open_loop_interval_distribution()));
+  }
+  return absl::OkStatus();
+}
+
 absl::StatusOr<DistributedSystemDescription>
 GetCanonicalDistributedSystemDescription(
     const DistributedSystemDescription& traffic_config) {
@@ -744,6 +756,14 @@ GetCanonicalDistributedSystemDescription(
     absl::Status status = ValidateRpcReplayTrace(trace, sizes_map);
     if (!status.ok()) {
       return status;
+    }
+  }
+  for (const auto& action : traffic_config.actions()) {
+    if (action.has_iterations()) {
+      auto status = ValidateIterations(action.iterations());
+      if (!status.ok()) {
+        return status;
+      }
     }
   }
   for (const auto& actionlist : traffic_config.action_lists()) {

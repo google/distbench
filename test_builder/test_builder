@@ -903,7 +903,7 @@ function clique_traffic_pattern_setup() {
   set_parameter_default rpc_interval_us 16000
   set_parameter_default node_count 10
   set_parameter_default synchronization_mode sync_burst \
-    "constant exponential_distribution sync_burst sync_burst_spread"
+    "constant exponential sync_burst sync_burst_spread"
   set_parameter_default request_size 1024
   set_parameter_default response_size 1024
   local REQUEST_SIZE="${params_dict[request_size]}"
@@ -979,8 +979,8 @@ which dist_to_proto &> /dev/null && function homa_cp_node_traffic_pattern_setup(
 
   set_parameter_default gbps 1
   set_parameter_default node_count 10
-  set_parameter_default synchronization_mode exponential_distribution \
-    "constant exponential_distribution sync_burst sync_burst_spread"
+  set_parameter_default synchronization_mode exponential \
+    "constant exponential sync_burst sync_burst_spread"
   set_parameter_default workload w5
   set_parameter_default max_message_length 1000000
   set_parameter_default min_bucket_frac 0.0025
@@ -1459,7 +1459,7 @@ function variable_response_multi_level_rpc_traffic_pattern_setup() {
     iterations {
       max_duration_us: ${TEST_DURATION}000000
       open_loop_interval_ns: $(( 1000000000 / QPS ))
-      open_loop_interval_distribution: 'exponential_distribution'
+      open_loop_interval_distribution: 'exponential'
       warmup_iterations: $((3 * QPS))
     }
     rpc_name: 'root_query'
