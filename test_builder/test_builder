@@ -1062,6 +1062,7 @@ which dist_to_proto &> /dev/null && function homa_cp_node_traffic_pattern_setup(
   local RPC_INTERVAL_NS=$(cat $INTERVAL_FILE)
   rm "${INTERVAL_FILE}"
   TRAFFIC_ALIAS+="${SYNCHRONIZATION_MODE}_${NODE_COUNT}x${GBPS}x${WORKLOAD}"
+  TRAFFIC_ALIAS+="x${MAX_MESSAGE_LENGTH}x${MIN_BUCKET_FRAC}x${MAX_SIZE_RATIO}"
   local TEST_NAME="${TRAFFIC_ALIAS}-${params_dict[protocol_alias]}"
   params_dict[traffic_pattern]="homa_cp_node"
   params_dict[traffic_alias]="${TRAFFIC_ALIAS}"
