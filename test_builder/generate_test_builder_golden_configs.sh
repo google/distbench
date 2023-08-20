@@ -5,6 +5,9 @@ mkdir test_builder_golden_configs -p
 cd test_builder_golden_configs
 PATH+=":.."
 
+! make -C "$(bazel info output_base)/external/homa_module/util" dist_to_proto
+PATH="$PATH:$(bazel info output_base)/external/homa_module/util/"
+
 # Generate a config for each flag of each traffic pattern and protocol driver:
 test_builder -o . clique
 test_builder -o . clique:test_duration=45
@@ -79,6 +82,16 @@ test_builder -o . variable_response_multi_level_rpc:leaf_size=34
 test_builder -o . variable_response_multi_level_rpc:exact_size=35000
 test_builder -o . variable_response_multi_level_rpc:lower_size=1000
 test_builder -o . variable_response_multi_level_rpc:upper_size=65000
+
+test_builder -o . homa_cp_node
+test_builder -o . homa_cp_node:homa
+test_builder -o . homa_cp_node:node_count=5
+test_builder -o . homa_cp_node:gbps=2
+test_builder -o . homa_cp_node:synchronization_mode=constant
+test_builder -o . homa_cp_node:workload=w4
+test_builder -o . homa_cp_node:max_message_length=4000000
+test_builder -o . homa_cp_node:min_bucket_frac=0.1
+test_builder -o . homa_cp_node:max_size_ratio=1.05
 
 # Generate a parameter sweep:
 test_builder -o - parameter_sweep rpc_interval_us 4000 1000 8000 clique \
