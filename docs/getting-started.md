@@ -10,16 +10,31 @@ For general information about Distbench, please consult the
 
 ### Dependencies
 
+For Debian-style Operating systems, the debian_install.sh script should be enough
+to get you started. The following shell code should download and invoke it.
+
+```bash
+(
+  (dpkg --status git || sudo apt-get -y install git) && \
+  git clone https://github.com/google/distbench.git && \
+  distbench/debian_build.sh && \
+  sudo cp -v distbench/bin/* /usr/local/bin
+)
+```
+
 To build Distbench, you need to have Bazel and g++11.3 installed.
 
 Follow the instructions for your distribution at
 <https://docs.bazel.build/versions/master/install.html> to install Bazel.
 
+To run the analysis tools you will also need the numpy, matplotlib and seaborn
+python packages.
+
 ### Building Distbench
 
 Once Bazel is installed, you can build Distbench with the following command:
 ```bash
-bazel build :all
+bazel build :all -c opt
 ```
 
 ## Running unit tests
@@ -27,7 +42,7 @@ bazel build :all
 You can run the unit tests included with the following command:
 
 ```bash
-bazel test :all
+bazel test :all -c opt
 ```
 
 ## Testing with ./simple\_test.sh
