@@ -34,9 +34,9 @@ http_archive(
 
 http_archive(
     name = "homa_module",
-    sha256 = "fb806e08f91c55207598e3232156b448f2589f1d8513ccd7fdb1270739b2fcbe",
-    strip_prefix = "HomaModule-e27f064f22775c581592c49b91ade60b83d5e899",
-    url = "https://github.com/PlatformLab/HomaModule/archive/e27f064f22775c581592c49b91ade60b83d5e899.tar.gz",
+    sha256 = "ab578b20263ab5e5a8e3d1b9db85ddec05523a178eced4773e47edb00035c430",
+    strip_prefix = "HomaModule-1c3346972c00824c6422ec23ba3c40c87b6e5c76",
+    url = "https://github.com/PlatformLab/HomaModule/archive/1c3346972c00824c6422ec23ba3c40c87b6e5c76.tar.gz",
     build_file = "@//:homa_module.BUILD",
 )
 
