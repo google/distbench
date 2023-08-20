@@ -54,7 +54,7 @@
 #    changes. This check can be skipped by specifying localnocheck.
 # 3) The name of the git branch to use when building distbench.
 # 4) The number of nodes to use within the cluster.
-#    If this argument is omitted DNS is queried to find out
+#    If this argument is omitted /etc/hosts is examined to find out
 #    the number of nodes to use.
 # 5) The name of the netdev to use for distbench traffic.
 #    If this argument is omitted it is automatically determinied.
@@ -65,8 +65,8 @@
 # you can set the CLOUDLAB_USER environment variable.
 
 DEFAULT_CLUSTER_DOMAINNAME=distbench.uic-dcs-pg0.utah.cloudlab.us
-DEFAULT_GIT_REPO=https://github.com/google/distbench.git
-DEFAULT_GIT_BRANCH=main
+DEFAULT_GIT_REPO=local
+DEFAULT_GIT_BRANCH=$(git branch --show-current)
 DEFAULT_NUM_NODES=0
 DEFAULT_PRIVATE_NETDEV=""
 
@@ -76,6 +76,8 @@ DEFAULT_PRIVATE_NETDEV=""
 ################################################################################
 set -uEeo pipefail
 shopt -s inherit_errexit
+DISTBENCH_SRC=$(readlink -f $(dirname $(which $0)))
+cd "${DISTBENCH_SRC}"
 
 function unknown_error_shutdown() {
   err=$?
@@ -171,20 +173,17 @@ fi
 echo_green "Setting up experiment cluster ${CLUSTER_DOMAINNAME} ..."
 echo_green "  Using git repo: ${GIT_REPO} branch: ${GIT_BRANCH}"
 
+NODE0=node0.${CLUSTER_DOMAINNAME}
+
 if [[ ${NUM_NODES} -le 0 ]]
 then
   echo_green "\\nCounting nodes in experiment cluster..."
-  NUM_NODES=0
-  while nslookup node${NUM_NODES}.${CLUSTER_DOMAINNAME} >/dev/null 2>&1
-  do
-    NUM_NODES+=1
-  done
-  echo_green "  Counted $NUM_NODES nodes in experiment cluster."
-  if [[ "${NUM_NODES}" == "0" ]]
+  if ! NUM_NODES="$(clssh ${NODE0} cat /etc/hosts | grep ^10 | wc -l)"
   then
     echo_error red "  Experiment cluster may not be ready yet, or nonexistent."
     exit 1
   fi
+  echo_green "  Counted $NUM_NODES nodes in experiment cluster."
 else
   if ! ping -c 1 node$((NUM_NODES-1)).${CLUSTER_DOMAINNAME} > /dev/null
   then
@@ -193,8 +192,6 @@ else
   fi
   echo_green "\\nUsing $NUM_NODES nodes in experiment cluster."
 fi
-
-NODE0=node0.${CLUSTER_DOMAINNAME}
 
 if [[ "${GIT_REPO}" == "local" ]]
 then
@@ -416,7 +413,6 @@ fi
 ${CXX} -v
 
 echo_magenta "\\nChecking for working copy of bazel..."
-pushd ${WORKTREE}
 bazel-5.4.0 version 2> /dev/null || (
   echo_magenta "  Installing bazel..."
   curl -fsSL https://bazel.build/bazel-release.pub.gpg |
@@ -431,23 +427,22 @@ bazel-5.4.0 version 2> /dev/null || (
 echo_magenta "\\nChecking for local copy of libfabric/libmercury ..."
 LIBFABRIC_VERSION=1.17.0
 MERCURY_VERSION=2.2.0
-LF_LINK=$(basename $(readlink -smn external_repos/opt/libfabric))
-HG_LINK=$(basename $(readlink -smn external_repos/opt/mercury))
+LF_LINK=$(basename $(readlink -smn ${WORKTREE}/external_repos/opt/libfabric))
+HG_LINK=$(basename $(readlink -smn ${WORKTREE}/external_repos/opt/mercury))
 if [[ "${LF_LINK:10}" != "${LIBFABRIC_VERSION}" ||
       "${HG_LINK:8}" != "${MERCURY_VERSION}" ]]
 then
   sudo apt-get install cmake libhwloc-dev uuid-dev -y &&
-  time ./setup_mercury.sh ${LIBFABRIC_VERSION} ${MERCURY_VERSION}
+  time ${WORKTREE}/setup_mercury.sh ${LIBFABRIC_VERSION} ${MERCURY_VERSION}
 fi
 
 echo_magenta "\\nBuilding distbench binary..."
-bazel build -c opt :distbench \
+(cd "${WORKTREE}"; bazel build -c opt :distbench \
   --//:with-mercury=true \
   --//:with-homa=true \
   --//:with-homa-grpc=false \
   --repo_env=CC=${CC} \
-  --repo_env=CXX=${CXX}
-popd
+  --repo_env=CXX=${CXX})
 
 echo_magenta "\\nKilling any previous distbench processes..."
 for i in $(seq 0 $((NUM_NODES-1)))
