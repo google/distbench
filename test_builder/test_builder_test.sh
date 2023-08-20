@@ -12,6 +12,8 @@ function compare_golden_file() {
   diff -u -I '^# produced by ' "$1" <(../test_builder -o - ${invocation})
 }
 
+PATH=$PATH:${PWD}/external/homa_module
+which dist_to_proto
 test_builder/test_builder -h
 
 cd "./test_builder/test_builder_golden_configs"

@@ -24,3 +24,8 @@ cc_library(
         ":homa_api"
     ],
 )
+
+cc_binary(
+  name = "dist_to_proto",
+  srcs = [ "util/dist_to_proto.cc", "util/dist.cc", "util/dist.h", "homa.h" ],
+)
