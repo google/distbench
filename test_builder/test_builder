@@ -185,7 +185,7 @@ function auto_usage() {
 function error_handler() {
   error_code=$?
   log_stderr -e \\n$(caller): Unexpected error $error_code in \\n$BASH_COMMAND
-  exit $?
+  exit $error_code
 }
 
 ################################################################################
@@ -489,9 +489,9 @@ function parse_params_dict_from_config_string() {
     else
       local possible_protocol="${part}_protocol_driver_setup"
       local possible_pattern="${part}_traffic_pattern_setup"
-      if declare -F "${possible_protocol}" > /dev/null ; then
+      if declare -F "${possible_protocol}" &> /dev/null ; then
         params_dict[protocol_driver]="${part}"
-      elif declare -F "${possible_pattern}" > /dev/null ; then
+      elif declare -F "${possible_pattern}" &> /dev/null ; then
         params_dict[traffic_pattern]="${part}"
       elif [[ "${part}" == "ipv6" ]] ; then
         params_dict[ip_version]=6
