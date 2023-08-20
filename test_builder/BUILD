@@ -3,6 +3,7 @@ sh_test(
     srcs = ["test_builder_test.sh"],
     data = glob(["test_builder_golden_configs/*"]) + [
         "test_builder",
-        "//:distbench"
+        "//:distbench",
+        "@homa_module//:dist_to_proto"
     ],
 )
