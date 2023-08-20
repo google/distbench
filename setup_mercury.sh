@@ -29,8 +29,9 @@
 set -uEeo pipefail
 shopt -s inherit_errexit
 
-source git_clone_or_update.sh
-ECHODELAY=0 source common_status.sh
+DISTBENCH_SRC_DIR="$(dirname $(which $0))"
+source "${DISTBENCH_SRC_DIR}/git_clone_or_update.sh"
+ECHODELAY=0 source "${DISTBENCH_SRC_DIR}/common_status.sh"
 
 LIBFABRIC_VERSION=${1:-1.17.0}
 MERCURY_VERSION=${2:-2.2.0}
@@ -133,8 +134,8 @@ function main() {
     sudo apt-get install cmake -y
   )
 
-  mkdir -p external_repos/opt
-  cd external_repos
+  mkdir -p "${DISTBENCH_SRC_DIR}/external_repos/opt"
+  cd "${DISTBENCH_SRC_DIR}/external_repos"
   LIBFABRIC_INSTALL_DIR=$(pwd)/opt/libfabric-${LIBFABRIC_VERSION}
   MERCURY_INSTALL_DIR=$(pwd)/opt/mercury-${MERCURY_VERSION}
 
