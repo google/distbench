@@ -1055,7 +1055,7 @@ which dist_to_proto &> /dev/null && function homa_cp_node_traffic_pattern_setup(
   validate_positive GBPS
   validate_integer 2 NODE_COUNT
   local SYNCHRONIZATION_MODE="${params_dict[synchronization_mode]}"
-  local TRAFFIC_ALIAS="clique_"
+  local TRAFFIC_ALIAS="homa_cp_node_"
   local INTERVAL_FILE="$(mktemp)"
   local CDF_POINTS=$(dist_to_proto ${WORKLOAD} ${MAX_MESSAGE_LENGTH} \
     ${MIN_BUCKET_FRAC} ${MAX_SIZE_RATIO} ${GBPS} 2> $INTERVAL_FILE);
