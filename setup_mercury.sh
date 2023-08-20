@@ -66,7 +66,7 @@ function install_libfabric() {
       --without-cuda \
       --enable-efa=no \
       --disable-usnic \
-      --enable-psm3-verbs=no || rm config.status
+      --enable-psm3-verbs=no || (echo "configuration failed"; rm config.status)
     fi
     echo_magenta "\\nBuilding libfabric..."
     nice make -j $(nproc)
@@ -129,9 +129,13 @@ function unknown_error_shutdown() {
 
 function main() {
   trap unknown_error_shutdown ERR
-  cmake --version &> /dev/null || (
-    echo_error red "cmake not found, trying to install it..."
-    sudo apt-get install cmake -y
+  packages=(autoconf automake autogen libtool cmake libhwloc-dev uuid-dev libnuma-dev)
+  echo_magenta "Checking for dependencies"
+  sleep 1
+  dpkg --status "${packages[@]}" || (
+    echo_cyan "\n\nInstalling missing dependencies"
+    sleep 3;
+    sudo apt-get install -y "${packages[@]}"
   )
 
   mkdir -p "${DISTBENCH_SRC_DIR}/external_repos/opt"

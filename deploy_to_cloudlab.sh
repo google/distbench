@@ -432,7 +432,6 @@ HG_LINK=$(basename $(readlink -smn ${WORKTREE}/external_repos/opt/mercury))
 if [[ "${LF_LINK:10}" != "${LIBFABRIC_VERSION}" ||
       "${HG_LINK:8}" != "${MERCURY_VERSION}" ]]
 then
-  sudo apt-get install cmake libhwloc-dev uuid-dev -y &&
   time ${WORKTREE}/setup_mercury.sh ${LIBFABRIC_VERSION} ${MERCURY_VERSION}
 fi
 
