@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-
 # Copyright (c) 2020-2022 Stanford University
+# Copyright (c) 2023 Google LLC
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -15,17 +15,11 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 # sudo apt getinstall python3-seaborn
 
-from matplotlib import cbook
-from matplotlib import cm
-from matplotlib.colors import LightSource
 import argparse
 import copy
 import datetime
 import glob
 import math
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import platform
 import re
@@ -34,8 +28,16 @@ import subprocess
 import sys
 import time
 import traceback
-import seaborn as sns
+
+import matplotlib
+from matplotlib import cbook
+from matplotlib import cm
+from matplotlib.colors import LightSource
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import seaborn as sns
+
 
 # Avoid Type 3 fonts (conferences don't tend to like them).
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -190,7 +192,7 @@ def get_digest(experiment):
 
     return digest
 
-def start_rtt_plot(title, max_y, x_experiment=None, size=10,
+def start_rtt_plot(title, max_y=7000, x_experiment=None, size=10,
         show_top_label=True, show_bot_label=True, figsize=[6,4],
         y_label="Latency (us)", show_upper_x_axis= True):
     """
@@ -212,19 +214,20 @@ def start_rtt_plot(title, max_y, x_experiment=None, size=10,
 
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
+    ax.autoscale(axis='y')
     if title != "":
         ax.set_title(title, size=size)
     ax.set_xlim(0, 1.0)
-    ax.set_yscale("log")
-    ax.set_ylim(1, max_y)
+    # ax.set_yscale("log")
+    # ax.set_ylim(100, max_y)
     ax.tick_params(right=True, which="both", direction="in", length=5)
     ticks = []
     labels = []
-    y = 1
+    y = 0
     while y <= max_y:
         ticks.append(y)
         labels.append("%d" % (y))
-        y = y*10
+        y = y + 500
     ax.set_yticks(ticks)
     ax.set_yticklabels(labels, size=size)
     if show_bot_label:
@@ -395,36 +398,26 @@ if __name__ == "__main__":
     gbps = args.gbps
     experiments_info = read_files(directory, workload)
 
-    experiments = {}
-    experiments["unloaded"] = "unloaded_" + workload
-    experiments["homa"] = "homa_" + workload
-    experiments["tcp"] = "tcp_" + workload
-    experiments["dctcp"] = "dctcp_" + workload
-    experiments["distbench_homa"] = "distbench_homa_" + workload
-    experiments["distbench_grpc_polling"] = "distbench_grpc_polling_" + workload
-    experiments["distbench_grpc_inline"] = "distbench_grpc_inline_" + workload
-    experiments["distbench_grpc_handoff"] = "distbench_grpc_handoff_" + workload
-    experiments["distbench_grpc_polling_homa_transport"] = "distbench_grpc_polling_homa_" + workload
-    experiments["distbench_grpc_inline_homa_transport"] = "distbench_grpc_inline_homa_" + workload
-    experiments["distbench_grpc_handoff_homa_transport"] = "distbench_grpc_handoff_homa_" + workload
+    print(sorted(experiments_info.keys()))
     line_template = " {: <15} {: <15} {: <15} {: <15} {: <15} {: <}\n"
     
-    for key, value in experiments.items():
-        percentiles = get_percentiles(value)
+    for file_basename in experiments_info.keys():
+        percentiles = get_percentiles(file_basename)
         if (percentiles == {}):
             continue
-        digest = get_digest(value)
-        print("Latency summary for %s experiment:\n" % value)
+        digest = get_digest(file_basename)
+        print("Latency summary for %s experiment:\n" % file_basename)
         print(line_template.format("samples", "min", "50%", "90%", "99%"\
                                                , "99.9%"))
         print(line_template.format(digest["total_messages"], percentiles["min"], percentiles["p50"], percentiles["p90"], percentiles["p99"]\
                                                , percentiles["p99.9"]))
-        histogram_large_messages(directory, value, 640000, experiments_info[value])
-        histogram_short_messages(directory, value, 1000, experiments_info[value])
-    ax = start_rtt_plot("Latencies per sizes", 100000)
-    for key, value in experiments.items():
-        plot_rtts(ax, value, "p99", key + "_p99")
-    ax.legend(loc="upper right", prop={'size': 5})
+        histogram_large_messages(directory, file_basename, 640000, experiments_info[file_basename])
+        histogram_short_messages(directory, file_basename, 1000, experiments_info[file_basename])
+    ax = start_rtt_plot("Latency vs cumulative RPC sizes %s %dGbps" % (workload, gbps))
+    for file_basename in experiments_info.keys():
+        plot_label = file_basename.removesuffix("_" + workload)
+        plot_rtts(ax, file_basename, "p99", plot_label + "_p99")
+    ax.legend(loc="upper left", prop={'size': 5})
     plt.tight_layout()
     plt.savefig("%s/reports/test_rtts_p99_%s.pdf" % (directory, workload))
 
