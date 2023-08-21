@@ -30,6 +30,11 @@ function git_clone_or_update() {
   GITDIR="$(readlink -smn ${3})"
   WORKTREE="$(readlink -smn ${4})"
   REALPWD="$(readlink -smn ${PWD})"
+  if ! git ls-remote "${REMOTE_URL}" &> /dev/null
+  then
+    echo "Remote URL ${REMOTE_URL} does not seem to be accesible or is invalid"
+    return 1
+  fi
   echo_magenta "\\nUpdating to branch ${TAGBRANCH} of ${REMOTE_URL} ..."
   case "${GITDIR}" in
     ${REALPWD}/*)
@@ -110,11 +115,14 @@ function git_clone_or_update() {
       echo_error red "Refusing to overwrite anything..."
       return 8
     fi
-    # Make sure working tree is a commit that existed in a remote branch
+    # Make sure working tree is a commit that existed in a remote branch or tag
     # at the time of the last update. If a branch was force pushed we
     # won't see the new value yet, but this is on purpose. If people are
     # force pushing they must want to delete history here too.
-    if [[ -z "$(git branch -r --contains HEAD ; git tag --contains HEAD)" ]]
+    # Special case: if the worktree is empty, and has no history git log will
+    # fail, and we know not to worry.
+    if git log &> /dev/null &&
+       [[ -z "$(git branch -r --contains HEAD ; git tag --contains HEAD)" ]]
     then
       echo_error red "\\nThe local git worktree no longer matches anything upstream."
       echo_error red "This probably means you made local changes and commited them."
