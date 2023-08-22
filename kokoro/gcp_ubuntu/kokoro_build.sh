@@ -61,7 +61,22 @@ function bazel_install {
 
 # This overrides -repo_env=CC=gcc-11 --repo_env=CXX=g++-11 from .bazelrc:
 function bazel_basic {
+  echo bazel "${@}"
   bazel "${@}"
+}
+
+function test_targets() {
+  for target in "${@}"; do
+    bazel_basic test --test_output=errors "$target" "${CONFIG[@]}" ||
+    bazel_basic test --test_output=errors "$target" "${CONFIG[@]}" ||
+    bazel_basic test --test_output=errors "$target" "${CONFIG[@]}"
+  done
+}
+
+function test_main_targets() {
+  local main_targets=(:distbench_test_sequencer_test :all)
+  echo "Testing targets: ${main_targets[@]}"
+  test_targets ${main_targets[@]}
 }
 
 BAZEL_VERSION=5.4.0
@@ -103,24 +118,25 @@ print_header_and_run "Bazel fetch" \
   run_with_retries bazel fetch :all
 
 print_header_and_run "Bazel test test_builder" \
-  bazel_basic test test_builder:all
+  test_targets test_builder:all
 
 print_header_and_run "Bazel test analysis" \
-  bazel_basic test analysis:all
+  test_targets analysis:all
 
 print_header_and_run "Bazel build" \
   bazel_basic build :all --//:with-mercury
 
+CONFIG=(--//:with-mercury)
 print_header_and_run "Bazel test" \
-  bazel_basic test --test_output=errors :all --//:with-mercury
+  test_main_targets
 
+CONFIG=(--//:with-mercury --config=asan)
 print_header_and_run "Bazel test - ASAN" \
-  bazel_basic test --test_output=errors :all --//:with-mercury --config=asan
+  test_main_targets
 
+CONFIG=(--//:with-mercury --config=tsan)
 print_header_and_run "Bazel test - TSAN" \
-  bazel_basic test --test_output=errors :all --//:with-mercury --config=tsan -k ||
-  bazel_basic test --test_output=errors :all --//:with-mercury --config=tsan -k ||
-  bazel_basic test --test_output=errors :all --//:with-mercury --config=tsan
+  test_main_targets
 
 print_header_and_run "Bazel shutdown" \
   bazel shutdown
