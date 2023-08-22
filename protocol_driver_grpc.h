@@ -99,8 +99,8 @@ class GrpcCallbackClientDriver : public GrpcCommonClientDriver {
 
 class GrpcCommonServerDriver : public ProtocolDriverServer {
  public:
-  GrpcCommonServerDriver(){};
-  ~GrpcCommonServerDriver() override{};
+  GrpcCommonServerDriver() {}
+  ~GrpcCommonServerDriver() override {}
 
   absl::StatusOr<std::string> HandlePreConnect(
       std::string_view remote_connection_info, int peer) override;
