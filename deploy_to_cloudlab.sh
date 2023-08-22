@@ -128,12 +128,14 @@ then
 elif [[ "${GIT_REPO}" == "local" ]]
 then
   echo_green "Checking that the local git tree is checked-in..."
-  git diff --stat --exit-code || (
+  if ! git diff --stat --exit-code
+  then
     echo_error red "  You need to run git commit before $0."
     echo_error red "  If you are just hacking you can do"
     echo_blue "  git commit -a -m hacking"
+    echo_error red "To ignore this use localnocheck as second argument"
     exit 1
-  )
+  fi
   echo
 fi
 
@@ -387,12 +389,14 @@ git_clone_or_update \
 
 echo_magenta "\\nChecking for working copy of gcc-11..."
 CC=gcc-11
+REPO_ENV=()
 
 if ! which gcc-11 > /dev/null
 then
   if which gcc-11.3 > /dev/null
   then
     CC=gcc-11.3
+    REPO_ENV+=(--repo_env=CC=${CC})
   else
     echo_error red "gcc-11 and gcc-11.3 not found"
   fi
@@ -406,6 +410,7 @@ then
   if which g++-11.3 > /dev/null
   then
     CXX=g++-11.3
+    REPO_ENV+=(--repo_env=CXX=${CXX})
   else
     echo_error red "g++-11 and g++-11.3 not found"
   fi
@@ -440,8 +445,7 @@ echo_magenta "\\nBuilding distbench binary..."
   --//:with-mercury=true \
   --//:with-homa=true \
   --//:with-homa-grpc=false \
-  --repo_env=CC=${CC} \
-  --repo_env=CXX=${CXX})
+  "${REPO_ENV[@]}" )
 
 echo_magenta "\\nKilling any previous distbench processes..."
 for i in $(seq 0 $((NUM_NODES-1)))
