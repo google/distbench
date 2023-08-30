@@ -335,15 +335,15 @@ def make_histogram(x, y, init=None, after=True):
     if init:
         x_new.append(init[0])
         y_new.append(init[1])
-    for i in range(len(x)):
+    for i, x_coord in enumerate(x):
         if i != 0:
             if after:
-                x_new.append(x[i])
+                x_new.append(x_coord)
                 y_new.append(y[i-1])
             else:
                 x_new.append(x[i-1])
                 y_new.append(y[i])
-        x_new.append(x[i])
+        x_new.append(x_coord)
         y_new.append(y[i])
     return [x_new, y_new]
 
