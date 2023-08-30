@@ -14,7 +14,6 @@
 
 #include <algorithm>
 
-#include "absl/log/log.h"
 #include "distbench_utils.h"
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"

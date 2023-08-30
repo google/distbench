@@ -14,9 +14,7 @@
 
 #include "distbench_payload.h"
 
-#include "absl/log/log.h"
 #include "gtest/gtest.h"
-#include "gtest_utils.h"
 
 namespace distbench {
 
