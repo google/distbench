@@ -17,12 +17,10 @@
 
 #include <string_view>
 
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/notification.h"
 #include "distbench.pb.h"
-#include "grpc_wrapper.h"
 #include "simple_clock.h"
 
 namespace distbench {

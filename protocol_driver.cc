@@ -14,6 +14,8 @@
 
 #include "protocol_driver.h"
 
+#include "absl/log/log.h"
+
 namespace distbench {
 
 void ServerRpcState::SetSendResponseFunction(
