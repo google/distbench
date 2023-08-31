@@ -121,6 +121,7 @@ cc_test(
     srcs = [
         "distbench_payload_test.cc",
     ],
+    shard_count = 6,
     deps = [
         ":distbench_payload",
         ":gtest_utils"
