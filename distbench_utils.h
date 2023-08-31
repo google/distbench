@@ -200,7 +200,7 @@ absl::Status ValidateRpcReplayTrace(const RpcReplayTrace& trace,
 
 absl::Status ValidateDistributionConfig(const DistributionConfig& config);
 
-absl::Status ValidateIterations(const Iterations& config);
+absl::Status ValidateIterations(const Iterations& iterations);
 
 absl::Status ValidateTestsSetting(const TestsSetting& settings);
 

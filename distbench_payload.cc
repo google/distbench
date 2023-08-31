@@ -174,7 +174,7 @@ absl::Cord PayloadAllocator::AllocPayloadCord(size_t size) {
   if (size > 0) {
     return absl::Cord(std::string(size, 'D'));
   }
-  return absl::Cord(std::string(0, 'D'));
+  return absl::Cord();
 }
 
 void PayloadAllocator::AddPadding(GenericRequestResponse* msg,
