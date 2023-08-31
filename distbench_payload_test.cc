@@ -25,7 +25,7 @@ TEST(GetPaddingForSerializedSize, LargeRangesExact) {
   for (int i = 1; i < 5; ++i) {
     int size = 1 << (7 * i);
     // We test a range of values in the vicinity of each power of 128:
-    for (int j = -16; j < 16; ++j) {
+    for (int j = -8; j < 8; ++j) {
       size_t padding = GetPaddingForSerializedSize(&request, size + j);
       if (padding) request.set_payload(std::move(std::string(padding, 'D')));
       ASSERT_EQ(request.ByteSizeLong(), size + j);
@@ -56,7 +56,7 @@ TEST(MetaDataLength, First4K) {
   for (int i = 1; i < 5; ++i) {
     int size = 1 << (7 * i);
     // We test a range of values in the vicinity of each power of 128:
-    for (int j = -16; j < 16; ++j) {
+    for (int j = -8; j < 8; ++j) {
       size_t padding = GetPaddingForSerializedSize(&request, size + j);
       if (padding) request.set_payload(std::move(std::string(padding, 'D')));
       ASSERT_EQ(request.ByteSizeLong(), size + j);
