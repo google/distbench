@@ -25,7 +25,7 @@ class PayloadAllocator {
  public:
   virtual ~PayloadAllocator() = default;
   virtual absl::Cord AllocPayloadCord(size_t size);
-  void AddPadding(GenericRequestResponse* msg, size_t padding);
+  void AddPadding(GenericRequestResponse* msg, size_t target_size);
 };
 
 bool ReadVarInt(const char** start, const char* end, int64_t* out);
