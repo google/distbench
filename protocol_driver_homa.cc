@@ -342,7 +342,6 @@ void ProtocolDriverHoma::ShutdownClient() {
       } else {
         loopback.in4.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
       }
-      LOG(INFO) << "sending a shutdown RPC";
       int64_t res = homa_send(homa_client_sock_, buf, 1, &loopback,
                               &kernel_rpc_number, 0);
       if (res < 0) {
@@ -350,7 +349,6 @@ void ProtocolDriverHoma::ShutdownClient() {
                   << " kernel_rpc_number " << kernel_rpc_number;
       }
 
-      LOG(INFO) << "cancelling that shutdown RPC";
       homa_abort(homa_client_sock_, kernel_rpc_number, EINTR);
     }
 
