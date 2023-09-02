@@ -118,7 +118,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     int sample_generator_index = -1;
 
-    int client_service_index = -1;
+    bool allowed_from_this_client = false;
     int multiserver_channel_index = -1;
   };
 

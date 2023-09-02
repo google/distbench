@@ -110,7 +110,7 @@ message PayloadSpec {
 
 message RpcSpec {
   optional string name = 1;
-  optional string client = 2;
+  repeated string client = 2;
   optional string server = 3;
   optional string request_payload_name = 4;
   optional string response_payload_name = 5;
