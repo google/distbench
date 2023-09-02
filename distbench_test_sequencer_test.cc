@@ -377,12 +377,10 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   auto* client = test->add_services();
   client->set_name("client");
   client->set_count(1);
-  client->set_protocol_driver_options_name("lo_opts");
 
   auto* server = test->add_services();
   server->set_name("server");
   server->set_count(1);
-  server->set_protocol_driver_options_name("lo_opts");
 
   auto* rpc_desc = test->add_rpc_descriptions();
   rpc_desc->set_name("client_server_rpc");
@@ -397,9 +395,9 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   auto* server_al = test->add_action_lists();
   server_al->set_name("client_server_rpc");
 
-  auto* lo_opts = test->add_protocol_driver_options();
-  lo_opts->set_name("lo_opts");
-  lo_opts->set_netdev_name("lo");
+  auto* pd_opts = test->add_protocol_driver_options();
+  pd_opts->set_name("default_protocol_driver_options");
+  pd_opts->set_netdev_name("lo");
 
   auto* req_dist = test->add_distribution_config();
   req_dist->set_name("MyPayloadDistribution");
@@ -459,12 +457,10 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
   auto* client = test->add_services();
   client->set_name("client");
   client->set_count(1);
-  client->set_protocol_driver_options_name("lo_opts");
 
   auto* server = test->add_services();
   server->set_name("server");
   server->set_count(1);
-  server->set_protocol_driver_options_name("lo_opts");
 
   auto* rpc_desc = test->add_rpc_descriptions();
   rpc_desc->set_name("client_server_rpc");
@@ -479,9 +475,9 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
   auto* server_al = test->add_action_lists();
   server_al->set_name("client_server_rpc");
 
-  auto* lo_opts = test->add_protocol_driver_options();
-  lo_opts->set_name("lo_opts");
-  lo_opts->set_netdev_name("lo");
+  auto* pd_opts = test->add_protocol_driver_options();
+  pd_opts->set_name("default_protocol_driver_options");
+  pd_opts->set_netdev_name("lo");
 
   auto* req_dist = test->add_distribution_config();
   req_dist->set_name("MyPayloadDistribution");
@@ -1014,12 +1010,10 @@ TEST(DistBenchTestSequencer, AttributeBasedPlacement) {
   auto* client = test->add_services();
   client->set_name("client");
   client->set_count(2);
-  client->set_protocol_driver_options_name("lo_opts");
 
   auto* server = test->add_services();
   server->set_name("server");
   server->set_count(2);
-  server->set_protocol_driver_options_name("lo_opts");
 
   ConstraintList constraint_list;
   auto* constraint_set = constraint_list.add_constraint_sets();
@@ -1084,12 +1078,10 @@ TEST(DistBenchTestSequencer, AttributeBasedPlacementFail) {
   auto* client = test->add_services();
   client->set_name("client");
   client->set_count(2);
-  client->set_protocol_driver_options_name("lo_opts");
 
   auto* server = test->add_services();
   server->set_name("server");
   server->set_count(2);
-  server->set_protocol_driver_options_name("lo_opts");
 
   ConstraintList constraint_list;
   auto* constraint_set = constraint_list.add_constraint_sets();

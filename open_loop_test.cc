@@ -35,14 +35,13 @@ TEST(OpenLoopTest, CliqueTest) {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
 
-  auto* lo_opts = test->add_protocol_driver_options();
-  lo_opts->set_name("lo_opts");
-  lo_opts->set_netdev_name("lo");
+  auto* pd_opts = test->add_protocol_driver_options();
+  pd_opts->set_name("default_protocol_driver_options");
+  pd_opts->set_netdev_name("lo");
 
   auto* s1 = test->add_services();
   s1->set_name("clique");
   s1->set_count(nb_cliques);
-  s1->set_protocol_driver_options_name("lo_opts");
 
   auto* l1 = test->add_action_lists();
   l1->set_name("clique");
