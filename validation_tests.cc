@@ -41,7 +41,7 @@ TestSequence ValidTestSequence() {
 
   auto* rpcd1 = test->add_rpc_descriptions();
   rpcd1->set_name("echo");
-  rpcd1->set_client("service1");
+  rpcd1->add_client("service1");
   rpcd1->set_server("service2");
 
   auto* acl2 = test->add_action_lists();
@@ -164,7 +164,7 @@ TEST_F(CheckTestsTest, InvalidRPC) {
   auto* test = sequence.mutable_tests(0);
   auto* rpc = test->add_rpc_descriptions();
   rpc->set_name("msg");
-  rpc->set_client("service1");
+  rpc->add_client("service1");
 
   auto status = ValidateTrafficConfig(*test);
   ASSERT_EQ(status.code(), absl::StatusCode::kNotFound);

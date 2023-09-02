@@ -184,7 +184,7 @@ TestSequence GetFanoutConfig(std::string fanout_filter, std::string from,
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("clique_query");
-  r1->set_client(from);
+  r1->add_client(from);
   r1->set_server(to);
   r1->set_fanout_filter(fanout_filter);
 

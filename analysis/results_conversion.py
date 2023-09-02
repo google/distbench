@@ -234,7 +234,8 @@ class TestProcessor:
 
     for rpc in self.test_proto_message.traffic_config.rpc_descriptions:
       # get the services that act as servers and the ones that act as clients
-      self.client_services.add(rpc.client)
+      for client_service in rpc.client:
+        self.client_services.add(client_service)
       self.server_services.add(rpc.server)
       # get the rpc names
       self.rpc_names.append(rpc.name)

@@ -336,11 +336,16 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
       }
     }
 
-    it = service_index_map_.find(rpc_def.rpc_spec.client());
-    if (it == service_index_map_.end()) {
-      return absl::NotFoundError(rpc_def.rpc_spec.client());
+    for (const auto& client : rpc_def.rpc_spec.client()) {
+      it = service_index_map_.find(client);
+      if (it == service_index_map_.end()) {
+        return absl::NotFoundError(
+            absl::StrCat("rpc specifies unknown client service: ", client));
+      }
+      if (service_name_ == client) {
+        rpc_def.allowed_from_this_client = true;
+      }
     }
-    rpc_def.client_service_index = it->second;
 
     // Get request payload size
     rpc_def.request_payload_size = -1;
@@ -505,24 +510,32 @@ absl::Status DistBenchEngine::InitializeTables() {
 
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc = traffic_config_.rpc_descriptions(i);
-    const std::string server_service_name = rpc.server();
-    const std::string client_service_name = rpc.client();
-    if (client_service_name.empty()) {
+    if (rpc.client().empty()) {
       LOG(INFO) << engine_name_ << ": " << rpc.ShortDebugString();
       return absl::InvalidArgumentError(
-          absl::StrCat("Rpc ", rpc.name(), " must have a client_service_name"));
+          absl::StrCat("Rpc ", rpc.name(), " must have a client field"));
     }
-
+    const std::string server_service_name = rpc.server();
     if (server_service_name.empty()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Rpc ", rpc.name(), " must have a server_service_name"));
-    }
-    if (client_service_name == service_name_) {
-      client_rpc_index_map[rpc.name()] = i;
-      dependent_services_.insert(server_service_name);
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Rpc ", rpc.name(), " must have a nonempty server field"));
     }
     if (server_service_name == service_name_) {
       server_rpc_table_[i].allowed = true;
+    }
+
+    for (const auto& client_service_name : rpc.client()) {
+      if (client_service_name == service_name_) {
+        client_rpc_index_map[rpc.name()] = i;
+        dependent_services_.insert(server_service_name);
+      } else {
+        auto it = service_index_map_.find(client_service_name);
+        if (it == service_index_map_.end()) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Rpc ", rpc.name(), " specifies unknown client service_type ",
+              client_service_name));
+        }
+      }
     }
 
     auto it = actionlist_index_map.find(rpc.name());
@@ -539,22 +552,16 @@ absl::Status DistBenchEngine::InitializeTables() {
 
     server_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
 
-    auto it1 = service_index_map_.find(server_service_name);
-    if (it1 == service_index_map_.end()) {
+    auto it2 = service_index_map_.find(server_service_name);
+    if (it2 == service_index_map_.end()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Rpc ", rpc.name(), " specifies unknown server service_type ",
           server_service_name));
     }
-    auto it2 = service_index_map_.find(client_service_name);
-    if (it2 == service_index_map_.end()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Rpc ", rpc.name(), " specifies unknown client service_type ",
-          client_service_name));
-    }
-    client_rpc_table_[i].service_index = it1->second;
+    client_rpc_table_[i].service_index = it2->second;
     client_rpc_table_[i].rpc_definition = rpc_map_[rpc.name()];
     client_rpc_table_[i].pending_requests_per_peer.resize(
-        traffic_config_.services(it1->second).count(), 0);
+        traffic_config_.services(it2->second).count(), 0);
   }
 
   return absl::OkStatus();
@@ -1712,7 +1719,7 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
         };
   } else if (action.rpc_service_index >= 0) {
     const auto& rpc_def = client_rpc_table_[action.rpc_index].rpc_definition;
-    if (rpc_def.client_service_index != service_index_) {
+    if (!rpc_def.allowed_from_this_client) {
       LOG(ERROR) << "RPC invoked from wrong client node.";
       return;
     }

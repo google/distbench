@@ -56,7 +56,7 @@ TEST(OpenLoopTest, CliqueTest) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("clique_query");
-  r1->set_client("clique");
+  r1->add_client("clique");
   r1->set_server("clique");
   r1->set_fanout_filter("all");
 
@@ -120,7 +120,7 @@ TEST(OpenLoopTest, ExponenentialDistributionTest) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("exp_query");
-  r1->set_client("exponential_client");
+  r1->add_client("exponential_client");
   r1->set_server("exponential_server");
 
   auto* l2 = test->add_action_lists();
@@ -218,7 +218,7 @@ TEST(OpenLoopTest, ConstantDistributionTest) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("constant_query");
-  r1->set_client("constant_client");
+  r1->add_client("constant_client");
   r1->set_server("constant_server");
 
   auto* l2 = test->add_action_lists();

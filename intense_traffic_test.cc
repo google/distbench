@@ -52,7 +52,7 @@ TestSequence IntenseTrafficTestSequence(const char* protocol) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo");
-  r1->set_client("s1");
+  r1->add_client("s1");
   r1->set_server("s2");
 
   auto* l2 = test->add_action_lists();

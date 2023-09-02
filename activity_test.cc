@@ -126,7 +126,7 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("clique_query");
-  r1->set_client("clique");
+  r1->add_client("clique");
   r1->set_server("clique");
   r1->set_fanout_filter("all");
 
@@ -187,7 +187,7 @@ TEST(DistBenchTestSequencer, ServerActivityTest) {
 
   auto* rpc_desc = test->add_rpc_descriptions();
   rpc_desc->set_name("client_server_rpc");
-  rpc_desc->set_client("client");
+  rpc_desc->add_client("client");
   rpc_desc->set_server("server");
   rpc_desc->set_request_payload_name("request_payload");
   rpc_desc->set_response_payload_name("response_payload");

@@ -69,7 +69,7 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo");
-  r1->set_client("s1");
+  r1->add_client("s1");
   r1->set_server("s2");
 
   auto* l2 = test->add_action_lists();
@@ -96,6 +96,73 @@ TEST(DistBenchTestSequencer, NonEmptyGroup) {
   ASSERT_NE(s2_1, instance_results_it->second.peer_logs().end());
   auto s2_1_echo = s2_1->second.rpc_logs().find(0);
   ASSERT_NE(s2_1_echo, s2_1->second.rpc_logs().end());
+  ASSERT_TRUE(s2_1_echo->second.failed_rpc_samples().empty());
+  ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
+}
+
+TEST(DistBenchTestSequencer, TwoClientServices) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize());
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  auto* client1 = test->add_services();
+  client1->set_name("client1");
+  client1->set_count(1);
+  auto* client2 = test->add_services();
+  client2->set_name("client2");
+  client2->set_count(1);
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(1);
+
+  auto* client1_list = test->add_action_lists();
+  client1_list->set_name("client1");
+  client1_list->add_action_names("clientX/ping");
+
+  auto* client2_list = test->add_action_lists();
+  client2_list->set_name("client2");
+  client2_list->add_action_names("clientX/ping");
+
+  auto a1 = test->add_actions();
+  a1->set_name("clientX/ping");
+  a1->set_rpc_name("echo");
+  a1->mutable_iterations()->set_max_iteration_count(10);
+
+  auto* echo_description = test->add_rpc_descriptions();
+  echo_description->set_name("echo");
+  echo_description->add_client("client1");
+  echo_description->add_client("client2");
+  echo_description->set_server("server");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("echo");
+
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/70);
+  ASSERT_OK(results.status());
+
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 2);
+  const auto& client1_results_it =
+      test_results.service_logs().instance_logs().find("client1/0");
+  ASSERT_NE(client1_results_it,
+            test_results.service_logs().instance_logs().end());
+  auto client1_logs = client1_results_it->second.peer_logs().find("server/0");
+  ASSERT_NE(client1_logs, client1_results_it->second.peer_logs().end());
+  auto s2_0_echo = client1_logs->second.rpc_logs().find(0);
+  ASSERT_NE(s2_0_echo, client1_logs->second.rpc_logs().end());
+  ASSERT_TRUE(s2_0_echo->second.failed_rpc_samples().empty());
+  ASSERT_EQ(s2_0_echo->second.successful_rpc_samples_size(), 10);
+
+  const auto& client2_results_it =
+      test_results.service_logs().instance_logs().find("client2/0");
+  ASSERT_NE(client2_results_it,
+            test_results.service_logs().instance_logs().end());
+  auto client2_logs = client2_results_it->second.peer_logs().find("server/0");
+  ASSERT_NE(client2_logs, client2_results_it->second.peer_logs().end());
+  auto s2_1_echo = client2_logs->second.rpc_logs().find(0);
+  ASSERT_NE(s2_1_echo, client2_logs->second.rpc_logs().end());
   ASSERT_TRUE(s2_1_echo->second.failed_rpc_samples().empty());
   ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
 }
@@ -217,7 +284,7 @@ TEST(DistBenchTestSequencer, TestReservoirSampling) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo");
-  r1->set_client("s1");
+  r1->add_client("s1");
   r1->set_server("s2");
 
   auto* l2 = test->add_action_lists();
@@ -286,7 +353,7 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
 
   auto* r1 = test->add_rpc_descriptions();
   r1->set_name("echo_and_forward");
-  r1->set_client("s1");
+  r1->add_client("s1");
   r1->set_server("s2");
 
   auto* l2 = test->add_action_lists();
@@ -307,7 +374,7 @@ TEST(DistBenchTestSequencer, TestWarmupSampling) {
 
   auto* r2 = test->add_rpc_descriptions();
   r2->set_name("async_echo");
-  r2->set_client("s2");
+  r2->add_client("s2");
   r2->set_server("s3");
 
   auto* l4 = test->add_action_lists();
@@ -384,7 +451,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
 
   auto* rpc_desc = test->add_rpc_descriptions();
   rpc_desc->set_name("client_server_rpc");
-  rpc_desc->set_client("client");
+  rpc_desc->add_client("client");
   rpc_desc->set_server("server");
   rpc_desc->set_distribution_config_name("MyPayloadDistribution");
 
@@ -464,7 +531,7 @@ TEST(DistBenchTestSequencer, VariablePayloadSizeTest1dCdf) {
 
   auto* rpc_desc = test->add_rpc_descriptions();
   rpc_desc->set_name("client_server_rpc");
-  rpc_desc->set_client("client");
+  rpc_desc->add_client("client");
   rpc_desc->set_server("server");
   rpc_desc->set_distribution_config_name("MyPayloadDistribution");
 
