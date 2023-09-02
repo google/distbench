@@ -190,6 +190,7 @@ message RpcReplayTrace {
 message Action {
   optional string name = 1;
   repeated string dependencies = 2;
+  optional string delay_distribution_name = 13;
   optional Iterations iterations = 3;
   oneof action {
     string rpc_name = 4;
@@ -259,6 +260,7 @@ message DistributedSystemDescription {
   optional string default_protocol = 7 [default = "grpc"];
   repeated ProtocolDriverOptions protocol_driver_options = 8;
   repeated DistributionConfig distribution_config = 12;
+  repeated DistributionConfig delay_distribution_configs = 16;
 
   optional OverloadLimits overload_limits = 13;
 

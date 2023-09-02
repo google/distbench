@@ -164,6 +164,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int rpc_replay_trace_index = -1;
     int actionlist_index = -1;
     int activity_config_index = -1;
+    int delay_distribution_index = -1;
     std::vector<int> dependent_action_indices;
   };
 
@@ -188,6 +189,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   struct ActionState {
     bool started = false;
     bool finished = false;
+    bool waiting_for_delay = false;
     bool skipped = false;
     ActionListState* actionlist_state;
 
@@ -338,6 +340,17 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   int get_payload_size(const std::string& name);
 
+  // Allocate Sample generator if the distribution configuration is
+  // valid. Return an error if the config is invalid of if same config
+  // is defined more than once. Add the unique_ptr for allocated sample
+  // generator to the rpc_distribution_generators_ and store the index in
+  // sample_generator_indices_map_.
+  absl::Status InitializeSampleGenerators();
+
+  // Get the index of the sample generator in rpc_distribution_generators_
+  int GetRpcSampleGeneratorIndex(const std::string& name);
+  int GetDelaySampleGeneratorIndex(const std::string& name);
+
   DistributedSystemDescription traffic_config_;
   ServiceEndpointMap service_map_;
   std::string service_name_;
@@ -370,7 +383,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   SimpleClock* clock_ = nullptr;
 
   // Random
-  absl::BitGen random_generator;
+  absl::BitGen rand_gen;
 
   std::atomic<int64_t> pending_rpcs_ = 0;
   std::atomic<int64_t> detached_actionlist_threads_ = 0;
@@ -382,19 +395,13 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<std::unique_ptr<RpcReplayTraceLog>> replay_logs_
       ABSL_GUARDED_BY(replay_logs_mutex);
 
-  std::map<std::string, int> sample_generator_indices_map_;
+  std::map<std::string, int> delay_distribution_generators_map_;
   std::vector<std::unique_ptr<DistributionSampleGenerator>>
-      sample_generator_array_;
+      delay_distribution_generators_;
 
-  // Allocate Sample generator if the distribution configuration is
-  // valid. Return an error if the config is invalid of if same config
-  // is defined more than once. Add the unique_ptr for allocated sample
-  // generator to the sample_generator_array_ and store the index in
-  // sample_generator_indices_map_.
-  absl::Status AllocateAndInitializeSampleGenerators();
-
-  // Get the index of the sample generator in sample_generator_array_
-  int GetSampleGeneratorIndex(const std::string& name);
+  std::map<std::string, int> rpc_distribution_generators_map_;
+  std::vector<std::unique_ptr<DistributionSampleGenerator>>
+      rpc_distribution_generators_;
 
   absl::Mutex cancelation_mutex_;
   std::string cancelation_reason_;
