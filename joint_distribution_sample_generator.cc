@@ -14,6 +14,7 @@
 
 #include "joint_distribution_sample_generator.h"
 
+#include "absl/log/check.h"
 #include "distbench_utils.h"
 
 namespace distbench {
@@ -117,6 +118,18 @@ std::vector<int64_t> DistributionSampleGenerator::GetRandomSample(
     }
   }
   return sample;
+}
+
+int64_t DistributionSampleGenerator::GetScalarRandomSample(
+    absl::BitGen* generator) {
+  CHECK_EQ(num_dimensions_, 1);
+  auto index = distribution_array_(*generator);
+
+  if (is_exact_value_[0][index]) {
+    return exact_value_[0][index];
+  } else {
+    return range_[0][index](*generator);
+  }
 }
 
 }  // namespace distbench

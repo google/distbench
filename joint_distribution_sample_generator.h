@@ -28,6 +28,7 @@ class DistributionSampleGenerator {
 
   absl::Status Initialize(const DistributionConfig& config);
   std::vector<int64_t> GetRandomSample(absl::BitGen* generator);
+  int64_t GetScalarRandomSample(absl::BitGen* generator);
 
  private:
   int num_dimensions_;
