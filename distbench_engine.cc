@@ -32,6 +32,8 @@ namespace {
 
 // These define the canonical order of the fields in a multidimensional
 // distribution:
+const char* canonical_delay_fields[] = {"action_delay_ns", nullptr};
+
 const char* canonical_1d_fields[] = {"payload_size", nullptr};
 
 const char* canonical_2d_fields[] = {"request_payload_size",
@@ -373,7 +375,7 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 
     if (rpc_spec.has_distribution_config_name()) {
       rpc_def.sample_generator_index =
-          GetSampleGeneratorIndex(rpc_spec.distribution_config_name());
+          GetRpcSampleGeneratorIndex(rpc_spec.distribution_config_name());
     }
 
     auto ret = InitializeRpcFanoutFilter(rpc_def);
@@ -390,8 +392,7 @@ absl::Status DistBenchEngine::InitializeTables() {
   absl::Status ret_init_payload = InitializePayloadsMap();
   if (!ret_init_payload.ok()) return ret_init_payload;
 
-  absl::Status ret_init_distribution_config =
-      AllocateAndInitializeSampleGenerators();
+  absl::Status ret_init_distribution_config = InitializeSampleGenerators();
   if (!ret_init_distribution_config.ok()) return ret_init_distribution_config;
 
   absl::Status ret_init_rpc_def = InitializeRpcDefinitionsMap();
@@ -440,6 +441,14 @@ absl::Status DistBenchEngine::InitializeTables() {
     // second pass to fixup deps:
     for (size_t j = 0; j < action_lists_[i].list_actions.size(); ++j) {
       auto& action = action_lists_[i].list_actions[j];
+      action.delay_distribution_index =
+          GetDelaySampleGeneratorIndex(action.proto.delay_distribution_name());
+      if (action.delay_distribution_index == -1 &&
+          action.proto.has_delay_distribution_name()) {
+        return absl::NotFoundError(
+            absl::StrCat("Action specified a nonexistent delay distribution: ",
+                         action.proto.delay_distribution_name()));
+      }
       if (action.proto.has_rpc_name()) {
         auto it2 = rpc_name_index_map.find(action.proto.rpc_name());
         if (it2 == rpc_name_index_map.end()) {
@@ -1294,6 +1303,10 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           }
         }
         continue;
+      } else if (s.state_table[i].waiting_for_delay) {
+        if (s.state_table[i].next_iteration_time > now) {
+          continue;
+        }
       }
       auto deps = s.action_list->list_actions[i].dependent_action_indices;
       bool deps_ready = true;
@@ -1306,6 +1319,21 @@ void DistBenchEngine::RunActionList(int actionlist_index,
         should_skip |= s.state_table[dep].skipped;
       }
       if (!deps_ready) continue;
+      if (!s.state_table[i].waiting_for_delay) {
+        if (s.action_list->list_actions[i].delay_distribution_index != -1) {
+          s.state_table[i].waiting_for_delay = true;
+          int64_t delay_ns =
+              delay_distribution_generators_[s.action_list->list_actions[i]
+                                                 .delay_distribution_index]
+                  ->GetScalarRandomSample(&rand_gen);
+          auto real_start_time = now + absl::Nanoseconds(delay_ns);
+          absl::MutexLock m(&s.state_table[i].iteration_mutex);
+          s.state_table[i].next_iteration_time = real_start_time;
+          continue;
+        }
+      }
+      s.state_table[i].waiting_for_delay = false;
+      s.state_table[i].next_iteration_time = absl::InfiniteFuture();
       s.state_table[i].action_index = i;
       s.state_table[i].started = true;
       s.state_table[i].action = &s.action_list->list_actions[i];
@@ -1948,7 +1976,7 @@ void DistBenchEngine::RunRpcActionIterationCommon(
   size_t request_payload_size = rpc_def.request_payload_size;
   if (rpc_def.sample_generator_index != -1) {
     // This RPC uses a distribution of sizes.
-    auto sample = sample_generator_array_[rpc_def.sample_generator_index]
+    auto sample = rpc_distribution_generators_[rpc_def.sample_generator_index]
                       ->GetRandomSample(&iteration_state->rand_gen);
 
     request_payload_size = sample[kRequestPayloadSizeField];
@@ -2249,7 +2277,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
 
     case kStochastic:
       int nb_targets = 0;
-      float random_val = absl::Uniform(random_generator, 0, 1.0);
+      float random_val = absl::Uniform(rand_gen, 0, 1.0);
       float current_val = 0.0;
       for (const auto& d : rpc_def.stochastic_dist) {
         current_val += d.probability;
@@ -2306,11 +2334,11 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
   return targets;
 }
 
-int DistBenchEngine::GetSampleGeneratorIndex(
+int DistBenchEngine::GetRpcSampleGeneratorIndex(
     const std::string& distribution_config_name) {
   const auto& dc_index_it =
-      sample_generator_indices_map_.find(distribution_config_name);
-  if (dc_index_it == sample_generator_indices_map_.end()) {
+      rpc_distribution_generators_map_.find(distribution_config_name);
+  if (dc_index_it == rpc_distribution_generators_map_.end()) {
     LOG(WARNING) << "Unknown distribution_config_name: '"
                  << distribution_config_name << "' provided.";
     return -1;
@@ -2318,37 +2346,72 @@ int DistBenchEngine::GetSampleGeneratorIndex(
   return dc_index_it->second;
 }
 
-absl::Status DistBenchEngine::AllocateAndInitializeSampleGenerators() {
+int DistBenchEngine::GetDelaySampleGeneratorIndex(
+    const std::string& distribution_config_name) {
+  const auto& dc_index_it =
+      delay_distribution_generators_map_.find(distribution_config_name);
+  if (dc_index_it == delay_distribution_generators_map_.end()) {
+    LOG(WARNING) << "Unknown distribution_config_name: '"
+                 << distribution_config_name << "' provided.";
+    return -1;
+  }
+  return dc_index_it->second;
+}
+
+absl::Status DistBenchEngine::InitializeSampleGenerators() {
   for (int i = 0; i < traffic_config_.distribution_config_size(); ++i) {
     const auto& config = traffic_config_.distribution_config(i);
     const auto& config_name = config.name();
 
-    if (sample_generator_indices_map_.find(config_name) ==
-        sample_generator_indices_map_.end()) {
-      auto maybe_canonical_config =
-          GetCanonicalDistributionConfig(config, canonical_2d_fields);
-      if (!maybe_canonical_config.ok()) {
-        maybe_canonical_config =
-            GetCanonicalDistributionConfig(config, canonical_1d_fields);
-      }
-      if (!maybe_canonical_config.ok()) {
-        return maybe_canonical_config.status();
-      }
-      auto canonical_config = maybe_canonical_config.value();
-
-      auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
-      if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
-
-      sample_generator_array_.push_back(
-          std::move(maybe_sample_generator.value()));
-      sample_generator_indices_map_[config_name] =
-          sample_generator_array_.size() - 1;
-
-    } else {
+    if (rpc_distribution_generators_map_.find(config_name) !=
+        rpc_distribution_generators_map_.end()) {
       return absl::FailedPreconditionError(
           absl::StrCat("Distribution config '", config_name,
                        "' was defined more than once."));
     }
+    auto maybe_canonical_config =
+        GetCanonicalDistributionConfig(config, canonical_2d_fields);
+    if (!maybe_canonical_config.ok()) {
+      maybe_canonical_config =
+          GetCanonicalDistributionConfig(config, canonical_1d_fields);
+      if (!maybe_canonical_config.ok()) {
+        return maybe_canonical_config.status();
+      }
+    }
+    auto canonical_config = maybe_canonical_config.value();
+
+    auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
+    if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
+
+    rpc_distribution_generators_.push_back(
+        std::move(maybe_sample_generator.value()));
+    rpc_distribution_generators_map_[config_name] =
+        rpc_distribution_generators_.size() - 1;
+  }
+  for (int i = 0; i < traffic_config_.delay_distribution_configs_size(); ++i) {
+    const auto& config = traffic_config_.delay_distribution_configs(i);
+    const auto& config_name = config.name();
+
+    if (delay_distribution_generators_map_.find(config_name) !=
+        delay_distribution_generators_map_.end()) {
+      return absl::FailedPreconditionError(
+          absl::StrCat("Delay distribution config '", config_name,
+                       "' was defined more than once."));
+    }
+    auto maybe_canonical_config =
+        GetCanonicalDistributionConfig(config, canonical_delay_fields);
+    if (!maybe_canonical_config.ok()) {
+      return maybe_canonical_config.status();
+    }
+    auto canonical_config = maybe_canonical_config.value();
+
+    auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
+    if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
+
+    delay_distribution_generators_.push_back(
+        std::move(maybe_sample_generator.value()));
+    delay_distribution_generators_map_[config_name] =
+        delay_distribution_generators_.size() - 1;
   }
   return absl::OkStatus();
 }

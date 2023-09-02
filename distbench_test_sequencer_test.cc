@@ -167,6 +167,136 @@ TEST(DistBenchTestSequencer, TwoClientServices) {
   ASSERT_EQ(s2_1_echo->second.successful_rpc_samples_size(), 10);
 }
 
+TEST(DistBenchTestSequencer, MissingActionDelay) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize());
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(1);
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(1);
+
+  auto* client1_list = test->add_action_lists();
+  client1_list->set_name("client");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+
+  auto a1 = test->add_actions();
+  a1->set_name("delayed_ping");
+  a1->set_rpc_name("echo");
+  a1->set_delay_distribution_name("extra_delay");
+
+  auto* echo_description = test->add_rpc_descriptions();
+  echo_description->set_name("echo");
+  echo_description->add_client("client");
+  echo_description->set_server("server");
+  echo_description->set_server("server");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("echo");
+
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/70);
+  ASSERT_FALSE(results.status().ok());
+}
+
+TEST(DistBenchTestSequencer, ActionDelay) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize());
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(1);
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(1);
+
+  auto* client1_list = test->add_action_lists();
+  client1_list->set_name("client");
+  client1_list->add_action_names("ping");
+  client1_list->add_action_names("ping");
+  client1_list->add_action_names("ping");
+  client1_list->add_action_names("ping");
+  client1_list->add_action_names("ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+  client1_list->add_action_names("delayed_ping");
+
+  auto a1 = test->add_actions();
+  a1->set_name("ping");
+  a1->set_rpc_name("echo");
+
+  auto a2 = test->add_actions();
+  a2->set_name("delayed_ping");
+  a2->set_rpc_name("echo");
+  a2->set_delay_distribution_name("extra_delay");
+
+  auto* echo_description = test->add_rpc_descriptions();
+  echo_description->set_name("echo");
+  echo_description->add_client("client");
+  echo_description->set_server("server");
+  echo_description->set_server("server");
+
+  auto* l2 = test->add_action_lists();
+  l2->set_name("echo");
+
+  auto* distribution = test->add_delay_distribution_configs();
+  distribution->set_name("extra_delay");
+  distribution->add_field_names("action_delay_ns");
+  auto point = distribution->add_pmf_points();
+  point->set_pmf(0.5);
+  auto* size = point->add_data_points();
+  size->set_exact(900'000'000);
+  point = distribution->add_pmf_points();
+  point->set_pmf(0.5);
+  size = point->add_data_points();
+  size->set_exact(1'000'000'000);
+
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/70);
+  ASSERT_OK(results.status());
+
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  const auto& client1_results_it =
+      test_results.service_logs().instance_logs().find("client/0");
+  ASSERT_NE(client1_results_it,
+            test_results.service_logs().instance_logs().end());
+  auto client1_logs = client1_results_it->second.peer_logs().find("server/0");
+  ASSERT_NE(client1_logs, client1_results_it->second.peer_logs().end());
+  auto s2_0_echo = client1_logs->second.rpc_logs().find(0);
+  ASSERT_NE(s2_0_echo, client1_logs->second.rpc_logs().end());
+  ASSERT_TRUE(s2_0_echo->second.failed_rpc_samples().empty());
+  ASSERT_EQ(s2_0_echo->second.successful_rpc_samples_size(), 10);
+  int64_t min_ts = std::numeric_limits<int64_t>::max();
+  int64_t max_ts = std::numeric_limits<int64_t>::min();
+  for (const auto& sample : s2_0_echo->second.successful_rpc_samples()) {
+    if (sample.start_timestamp_ns() < min_ts) {
+      min_ts = sample.start_timestamp_ns();
+    }
+    if (sample.start_timestamp_ns() > max_ts) {
+      max_ts = sample.start_timestamp_ns();
+    }
+  }
+  EXPECT_GE(max_ts - min_ts, 9e8);
+  EXPECT_LE(max_ts - min_ts, 2e9);
+}
+
 TEST(DistBenchTestSequencer, Overload) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());
