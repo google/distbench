@@ -286,7 +286,7 @@ TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
   auto sg = std::move(maybe_sg.value());
   absl::BitGen bit_gen;
 
-  std::map<std::vector<int>, int> sample_count;
+  std::map<std::vector<int64_t>, int> sample_count;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
     auto sample = sg->GetRandomSample(&bit_gen);
@@ -296,7 +296,7 @@ TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
 
   const int kTolerance = kReps / 100;
   for (int i = 1; i < 5; i++) {
-    std::vector<int> key = {i, i * 10};
+    std::vector<int64_t> key = {i, i * 10};
     ASSERT_LT(abs(sample_count[key] - EstimateCount(kReps, i / 10.0)),
               kTolerance);
   }

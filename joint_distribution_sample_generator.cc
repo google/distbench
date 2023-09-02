@@ -89,7 +89,8 @@ absl::Status DistributionSampleGenerator::InitializeWithPmf(
     pmf.push_back(point.pmf());
   }
 
-  distribution_array_ = std::discrete_distribution<int>(pmf.begin(), pmf.end());
+  distribution_array_ =
+      std::discrete_distribution<int64_t>(pmf.begin(), pmf.end());
   return absl::OkStatus();
 }
 
@@ -103,10 +104,10 @@ absl::Status DistributionSampleGenerator::Initialize(
       absl::StrCat("Add CDF or PMF to '", config.name(), "'."));
 }
 
-std::vector<int> DistributionSampleGenerator::GetRandomSample(
+std::vector<int64_t> DistributionSampleGenerator::GetRandomSample(
     absl::BitGen* generator) {
   auto index = distribution_array_(*generator);
-  std::vector<int> sample;
+  std::vector<int64_t> sample;
 
   for (int dim = 0; dim < num_dimensions_; dim++) {
     if (is_exact_value_[dim][index]) {
