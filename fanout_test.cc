@@ -154,9 +154,9 @@ TestSequence GetFanoutConfig(std::string fanout_filter, std::string from,
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
 
-  auto* lo_opts = test->add_protocol_driver_options();
-  lo_opts->set_name("lo_opts");
-  lo_opts->set_netdev_name("lo");
+  auto* pd_opts = test->add_protocol_driver_options();
+  pd_opts->set_name("default_protocol_driver_options");
+  pd_opts->set_netdev_name("lo");
 
   auto* s1 = test->add_services();
   s1->set_name(from);
@@ -164,7 +164,6 @@ TestSequence GetFanoutConfig(std::string fanout_filter, std::string from,
   s1->set_x_size(3);
   s1->set_y_size(3);
   s1->set_z_size(3);
-  s1->set_protocol_driver_options_name("lo_opts");
 
   if (from != to) {
     auto* s2 = test->add_services();
@@ -173,7 +172,6 @@ TestSequence GetFanoutConfig(std::string fanout_filter, std::string from,
     s2->set_x_size(3);
     s2->set_y_size(3);
     s2->set_z_size(3);
-    s2->set_protocol_driver_options_name("lo_opts");
   }
 
   auto* l1 = test->add_action_lists();

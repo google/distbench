@@ -88,14 +88,13 @@ TestSequence GetCliqueTestSequence(const TestSequenceParams& params) {
   TestSequence test_sequence;
   auto* test = test_sequence.add_tests();
 
-  auto* lo_opts = test->add_protocol_driver_options();
-  lo_opts->set_name("lo_opts");
-  lo_opts->set_netdev_name("lo");
+  auto* pd_opts = test->add_protocol_driver_options();
+  pd_opts->set_name("default_protocol_driver_options");
+  pd_opts->set_netdev_name("lo");
 
   auto* s1 = test->add_services();
   s1->set_name("clique");
   s1->set_count(nb_cliques);
-  s1->set_protocol_driver_options_name("lo_opts");
 
   auto* l1 = test->add_action_lists();
   l1->set_name("clique");
@@ -181,12 +180,10 @@ TEST(DistBenchTestSequencer, ServerActivityTest) {
   auto* client = test->add_services();
   client->set_name("client");
   client->set_count(1);
-  client->set_protocol_driver_options_name("lo_opts");
 
   auto* server = test->add_services();
   server->set_name("server");
   server->set_count(1);
-  server->set_protocol_driver_options_name("lo_opts");
 
   auto* rpc_desc = test->add_rpc_descriptions();
   rpc_desc->set_name("client_server_rpc");
@@ -199,9 +196,9 @@ TEST(DistBenchTestSequencer, ServerActivityTest) {
   client_al->set_name("client");
   client_al->add_action_names("run_queries");
 
-  auto* lo_opts = test->add_protocol_driver_options();
-  lo_opts->set_name("lo_opts");
-  lo_opts->set_netdev_name("lo");
+  auto* pd_opts = test->add_protocol_driver_options();
+  pd_opts->set_name("default_protocol_driver_options");
+  pd_opts->set_netdev_name("lo");
 
   auto action = test->add_actions();
   action->set_name("run_queries");
