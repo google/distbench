@@ -296,6 +296,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeRpcTraceMap();
 
   void RunActionList(int actionlist_index, ServerRpcState* incoming_rpc_state,
+                     size_t default_response_size = 0,
                      bool force_warmup = false);
 
   RpcReplayTraceLog RunRpcReplayTrace(
