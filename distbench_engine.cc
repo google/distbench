@@ -960,27 +960,26 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   if (state->request->has_response_payload_size()) {
     response_payload_size = state->request->response_payload_size();
   }
-  payload_allocator_->AddPadding(&state->response, response_payload_size);
-
   if (rpc_def.rpc_spec.has_multi_server_channel_name()) {
     state->response.set_server_instance(service_instance_);
   }
 
   int handler_actionlist_index = server_rpc.handler_actionlist_index;
   if (handler_actionlist_index == -1) {
+    payload_allocator_->AddPadding(&state->response, response_payload_size);
     state->SendResponseIfSet();
     state->FreeStateIfSet();
     return std::function<void()>();
   }
 
   if (state->have_dedicated_thread) {
-    RunActionList(handler_actionlist_index, state);
+    RunActionList(handler_actionlist_index, state, response_payload_size);
     return std::function<void()>();
   }
 
   ++detached_actionlist_threads_;
-  return [this, handler_actionlist_index, state]() {
-    RunActionList(handler_actionlist_index, state);
+  return [this, handler_actionlist_index, state, response_payload_size]() {
+    RunActionList(handler_actionlist_index, state, response_payload_size);
     --detached_actionlist_threads_;
   };
 }
@@ -1247,6 +1246,7 @@ RpcReplayTraceLog DistBenchEngine::RunRpcReplayTrace(
 
 void DistBenchEngine::RunActionList(int actionlist_index,
                                     ServerRpcState* incoming_rpc_state,
+                                    size_t default_response_size,
                                     bool force_warmup) {
   CHECK_LT(static_cast<size_t>(actionlist_index), action_lists_.size());
   CHECK_GE(actionlist_index, 0);
@@ -1342,7 +1342,8 @@ void DistBenchEngine::RunActionList(int actionlist_index,
            s.state_table[i].action->proto.send_response_when_done())) {
         sent_response_early = true;
         s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state,
-                                              this]() {
+                                              this, default_response_size]() {
+          payload_allocator_->AddPadding(&incoming_rpc_state->response, default_response_size);
           incoming_rpc_state->SendResponseIfSet();
           if (s.state_table[i].action->proto.cancel_traffic_when_done()) {
             CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
@@ -1410,6 +1411,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   }
   if (incoming_rpc_state) {
     if (!sent_response_early) {
+      payload_allocator_->AddPadding(&incoming_rpc_state->response, default_response_size);
       incoming_rpc_state->SendResponseIfSet();
     }
     incoming_rpc_state->FreeStateIfSet();
@@ -1741,7 +1743,7 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
                                  copied_request,
                                  copied_server_rpc_state]() mutable {
             RunActionList(actionlist_index, copied_server_rpc_state,
-                          iteration_state->warmup);
+                          0, iteration_state->warmup);
             FinishIteration(iteration_state);
           });
         };
