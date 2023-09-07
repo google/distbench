@@ -485,6 +485,9 @@ function parse_params_dict_from_config_string() {
     local -a key_value
     readarray -d = -t key_value < <(echo -n "${part}")
     if [[ ${#key_value[@]} == 2 ]]; then
+      if [[ "${key_value[1]:0:1}" == '<' ]]; then
+        key_value[1]=$(cat "${key_value[1]:1}")
+      fi
       params_dict[${key_value[0]}]="${key_value[1]}"
     else
       local possible_protocol="${part}_protocol_driver_setup"
@@ -493,10 +496,10 @@ function parse_params_dict_from_config_string() {
         params_dict[protocol_driver]="${part}"
       elif declare -F "${possible_pattern}" &> /dev/null ; then
         params_dict[traffic_pattern]="${part}"
-      elif [[ "${part}" == "ipv6" ]] ; then
+      elif [[ "${part}" == "ipv6" ]]; then
         params_dict[ip_version]=6
         params_dict[ip_version_string]=ipv6
-      elif [[ "${part}" == "ipv4" ]] ; then
+      elif [[ "${part}" == "ipv4" ]]; then
         params_dict[ip_version]=4
         params_dict[ip_version_string]=ipv4
       else
