@@ -105,7 +105,9 @@ message ServiceBundle {
 // responses.
 message PayloadSpec {
   optional string name = 1;
-  optional int32 size = 4;
+  repeated string attributes = 2;
+  optional string size_distribution_name = 3;
+  optional int64 size = 4;  // Special case to specify a fixed size.
 }
 
 message RpcSpec {
@@ -261,6 +263,7 @@ message DistributedSystemDescription {
   repeated ProtocolDriverOptions protocol_driver_options = 8;
   repeated DistributionConfig distribution_config = 12;
   repeated DistributionConfig delay_distribution_configs = 16;
+  repeated DistributionConfig size_distribution_configs = 17;
 
   optional OverloadLimits overload_limits = 13;
 

@@ -118,6 +118,16 @@ absl::Status DistBenchEngine::InitializePayloadsMap() {
           "Double definition of payload_descriptions: " + payload_spec_name);
     }
 
+    if (payload_spec.has_size_distribution_name()) {
+      int index =
+          GetSizeSampleGeneratorIndex(payload_spec.size_distribution_name());
+      if (index == -1) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("payload ", payload_spec_name,
+                         " references undefined size_distribution ",
+                         payload_spec.size_distribution_name()));
+      }
+    }
     payload_map_[payload_spec_name] = payload_spec;
   }
 
@@ -125,17 +135,29 @@ absl::Status DistBenchEngine::InitializePayloadsMap() {
   return absl::OkStatus();
 }
 
-int DistBenchEngine::get_payload_size(const std::string& payload_name) {
-  const auto& payload = payload_map_[payload_name];
+int DistBenchEngine::GetPayloadSize(const std::string& payload_name) {
+  auto it = payload_map_.find(payload_name);
+  if (it == payload_map_.end()) {
+    return -1;
+  }
+  const auto& payload = it->second;
   int size = -1;  // Not found value
 
   if (payload.has_size()) {
     size = payload.size();
-  } else {
+  } else if (!payload.has_size_distribution_name()) {
     LOG(WARNING) << "No size defined for payload " << payload_name << "\n";
   }
 
   return size;
+}
+
+int DistBenchEngine::GetPayloadSizeIndex(const std::string& payload_name) {
+  auto it = payload_map_.find(payload_name);
+  if (it == payload_map_.end()) {
+    return -1;
+  }
+  return GetSizeSampleGeneratorIndex(it->second.size_distribution_name());
 }
 
 absl::Status DistBenchEngine::InitializeRpcFanoutFilter(
@@ -349,33 +371,40 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
       }
     }
 
-    // Get request payload size
-    rpc_def.request_payload_size = -1;
-    if (rpc_spec.has_request_payload_name()) {
-      const auto& payload_name = rpc_spec.request_payload_name();
-      rpc_def.request_payload_size = get_payload_size(payload_name);
-    }
-    if (rpc_def.request_payload_size == -1) {
-      rpc_def.request_payload_size = 16;
-      LOG(WARNING) << "No request payload defined for " << rpc_name
-                   << "; using a default of " << rpc_def.request_payload_size;
-    }
-
-    // Get response payload size
-    rpc_def.response_payload_size = -1;
-    if (rpc_spec.has_response_payload_name()) {
-      const auto& payload_name = rpc_spec.response_payload_name();
-      rpc_def.response_payload_size = get_payload_size(payload_name);
-    }
-    if (rpc_def.response_payload_size == -1) {
-      rpc_def.response_payload_size = 32;
-      LOG(WARNING) << "No response payload defined for " << rpc_name
-                   << "; using a default of " << rpc_def.response_payload_size;
-    }
-
     if (rpc_spec.has_distribution_config_name()) {
-      rpc_def.sample_generator_index =
+      rpc_def.joint_sample_generator_index =
           GetRpcSampleGeneratorIndex(rpc_spec.distribution_config_name());
+    } else {
+      // Get request payload size
+      rpc_def.request_payload_size = -1;
+      rpc_def.request_payload_index = -1;
+      if (rpc_spec.has_request_payload_name()) {
+        const auto& payload_name = rpc_spec.request_payload_name();
+        rpc_def.request_payload_size = GetPayloadSize(payload_name);
+        rpc_def.request_payload_index = GetPayloadSizeIndex(payload_name);
+      }
+      if (rpc_def.request_payload_size == -1 &&
+          rpc_def.request_payload_index == -1) {
+        rpc_def.request_payload_size = 16;
+        LOG(WARNING) << "No request payload defined for " << rpc_name
+                     << "; using a default of " << rpc_def.request_payload_size;
+      }
+
+      // Get response payload size
+      rpc_def.response_payload_size = -1;
+      rpc_def.response_payload_index = -1;
+      if (rpc_spec.has_response_payload_name()) {
+        const auto& payload_name = rpc_spec.response_payload_name();
+        rpc_def.response_payload_size = GetPayloadSize(payload_name);
+        rpc_def.response_payload_index = GetPayloadSizeIndex(payload_name);
+      }
+      if (rpc_def.response_payload_size == -1 &&
+          rpc_def.response_payload_index == -1) {
+        rpc_def.response_payload_size = 32;
+        LOG(WARNING) << "No response payload defined for " << rpc_name
+                     << "; using a default of "
+                     << rpc_def.response_payload_size;
+      }
     }
 
     auto ret = InitializeRpcFanoutFilter(rpc_def);
@@ -389,11 +418,11 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
 
 absl::Status DistBenchEngine::InitializeTables() {
   service_index_map_ = EnumerateServiceTypes(traffic_config_);
-  absl::Status ret_init_payload = InitializePayloadsMap();
-  if (!ret_init_payload.ok()) return ret_init_payload;
-
   absl::Status ret_init_distribution_config = InitializeSampleGenerators();
   if (!ret_init_distribution_config.ok()) return ret_init_distribution_config;
+
+  absl::Status ret_init_payload = InitializePayloadsMap();
+  if (!ret_init_payload.ok()) return ret_init_payload;
 
   absl::Status ret_init_rpc_def = InitializeRpcDefinitionsMap();
   if (!ret_init_rpc_def.ok()) return ret_init_rpc_def;
@@ -956,9 +985,16 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   }
   const auto& rpc_def = server_rpc.rpc_definition;
 
-  size_t response_payload_size = rpc_def.response_payload_size;
+  size_t response_payload_size = 0;
   if (state->request->has_response_payload_size()) {
     response_payload_size = state->request->response_payload_size();
+  } else if (rpc_def.response_payload_index >= 0) {
+    absl::BitGen bitgen;
+    response_payload_size =
+        size_distribution_generators_[rpc_def.response_payload_index]
+            ->GetScalarRandomSample(&rand_gen);
+  } else if (rpc_def.response_payload_size >= 0) {
+    response_payload_size = rpc_def.response_payload_size;
   }
   if (rpc_def.rpc_spec.has_multi_server_channel_name()) {
     state->response.set_server_instance(service_instance_);
@@ -1341,9 +1377,10 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           ((size == 1) ||
            s.state_table[i].action->proto.send_response_when_done())) {
         sent_response_early = true;
-        s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state,
-                                              this, default_response_size]() {
-          payload_allocator_->AddPadding(&incoming_rpc_state->response, default_response_size);
+        s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state, this,
+                                              default_response_size]() {
+          payload_allocator_->AddPadding(&incoming_rpc_state->response,
+                                         default_response_size);
           incoming_rpc_state->SendResponseIfSet();
           if (s.state_table[i].action->proto.cancel_traffic_when_done()) {
             CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
@@ -1411,7 +1448,8 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   }
   if (incoming_rpc_state) {
     if (!sent_response_early) {
-      payload_allocator_->AddPadding(&incoming_rpc_state->response, default_response_size);
+      payload_allocator_->AddPadding(&incoming_rpc_state->response,
+                                     default_response_size);
       incoming_rpc_state->SendResponseIfSet();
     }
     incoming_rpc_state->FreeStateIfSet();
@@ -1742,8 +1780,8 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
           thread_pool_->AddTask([this, actionlist_index, iteration_state,
                                  copied_request,
                                  copied_server_rpc_state]() mutable {
-            RunActionList(actionlist_index, copied_server_rpc_state,
-                          0, iteration_state->warmup);
+            RunActionList(actionlist_index, copied_server_rpc_state, 0,
+                          iteration_state->warmup);
             FinishIteration(iteration_state);
           });
         };
@@ -1975,11 +2013,12 @@ void DistBenchEngine::RunRpcActionIterationCommon(
   common_request.set_rpc_index(rpc_index);
   common_request.set_warmup(iteration_state->warmup);
 
-  size_t request_payload_size = rpc_def.request_payload_size;
-  if (rpc_def.sample_generator_index != -1) {
+  size_t request_payload_size = 0;
+  if (rpc_def.joint_sample_generator_index >= 0) {
     // This RPC uses a distribution of sizes.
-    auto sample = rpc_distribution_generators_[rpc_def.sample_generator_index]
-                      ->GetRandomSample(&iteration_state->rand_gen);
+    auto sample =
+        rpc_distribution_generators_[rpc_def.joint_sample_generator_index]
+            ->GetRandomSample(&iteration_state->rand_gen);
 
     request_payload_size = sample[kRequestPayloadSizeField];
 
@@ -1991,6 +2030,14 @@ void DistBenchEngine::RunRpcActionIterationCommon(
       // as the response size.
       common_request.set_response_payload_size(
           sample[kRequestPayloadSizeField]);
+    }
+  } else {
+    if (rpc_def.request_payload_index >= 0) {
+      request_payload_size =
+          size_distribution_generators_[rpc_def.request_payload_index]
+              ->GetScalarRandomSample(&iteration_state->rand_gen);
+    } else if (rpc_def.request_payload_size >= 0) {
+      request_payload_size = rpc_def.request_payload_size;
     }
   }
 
@@ -2336,6 +2383,18 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
   return targets;
 }
 
+int DistBenchEngine::GetSizeSampleGeneratorIndex(
+    const std::string& distribution_config_name) {
+  const auto& dc_index_it =
+      size_distribution_generators_map_.find(distribution_config_name);
+  if (dc_index_it == size_distribution_generators_map_.end()) {
+    LOG(WARNING) << "Unknown distribution_config_name: '"
+                 << distribution_config_name << "' provided.";
+    return -1;
+  }
+  return dc_index_it->second;
+}
+
 int DistBenchEngine::GetRpcSampleGeneratorIndex(
     const std::string& distribution_config_name) {
   const auto& dc_index_it =
@@ -2414,6 +2473,35 @@ absl::Status DistBenchEngine::InitializeSampleGenerators() {
         std::move(maybe_sample_generator.value()));
     delay_distribution_generators_map_[config_name] =
         delay_distribution_generators_.size() - 1;
+  }
+  for (int i = 0; i < traffic_config_.size_distribution_configs_size(); ++i) {
+    const auto& config = traffic_config_.size_distribution_configs(i);
+    const auto& config_name = config.name();
+
+    if (size_distribution_generators_map_.find(config_name) !=
+        size_distribution_generators_map_.end()) {
+      return absl::FailedPreconditionError(
+          absl::StrCat("Distribution config '", config_name,
+                       "' was defined more than once."));
+    }
+    auto maybe_canonical_config =
+        GetCanonicalDistributionConfig(config, canonical_2d_fields);
+    if (!maybe_canonical_config.ok()) {
+      maybe_canonical_config =
+          GetCanonicalDistributionConfig(config, canonical_1d_fields);
+      if (!maybe_canonical_config.ok()) {
+        return maybe_canonical_config.status();
+      }
+    }
+    auto canonical_config = maybe_canonical_config.value();
+
+    auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
+    if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
+
+    size_distribution_generators_.push_back(
+        std::move(maybe_sample_generator.value()));
+    size_distribution_generators_map_[config_name] =
+        size_distribution_generators_.size() - 1;
   }
   return absl::OkStatus();
 }

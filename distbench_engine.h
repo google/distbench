@@ -111,12 +111,16 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int fanout_filter_distance = 0;
     std::vector<StochasticDist> stochastic_dist;
 
-    // Cached here for easy access, but these may not be used if
-    // sample_generator_index != -1.
-    int request_payload_size;
-    int response_payload_size;
+    // If there is a joint distribution defined we use that:
+    int joint_sample_generator_index = -1;
 
-    int sample_generator_index = -1;
+    // If there are univariant distributions defined we use those:
+    int request_payload_index;
+    int response_payload_index;
+
+    // If there is are fixed sizes defined we use those:
+    ssize_t request_payload_size;
+    ssize_t response_payload_size;
 
     bool allowed_from_this_client = false;
     int multiserver_channel_index = -1;
@@ -339,8 +343,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status ConnectToPeers();
   std::function<void()> RpcHandler(ServerRpcState* state);
 
-  int get_payload_size(const std::string& name);
-
   // Allocate Sample generator if the distribution configuration is
   // valid. Return an error if the config is invalid of if same config
   // is defined more than once. Add the unique_ptr for allocated sample
@@ -349,8 +351,11 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeSampleGenerators();
 
   // Get the index of the sample generator in rpc_distribution_generators_
+  int GetSizeSampleGeneratorIndex(const std::string& name);
   int GetRpcSampleGeneratorIndex(const std::string& name);
   int GetDelaySampleGeneratorIndex(const std::string& name);
+  int GetPayloadSize(const std::string& name);
+  int GetPayloadSizeIndex(const std::string& name);
 
   DistributedSystemDescription traffic_config_;
   ServiceEndpointMap service_map_;
@@ -403,6 +408,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::map<std::string, int> rpc_distribution_generators_map_;
   std::vector<std::unique_ptr<DistributionSampleGenerator>>
       rpc_distribution_generators_;
+
+  std::map<std::string, int> size_distribution_generators_map_;
+  std::vector<std::unique_ptr<DistributionSampleGenerator>>
+      size_distribution_generators_;
 
   absl::Mutex cancelation_mutex_;
   std::string cancelation_reason_;
