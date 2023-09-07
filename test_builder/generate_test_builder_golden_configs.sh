@@ -9,6 +9,9 @@ PATH+=":.."
 PATH="$PATH:$(bazel info output_base)/external/homa_module/util/"
 
 # Generate a config for each flag of each traffic pattern and protocol driver:
+TEMPFILE="tcp_in_a_file"
+echo tcp > "${TEMPFILE}"
+test_builder -o . "rectangular:transport=<${TEMPFILE}"
 test_builder -o . clique
 test_builder -o . clique:test_duration=45
 
