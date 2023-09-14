@@ -26,9 +26,9 @@ http_archive(
 ##### Unfortunately this does not compile against the latest grpc.
 http_archive(
     name = "grpc_homa",
-    sha256 = "2c0fe4669620f1a685bedf2f8ad0547cccb9155d1f4b304c5f7ce362d3b92d05",
-    strip_prefix = "grpc_homa-homa-2.0",
-    url = "https://github.com/PlatformLab/grpc_homa/archive/refs/tags/homa-2.0.tar.gz",
+    sha256 = "d358a83a72f5fd776ab0a98f83403e3f0ca14bdc551389b379c9649e190141b4",
+    strip_prefix = "grpc_homa-grpc-1.57.0.0",
+    url = "https://github.com/PlatformLab/grpc_homa/archive/refs/tags/grpc-1.57.0.0.tar.gz",
     build_file = "@//:grpc_homa.BUILD",
 )
 
@@ -44,9 +44,9 @@ http_archive(
 ##### grpc_deps() and grpc_extra_deps().
 http_archive(
     name = "com_github_grpc_grpc",
-    sha256 = "931f07db9d48cff6a6007c1033ba6d691fe655bea2765444bc1ad974dfc840aa",
-    strip_prefix = "grpc-1.56.2",
-    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.56.2.tar.gz",
+    sha256 = "8393767af531b2d0549a4c26cf8ba1f665b16c16fb6c9238a7755e45444881dd",
+    strip_prefix = "grpc-1.57.0",
+    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.57.0.tar.gz",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
