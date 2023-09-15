@@ -663,6 +663,140 @@ TEST(DistBenchTestSequencer, IndependentSizesTest) {
   ASSERT_GT(bins[1][1], 10);
 }
 
+TEST(DistBenchTestSequencer, SizeOverrideTest) {
+  DistBenchTester tester;
+  ASSERT_OK(tester.Initialize());
+
+  TestSequence test_sequence;
+  auto* test = test_sequence.add_tests();
+
+  auto* client = test->add_services();
+  client->set_name("client");
+  client->set_count(1);
+
+  auto* server = test->add_services();
+  server->set_name("server");
+  server->set_count(1);
+
+  auto* rpc_desc = test->add_rpc_descriptions();
+  rpc_desc->set_name("client_server_rpc");
+  rpc_desc->add_client("client");
+  rpc_desc->set_server("server");
+  rpc_desc->set_request_payload_name("DefaultRequestPayload");
+  rpc_desc->set_response_payload_name("DefaultResponsePayload");
+
+  auto* client_al = test->add_action_lists();
+  client_al->set_name("client");
+  client_al->add_action_names("run_queries");
+
+  auto* server_al = test->add_action_lists();
+  server_al->set_name("client_server_rpc");
+  server_al->add_action_names("DoResponseOverride");
+
+  auto* pd_opts = test->add_protocol_driver_options();
+  pd_opts->set_name("default_protocol_driver_options");
+  pd_opts->set_netdev_name("lo");
+
+  auto req_payload = test->add_payload_descriptions();
+  req_payload->set_name("DefaultRequestPayload");
+  req_payload->set_size_distribution_name("RequestPayloadDistribution");
+
+  auto resp_payload = test->add_payload_descriptions();
+  resp_payload->set_name("DefaultResponsePayload");
+  resp_payload->set_size_distribution_name("ResponsePayloadDistribution");
+
+  auto* req_dist = test->add_size_distribution_configs();
+  req_dist->set_name("RequestPayloadDistribution");
+  req_dist->add_field_names("payload_size");
+  auto* cdf_point = req_dist->add_cdf_points();
+  cdf_point->set_cdf(0.5);
+  cdf_point->set_value(11);
+  cdf_point = req_dist->add_cdf_points();
+  cdf_point->set_cdf(1);
+  cdf_point->set_value(11000);
+
+  auto* resp_dist = test->add_size_distribution_configs();
+  resp_dist->set_name("ResponsePayloadDistribution");
+  resp_dist->add_field_names("payload_size");
+  cdf_point = resp_dist->add_cdf_points();
+  cdf_point->set_cdf(0.5);
+  cdf_point->set_value(13);
+  cdf_point = resp_dist->add_cdf_points();
+  cdf_point->set_cdf(1);
+  cdf_point->set_value(13000);
+
+  req_payload = test->add_payload_descriptions();
+  req_payload->set_name("OverrideRequestPayload");
+  req_payload->set_size_distribution_name("OverrideRequestPayloadDistribution");
+
+  resp_payload = test->add_payload_descriptions();
+  resp_payload->set_name("OverrideResponsePayload");
+  resp_payload->set_size_distribution_name(
+      "OverrideResponsePayloadDistribution");
+
+  req_dist = test->add_size_distribution_configs();
+  req_dist->set_name("OverrideRequestPayloadDistribution");
+  req_dist->add_field_names("payload_size");
+  cdf_point = req_dist->add_cdf_points();
+  cdf_point->set_cdf(0.5);
+  cdf_point->set_value(16);
+  cdf_point = req_dist->add_cdf_points();
+  cdf_point->set_cdf(1);
+  cdf_point->set_value(16000);
+
+  resp_dist = test->add_size_distribution_configs();
+  resp_dist->set_name("OverrideResponsePayloadDistribution");
+  resp_dist->add_field_names("payload_size");
+  cdf_point = resp_dist->add_cdf_points();
+  cdf_point->set_cdf(0.5);
+  cdf_point->set_value(17);
+  cdf_point = resp_dist->add_cdf_points();
+  cdf_point->set_cdf(1);
+  cdf_point->set_value(17000);
+
+  auto action = test->add_actions();
+  action->set_name("run_queries");
+  action->set_rpc_name("client_server_rpc");
+  action->set_request_payload_override("OverrideRequestPayload");
+  action->mutable_iterations()->set_max_iteration_count(100);
+
+  action = test->add_actions();
+  action->set_name("DoResponseOverride");
+  action->set_response_payload_override("OverrideResponsePayload");
+
+  auto results = tester.RunTestSequence(test_sequence, /*timeout_s=*/75);
+  ASSERT_OK(results.status());
+
+  ASSERT_EQ(results.value().test_results().size(), 1);
+  auto& test_results = results.value().test_results(0);
+  ASSERT_EQ(test_results.service_logs().instance_logs_size(), 1);
+  const auto& instance_results_it =
+      test_results.service_logs().instance_logs().find("client/0");
+  ASSERT_NE(instance_results_it,
+            test_results.service_logs().instance_logs().end());
+
+  auto& samples = instance_results_it->second.peer_logs()
+                      .find("server/0")
+                      ->second.rpc_logs()
+                      .find(0)
+                      ->second.successful_rpc_samples();
+
+  int bins[2][2] = {0};
+
+  for (const auto& rpc_sample : samples) {
+    ASSERT_TRUE(rpc_sample.request_size() == 16 ||
+                rpc_sample.request_size() == 16000);
+    ASSERT_TRUE(rpc_sample.response_size() == 17 ||
+                rpc_sample.response_size() == 17000);
+    ++bins[rpc_sample.request_size() > 1000][rpc_sample.response_size() > 1000];
+  }
+  ASSERT_EQ(samples.size(), 100);
+  ASSERT_GT(bins[0][0], 10);
+  ASSERT_GT(bins[0][1], 10);
+  ASSERT_GT(bins[1][0], 10);
+  ASSERT_GT(bins[1][1], 10);
+}
+
 TEST(DistBenchTestSequencer, VariablePayloadSizeTest2dPmf) {
   DistBenchTester tester;
   ASSERT_OK(tester.Initialize());

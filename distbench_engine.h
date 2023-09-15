@@ -163,6 +163,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     Action proto;
     // index into peers_ that identifies the target(s) of this RPC
     int rpc_service_index = -1;
+    int response_payload_override_index = -1;
     // index into the client_rpc_table_/server_rpc_table_;
     int rpc_index = -1;
     int rpc_replay_trace_index = -1;
@@ -170,6 +171,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int activity_config_index = -1;
     int delay_distribution_index = -1;
     std::vector<int> dependent_action_indices;
+    int request_payload_override_index = -1;
   };
 
   struct ActionListTableEntry {
@@ -218,6 +220,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
     std::exponential_distribution<double> exponential_gen;
     bool interval_is_exponential;
+
+    // These are indices into the payloads_config array:
+    int request_payload_override_index = -1;
+    int response_payload_override_index = -1;
   };
 
   struct PackedLatencySample {
@@ -262,6 +268,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
                              size_t instance, ClientRpcState* state);
     void UnpackLatencySamples();
 
+    int response_payload_override_index = -1 ABSL_GUARDED_BY(action_mu);
     int actionlist_index = -1;
     int actionlist_invocation = -1;
     ServerRpcState* incoming_rpc_state = nullptr;

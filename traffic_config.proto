@@ -195,6 +195,8 @@ message Action {
   optional string delay_distribution_name = 13;
   optional Iterations iterations = 3;
   oneof action {
+    // If none of these is set, the action is a NOP, but may still have
+    // side-effects, particularly sending a response.
     string rpc_name = 4;
     string action_list_name = 5;
     string activity_config_name = 6;
@@ -203,6 +205,13 @@ message Action {
   optional bool send_response_when_done = 10;
   optional bool cancel_traffic_when_done = 11 [default = false];
   repeated string predicates = 12;
+
+  // For an RPC action this chooses an alternative payload:
+  optional string request_payload_override = 14;
+
+  // For an action that sets send_response_when_done, this chooses
+  // an alternative payload:
+  optional string response_payload_override = 15;
 }
 
 message ActionList {

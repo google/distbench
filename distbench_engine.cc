@@ -466,12 +466,33 @@ absl::Status DistBenchEngine::InitializeTables() {
         // Validate rpc can be sent from this local node
       }
       action_lists_[i].list_actions[j].proto = it->second;
+      const int request_index =
+          GetPayloadSizeIndex(it->second.request_payload_override());
+      const int response_index =
+          GetPayloadSizeIndex(it->second.response_payload_override());
+      if (it->second.has_request_payload_override() && request_index == -1) {
+        return absl::NotFoundError(
+            absl::StrCat("Unknown size distribution:",
+                         it->second.request_payload_override()));
+      }
+      if (it->second.has_response_payload_override() && response_index == -1) {
+        return absl::NotFoundError(
+            absl::StrCat("Unknown size distribution:",
+                         it->second.response_payload_override()));
+      }
+      action_lists_[i].list_actions[j].request_payload_override_index =
+          request_index;
+      action_lists_[i].list_actions[j].response_payload_override_index =
+          response_index;
     }
     // second pass to fixup deps:
     for (size_t j = 0; j < action_lists_[i].list_actions.size(); ++j) {
       auto& action = action_lists_[i].list_actions[j];
-      action.delay_distribution_index =
-          GetDelaySampleGeneratorIndex(action.proto.delay_distribution_name());
+      action.delay_distribution_index = -1;
+      if (action.proto.has_delay_distribution_name()) {
+        action.delay_distribution_index = GetDelaySampleGeneratorIndex(
+            action.proto.delay_distribution_name());
+      }
       if (action.delay_distribution_index == -1 &&
           action.proto.has_delay_distribution_name()) {
         return absl::NotFoundError(
@@ -516,9 +537,6 @@ absl::Status DistBenchEngine::InitializeTables() {
                            action.proto.rpc_replay_trace_name()));
         }
         action.rpc_replay_trace_index = it6->second;
-      } else {
-        return absl::InvalidArgumentError(
-            "only rpc actions & activities are supported for now");
       }
       action.dependent_action_indices.resize(action.proto.dependencies_size());
       for (int k = 0; k < action.proto.dependencies_size(); ++k) {
@@ -1379,8 +1397,18 @@ void DistBenchEngine::RunActionList(int actionlist_index,
         sent_response_early = true;
         s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state, this,
                                               default_response_size]() {
+          size_t response_size = default_response_size;
+          int response_index = s.state_table[i].response_payload_override_index;
+          if (response_index == -1) {
+            response_index = s.response_payload_override_index;
+          }
+          if (response_index != -1) {
+            absl::BitGen bitgen;
+            response_size = size_distribution_generators_[response_index]
+                                ->GetScalarRandomSample(&bitgen);
+          }
           payload_allocator_->AddPadding(&incoming_rpc_state->response,
-                                         default_response_size);
+                                         response_size);
           incoming_rpc_state->SendResponseIfSet();
           if (s.state_table[i].action->proto.cancel_traffic_when_done()) {
             CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
@@ -1413,6 +1441,8 @@ void DistBenchEngine::RunActionList(int actionlist_index,
         s.state_table[i].skipped = true;
         s.state_table[i].all_done_callback();
       } else {
+        s.state_table[i].request_payload_override_index =
+            s.state_table[i].action->request_payload_override_index;
         InitiateAction(&s.state_table[i]);
       }
     }
@@ -1448,8 +1478,15 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   }
   if (incoming_rpc_state) {
     if (!sent_response_early) {
+      size_t response_size = default_response_size;
+      if (s.response_payload_override_index != -1) {
+        absl::BitGen bitgen;
+        response_size =
+            size_distribution_generators_[s.response_payload_override_index]
+                ->GetScalarRandomSample(&bitgen);
+      }
       payload_allocator_->AddPadding(&incoming_rpc_state->response,
-                                     default_response_size);
+                                     response_size);
       incoming_rpc_state->SendResponseIfSet();
     }
     incoming_rpc_state->FreeStateIfSet();
@@ -1476,6 +1513,10 @@ void DistBenchEngine::ActionListState::FinishAction(int action_index) {
   finished_action_indices.push_back(action_index);
   atomic_fetch_sub_explicit(&pending_action_count_, 1,
                             std::memory_order_relaxed);
+  if (state_table[action_index].response_payload_override_index != -1) {
+    response_payload_override_index =
+        state_table[action_index].response_payload_override_index;
+  }
   action_mu.Unlock();
 }
 
@@ -1820,8 +1861,15 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
           action_state->activity->DoActivity();
           FinishIteration(iteration_state);
         };
+  } else if (action.response_payload_override_index >= 0) {
+    action_state->iteration_function =
+        [this](std::shared_ptr<ActionIterationState> iteration_state) {
+          FinishIteration(iteration_state);
+        };
+    action_state->response_payload_override_index =
+        action.response_payload_override_index;
   } else {
-    LOG(FATAL) << "Supporting only RPCs and Activities as of now.";
+    LOG(FATAL) << "Unsupported action type";
   }
 
   bool open_loop = false;
@@ -2032,7 +2080,12 @@ void DistBenchEngine::RunRpcActionIterationCommon(
           sample[kRequestPayloadSizeField]);
     }
   } else {
-    if (rpc_def.request_payload_index >= 0) {
+    if (action_state->action->request_payload_override_index != -1) {
+      request_payload_size =
+          size_distribution_generators_[action_state->action
+                                            ->request_payload_override_index]
+              ->GetScalarRandomSample(&iteration_state->rand_gen);
+    } else if (rpc_def.request_payload_index >= 0) {
       request_payload_size =
           size_distribution_generators_[rpc_def.request_payload_index]
               ->GetScalarRandomSample(&iteration_state->rand_gen);
@@ -2052,6 +2105,7 @@ void DistBenchEngine::RunRpcActionIterationCommon(
     if (do_trace) {
       rpc_state->request.mutable_trace_context()->add_fanout_index(i);
     }
+    // Handle request override here
     payload_allocator_->AddPadding(&rpc_state->request, request_payload_size);
 #ifndef NDEBUG
     CHECK_EQ(
