@@ -444,7 +444,7 @@ echo_magenta "\\nBuilding distbench binary..."
 (cd "${WORKTREE}"; bazel build -c opt :distbench \
   --//:with-mercury=true \
   --//:with-homa=true \
-  --//:with-homa-grpc=false \
+  --//:with-homa-grpc=true \
   "${REPO_ENV[@]}" )
 
 echo_magenta "\\nKilling any previous distbench processes..."
