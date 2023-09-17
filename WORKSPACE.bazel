@@ -26,9 +26,8 @@ http_archive(
 ##### Unfortunately this does not compile against the latest grpc.
 http_archive(
     name = "grpc_homa",
-    sha256 = "d358a83a72f5fd776ab0a98f83403e3f0ca14bdc551389b379c9649e190141b4",
-    strip_prefix = "grpc_homa-grpc-1.57.0.0",
-    url = "https://github.com/PlatformLab/grpc_homa/archive/refs/tags/grpc-1.57.0.0.tar.gz",
+    strip_prefix = "grpc_homa-a4ebed9f8b08e858638a05383fdc5c5df0a610a2",
+    url = "https://github.com/PlatformLab/grpc_homa/archive/a4ebed9f8b08e858638a05383fdc5c5df0a610a2.tar.gz",
     build_file = "@//:grpc_homa.BUILD",
 )
 

@@ -49,9 +49,21 @@ absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
     const std::string& socket_address, std::string_view transport) {
   if (transport == "homa") {
 #if WITH_HOMA_GRPC
+    LOG(ERROR) << socket_address;
+    LOG(ERROR) << AddGrpcProtocol(socket_address);
+    return HomaClient::createInsecureChannel(socket_address.data());
+    #if 0
+    return grpc::CreateCustomChannel(socket_address,
+                                     HomaClient::insecureChannelCredentials(),
+                                     DistbenchCustomChannelArguments());
     return grpc::CreateCustomChannel(AddGrpcProtocol(socket_address),
                                      HomaClient::insecureChannelCredentials(),
                                      DistbenchCustomChannelArguments());
+    return grpc::CreateChannel(AddGrpcProtocol(socket_address),
+                               HomaClient::insecureChannelCredentials());
+    return grpc::CreateChannel(socket_address,
+                               HomaClient::insecureChannelCredentials());
+    #endif
 #else
     LOG(ERROR) << "Homa transport not compiled in";
     LOG(ERROR) << "You must build with bazel build --//:with-homa-grpc";
