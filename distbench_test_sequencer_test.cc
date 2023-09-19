@@ -647,7 +647,7 @@ TEST(DistBenchTestSequencer, IndependentSizesTest) {
                       .find(0)
                       ->second.successful_rpc_samples();
 
-  int bins[2][2] = {0};
+  int bins[2][2] = {{0}};
 
   for (const auto& rpc_sample : samples) {
     ASSERT_TRUE(rpc_sample.request_size() == 16 ||
@@ -781,7 +781,7 @@ TEST(DistBenchTestSequencer, SizeOverrideTest) {
                       .find(0)
                       ->second.successful_rpc_samples();
 
-  int bins[2][2] = {0};
+  int bins[2][2] = {{0}};
 
   for (const auto& rpc_sample : samples) {
     ASSERT_TRUE(rpc_sample.request_size() == 16 ||
