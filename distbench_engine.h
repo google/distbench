@@ -268,7 +268,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
                              size_t instance, ClientRpcState* state);
     void UnpackLatencySamples();
 
-    int response_payload_override_index = -1 ABSL_GUARDED_BY(action_mu);
+    int response_payload_override_index ABSL_GUARDED_BY(action_mu) = -1;
     int actionlist_index = -1;
     int actionlist_invocation = -1;
     ServerRpcState* incoming_rpc_state = nullptr;
