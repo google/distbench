@@ -1400,6 +1400,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           size_t response_size = default_response_size;
           int response_index = s.state_table[i].response_payload_override_index;
           if (response_index == -1) {
+            absl::MutexLock m(&s.action_mu);
             response_index = s.response_payload_override_index;
           }
           if (response_index != -1) {
@@ -1479,6 +1480,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   if (incoming_rpc_state) {
     if (!sent_response_early) {
       size_t response_size = default_response_size;
+      absl::MutexLock m(&s.action_mu);
       if (s.response_payload_override_index != -1) {
         absl::BitGen bitgen;
         response_size =
