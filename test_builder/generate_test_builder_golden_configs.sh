@@ -12,6 +12,12 @@ PATH="$PATH:$(bazel info output_base)/external/homa_module/util/"
 TEMPFILE="tcp_in_a_file"
 echo tcp > "${TEMPFILE}"
 test_builder -o . "rectangular:transport=<${TEMPFILE}"
+CONSTRAINTS="constraints_in_a_file"
+cat > "${CONSTRAINTS}" << EOF
+  service_constraints { key: "rectangular/0/*" value { constraint_sets { constraints { attribute_name:"slice" string_values: "0" relation: EQUAL}}}}
+  service_constraints { key: "rectangular/1/*" value { constraint_sets { constraints { attribute_name:"slice" string_values: "1" relation: EQUAL}}}}
+EOF
+test_builder -o . "rectangular:x_size=5:y_size=2:fanout_filter=same_y:extra_test_contents=<${CONSTRAINTS}"
 test_builder -o . clique
 test_builder -o . clique:test_duration=45
 

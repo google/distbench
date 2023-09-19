@@ -1,0 +1,2 @@
+  service_constraints { key: "rectangular/0/*" value { constraint_sets { constraints { attribute_name:"slice" string_values: "0" relation: EQUAL}}}}
+  service_constraints { key: "rectangular/1/*" value { constraint_sets { constraints { attribute_name:"slice" string_values: "1" relation: EQUAL}}}}

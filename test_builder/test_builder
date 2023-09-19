@@ -61,6 +61,17 @@ Configuration syntax (used for configuration_prefix and configurationN values):
  'protocol_driver=bar' can be abbreviated 'bar'
  protocol_driver defaults to grpc if it is not specified.
 
+ A special parameter is extra_test_contents. It's value will be copied verbatim
+ into every test. This can be used to inject e.g. service placement constraints
+ into the generated output. The file name that is generated for a test config
+ does not include any information from the extra_test_contents key, so if the
+ value of the extra_test_contents key changes, the tool will not be able to
+ detect that it needs to re-run a test.
+
+ If a value starts with a '<' character it is interpreted as a the name of file
+ that contains the desired value, which is useful e.g. for the
+ extra_test_contents key whose value would not otherwise be parsable.
+
 Modes:
   By default the generated test sequence proto will be sent to stdout.
 
@@ -486,7 +497,7 @@ function parse_params_dict_from_config_string() {
     readarray -d = -t key_value < <(echo -n "${part}")
     if [[ ${#key_value[@]} == 2 ]]; then
       if [[ "${key_value[1]:0:1}" == '<' ]]; then
-        key_value[1]=$(cat "${key_value[1]:1}")
+        key_value[1]=$(cat "${key_value[1]:1}") || exit 15
       fi
       params_dict[${key_value[0]}]="${key_value[1]}"
     else
@@ -574,6 +585,7 @@ function format_test_proto() {
     case "${key}" in
       protocol_driver_options_proto) ;;
       traffic_pattern_options_proto) ;;
+      extra_test_contents) ;;
       *)
         local quoted_key="$(single_quote_string "${key}")"
         local quoted_val="$(single_quote_string "${params_dict[${key}]}")"
@@ -583,6 +595,9 @@ function format_test_proto() {
   done
   echo "${params_dict[protocol_driver_options_proto]}"
   echo "${params_dict[traffic_pattern_options_proto]}"
+  if [[ -v params_dict[extra_test_contents] ]]; then
+    echo "${params_dict[extra_test_contents]}"
+  fi
   echo "}"
 }
 
