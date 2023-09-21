@@ -2107,7 +2107,6 @@ void DistBenchEngine::RunRpcActionIterationCommon(
     if (do_trace) {
       rpc_state->request.mutable_trace_context()->add_fanout_index(i);
     }
-    // Handle request override here
     payload_allocator_->AddPadding(&rpc_state->request, request_payload_size);
 #ifndef NDEBUG
     CHECK_EQ(
