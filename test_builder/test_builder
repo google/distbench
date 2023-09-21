@@ -435,12 +435,17 @@ function build_parameter_sweep_test_protos() {
     exit 10
   fi
   local paramval
+  declare -a multi_params
   for paramval in ${sweep_values}; do
     # Any parameters set here will be inherited by all the test protos generated
     # by build_config_test_protos unless they are explicitly overriden, which is
     # probably a bad idea.
     params_dict[${paramname}]="${paramval}"
     params_dict[swept_parameter]="${paramname}"
+    IFS=, multi_params=($paramname)
+    for param in "${multi_params[@]}"; do
+      params_dict[$param]="${paramval}"
+    done
     build_config_test_protos "$@"
   done
 }

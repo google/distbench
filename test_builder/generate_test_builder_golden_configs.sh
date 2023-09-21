@@ -115,3 +115,6 @@ test_builder -o - parameter_sweep rpc_interval_us 4000 1000 8000 \
 # Generate a parameter sweep of threadpool_size:
 test_builder -o - parameter_sweep threadpool_size 1 1 4 client_server:server_type=polling \
   > sweep3.config
+
+test_builder -o - parameter_sweep request_size,response_size 1000 1000 5000 rectangular \
+  > sweep4.config
