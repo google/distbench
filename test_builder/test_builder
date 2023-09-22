@@ -117,6 +117,11 @@ Specifying multiconfiguration parameter sweeps:
   $0 parameter_sweep node_count 5 5 15 \\
     -c clique rpc_interval_us=4000 rpc_interval_us=8000
 
+Sweeping related parameters:
+  If two values need to be swept together (e.g. request and response size) they
+  can be specified as a comma-separated list:
+  $0 parameter_sweep request_size,response_size 1000 1000 5000 rectangular
+
 Test configuration metadata:
   Every parameter that is specified in a test configuration argument is
   converted to a test attribute key-value pair, even if the parameter is not
