@@ -197,6 +197,18 @@ grpc::Status TestSequencer::DoRunTestSequence(grpc::ServerContext* context,
   if (request->tests_setting().shutdown_after_tests()) {
     shutdown_requested_.TryToNotify();
   }
+
+  size_t response_size = response->ByteSizeLong();
+  LOG(INFO) << "Response proto size: " << response_size / 1024 / 1024 << "MiB";
+  constexpr size_t kMaxReponseSize =
+      std::numeric_limits<int32_t>::max() - 512 * 1024;
+  if (response_size > kMaxReponseSize) {
+    response->clear_test_results();
+    return grpc::Status(grpc::StatusCode::ABORTED,
+                        absl::StrCat("Result proto is too big: ", response_size,
+                                     "B (max: ", kMaxReponseSize, "B)"));
+  }
+
   return grpc::Status::OK;
 }
 
@@ -550,7 +562,11 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     LOG(ERROR) << "RunTraffic aborted before collecting results: " << status;
     return grpcStatusToAbslStatus(status);
   }
-  LOG(INFO) << "RunTraffic: all done -- collecting results";
+
+  int64_t runtraffic_time = ToUnixNanos(absl::Now());
+  int64_t runtraffic_elapsed = (runtraffic_time - start_time) / 1'000'000'000;
+  LOG(INFO) << "RunTraffic: all done, elapsed:" << runtraffic_elapsed
+            << "s, collecting results.";
 
   struct GetResultPendingRpc {
     grpc::ClientContext context;
@@ -597,6 +613,10 @@ absl::StatusOr<GetTrafficResultResponse> TestSequencer::RunTraffic(
     }
   }
 
+  int64_t done_time = ToUnixNanos(absl::Now());
+  int64_t collect_elapsed = (done_time - runtraffic_time) / 1'000'000'000;
+  LOG(INFO) << "RunTraffic: done collecting results. elapsed:"
+            << collect_elapsed << "s";
   if (!status.ok()) {
     return grpcStatusToAbslStatus(status);
   }
