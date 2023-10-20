@@ -34,22 +34,20 @@ class DefaultFormatter(Formatter):
   a text file.
   """
 
-  # this function takes a list of rpc and
-  # converts them into an intermediate format
+  # Takes a list of rpc and converts them into an intermediate format.
   def summarize(self, rpc_list):
     summary = []
+    self.total_samples += len(rpc_list)
     for rpc in rpc_list:
-      self.total_samples += 1
       if rpc.warmup:
         self.warmup_samples += 1
       if self.consider_warmups or not rpc.warmup:
         summary.append(tuple([rpc.request_size, rpc.latency_ns]))
     return summary
 
-  # this function takes datasets in the intermediate format,
-  # possibly a concatenation
+  # Takes datasets in the intermediate format, possibly a concatenation
   # of high level summaries, and converts them into a string which
-  # can be written into a file
+  # can be written into a file.
   def format_file(self, summary):
     output_str = ""
     if not self.supress_header:
@@ -62,26 +60,24 @@ class DefaultFormatter(Formatter):
 class HomaFormatter(Formatter):
   """Inherits from Formatter class.
 
-  It takes the distbench results and puts all the rpc's sizes and 
+  It takes the distbench results and puts all the rpc's sizes and
   latencies in microseconds into a text file.
   """
 
-  # this function takes a list of rpc and
-  # converts them into an intermediate format
+  # Takes a list of rpc and converts them into an intermediate format.
   def summarize(self, rpc_list):
     summary = []
+    self.total_samples += len(rpc_list)
     for rpc in rpc_list:
-      self.total_samples += 1
       if rpc.warmup:
         self.warmup_samples += 1
       if self.consider_warmups or not rpc.warmup:
         summary.append(tuple([rpc.request_size, rpc.latency_ns]))
     return summary
 
-  # this function takes datasets in the intermediate format,
-  # possibly a concatenation
+  # Takes datasets in the intermediate format, possibly a concatenation
   # of high level summaries, and converts them into a string which
-  # can be written into a file
+  # can be written into a file.
   def format_file(self, summary):
     output_str = ""
     if not self.supress_header:
@@ -94,38 +90,33 @@ class HomaFormatter(Formatter):
 class StatisticFormatter(Formatter):
   """Takes the rpc's, groups them by sizes and puts statistics info about each message size in a text file."""
 
-  # this function takes a list of rpc and converts the
-  # into an intermediate format
+  # Takes a list of rpc and converts them into an intermediate format.
   def summarize(self, rpc_list):
     summary = []
+    self.total_samples += len(rpc_list)
     for rpc in rpc_list:
-      self.total_samples += 1
       if rpc.warmup:
         self.warmup_samples += 1
       if self.consider_warmups or not rpc.warmup:
         summary.append(tuple([rpc.request_size, rpc.latency_ns]))
     return summary
 
-  # this function takes datasets in the intermediate format,
-  # possibly a concatenation of high level summaries
-  # of high level summaries, and converts them into a string which can be
-  # written into a file
+  # Takes datasets in the intermediate format, possibly a concatenation of high
+  # level summaries, and converts them into a string which can be written into
+  # a file.
   def format_file(self, summary):
     buckets = {}
-    line_template = (
-        "{: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <15} {: <}\n"
-    )
+    line_template = "{: <15} " * 7 + "{: <}\n"
     output_str = ""
     stats_list = []
     if not self.supress_header:
       output_str += line_template.format(
           "Request_size", "N", "min", "50%", "90%", "99%", "99.99%", "max"
       )
-    for item in summary:
-      if item[0] in sorted(buckets.keys()):
-        buckets[item[0]].append(item[1])
-      else:
-        buckets[item[0]] = [item[1]]
+
+    for request_size, latency in summary:
+      buckets.setdefault(request_size, []).append(latency)
+
     for request_size, latencies in sorted(buckets.items()):
       stats_list.append(
           tuple([
@@ -140,29 +131,20 @@ class StatisticFormatter(Formatter):
           ])
       )
     for stats in stats_list:
-      output_str += line_template.format(
-          stats[0],
-          stats[1],
-          stats[2],
-          stats[3],
-          stats[4],
-          stats[5],
-          stats[6],
-          stats[7],
-      )
+      output_str += line_template.format(*stats)
     return output_str
 
 
 class TraceContextFormatter(Formatter):
   """Groups RPC's by their action iteration and finds the maximum latency for eas action iteration.
 
-  Spits out the action iteration and the longest latency for that iteration
+  Spits out the action iteration and the longest latency for that iteration.
   """
 
   def summarize(self, rpc_list):
     summary = []
+    self.total_samples += len(rpc_list)
     for rpc in rpc_list:
-      self.total_samples += 1
       if rpc.warmup:
         self.warmup_samples += 1
       if self.consider_warmups or not rpc.warmup:
@@ -247,7 +229,7 @@ class TestProcessor:
       self.create_directory_tree_for_client(client, output_directory)
 
   def create_directory_tree_for_client(self, client, output_directory):
-    """Function to generate a directory tree for each client."""
+    """Generates a directory tree for each client."""
     client_directory_path = os.path.join(output_directory, client)
     # write the summary for the client
     client_summary_file_path = os.path.join(
@@ -279,7 +261,7 @@ class TestProcessor:
   def create_directory_tree_for_service(
       self, client_instance, service, output_directory
   ):
-    """Function to generate the directory tree for each service inside of a client instance directory."""
+    """Generates the directory tree for each service inside of a client instance directory."""
     service_directory_path = os.path.join(output_directory, service)
     # write the summary for the service
     service_summary_file_path = os.path.join(
@@ -304,7 +286,7 @@ class TestProcessor:
   def write_pairwise_logs(
       self, client_instance, service_instance, output_directory
   ):
-    """Function to write the logs for each pair of client instance and server instance."""
+    """Writes the logs for each pair of client instance and server instance."""
     client_instance_logs = self.test_proto_message.service_logs.instance_logs[
         client_instance
     ]
@@ -399,7 +381,7 @@ class TestProcessor:
     return summary
 
   def write_summary(self, summary, path):
-    """Function to write a summary file."""
+    """Writes a summary file."""
     if not summary:
       print("Empty output %s skipped..." % path)
       return
@@ -410,13 +392,12 @@ class TestProcessor:
       print("Error creating %s directory" % os.path.dirname(path))
       exit()
     try:
-      fs = open(path, "w")
+      with open(path, "w") as fs:
+        fs.write(self.output_formatter.format_file(summary))
     except OSError as error:
       print(error)
-      print("error trying to open file %s" % path)
+      print(f"Error writing to: {path}")
       exit()
-    fs.write(self.output_formatter.format_file(summary))
-    fs.close()
 
 
 class DistbenchResultsIO:
@@ -429,15 +410,15 @@ class DistbenchResultsIO:
     self.output_formatter = output_formatter
 
   def parse_file(self):
-    """Function to parse either a binary or gunzipped distbench output file."""
+    """Parses either a binary or gunzipped distbench output file."""
     test_sequence = distbench_pb2.TestSequenceResults()
     try:
-      gzip_file = gzip.open(self.input_file, "rb")
-      file_contents = gzip_file.read()
+      with gzip.open(self.input_file, "rb") as gzip_file:
+        file_contents = gzip_file.read()
     except OSError:
       try:
-        binary_file = open(self.input_file, "rb")
-        file_contents = binary_file.read()
+        with open(self.input_file, "rb") as binary_file:
+          file_contents = binary_file.read()
       except OSError as error:
         print(error)
         print("Error parsing the file %s" % self.input_file)
@@ -453,19 +434,21 @@ class DistbenchResultsIO:
       t.create_directory_tree(test_dir)
 
   def write_overall_summary(self):
-    """Function that writes the overall sunmmary for a single test."""
+    """Writes the overall sunmmary for a single test."""
     overall_summary = []
     for test in self.tests_results:
       t = TestProcessor(test, self.output_formatter)
       overall_summary += t.get_summary()
+    summary_filename = os.path.join(
+        self.output_directory, "overall_summary.txt"
+    )
     try:
-      fs = open(self.output_directory + "/overall_summary.txt", "w")
+      with open(summary_filename, "w") as fs:
+        fs.write(self.output_formatter.format_file(overall_summary))
     except OSError as error:
       print(error)
-      print("Error opening the file %s" % self.output_directory)
+      print(f"Error writing file: {summary_filename}")
       exit()
-    fs.write(self.output_formatter.format_file(overall_summary))
-    fs.close()
     print("Total samples: ", d.output_formatter.total_samples)
     print("Warmup samples: ", d.output_formatter.warmup_samples)
     if not d.output_formatter.consider_warmups:
