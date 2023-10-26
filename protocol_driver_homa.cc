@@ -17,6 +17,14 @@
 #include <arpa/inet.h>
 #include <sys/mman.h>
 
+#include <atomic>
+#include <functional>
+#include <set>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 #include "absl/base/internal/sysinfo.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+
 #include "absl/log/log.h"
 #include "absl/strings/str_replace.h"
 #include "distbench_node_manager.h"

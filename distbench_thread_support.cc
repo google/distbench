@@ -14,7 +14,11 @@
 
 #include "distbench_thread_support.h"
 
+#include <functional>
 #include <memory>
+#include <string_view>
+#include <thread>
+#include <utility>
 
 #include "absl/base/const_init.h"
 #include "absl/synchronization/mutex.h"

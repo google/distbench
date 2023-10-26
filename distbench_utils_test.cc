@@ -16,6 +16,8 @@
 
 #include <sys/socket.h>
 
+#include <vector>
+
 #include "distbench_netutils.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"

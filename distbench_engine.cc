@@ -14,7 +14,19 @@
 
 #include "distbench_engine.h"
 
+#include <algorithm>
+#include <atomic>
+#include <functional>
+#include <limits>
+#include <map>
+#include <memory>
+#include <numeric>
 #include <queue>
+#include <random>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include "absl/base/internal/sysinfo.h"
 #include "absl/log/check.h"

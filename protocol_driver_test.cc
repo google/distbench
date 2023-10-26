@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <atomic>
+#include <vector>
+#include <functional>
+#include <string>
 
 #include "distbench_utils.h"
 #include "google/protobuf/text_format.h"

@@ -14,6 +14,10 @@
 
 #include "distbench_test_sequencer_tester.h"
 
+#include <iostream>
+#include <memory>
+#include <utility>
+
 #include "absl/log/log.h"
 #include "distbench_node_manager.h"
 #include "distbench_test_sequencer.h"

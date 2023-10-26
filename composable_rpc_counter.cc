@@ -14,6 +14,13 @@
 
 #include "composable_rpc_counter.h"
 
+#include <atomic>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 #include "absl/base/internal/sysinfo.h"
 #include "absl/log/log.h"
 #include "distbench_utils.h"

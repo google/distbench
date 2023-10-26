@@ -17,6 +17,11 @@
 #include <fcntl.h>
 #include <sys/resource.h>
 
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"

@@ -18,7 +18,17 @@
 #include <sys/resource.h>
 
 #include <cerrno>
+#include <cstring>
 #include <fstream>
+#include <ios>
+#include <iterator>
+#include <limits>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "absl/log/globals.h"
 #include "absl/log/initialize.h"

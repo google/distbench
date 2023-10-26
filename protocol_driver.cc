@@ -14,6 +14,12 @@
 
 #include "protocol_driver.h"
 
+#include <functional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 #include "absl/log/log.h"
 
 namespace distbench {

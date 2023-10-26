@@ -14,6 +14,11 @@
 
 #include <fcntl.h>
 
+#include <iostream>
+#include <limits>
+#include <string>
+#include <vector>
+
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"

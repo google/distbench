@@ -16,6 +16,14 @@
 
 #include <fnmatch.h>
 
+#include <limits>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/strings/match.h"

@@ -14,6 +14,11 @@
 
 #include "distbench_payload.h"
 
+#include <map>
+#include <set>
+#include <string>
+#include <utility>
+
 #include "gtest/gtest.h"
 
 namespace distbench {

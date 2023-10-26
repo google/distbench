@@ -14,6 +14,10 @@
 
 #include "protocol_driver_allocator.h"
 
+#include <functional>
+#include <memory>
+#include <string>
+
 #include "absl/log/log.h"
 #include "composable_rpc_counter.h"
 #include "protocol_driver_double_barrel.h"

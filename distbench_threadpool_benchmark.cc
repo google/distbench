@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <atomic>
+#include <string_view>
 
 #include "absl/log/log.h"
 #include "absl/time/clock.h"

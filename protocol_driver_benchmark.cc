@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <atomic>
+#include <cstdlib>
+#include <string>
+#include <vector>
+
 #include "absl/log/log.h"
 #include "benchmark/benchmark.h"
 #include "distbench_utils.h"

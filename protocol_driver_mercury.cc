@@ -19,6 +19,12 @@
 #include <mercury_macros.h>
 #include <mercury_proc_string.h>
 
+#include <functional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 #include "absl/base/const_init.h"
 #include "absl/base/internal/sysinfo.h"
 #include "absl/log/check.h"

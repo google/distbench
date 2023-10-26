@@ -14,6 +14,12 @@
 
 #include "activity.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <memory>
+#include <random>
+#include <vector>
+
 #include "absl/log/log.h"
 #include "benchmark/benchmark.h"
 #include "boost/preprocessor/repetition/repeat.hpp"

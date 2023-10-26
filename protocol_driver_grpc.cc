@@ -14,7 +14,16 @@
 
 #include "protocol_driver_grpc.h"
 
+#include <algorithm>
+#include <atomic>
+#include <functional>
+#include <iterator>
+#include <limits>
 #include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include "absl/base/internal/sysinfo.h"
 #include "absl/log/check.h"

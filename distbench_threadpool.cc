@@ -14,7 +14,12 @@
 
 #include "distbench_threadpool.h"
 
+#include <functional>
+#include <memory>
 #include <queue>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include "absl/log/log.h"
 #include "absl/synchronization/notification.h"

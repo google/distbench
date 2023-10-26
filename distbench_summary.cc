@@ -14,6 +14,13 @@
 
 #include "distbench_summary.h"
 
+#include <algorithm>
+#include <limits>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 
