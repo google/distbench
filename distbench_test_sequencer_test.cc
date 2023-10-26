@@ -14,6 +14,10 @@
 
 #include "distbench_test_sequencer.h"
 
+#include <limits>
+#include <map>
+#include <string>
+
 #include "absl/log/log.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"

@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <atomic>
+#include <functional>
+#include <map>
+#include <string>
+
 #include "absl/log/log.h"
 #include "distbench_utils.h"
 #include "gtest/gtest.h"

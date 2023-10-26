@@ -15,6 +15,7 @@
 #include "distbench_threadpool.h"
 
 #include <atomic>
+#include <string>
 
 #include "absl/base/internal/sysinfo.h"
 #include "absl/log/log.h"

@@ -14,6 +14,9 @@
 
 #include "joint_distribution_sample_generator.h"
 
+#include <memory>
+#include <vector>
+
 #include "absl/log/check.h"
 #include "distbench_utils.h"
 
