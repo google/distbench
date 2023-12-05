@@ -1954,22 +1954,28 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
 }
 
 void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
-  absl::Duration period = absl::Nanoseconds(
+  const absl::Duration period = absl::Nanoseconds(
       action_state->action->proto.iterations().open_loop_interval_ns());
   auto it_state = std::make_shared<ActionIterationState>();
   it_state->action_state = action_state;
-  action_state->iteration_mutex.Lock();
-  if (action_state->interval_is_exponential) {
-    action_state->next_iteration_time +=
-        period * action_state->exponential_gen(it_state->rand_gen);
-  } else {
-    action_state->next_iteration_time += period;
-  }
-  if (action_state->next_iteration_time > action_state->time_limit) {
-    action_state->next_iteration_time = absl::InfiniteFuture();
-  }
-  it_state->iteration_number = action_state->next_iteration++;
-  action_state->iteration_mutex.Unlock();
+
+  {
+    absl::MutexLock m(&action_state->iteration_mutex);
+    if (action_state->interval_is_exponential) {
+      action_state->next_iteration_time +=
+          period * action_state->exponential_gen(it_state->rand_gen);
+    } else {
+      action_state->next_iteration_time += period;
+    }
+    if (action_state->next_iteration_time > action_state->time_limit) {
+      action_state->next_iteration_time = absl::InfiniteFuture();
+    }
+    if (action_state->next_iteration >= action_state->iteration_limit) {
+      // Make sure we don't start new iterations reaching the limit.
+      return;
+    }
+    it_state->iteration_number = action_state->next_iteration++;
+  }  // End of MutexLock action_state->iteration_mutex.
   StartIteration(it_state);
 }
 
