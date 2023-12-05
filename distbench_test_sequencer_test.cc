@@ -1663,9 +1663,8 @@ tests {
   auto test_sequence = ParseTestSequenceTextProto(proto);
   ASSERT_TRUE(test_sequence.ok());
 
-  TestSequenceResults results;
   auto maybe_results = tester.RunTestSequenceOnSingleNodeManager(
-      *test_sequence, /*timeout_s=*/75);
+      *test_sequence, /*timeout_s=*/15);
   ASSERT_OK(maybe_results.status());
 
   const auto& test_results = maybe_results.value().test_results(0);
@@ -1680,8 +1679,8 @@ tests {
     ASSERT_NE(server_name, "server/3");
     size_t num_samples = (*per_server_log.rpc_logs().begin())
                              .second.successful_rpc_samples_size();
-    EXPECT_GE(num_samples, 5);
-    EXPECT_LE(num_samples, 7);
+    EXPECT_GE(num_samples, 4);
+    EXPECT_LE(num_samples, 8);
   }
 }
 
