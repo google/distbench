@@ -33,32 +33,6 @@ function print_header_and_run {
   "$@"
 }
 
-#This is a band-aid, should fix root cause.....
-function run_with_retries {
-  local MAX_TRIES=3
-  local DELAY=5
-  for i in $(seq 1 $MAX_TRIES); do
-    echo "\$ $*"
-    "$@" && break
-
-    echo -n "Command failed with errcode $? -"
-    echo "try $i / $MAX_TRIES - sleeping $DELAY before retrying..."
-    sleep $DELAY
-    DELAY=$(( DELAY * 2 ))
-  done
-}
-
-function bazel_install {
-  # Remove the cache has sometime they conflict between versions
-  rm -rf  ~/.cache/bazel
-
-  local BAZEL_FILE="bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh"
-  local BAZEL_URL="https://github.com/bazelbuild/bazel/releases/download/"
-  BAZEL_URL+="${BAZEL_VERSION}/${BAZEL_FILE}"
-  run_with_retries wget --no-verbose "${BAZEL_URL}" -O "/tmp/${BAZEL_FILE}"
-  bash "/tmp/${BAZEL_FILE}" --user
-}
-
 # This overrides -repo_env=CC=gcc-11 --repo_env=CXX=g++-11 from .bazelrc:
 function bazel_basic {
   echo bazel "${@}"
@@ -74,18 +48,12 @@ function test_targets() {
 }
 
 function test_main_targets() {
-  local main_targets=(:distbench_test_sequencer_test :all)
+  local main_targets=(:all)
   echo "Testing targets: ${main_targets[@]}"
   test_targets ${main_targets[@]}
 }
 
-BAZEL_VERSION=5.4.0
-PATH="$HOME/bin:$PATH"
-
 cd "${KOKORO_ARTIFACTS_DIR}/github/distbench"
-
-print_header_and_run "Downloading and installing Bazel version $BAZEL_VERSION" \
-  bazel_install
 
 print_header_and_run "Logging host lsb version" \
   lsb_release -a
@@ -96,35 +64,35 @@ print_header_and_run "Logging host kernel version" \
 print_header_and_run "Logging host ip addresses" \
   ip address
 
-print_header_and_run "Logging gcc version" \
-  gcc --version
-
-print_header_and_run "Adding repo for g++-11" \
-  add-apt-repository -y ppa:ubuntu-toolchain-r/test
-
-print_header_and_run "Installing libnuma-dev g++-11 gcc-11" \
-  apt-get install libnuma-dev g++-11 gcc-11 -y
-
-print_header_and_run "Logging g++ version" \
-  g++-11 --version
-
-print_header_and_run "Logging Bazel version" \
+function tool_versions() {
+  gcc --version | head -n 1
+  g++ --version | head -n 1
   bazel --version
+}
+
+print_header_and_run "Logging tool versions" \
+  tool_versions
+
+function install_libfabric_mercury() {
+  if [ 1 -eq $(ls -d /opt/mercury-* 2>/dev/null | wc -w) ]; then
+    rm -rf external_repos
+    mkdir --parents external_repos/opt
+    ln -s -v /opt/libfabric-* external_repos/opt/libfabric
+    ln -s -v /opt/mercury-* external_repos/opt/mercury
+  else
+    echo Installing libfabric and mercury
+    ./setup_mercury.sh
+  fi
+}
 
 print_header_and_run "Installing libfabric and mercury" \
-  ./setup_mercury.sh
-
-print_header_and_run "Bazel fetch" \
-  run_with_retries bazel fetch :all
+  install_libfabric_mercury
 
 print_header_and_run "Bazel test test_builder" \
   test_targets test_builder:all
 
 print_header_and_run "Bazel test analysis" \
   test_targets analysis:all
-
-print_header_and_run "Bazel build" \
-  bazel_basic build :all --//:with-mercury
 
 CONFIG=(--//:with-mercury)
 print_header_and_run "Bazel test" \
