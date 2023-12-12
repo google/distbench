@@ -40,11 +40,9 @@ function bazel_basic {
 }
 
 function test_targets() {
-  for target in "${@}"; do
-    bazel_basic test --test_output=errors "$target" "${CONFIG[@]}" ||
-    bazel_basic test --test_output=errors "$target" "${CONFIG[@]}" ||
-    bazel_basic test --test_output=errors "$target" "${CONFIG[@]}"
-  done
+  bazel_basic test --disk_cache=/tmpfs/bazel_disk_cache --test_output=errors "${@}" "${CONFIG[@]}" ||
+  bazel_basic test --disk_cache=/tmpfs/bazel_disk_cache --test_output=errors "${@}" "${CONFIG[@]}" ||
+  bazel_basic test --disk_cache=/tmpfs/bazel_disk_cache --test_output=errors "${@}" "${CONFIG[@]}"
 }
 
 function test_main_targets() {
@@ -88,15 +86,23 @@ function install_libfabric_mercury() {
 print_header_and_run "Installing libfabric and mercury" \
   install_libfabric_mercury
 
-print_header_and_run "Bazel test test_builder" \
-  test_targets test_builder:all
+function unpack_bazel_cache() {
+  if ! [ -f "/bazel_disk_cache.tar.bz2" ]; then
+    return
+  fi
 
-print_header_and_run "Bazel test analysis" \
-  test_targets analysis:all
+  echo Unpacking Bazel cache
+  (
+    cd /tmpfs
+    time tar xf /bazel_disk_cache.tar.bz2 --use-compress-prog=pbzip2
+  )
+}
+print_header_and_run "Unpack Bazel cache" \
+  unpack_bazel_cache
 
 CONFIG=(--//:with-mercury)
-print_header_and_run "Bazel test" \
-  test_main_targets
+print_header_and_run "Bazel test (:all, analysis:all, test_builder:all)" \
+  test_targets test_builder:all analysis:all :all
 
 CONFIG=(--//:with-mercury --config=asan)
 print_header_and_run "Bazel test - ASAN" \
@@ -106,5 +112,3 @@ CONFIG=(--//:with-mercury --config=tsan)
 print_header_and_run "Bazel test - TSAN" \
   test_main_targets
 
-print_header_and_run "Bazel shutdown" \
-  bazel shutdown
