@@ -4,9 +4,12 @@ DISTBENCH_SRC=$(readlink -f $(dirname $(which $0)))
 cd "${DISTBENCH_SRC}"
 source common_status.sh
 
+BAZELISK_URL="https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64"
 echo_magenta "Installing dependencies..."
 bazel version || (
-  sudo apt-get install -y bazel-5.4 || sudo apt-get -y install bazel-bootstrap
+  curl -L -o bazel "${BAZELISK_URL}"
+  chmod +x bazel
+  sudo mv bazel /usr/local/bin
 )
 
 packages=(g++-11 python3-numpy python3-matplotlib python3-seaborn)
