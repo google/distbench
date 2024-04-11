@@ -255,7 +255,13 @@ message OverloadLimits {
 
 message DistributedSystemDescription {
   optional string name = 9;
+
+  // Attributes are free-form metadata-only. They do not affect the operation of
+  // the distbench nodes in any way. They serve to document the system settings
+  // that were used to generate a test, or that were in effect when the test
+  // was run.
   map<string, string> attributes = 10;
+
   repeated ServiceSpec services = 1;
   map<string, ConstraintList> service_constraints = 15;
   map<string, ServiceBundle> node_service_bundles = 2;
