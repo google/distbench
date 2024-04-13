@@ -255,7 +255,13 @@ message OverloadLimits {
 
 message DistributedSystemDescription {
   optional string name = 9;
+
+  // Attributes are free-form metadata-only. They do not affect the operation of
+  // the distbench nodes in any way. They serve to document the system settings
+  // that were used to generate a test, or that were in effect when the test
+  // was run.
   map<string, string> attributes = 10;
+
   repeated ServiceSpec services = 1;
   map<string, ConstraintList> service_constraints = 15;
   map<string, ServiceBundle> node_service_bundles = 2;
@@ -277,4 +283,12 @@ message DistributedSystemDescription {
   optional OverloadLimits overload_limits = 13;
 
   repeated RpcReplayTrace rpc_replay_traces = 14;
+
+  // If set to true then when an action has a delay distribution
+  // instead of delaying the first iteration of that action by sleeping in
+  // parallel with any other actions,
+  // the distbench engine will burn CPU in the handling thread for the given
+  // time. This includes tracking the time that the thread is not scheduled in
+  // order to simulate doing real work.
+  optional bool delay_actions_by_spinning = 18 [default = true];
 }
