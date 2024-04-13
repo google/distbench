@@ -84,13 +84,44 @@ class RealClock : public SimpleClock {
 
   bool MutexLockWhenWithDeadline(absl::Mutex* mu,
                                  const absl::Condition& condition,
-                                 absl::Time deadline)
+                                 absl::Time deadline, bool spin)
       ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) override {
+    if (spin) {
+      absl::Time start = absl::Now();
+      absl::Duration spin_time = deadline - start;
+      struct timespec tp;
+      clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp);
+      absl::Time timeout = absl::TimeFromTimespec(tp) + spin_time;
+      absl::Time now;
+      do {
+        if (mu->LockWhenWithDeadline(condition, start)) {
+          return true;
+        }
+        mu->Unlock();
+        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp);
+        now = absl::TimeFromTimespec(tp);
+      } while(now < timeout);
+    }
     return mu->LockWhenWithDeadline(condition, deadline);
   }
 
   bool MutexAwaitWithDeadline(absl::Mutex* mu, const absl::Condition& condition,
-                              absl::Time deadline) override {
+                              absl::Time deadline, bool spin) override {
+    if (spin) {
+      absl::Time start = absl::Now();
+      absl::Duration spin_time = deadline - start;
+      struct timespec tp;
+      clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp);
+      absl::Time timeout = absl::TimeFromTimespec(tp) + spin_time;
+      absl::Time now;
+      do {
+        if (mu->AwaitWithDeadline(condition, start)) {
+          return true;
+        }
+        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp);
+        now = absl::TimeFromTimespec(tp);
+      } while(now < timeout);
+    }
     return mu->AwaitWithDeadline(condition, deadline);
   }
 };
