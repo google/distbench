@@ -290,5 +290,5 @@ message DistributedSystemDescription {
   // the distbench engine will burn CPU in the handling thread for the given
   // time. This includes tracking the time that the thread is not scheduled in
   // order to simulate doing real work.
-  optional bool delay_actions_by_spinning = 18 [default = false];
+  optional bool delay_actions_by_spinning = 18 [default = true];
 }

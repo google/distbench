@@ -71,7 +71,7 @@ class RealClock : public SimpleClock {
                                  const absl::Condition& condition,
                                  absl::Time deadline, bool spin)
       ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) override {
-    if (spin) {
+    if (spin && deadline != absl::InfiniteFuture()) {
       absl::Time start = absl::Now();
       absl::Duration spin_time = deadline - start;
       struct timespec tp;
