@@ -1310,17 +1310,6 @@ RpcReplayTraceLog DistBenchEngine::RunRpcReplayTrace(
   return trace_runner.Run(service_instance_, traffic_start_time_ns_);
 }
 
-void SpinFor(absl::Duration duration) {
-  struct timespec tp;
-  CHECK(!clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp));
-  absl::Duration start = absl::DurationFromTimespec(tp);
-  absl::Duration now;
-  do {
-    CHECK(!clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp));
-    now = absl::DurationFromTimespec(tp);
-  } while (now - start < duration);
-}
-
 void DistBenchEngine::RunActionList(int actionlist_index,
                                     ServerRpcState* incoming_rpc_state,
                                     size_t default_response_size,
@@ -1403,10 +1392,6 @@ void DistBenchEngine::RunActionList(int actionlist_index,
               delay_distribution_generators_[s.action_list->list_actions[i]
                                                  .delay_distribution_index]
                   ->GetScalarRandomSample(&rand_gen);
-          if (traffic_config_.delay_actions_by_spinning()) {
-            SpinFor(absl::Nanoseconds(delay_ns));
-            delay_ns = 0;
-          }
           auto real_start_time = now + absl::Nanoseconds(delay_ns);
           absl::MutexLock m(&s.state_table[i].iteration_mutex);
           s.state_table[i].next_iteration_time = real_start_time;
@@ -1491,7 +1476,8 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     // Idle here until some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
-            next_iteration_time)) {
+            next_iteration_time,
+            traffic_config_.delay_actions_by_spinning())) {
       s.HandleFinishedActions();
     }
     s.action_mu.Unlock();
