@@ -28,11 +28,13 @@ class SimpleClock {
   virtual void SpinFor(absl::Duration duration) = 0;
   virtual bool MutexLockWhenWithDeadline(absl::Mutex* mu,
                                          const absl::Condition& condition,
-                                         absl::Time deadline)
+                                         absl::Time deadline,
+                                         bool spin = false)
       ABSL_EXCLUSIVE_LOCK_FUNCTION(mu) = 0;
   virtual bool MutexAwaitWithDeadline(absl::Mutex* mu,
                                       const absl::Condition& condition,
-                                      absl::Time deadline) = 0;
+                                      absl::Time deadline,
+                                      bool spin = false) = 0;
 };
 
 }  // namespace distbench
