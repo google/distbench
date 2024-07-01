@@ -1331,7 +1331,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     absl::uniform_real_distribution<double> random_float(0.0, 1.0);
     for (const auto& [name, probability] :
          s.action_list->proto.predicate_probabilities()) {
-      if (random_float(bitgen) > probability) {
+      if (random_float(bitgen) <= probability) {
         s.predicates_.insert(name);
       } else {
         s.predicates_.insert(absl::StrCat("!", name));
