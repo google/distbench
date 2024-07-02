@@ -1788,10 +1788,10 @@ tests {
     rpc_counts[server_name] = samples.size();
   }
   EXPECT_EQ(rpc_counts["server_A/0"] + rpc_counts["server_B/0"], 1000);
-  EXPECT_GT(rpc_counts["server_A/0"], 200);
-  EXPECT_LT(rpc_counts["server_A/0"], 300);
-  EXPECT_GT(rpc_counts["server_B/0"], 700);
-  EXPECT_LT(rpc_counts["server_B/0"], 800);
+  EXPECT_GT(rpc_counts["server_A/0"], 700);
+  EXPECT_LT(rpc_counts["server_A/0"], 800);
+  EXPECT_GT(rpc_counts["server_B/0"], 200);
+  EXPECT_LT(rpc_counts["server_B/0"], 300);
 }
 
 }  // namespace distbench
