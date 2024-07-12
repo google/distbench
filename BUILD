@@ -184,9 +184,11 @@ cc_library(
         ":distbench_cc_proto",
         ":distbench_utils",
         ":simple_clock",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
     ],
 )
 

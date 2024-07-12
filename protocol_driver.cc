@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <time.h>
+
 #include "protocol_driver.h"
 
 #include <functional>
@@ -20,7 +22,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/time/time.h"
 
 namespace distbench {
 
@@ -66,6 +70,17 @@ class RealClock : public SimpleClock {
   absl::Time Now() override { return absl::Now(); }
 
   void SleepFor(absl::Duration duration) override { absl::SleepFor(duration); }
+
+  void SpinFor(absl::Duration duration) override {
+    struct timespec tp;
+    CHECK(!clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp));
+    absl::Duration start = absl::DurationFromTimespec(tp);
+    absl::Duration now;
+    do {
+      CHECK(!clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp));
+      now = absl::DurationFromTimespec(tp);
+    } while (now - start < duration);
+  }
 
   bool MutexLockWhenWithDeadline(absl::Mutex* mu,
                                  const absl::Condition& condition,
