@@ -25,6 +25,7 @@ class SimpleClock {
   virtual absl::Time Now() = 0;
   virtual int64_t SetOffset(int64_t ns) { return ns; }
   virtual void SleepFor(absl::Duration duration) = 0;
+  virtual void SpinFor(absl::Duration duration) = 0;
   virtual bool MutexLockWhenWithDeadline(absl::Mutex* mu,
                                          const absl::Condition& condition,
                                          absl::Time deadline)

@@ -83,6 +83,18 @@ class SleepFor : public Activity {
   absl::Duration duration_;
 };
 
+class SpinFor : public Activity {
+ public:
+  static absl::Status ValidateConfig(const ActivityConfig& ac);
+  void Initialize(ParsedActivityConfig* config, SimpleClock* clock) override;
+  void DoActivity() override;
+  ActivityLog GetActivityLog() override;
+
+ private:
+  SimpleClock* clock_ = nullptr;
+  absl::Duration duration_;
+};
+
 absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(
     const ActivityConfig& ac) {
   ParsedActivityConfig s;
@@ -112,6 +124,11 @@ absl::StatusOr<ParsedActivityConfig> ParseActivityConfig(
     if (!status.ok()) return status;
     s.sleepfor_duration = absl::Microseconds(
         GetNamedSettingInt64(ac.activity_settings(), "duration_us", 0));
+  } else if (s.activity_func == "SpinFor") {
+    auto status = SpinFor::ValidateConfig(ac);
+    if (!status.ok()) return status;
+    s.sleepfor_duration = absl::Microseconds(
+        GetNamedSettingInt64(ac.activity_settings(), "duration_us", 0));
   } else {
     return absl::FailedPreconditionError(absl::StrCat(
         "Activity config '", s.activity_config_name,
@@ -134,6 +151,8 @@ std::unique_ptr<Activity> AllocateActivity(ParsedActivityConfig* config,
     activity = std::make_unique<PolluteInstructionCache>();
   } else if (activity_func == "SleepFor") {
     activity = std::make_unique<SleepFor>();
+  } else if (activity_func == "SpinFor") {
+    activity = std::make_unique<SpinFor>();
   }
 
   activity->Initialize(config, clock);
@@ -150,6 +169,25 @@ void SleepFor::Initialize(ParsedActivityConfig* config, SimpleClock* clock) {
 }
 
 absl::Status SleepFor::ValidateConfig(const ActivityConfig& ac) {
+  auto duration_us =
+      GetNamedSettingInt64(ac.activity_settings(), "duration_us", -1);
+  if (duration_us < 1) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "duration_us ", duration_us, ") must be a positive integer."));
+  }
+  return absl::OkStatus();
+}
+
+void SpinFor::DoActivity() { clock_->SpinFor(duration_); }
+
+ActivityLog SpinFor::GetActivityLog() { return {}; }
+
+void SpinFor::Initialize(ParsedActivityConfig* config, SimpleClock* clock) {
+  clock_ = clock;
+  duration_ = config->sleepfor_duration;
+}
+
+absl::Status SpinFor::ValidateConfig(const ActivityConfig& ac) {
   auto duration_us =
       GetNamedSettingInt64(ac.activity_settings(), "duration_us", -1);
   if (duration_us < 1) {
