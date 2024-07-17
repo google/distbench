@@ -1155,6 +1155,7 @@ function rectangular_traffic_pattern_setup() {
   set_parameter_default request_size 1024
   set_parameter_default response_size 1024
   set_parameter_default fanout_filter ring_x
+  set_parameter_default tracing_interval 0
   local REQUEST_SIZE="${params_dict[request_size]}"
   local RESPONSE_SIZE="${params_dict[response_size]}"
   local RPC_INTERVAL_US="${params_dict[rpc_interval_us]}"
@@ -1162,6 +1163,7 @@ function rectangular_traffic_pattern_setup() {
   local Y_SIZE="${params_dict[y_size]}"
   local NODE_COUNT="$((X_SIZE * Y_SIZE))"
   local FANOUT_FILTER="${params_dict[fanout_filter]}"
+  local TRACING_INTERVAL="${params_dict[tracing_interval]}"
   validate_integer 100 RPC_INTERVAL_US
   validate_integer 2 NODE_COUNT
   local SYNCHRONIZATION_MODE="${params_dict[synchronization_mode]}"
@@ -1208,6 +1210,7 @@ function rectangular_traffic_pattern_setup() {
     fanout_filter: '${FANOUT_FILTER}'
     request_payload_name: 'request_payload'
     response_payload_name: 'response_payload'
+    tracing_interval: ${TRACING_INTERVAL}
   }
   action_lists {
     name: 'rectangular_query'
