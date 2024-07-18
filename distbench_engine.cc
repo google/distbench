@@ -37,6 +37,7 @@
 #include "absl/strings/str_split.h"
 #include "distbench_netutils.h"
 #include "distbench_thread_support.h"
+#include "google/protobuf/arena.h"
 
 namespace distbench {
 
