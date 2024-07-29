@@ -1770,7 +1770,7 @@ void DistBenchEngine::ActionListState::RecordPackedLatency(
   packed_sample.response_size = state->response.ByteSizeLong();
   if (state->request.has_trace_context()) {
     packed_sample.trace_context =
-        ::google::protobuf::Arena::CreateMessage<TraceContext>(&sample_arena_);
+        ::google::protobuf::Arena::Create<TraceContext>(&sample_arena_);
     *packed_sample.trace_context = state->request.trace_context();
   }
 }
