@@ -170,6 +170,9 @@ int DistBenchEngine::GetPayloadSizeIndex(const std::string& payload_name) {
   if (it == payload_map_.end()) {
     return -1;
   }
+  if (!it->second.has_size_distribution_name()) {
+    return -1;
+  }
   return GetSizeSampleGeneratorIndex(it->second.size_distribution_name());
 }
 
