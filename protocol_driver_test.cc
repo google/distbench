@@ -254,13 +254,13 @@ TEST_P(ProtocolDriverTest, Echo) {
 std::string GrpcOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcAsynCallbackOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc_async_callback");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string DoubleBarrelGrpc() {
@@ -269,7 +269,7 @@ std::string DoubleBarrelGrpc() {
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "inline");
   AddServerStringOptionTo(pdo, "next_protocol_driver", "grpc");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcPollingClientHandoffServer() {
@@ -278,7 +278,7 @@ std::string GrpcPollingClientHandoffServer() {
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "elastic");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcPollingClientHandoffSimpleServer() {
@@ -287,7 +287,7 @@ std::string GrpcPollingClientHandoffSimpleServer() {
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "simple");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcPollingClientHandoffMercuryServer() {
@@ -296,7 +296,7 @@ std::string GrpcPollingClientHandoffMercuryServer() {
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "mercury");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcPollingClientPollingServer() {
@@ -304,7 +304,7 @@ std::string GrpcPollingClientPollingServer() {
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "polling");
   AddServerStringOptionTo(pdo, "server_type", "polling");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcCallbackClientInlineServer() {
@@ -312,13 +312,13 @@ std::string GrpcCallbackClientInlineServer() {
   pdo.set_protocol_name("grpc");
   AddClientStringOptionTo(pdo, "client_type", "callback");
   AddServerStringOptionTo(pdo, "server_type", "inline");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string HomaOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("homa");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string HomaTransport(std::string pdo_in) {
@@ -326,13 +326,13 @@ std::string HomaTransport(std::string pdo_in) {
   auto opt = pdo.add_server_settings();
   opt->set_name("transport");
   opt->set_string_value("homa");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string MercuryOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("mercury");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 // clang-format off

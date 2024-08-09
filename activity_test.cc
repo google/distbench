@@ -156,7 +156,7 @@ void CheckCpuConsumeIterationCnt(const TestSequenceResults& results,
       for (const auto& [activity_name, activity_log] :
            instance_log.activity_logs()) {
         LOG(INFO) << activity_name;
-        LOG(INFO) << activity_log.DebugString();
+        LOG(INFO) << ProtoToString(activity_log);
         for (const auto& metric : activity_log.activity_metrics()) {
           EXPECT_EQ(metric.name(), "iteration_count");
           if (metric.name() == "iteration_count") {

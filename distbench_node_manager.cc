@@ -349,7 +349,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
   absl::MutexLock m(&config_mutex_);
   LOG(INFO) << "Registering to test sequencer at "
             << opts_.test_sequencer_service_address;
-  LOG(INFO) << registration_info_.DebugString();
+  LOG(INFO) << ProtoToString(registration_info_);
   grpc::Status status =
       test_sequencer_stub->RegisterNode(&context, registration_info_, &config_);
   if (!status.ok()) {
@@ -361,7 +361,7 @@ absl::Status NodeManager::Initialize(const NodeManagerOpts& opts) {
     return absl::UnknownError(status.error_message());
   }
 
-  LOG(INFO) << "NodeConfig: " << config_.ShortDebugString();
+  LOG(INFO) << "NodeConfig: " << ProtoToShortString(config_);
   return absl::OkStatus();
 }
 

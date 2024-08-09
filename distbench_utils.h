@@ -227,6 +227,10 @@ bool CheckStringConstraint(const std::string& string_value,
                            const Attribute& attribute,
                            const Constraint& constraint);
 
+// Replacements for DebugString and ShortDebugString:
+std::string ProtoToString(const ::google::protobuf::Message& message);
+std::string ProtoToShortString(const ::google::protobuf::Message& message);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_

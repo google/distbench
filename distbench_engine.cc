@@ -583,7 +583,7 @@ absl::Status DistBenchEngine::InitializeTables() {
   for (int i = 0; i < traffic_config_.rpc_descriptions_size(); ++i) {
     const auto& rpc = traffic_config_.rpc_descriptions(i);
     if (rpc.client().empty()) {
-      LOG(INFO) << engine_name_ << ": " << rpc.ShortDebugString();
+      LOG(INFO) << engine_name_ << ": " << ProtoToShortString(rpc);
       return absl::InvalidArgumentError(
           absl::StrCat("Rpc ", rpc.name(), " must have a client field"));
     }
@@ -985,7 +985,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   }
   if (!state->request->has_rpc_index()) {
     if (!state->request->has_response_payload_size()) {
-      LOG(ERROR) << state->request->DebugString();
+      LOG(ERROR) << ProtoToString(*state->request);
       state->response.set_error_message(
           "rpc has no index, and no response size: ");
       state->SendResponseIfSet();
@@ -1244,7 +1244,7 @@ struct RpcReplayTraceRunner {
           } else {
             int pd_id = logical_to_pdid[record.server_instance()];
             CHECK_GE(pd_id, 0)
-                << "record.server_instance() = " << record.DebugString();
+                << "record.server_instance() = " << ProtoToString(record);
             replay_payload_allocator.AddPadding(&rpc_state->request,
                                                 record.request_size());
             rpc_state->request.set_response_payload_size(
