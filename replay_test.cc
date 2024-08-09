@@ -92,16 +92,16 @@ tests {
 })";
   TestSequenceResults results;
   RunConfig(proto, &results);
-  LOG(INFO) << results.DebugString();
+  LOG(INFO) << ProtoToString(results);
   ASSERT_EQ(results.test_results().size(), 1);
   const auto& test_results = results.test_results(0);
   const auto& instance_logs = test_results.service_logs().instance_logs();
   ASSERT_EQ(instance_logs.size(), 2);
   for (const auto& [name, log] : instance_logs) {
     LOG(INFO) << name;
-    LOG(INFO) << log.DebugString();
+    LOG(INFO) << ProtoToString(log);
     EXPECT_EQ(log.error_dictionary().error_message_size(), 1)
-        << log.error_dictionary().DebugString();
+        << ProtoToString(log.error_dictionary());
   }
   auto it0 = instance_logs.find("replayer/0");
   ASSERT_NE(it0, instance_logs.end());

@@ -923,4 +923,22 @@ bool CheckConstraintList(const ConstraintList& constraint_list,
   return true;
 }
 
+std::string ProtoToString(const ::google::protobuf::Message& message) {
+  std::string ret;
+  ::google::protobuf::TextFormat::PrintToString(message, &ret);
+  return ret;
+}
+
+std::string ProtoToShortString(const ::google::protobuf::Message& message) {
+  std::string ret;
+  ::google::protobuf::TextFormat::Printer printer;
+  printer.SetSingleLineMode(true);
+  printer.SetExpandAny(true);
+  printer.PrintToString(message, &ret);
+  if (!ret.empty() && ret.back() == '\n') {
+    ret.pop_back();
+  }
+  return ret;
+}
+
 }  // namespace distbench

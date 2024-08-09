@@ -240,8 +240,8 @@ int MainCheckTest(std::vector<char*>& arguments) {
   }
   auto maybe_canonical = GetCanonicalTestSequence(test_sequence.value());
   if (maybe_canonical.status().ok()) {
-    std::string original = test_sequence.value().DebugString();
-    std::string canonical = maybe_canonical.value().DebugString();
+    std::string original = ProtoToString(test_sequence.value());
+    std::string canonical = ProtoToString(maybe_canonical.value());
     if (canonical != original) {
       std::cout << "Input parsed successfully, and converted to canonical\n"
                 << canonical;
@@ -296,7 +296,7 @@ int MainTestPreview(std::vector<char*>& arguments) {
 
   const std::string outfile = absl::GetFlag(FLAGS_outfile);
   if (outfile.empty()) {
-    std::cout << results.value().DebugString();
+    std::cout << ProtoToString(results.value());
   } else {
     absl::Status save_status;
     if (absl::GetFlag(FLAGS_binary_output)) {

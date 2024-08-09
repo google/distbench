@@ -1412,7 +1412,7 @@ TEST(DistBenchTestSequencer, WildcardAttributeBasedPlacement) {
       {"node6", rack_b_attributes}, {"node7", rack_b_attributes},
       {"node8", rack_b_attributes}, {"node9", rack_b_attributes},
   };
-  LOG(INFO) << test->DebugString();
+  LOG(INFO) << ProtoToString(*test);
   auto maybe_map = ConstraintSolver(test_sequence.tests(0), node_attributes);
   ASSERT_OK(maybe_map.status());
   EXPECT_EQ(maybe_map.value()["node0"], std::set<std::string>{"client/1/0"});
@@ -1593,7 +1593,7 @@ tests {
   ASSERT_EQ(client_log.peer_logs().size(), 3);
   for (const auto& [server_name, per_server_log] : client_log.peer_logs()) {
     LOG(INFO) << server_name;
-    LOG(INFO) << per_server_log.DebugString();
+    LOG(INFO) << ProtoToString(per_server_log);
     size_t num_samples = (*per_server_log.rpc_logs().begin())
                              .second.successful_rpc_samples_size();
     EXPECT_GE(num_samples, 3);
@@ -1674,7 +1674,7 @@ tests {
   ASSERT_EQ(client_log.peer_logs().size(), 2);
   for (const auto& [server_name, per_server_log] : client_log.peer_logs()) {
     LOG(INFO) << server_name;
-    LOG(INFO) << per_server_log.DebugString();
+    LOG(INFO) << ProtoToString(per_server_log);
     ASSERT_NE(server_name, "server/0");
     ASSERT_NE(server_name, "server/3");
     size_t num_samples = (*per_server_log.rpc_logs().begin())

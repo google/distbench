@@ -95,13 +95,13 @@ void Echo(benchmark::State& state, std::string opts_string) {
 std::string GrpcOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcAsynCallbackOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("grpc_async_callback");
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 const int num_threads = 8;
@@ -113,7 +113,7 @@ std::string GrpcPollingClientHandoffElasticServer() {
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "elastic");
   AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcPollingClientHandoffSimpleServer() {
@@ -123,7 +123,7 @@ std::string GrpcPollingClientHandoffSimpleServer() {
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "simple");
   AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcPollingClientHandoffNullServer() {
@@ -133,7 +133,7 @@ std::string GrpcPollingClientHandoffNullServer() {
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "null");
   AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 std::string GrpcPollingClientHandoffMercuryServer() {
@@ -143,7 +143,7 @@ std::string GrpcPollingClientHandoffMercuryServer() {
   AddServerStringOptionTo(pdo, "server_type", "handoff");
   AddServerStringOptionTo(pdo, "threadpool_type", "mercury");
   AddServerInt64OptionTo(pdo, "threadpool_size", num_threads);
-  return pdo.DebugString();
+  return ProtoToString(pdo);
 }
 
 void BM_GrpcEcho(benchmark::State& state) { Echo(state, GrpcOptions()); }

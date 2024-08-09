@@ -50,7 +50,7 @@ grpc::Status TestSequencer::RegisterNode(grpc::ServerContext* context,
   absl::MutexLock m(&mutex_);
   int node_id = registered_nodes_.size();
   std::string node_alias;
-  std::string registration = request->DebugString();
+  std::string registration = ProtoToString(*request);
   auto it = node_registration_id_map_.find(registration);
   if (it != node_registration_id_map_.end()) {
     node_id = it->second;
@@ -362,7 +362,7 @@ absl::StatusOr<std::map<std::string, std::set<std::string>>> ConstraintSolver(
       if (!attributes.empty()) {
         attributes += ", ";
       }
-      attributes += attribute.ShortDebugString();
+      attributes += ProtoToString(attribute);
     }
     LOG(INFO) << node.first << ": [" << absl::StrJoin(node.second, ",") << "] {"
               << attributes << "}";
@@ -430,7 +430,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
   std::vector<PendingRpc> pending_rpcs(node_service_map.size());
   int rpc_count = 0;
 
-  LOG(INFO) << "ConfigureNodes with: \n" << test.DebugString();
+  LOG(INFO) << "ConfigureNodes with: \n" << ProtoToString(test);
 
   for (const auto& node_services : node_service_map) {
     auto& rpc_state = pending_rpcs[rpc_count];
@@ -477,7 +477,7 @@ absl::StatusOr<ServiceEndpointMap> TestSequencer::ConfigureNodes(
 absl::Status TestSequencer::IntroducePeers(
     const std::map<std::string, std::set<std::string>>& node_service_map,
     ServiceEndpointMap service_map) {
-  LOG(INFO) << "Broadcasting service map:\n" << service_map.DebugString();
+  LOG(INFO) << "Broadcasting service map:\n" << ProtoToString(service_map);
   absl::MutexLock m(&mutex_);
   grpc::CompletionQueue cq;
   struct PendingRpc {
