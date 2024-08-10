@@ -26,6 +26,7 @@
 #include "absl/strings/str_split.h"
 #include "distbench_netutils.h"
 #include "distbench_thread_support.h"
+#include "distbench_utils.h"
 #include "protocol_driver_allocator.h"
 
 namespace distbench {
