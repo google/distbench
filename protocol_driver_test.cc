@@ -18,10 +18,13 @@
 #include <functional>
 #include <string>
 
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "distbench_utils.h"
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
+#include "protocol_driver.h"
 #include "protocol_driver_allocator.h"
 
 namespace distbench {
