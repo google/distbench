@@ -331,7 +331,9 @@ cc_test(
         ":gtest_utils",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
+        ":protocol_driver_api",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/time",
     ] + select({
         ":with_homa": [":protocol_driver_homa"],
         "//conditions:default": [],
@@ -471,6 +473,7 @@ cc_library(
         ":distbench_cc_grpc_proto",
         ":distbench_engine_lib",
         ":distbench_netutils",
+        ":distbench_utils",
         ":grpc_wrapper",
         ":protocol_driver_allocator",
         ":protocol_driver_allocator_api",
