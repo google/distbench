@@ -1596,7 +1596,8 @@ void DistBenchEngine::ActionListState::UpdateActivitiesLog(
         cumulative_activity_logs) {
   for (int i = 0; i < action_list->proto.action_names_size(); ++i) {
     auto action_state = &state_table[i];
-    if (action_state->action->proto.has_activity_config_name()) {
+    if (action_state->action &&
+        action_state->action->proto.has_activity_config_name()) {
       auto activity_config_name =
           action_state->action->proto.activity_config_name();
       auto new_log = action_state->activity->GetActivityLog();
