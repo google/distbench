@@ -1024,7 +1024,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   if (state->request->has_response_payload_size()) {
     response_payload_size = state->request->response_payload_size();
   } else if (rpc_def.response_payload_index >= 0) {
-    absl::BitGen bitgen;
+    absl::BitGen bitgen;  // should be shared
     response_payload_size =
         size_distribution_generators_[rpc_def.response_payload_index]
             ->GetScalarRandomSample(bitgen);
@@ -1370,7 +1370,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           if (s.state_table[i].action->proto.has_activity_config_name()) {
             RunActivity(&s.state_table[i]);
           } else {
-            StartOpenLoopIteration(&s.state_table[i]);
+            StartOpenLoopIteration(&s.state_table[i], local_bitgen);
           }
         }
         continue;
@@ -1950,26 +1950,21 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
     action_state->iteration_mutex.Lock();
     action_state->next_iteration = parallel_copies;
     action_state->iteration_mutex.Unlock();
-    for (int i = 0; i < parallel_copies; ++i) {
-      auto it_state = std::make_shared<ActionIterationState>();
-      it_state->action_state = action_state;
-      it_state->iteration_number = i;
-      StartIteration(it_state);
-    }
+    StartNewIterations(action_state, 0, parallel_copies);
   }
 }
 
-void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
+void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state,
+                                             absl::BitGenRef bitgen) {
   const absl::Duration period = absl::Nanoseconds(
       action_state->action->proto.iterations().open_loop_interval_ns());
-  auto it_state = std::make_shared<ActionIterationState>();
-  it_state->action_state = action_state;
+  int iteration_number;
 
   {
     absl::MutexLock m(&action_state->iteration_mutex);
     if (action_state->interval_is_exponential) {
       action_state->next_iteration_time +=
-          period * action_state->exponential_gen(it_state->rand_gen);
+          period * action_state->exponential_gen(bitgen);
     } else {
       action_state->next_iteration_time += period;
     }
@@ -1980,15 +1975,24 @@ void DistBenchEngine::StartOpenLoopIteration(ActionState* action_state) {
       // Make sure we don't start new iterations reaching the limit.
       return;
     }
-    it_state->iteration_number = action_state->next_iteration++;
+    iteration_number = action_state->next_iteration++;
   }  // End of MutexLock action_state->iteration_mutex.
-  StartIteration(it_state);
+  StartNewIterations(action_state, iteration_number, 1);
 }
 
 void DistBenchEngine::RunActivity(ActionState* action_state) {
-  auto it_state = std::make_shared<ActionIterationState>();
-  it_state->action_state = action_state;
-  StartIteration(it_state);
+  StartNewIterations(action_state, 0, 1);
+}
+
+void DistBenchEngine::StartNewIterations(ActionState* action_state,
+                                         int starting_iteration_number,
+                                         int count) {
+  for (int i = 0; i < count; ++i) {
+    auto it_state = std::make_shared<ActionIterationState>();
+    it_state->action_state = action_state;
+    it_state->iteration_number = starting_iteration_number + i;
+    StartIteration(it_state);
+  }
 }
 
 void DistBenchEngine::FinishIteration(

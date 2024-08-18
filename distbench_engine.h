@@ -316,8 +316,11 @@ class DistBenchEngine : public ConnectionSetup::Service {
       bool force_warmup);
 
   void InitiateAction(ActionState* action_state);
-  void StartOpenLoopIteration(ActionState* action_state);
+  void StartOpenLoopIteration(ActionState* action_state,
+                              absl::BitGenRef bitgen);
   void RunActivity(ActionState* action_state);
+  void StartNewIterations(ActionState* action_state,
+                          int starting_iteration_number, int count);
   void StartIteration(std::shared_ptr<ActionIterationState> iteration_state);
   void FinishIteration(std::shared_ptr<ActionIterationState> iteration_state);
 
