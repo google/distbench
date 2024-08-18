@@ -109,29 +109,29 @@ absl::Status DistributionSampleGenerator::Initialize(
 }
 
 std::vector<int64_t> DistributionSampleGenerator::GetRandomSample(
-    absl::BitGen* generator) {
-  auto index = distribution_array_(*generator);
+    absl::BitGenRef generator) {
+  auto index = distribution_array_(generator);
   std::vector<int64_t> sample;
 
   for (int dim = 0; dim < num_dimensions_; dim++) {
     if (is_exact_value_[dim][index]) {
       sample.push_back(exact_value_[dim][index]);
     } else {
-      sample.push_back(range_[dim][index](*generator));
+      sample.push_back(range_[dim][index](generator));
     }
   }
   return sample;
 }
 
 int64_t DistributionSampleGenerator::GetScalarRandomSample(
-    absl::BitGen* generator) {
+    absl::BitGenRef generator) {
   CHECK_EQ(num_dimensions_, 1);
-  auto index = distribution_array_(*generator);
+  auto index = distribution_array_(generator);
 
   if (is_exact_value_[0][index]) {
     return exact_value_[0][index];
   } else {
-    return range_[0][index](*generator);
+    return range_[0][index](generator);
   }
 }
 

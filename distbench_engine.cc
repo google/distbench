@@ -1027,7 +1027,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
     absl::BitGen bitgen;
     response_payload_size =
         size_distribution_generators_[rpc_def.response_payload_index]
-            ->GetScalarRandomSample(&rand_gen);
+            ->GetScalarRandomSample(rand_gen);
   } else if (rpc_def.response_payload_size >= 0) {
     response_payload_size = rpc_def.response_payload_size;
   }
@@ -1396,7 +1396,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           int64_t delay_ns =
               delay_distribution_generators_[s.action_list->list_actions[i]
                                                  .delay_distribution_index]
-                  ->GetScalarRandomSample(&rand_gen);
+                  ->GetScalarRandomSample(rand_gen);
           auto real_start_time = now + absl::Nanoseconds(delay_ns);
           absl::MutexLock m(&s.state_table[i].iteration_mutex);
           s.state_table[i].next_iteration_time = real_start_time;
@@ -1423,7 +1423,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           if (response_index != -1) {
             absl::BitGen bitgen;
             response_size = size_distribution_generators_[response_index]
-                                ->GetScalarRandomSample(&bitgen);
+                                ->GetScalarRandomSample(bitgen);
           }
           payload_allocator_->AddPadding(&incoming_rpc_state->response,
                                          response_size);
@@ -1503,7 +1503,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
         absl::BitGen bitgen;
         response_size =
             size_distribution_generators_[s.response_payload_override_index]
-                ->GetScalarRandomSample(&bitgen);
+                ->GetScalarRandomSample(bitgen);
       }
       payload_allocator_->AddPadding(&incoming_rpc_state->response,
                                      response_size);
@@ -2093,7 +2093,7 @@ void DistBenchEngine::RunRpcActionIterationCommon(
     // This RPC uses a distribution of sizes.
     auto sample =
         rpc_distribution_generators_[rpc_def.joint_sample_generator_index]
-            ->GetRandomSample(&iteration_state->rand_gen);
+            ->GetRandomSample(iteration_state->rand_gen);
 
     request_payload_size = sample[kRequestPayloadSizeField];
 
@@ -2111,11 +2111,11 @@ void DistBenchEngine::RunRpcActionIterationCommon(
       request_payload_size =
           size_distribution_generators_[action_state->action
                                             ->request_payload_override_index]
-              ->GetScalarRandomSample(&iteration_state->rand_gen);
+              ->GetScalarRandomSample(iteration_state->rand_gen);
     } else if (rpc_def.request_payload_index >= 0) {
       request_payload_size =
           size_distribution_generators_[rpc_def.request_payload_index]
-              ->GetScalarRandomSample(&iteration_state->rand_gen);
+              ->GetScalarRandomSample(iteration_state->rand_gen);
     } else if (rpc_def.request_payload_size >= 0) {
       request_payload_size = rpc_def.request_payload_size;
     }

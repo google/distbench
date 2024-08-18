@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "absl/random/bit_gen_ref.h"
 #include "absl/random/random.h"
 #include "absl/status/statusor.h"
 #include "joint_distribution.pb.h"
@@ -27,8 +28,8 @@ class DistributionSampleGenerator {
   ~DistributionSampleGenerator() {}
 
   absl::Status Initialize(const DistributionConfig& config);
-  std::vector<int64_t> GetRandomSample(absl::BitGen* generator);
-  int64_t GetScalarRandomSample(absl::BitGen* generator);
+  std::vector<int64_t> GetRandomSample(absl::BitGenRef generator);
+  int64_t GetScalarRandomSample(absl::BitGenRef generator);
 
  private:
   int num_dimensions_;
