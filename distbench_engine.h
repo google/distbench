@@ -262,7 +262,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     bool DidSomeActionsFinish();
     void HandleFinishedActions();
     void RecordLatency(size_t rpc_index, size_t service_type, size_t instance,
-                       ClientRpcState* state);
+                       ClientRpcState* state, absl::BitGenRef bitgen);
     void RecordPackedLatency(size_t sample_number, size_t index,
                              size_t rpc_index, size_t service_type,
                              size_t instance, ClientRpcState* state);

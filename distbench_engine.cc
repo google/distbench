@@ -1672,7 +1672,8 @@ void DistBenchEngine::ActionListState::UnpackLatencySamples() {
 void DistBenchEngine::ActionListState::RecordLatency(size_t rpc_index,
                                                      size_t service_type,
                                                      size_t instance,
-                                                     ClientRpcState* state) {
+                                                     ClientRpcState* state,
+                                                     absl::BitGenRef bitgen) {
   // If we are using packed samples we avoid grabbing a mutex, but are limited
   // in how many samples total we can collect:
   if (packed_samples_size_) {
@@ -1687,7 +1688,6 @@ void DistBenchEngine::ActionListState::RecordLatency(size_t rpc_index,
       return;
     }
     // Simple Reservoir Sampling:
-    absl::BitGen bitgen;
     index = absl::Uniform(absl::IntervalClosedClosed, bitgen, 0UL, index);
     if (index >= packed_samples_size_) {
       // Histogram per [rpc_index, service] would be ideal here:
@@ -2210,7 +2210,7 @@ void DistBenchEngine::RunRpcActionIterationCommon(
       }
       action_state->actionlist_state->RecordLatency(
           action_state->rpc_index, action_state->rpc_service_index,
-          peer_instance, rpc_state);
+          peer_instance, rpc_state, iteration_state->rand_gen);
       if (--iteration_state->remaining_rpcs == 0) {
         FinishIteration(iteration_state);
       }
