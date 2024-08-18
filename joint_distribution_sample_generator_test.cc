@@ -48,7 +48,7 @@ TEST(DistributionSampleGeneratorTest, FullTestPmf) {
   std::map<int, int> sample_count;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample_value = sg->GetRandomSample(&bit_gen);
+    auto sample_value = sg->GetRandomSample(bit_gen);
     sample_count[sample_value[0]]++;
   }
 
@@ -82,7 +82,7 @@ TEST(DistributionSampleGeneratorTest, FullTestCdf) {
   std::map<int, int> sample_count;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample_value = sg->GetRandomSample(&bit_gen);
+    auto sample_value = sg->GetRandomSample(bit_gen);
     sample_count[sample_value[0]]++;
   }
 
@@ -119,7 +119,7 @@ TEST(DistributionSampleGeneratorTest, FullTestCdfUniformIntervals) {
   std::map<int, int> sample_count;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample_value = sg->GetRandomSample(&bit_gen);
+    auto sample_value = sg->GetRandomSample(bit_gen);
     sample_count[sample_value[0]]++;
   }
 
@@ -212,7 +212,7 @@ TEST(DistributionSampleGeneratorTest, PmfRangeTest) {
   int big_count = 0;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample = sg->GetRandomSample(&bit_gen);
+    auto sample = sg->GetRandomSample(bit_gen);
     auto sample_value = sample[0];
     if ((sample_value >= 10) && (sample_value <= 20))
       small_count++;
@@ -254,7 +254,7 @@ TEST(DistributionSampleGeneratorTest, PmfRangeAndValueMixTest) {
   int big_count = 0;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample = sg->GetRandomSample(&bit_gen);
+    auto sample = sg->GetRandomSample(bit_gen);
     auto sample_value = sample[0];
     if (sample_value == 10)
       small_count++;
@@ -293,7 +293,7 @@ TEST(DistributionSampleGeneratorTest, Pmf2Vars) {
   std::map<std::vector<int64_t>, int> sample_count;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample = sg->GetRandomSample(&bit_gen);
+    auto sample = sg->GetRandomSample(bit_gen);
     ASSERT_EQ(sample.size(), 2);
     sample_count[sample]++;
   }
@@ -339,7 +339,7 @@ TEST(DistributionSampleGeneratorTest, PmfRangeAndValueMixTest2Vars) {
   int big_count = 0;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample = sg->GetRandomSample(&bit_gen);
+    auto sample = sg->GetRandomSample(bit_gen);
     ASSERT_EQ(sample.size(), 2);
     auto var1 = sample[0];
     auto var2 = sample[1];
@@ -397,7 +397,7 @@ TEST(DistributionSampleGeneratorTest, Pmf3Vars) {
   int big_count = 0;
   const int kReps = 100000;
   for (int i = 0; i < kReps; i++) {
-    auto sample = sg->GetRandomSample(&bit_gen);
+    auto sample = sg->GetRandomSample(bit_gen);
     ASSERT_EQ(sample.size(), 3);
     auto var0 = sample[0];
     auto var1 = sample[1];
