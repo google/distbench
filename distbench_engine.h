@@ -294,6 +294,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::atomic<int> pending_action_count_ = 0;
     std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
     absl::flat_hash_set<std::string> predicates_;
+    absl::BitGen rand_gen;
   };
 
   absl::Status InitializeConfig(
@@ -394,9 +395,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<std::vector<PeerMetadata>> peers_;
   int trace_id_ = -1;
   SimpleClock* clock_ = nullptr;
-
-  // Random
-  absl::BitGen rand_gen;
 
   std::atomic<int64_t> pending_rpcs_ = 0;
   std::atomic<int64_t> detached_actionlist_threads_ = 0;

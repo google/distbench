@@ -1027,7 +1027,7 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
     absl::BitGen bitgen;
     response_payload_size =
         size_distribution_generators_[rpc_def.response_payload_index]
-            ->GetScalarRandomSample(rand_gen);
+            ->GetScalarRandomSample(bitgen);
   } else if (rpc_def.response_payload_size >= 0) {
     response_payload_size = rpc_def.response_payload_size;
   }
@@ -1396,7 +1396,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           int64_t delay_ns =
               delay_distribution_generators_[s.action_list->list_actions[i]
                                                  .delay_distribution_index]
-                  ->GetScalarRandomSample(rand_gen);
+                  ->GetScalarRandomSample(s.rand_gen);
           auto real_start_time = now + absl::Nanoseconds(delay_ns);
           absl::MutexLock m(&s.state_table[i].iteration_mutex);
           s.state_table[i].next_iteration_time = real_start_time;
@@ -2406,7 +2406,7 @@ std::vector<int> DistBenchEngine::PickRpcFanoutTargets(
 
     case kStochastic:
       int nb_targets = 0;
-      float random_val = absl::Uniform(rand_gen, 0, 1.0);
+      float random_val = absl::Uniform(iteration_state->rand_gen, 0, 1.0);
       float current_val = 0.0;
       for (const auto& d : rpc_def.stochastic_dist) {
         current_val += d.probability;
