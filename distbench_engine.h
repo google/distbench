@@ -324,6 +324,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
   void StartIteration(std::shared_ptr<ActionIterationState> iteration_state);
   void FinishIteration(std::shared_ptr<ActionIterationState> iteration_state);
 
+  std::shared_ptr<ActionIterationState> AllocIterationState()
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(iteration_state_cache_mtx_);
+  void FreeIterationState(std::shared_ptr<ActionIterationState> state);
+
   void RunRpcActionIterationCommon(
       std::shared_ptr<ActionIterationState> iteration_state,
       std::vector<int> targets, bool multiserver);
@@ -427,6 +431,10 @@ class DistBenchEngine : public ConnectionSetup::Service {
 
   std::unique_ptr<AbstractThreadpool> thread_pool_;
   std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
+
+  std::vector<std::shared_ptr<ActionIterationState>> iteration_state_cache_
+      ABSL_GUARDED_BY(iteration_state_cache_mtx_);
+  mutable absl::Mutex iteration_state_cache_mtx_;
 };
 
 // This function tests if traffic_config could initialize tables in

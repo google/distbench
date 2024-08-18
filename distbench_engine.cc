@@ -103,6 +103,8 @@ grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
 DistBenchEngine::DistBenchEngine(std::unique_ptr<ProtocolDriver> pd)
     : pd_(std::move(pd)) {
   clock_ = &pd_->GetClock();
+  size_t kMaxSize = 1000;
+  iteration_state_cache_.reserve(kMaxSize);
 }
 
 DistBenchEngine::~DistBenchEngine() {
@@ -1987,11 +1989,45 @@ void DistBenchEngine::RunActivity(ActionState* action_state) {
 void DistBenchEngine::StartNewIterations(ActionState* action_state,
                                          int starting_iteration_number,
                                          int count) {
+  std::vector<std::shared_ptr<DistBenchEngine::ActionIterationState>> states;
+  states.reserve(count);
+  {
+    absl::MutexLock m(&iteration_state_cache_mtx_);
+    for (int i = 0; i < count; ++i) {
+      states.emplace_back(AllocIterationState());
+    }
+  }
+
   for (int i = 0; i < count; ++i) {
-    auto it_state = std::make_shared<ActionIterationState>();
+    auto& it_state = states[i];
     it_state->action_state = action_state;
     it_state->iteration_number = starting_iteration_number + i;
-    StartIteration(it_state);
+    StartIteration(std::move(it_state));
+  }
+}
+
+std::shared_ptr<DistBenchEngine::ActionIterationState>
+DistBenchEngine::AllocIterationState() {
+  if (!iteration_state_cache_.empty()) {
+    auto ret = std::move(iteration_state_cache_.back());
+    iteration_state_cache_.pop_back();
+    return ret;
+  } else {
+    return std::make_shared<ActionIterationState>();
+  }
+}
+
+void DistBenchEngine::FreeIterationState(
+    std::shared_ptr<ActionIterationState> state) {
+  if (!state) return;
+  state->rpc_states.clear();  // Do this outside of the mutex.
+  absl::MutexLock m(&iteration_state_cache_mtx_);
+  if (iteration_state_cache_.size() < iteration_state_cache_.capacity()) {
+    state->action_state = nullptr;
+    state->iteration_number = 0;
+    state->warmup = false;
+    state->remaining_rpcs.store(0, std::memory_order_relaxed);
+    iteration_state_cache_.emplace_back(std::move(state));
   }
 }
 
@@ -2026,6 +2062,7 @@ void DistBenchEngine::FinishIteration(
   int pending_iterations = state->next_iteration - state->finished_iterations;
   state->iteration_mutex.Unlock();
   if (done && !pending_iterations) {
+    FreeIterationState(std::move(iteration_state));
 #ifdef NDEBUG
     state->all_done_callback();
 #else
@@ -2037,6 +2074,8 @@ void DistBenchEngine::FinishIteration(
 #endif
   } else if (!is_activity && start_another_iteration) {
     StartIteration(iteration_state);
+  } else {
+    FreeIterationState(std::move(iteration_state));
   }
 }
 
