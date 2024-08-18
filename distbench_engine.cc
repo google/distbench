@@ -1322,6 +1322,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   CHECK_LT(static_cast<size_t>(actionlist_index), action_lists_.size());
   CHECK_GE(actionlist_index, 0);
   ActionListState s;
+  absl::BitGen local_bitgen;
   s.actionlist_invocation =
       atomic_fetch_add_explicit(&actionlist_invocation_counts[actionlist_index],
                                 1, std::memory_order_relaxed);
@@ -1332,11 +1333,10 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   s.action_list = &action_lists_[actionlist_index];
   bool sent_response_early = false;
   if (s.action_list->proto.predicate_probabilities_size()) {
-    absl::BitGen bitgen;
     absl::uniform_real_distribution<double> random_float(0.0, 1.0);
     for (const auto& [name, probability] :
          s.action_list->proto.predicate_probabilities()) {
-      if (random_float(bitgen) <= probability) {
+      if (random_float(local_bitgen) <= probability) {
         s.predicates_.insert(name);
       } else {
         s.predicates_.insert(absl::StrCat("!", name));
@@ -1396,7 +1396,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           int64_t delay_ns =
               delay_distribution_generators_[s.action_list->list_actions[i]
                                                  .delay_distribution_index]
-                  ->GetScalarRandomSample(s.rand_gen);
+                  ->GetScalarRandomSample(local_bitgen);
           auto real_start_time = now + absl::Nanoseconds(delay_ns);
           absl::MutexLock m(&s.state_table[i].iteration_mutex);
           s.state_table[i].next_iteration_time = real_start_time;
@@ -1500,10 +1500,9 @@ void DistBenchEngine::RunActionList(int actionlist_index,
       size_t response_size = default_response_size;
       absl::MutexLock m(&s.action_mu);
       if (s.response_payload_override_index != -1) {
-        absl::BitGen bitgen;
         response_size =
             size_distribution_generators_[s.response_payload_override_index]
-                ->GetScalarRandomSample(bitgen);
+                ->GetScalarRandomSample(local_bitgen);
       }
       payload_allocator_->AddPadding(&incoming_rpc_state->response,
                                      response_size);

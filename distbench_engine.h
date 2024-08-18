@@ -294,7 +294,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
     std::atomic<int> pending_action_count_ = 0;
     std::shared_ptr<ThreadSafeDictionary> actionlist_error_dictionary_;
     absl::flat_hash_set<std::string> predicates_;
-    absl::BitGen rand_gen;
   };
 
   absl::Status InitializeConfig(
