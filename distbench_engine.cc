@@ -106,7 +106,7 @@ grpc::Status DistBenchEngine::SetupConnection(grpc::ServerContext* context,
 DistBenchEngine::DistBenchEngine(std::unique_ptr<ProtocolDriver> pd)
     : pd_(std::move(pd)) {
   clock_ = &pd_->GetClock();
-  size_t kMaxSize = 1000;
+  constexpr size_t kMaxSize = 1000;
   iteration_state_cache_.reserve(kMaxSize);
 }
 
@@ -1417,8 +1417,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           int override_index = s.state_table[i].response_payload_override_index;
           if (override_index == -1) {
             // Payload might have been set by a previously finished action...
-            absl::MutexLock m(&s.action_mu);
-            override_index = s.response_payload_override_index;
+            override_index = s.GetOverrideIndex();
           }
           size_t response_payload_size =
               ComputeResponseSize(incoming_rpc_state, override_index);
@@ -1494,11 +1493,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   }
   if (incoming_rpc_state) {
     if (!sent_response_early) {
-      int override_index = -1;
-      {
-        absl::MutexLock m(&s.action_mu);
-        override_index = s.response_payload_override_index;
-      }
+      int override_index = s.GetOverrideIndex();
       size_t response_payload_size =
           ComputeResponseSize(incoming_rpc_state, override_index);
       payload_allocator_->AddPadding(&incoming_rpc_state->response,

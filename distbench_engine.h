@@ -268,13 +268,18 @@ class DistBenchEngine : public ConnectionSetup::Service {
                              size_t instance, ClientRpcState* state);
     void UnpackLatencySamples();
 
+    int GetOverrideIndex() const {
+      absl::MutexLock m(&action_mu);
+      return response_payload_override_index;
+    }
+
     int response_payload_override_index ABSL_GUARDED_BY(action_mu) = -1;
     int actionlist_index = -1;
     int actionlist_invocation = -1;
     ServerRpcState* incoming_rpc_state = nullptr;
     std::unique_ptr<ActionState[]> state_table;
     const ActionListTableEntry* action_list;
-    absl::Mutex action_mu;
+    mutable absl::Mutex action_mu;
     std::vector<int> finished_action_indices;
 
     std::vector<std::vector<PeerPerformanceLog>> peer_logs_
