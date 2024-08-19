@@ -231,6 +231,11 @@ bool CheckStringConstraint(const std::string& string_value,
 std::string ProtoToString(const ::google::protobuf::Message& message);
 std::string ProtoToShortString(const ::google::protobuf::Message& message);
 
+// Useful for capturing the parts of the request that affect rpc handling.
+// Avoids copying the actual payload.
+void CopyRequestFields(const GenericRequestResponse* src,
+                       GenericRequestResponse* dest);
+
 }  // namespace distbench
 
 #endif  // DISTBENCH_DISTBENCH_UTILS_H_
