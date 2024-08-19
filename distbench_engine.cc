@@ -883,7 +883,8 @@ absl::Status DistBenchEngine::RunTraffic(const RunTrafficRequest* request) {
   for (int i = 0; i < traffic_config_.action_lists_size(); ++i) {
     if (service_name_ == traffic_config_.action_lists(i).name()) {
       LOG(INFO) << engine_name_ << ": Running";
-      const GenericRequestResponse* fake_request = new GenericRequestResponse;
+      GenericRequestResponse* fake_request = new GenericRequestResponse;
+      fake_request->set_response_payload_size(0);
       ServerRpcState* top_level_state = new ServerRpcState{};
       top_level_state->request = fake_request;
       top_level_state->have_dedicated_thread = true;
@@ -1022,23 +1023,14 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   }
   const auto& rpc_def = server_rpc.rpc_definition;
 
-  size_t response_payload_size = 0;
-  if (state->request->has_response_payload_size()) {
-    response_payload_size = state->request->response_payload_size();
-  } else if (rpc_def.response_payload_index >= 0) {
-    absl::BitGen bitgen;  // should be shared
-    response_payload_size =
-        size_distribution_generators_[rpc_def.response_payload_index]
-            ->GetScalarRandomSample(bitgen);
-  } else if (rpc_def.response_payload_size >= 0) {
-    response_payload_size = rpc_def.response_payload_size;
-  }
   if (rpc_def.rpc_spec.has_multi_server_channel_name()) {
     state->response.set_server_instance(service_instance_);
   }
 
   int handler_actionlist_index = server_rpc.handler_actionlist_index;
   if (handler_actionlist_index == -1) {
+    size_t response_payload_size =
+        ComputeResponseSize(state, rpc_def.response_payload_index);
     payload_allocator_->AddPadding(&state->response, response_payload_size);
     state->SendResponseIfSet();
     state->FreeStateIfSet();
@@ -1046,13 +1038,13 @@ std::function<void()> DistBenchEngine::RpcHandler(ServerRpcState* state) {
   }
 
   if (state->have_dedicated_thread) {
-    RunActionList(handler_actionlist_index, state, response_payload_size);
+    RunActionList(handler_actionlist_index, state);
     return std::function<void()>();
   }
 
   ++detached_actionlist_threads_;
-  return [this, handler_actionlist_index, state, response_payload_size]() {
-    RunActionList(handler_actionlist_index, state, response_payload_size);
+  return [this, handler_actionlist_index, state]() {
+    RunActionList(handler_actionlist_index, state);
     --detached_actionlist_threads_;
   };
 }
@@ -1319,7 +1311,6 @@ RpcReplayTraceLog DistBenchEngine::RunRpcReplayTrace(
 
 void DistBenchEngine::RunActionList(int actionlist_index,
                                     ServerRpcState* incoming_rpc_state,
-                                    size_t default_response_size,
                                     bool force_warmup) {
   CHECK_LT(static_cast<size_t>(actionlist_index), action_lists_.size());
   CHECK_GE(actionlist_index, 0);
@@ -1414,21 +1405,22 @@ void DistBenchEngine::RunActionList(int actionlist_index,
           ((size == 1) ||
            s.state_table[i].action->proto.send_response_when_done())) {
         sent_response_early = true;
-        s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state, this,
-                                              default_response_size]() {
-          size_t response_size = default_response_size;
-          int response_index = s.state_table[i].response_payload_override_index;
-          if (response_index == -1) {
+        s.state_table[i].all_done_callback = [&s, i, incoming_rpc_state,
+                                              this]() {
+          // FinishAction will copy the ActionState
+          // response_payload_override_index to The ActionListState,
+          // but we want to send the response as early as possible, so we must
+          // check it directly here.
+          int override_index = s.state_table[i].response_payload_override_index;
+          if (override_index == -1) {
+            // Payload might have been set by a previously finished action...
             absl::MutexLock m(&s.action_mu);
-            response_index = s.response_payload_override_index;
+            override_index = s.response_payload_override_index;
           }
-          if (response_index != -1) {
-            absl::BitGen bitgen;
-            response_size = size_distribution_generators_[response_index]
-                                ->GetScalarRandomSample(bitgen);
-          }
+          size_t response_payload_size =
+              ComputeResponseSize(incoming_rpc_state, override_index);
           payload_allocator_->AddPadding(&incoming_rpc_state->response,
-                                         response_size);
+                                         response_payload_size);
           incoming_rpc_state->SendResponseIfSet();
           if (s.state_table[i].action->proto.cancel_traffic_when_done()) {
             CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
@@ -1499,15 +1491,15 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   }
   if (incoming_rpc_state) {
     if (!sent_response_early) {
-      size_t response_size = default_response_size;
-      absl::MutexLock m(&s.action_mu);
-      if (s.response_payload_override_index != -1) {
-        response_size =
-            size_distribution_generators_[s.response_payload_override_index]
-                ->GetScalarRandomSample(local_bitgen);
+      int override_index = -1;
+      {
+        absl::MutexLock m(&s.action_mu);
+        override_index = s.response_payload_override_index;
       }
+      size_t response_payload_size =
+          ComputeResponseSize(incoming_rpc_state, override_index);
       payload_allocator_->AddPadding(&incoming_rpc_state->response,
-                                     response_size);
+                                     response_payload_size);
       incoming_rpc_state->SendResponseIfSet();
     }
     incoming_rpc_state->FreeStateIfSet();
@@ -1539,6 +1531,30 @@ void DistBenchEngine::ActionListState::FinishAction(int action_index) {
         state_table[action_index].response_payload_override_index;
   }
   action_mu.Unlock();
+}
+
+size_t DistBenchEngine::ComputeResponseSize(ServerRpcState* state,
+                                            int override_index) {
+  if (state->request->has_response_payload_size()) {
+    return state->request->response_payload_size();
+  }
+  const auto& server_rpc = server_rpc_table_[state->request->rpc_index()];
+  const auto& rpc_def = server_rpc.rpc_definition;
+
+  size_t response_payload_size = 0;
+  if (override_index == -1 && rpc_def.response_payload_index >= 0) {
+    override_index = rpc_def.response_payload_index;
+  } else if (rpc_def.response_payload_size >= 0) {
+    response_payload_size = rpc_def.response_payload_size;
+  }
+
+  if (override_index == -1) {
+    return response_payload_size;
+  }
+
+  absl::MutexLock m(&engine_bitgen_mtx_);
+  return size_distribution_generators_[override_index]->GetScalarRandomSample(
+      engine_bitgen_);
 }
 
 bool DistBenchEngine::ActionListState::DidSomeActionsFinish() {
@@ -1843,7 +1859,7 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
           thread_pool_->AddTask([this, actionlist_index, iteration_state,
                                  copied_request,
                                  copied_server_rpc_state]() mutable {
-            RunActionList(actionlist_index, copied_server_rpc_state, 0,
+            RunActionList(actionlist_index, copied_server_rpc_state,
                           iteration_state->warmup);
             FinishIteration(iteration_state);
           });
@@ -1884,6 +1900,7 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
           FinishIteration(iteration_state);
         };
   } else if (action.response_payload_override_index >= 0) {
+    // This action is just setting the response payload distribution.
     action_state->iteration_function =
         [this](std::shared_ptr<ActionIterationState> iteration_state) {
           FinishIteration(iteration_state);
