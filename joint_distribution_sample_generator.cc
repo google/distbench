@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/log/check.h"
+#include "absl/random/bit_gen_ref.h"
 #include "distbench_utils.h"
 
 namespace distbench {
