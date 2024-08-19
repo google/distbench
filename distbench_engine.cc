@@ -2000,7 +2000,7 @@ void DistBenchEngine::RunActivity(ActionState* action_state) {
 void DistBenchEngine::StartNewIterations(ActionState* action_state,
                                          int starting_iteration_number,
                                          int count) {
-  std::vector<std::shared_ptr<DistBenchEngine::ActionIterationState>> states;
+  std::vector<std::shared_ptr<ActionIterationState>> states;
   states.reserve(count);
   {
     absl::MutexLock m(&iteration_state_cache_mtx_);
