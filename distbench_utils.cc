@@ -942,4 +942,23 @@ std::string ProtoToShortString(const ::google::protobuf::Message& message) {
   return ret;
 }
 
+void CopyRequestFields(const GenericRequestResponse* src,
+                       GenericRequestResponse* dest) {
+  if (src->has_rpc_index()) {
+    dest->set_rpc_index(src->rpc_index());
+  }
+  if (src->has_warmup()) {
+    dest->set_warmup(src->warmup());
+  }
+  if (src->has_response_payload_size()) {
+    dest->set_response_payload_size(src->rpc_index());
+  }
+  if (src->has_server_processing_time_ns()) {
+    dest->set_server_processing_time_ns(src->server_processing_time_ns());
+  }
+  if (src->has_trace_context()) {
+    *dest->mutable_trace_context() = src->trace_context();
+  }
+}
+
 }  // namespace distbench
