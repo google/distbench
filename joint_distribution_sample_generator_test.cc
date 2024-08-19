@@ -18,7 +18,6 @@
 #include <utility>
 #include <vector>
 
-#include "distbench_utils.h"
 #include "gtest/gtest.h"
 #include "gtest_utils.h"
 

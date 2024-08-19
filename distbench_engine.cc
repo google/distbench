@@ -2581,7 +2581,7 @@ absl::Status DistBenchEngine::InitializeSampleGenerators() {
         return maybe_canonical_config.status();
       }
     }
-    auto canonical_config = maybe_canonical_config.value();
+    const auto& canonical_config = maybe_canonical_config.value();
 
     auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
     if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
@@ -2606,7 +2606,7 @@ absl::Status DistBenchEngine::InitializeSampleGenerators() {
     if (!maybe_canonical_config.ok()) {
       return maybe_canonical_config.status();
     }
-    auto canonical_config = maybe_canonical_config.value();
+    const auto& canonical_config = maybe_canonical_config.value();
 
     auto maybe_sample_generator = AllocateSampleGenerator(canonical_config);
     if (!maybe_sample_generator.ok()) return maybe_sample_generator.status();
