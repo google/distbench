@@ -307,7 +307,6 @@ class DistBenchEngine : public ConnectionSetup::Service {
   absl::Status InitializeRpcTraceMap();
 
   void RunActionList(int actionlist_index, ServerRpcState* incoming_rpc_state,
-                     size_t default_response_size = 0,
                      bool force_warmup = false);
 
   RpcReplayTraceLog RunRpcReplayTrace(
@@ -353,6 +352,8 @@ class DistBenchEngine : public ConnectionSetup::Service {
                                    const ServiceSpec& peer_service);
   std::vector<int> PickLinearTargets(FanoutFilter filter, int distance,
                                      const ServiceSpec& peer_service);
+
+  size_t ComputeResponseSize(ServerRpcState* state, int override_index);
 
   absl::Status ConnectToPeers();
   std::function<void()> RpcHandler(ServerRpcState* state);
@@ -435,6 +436,9 @@ class DistBenchEngine : public ConnectionSetup::Service {
   std::vector<std::shared_ptr<ActionIterationState>> iteration_state_cache_
       ABSL_GUARDED_BY(iteration_state_cache_mtx_);
   mutable absl::Mutex iteration_state_cache_mtx_;
+
+  absl::BitGen engine_bitgen_;
+  mutable absl::Mutex engine_bitgen_mtx_;
 };
 
 // This function tests if traffic_config could initialize tables in

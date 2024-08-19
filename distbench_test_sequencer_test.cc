@@ -789,9 +789,11 @@ TEST(DistBenchTestSequencer, SizeOverrideTest) {
 
   for (const auto& rpc_sample : samples) {
     ASSERT_TRUE(rpc_sample.request_size() == 16 ||
-                rpc_sample.request_size() == 16000);
+                rpc_sample.request_size() == 16000)
+        << rpc_sample.request_size();
     ASSERT_TRUE(rpc_sample.response_size() == 17 ||
-                rpc_sample.response_size() == 17000);
+                rpc_sample.response_size() == 17000)
+        << rpc_sample.response_size();
     ++bins[rpc_sample.request_size() > 1000][rpc_sample.response_size() > 1000];
   }
   ASSERT_EQ(samples.size(), 100);
