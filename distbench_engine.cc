@@ -398,8 +398,6 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
           GetRpcSampleGeneratorIndex(rpc_spec.distribution_config_name());
     } else {
       // Get request payload size
-      rpc_def.request_payload_size = -1;
-      rpc_def.request_payload_index = -1;
       if (rpc_spec.has_request_payload_name()) {
         const auto& payload_name = rpc_spec.request_payload_name();
         rpc_def.request_payload_size = GetPayloadSize(payload_name);
@@ -413,8 +411,6 @@ absl::Status DistBenchEngine::InitializeRpcDefinitionsMap() {
       }
 
       // Get response payload size
-      rpc_def.response_payload_size = -1;
-      rpc_def.response_payload_index = -1;
       if (rpc_spec.has_response_payload_name()) {
         const auto& payload_name = rpc_spec.response_payload_name();
         rpc_def.response_payload_size = GetPayloadSize(payload_name);
