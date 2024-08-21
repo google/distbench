@@ -107,7 +107,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     ServiceSpec server_service_spec;
 
     // Used to store decoded stochastic fanout
-    FanoutFilter fanout_filter;
+    FanoutFilter fanout_filter = kAll;
     int fanout_filter_distance = 0;
     std::vector<StochasticDist> stochastic_dist;
 
@@ -115,12 +115,12 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int joint_sample_generator_index = -1;
 
     // If there are univariant distributions defined we use those:
-    int request_payload_index;
-    int response_payload_index;
+    int request_payload_index = -1;
+    int response_payload_index = -1;
 
     // If there is are fixed sizes defined we use those:
-    ssize_t request_payload_size;
-    ssize_t response_payload_size;
+    ssize_t request_payload_size = -1;
+    ssize_t response_payload_size = -1;
 
     bool allowed_from_this_client = false;
     int multiserver_channel_index = -1;
