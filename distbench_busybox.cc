@@ -358,6 +358,8 @@ int MainTestSequencer(std::vector<char*>& arguments) {
 }
 
 int MainNodeManager(std::vector<char*>& arguments) {
+  distbench::Attribute attribute;
+  std::vector<distbench::Attribute> attributes;
   int preassigned_node_id = -1;
   if (!arguments.empty()) {
     if (!strncmp(arguments[0], "node", 4)) {
@@ -369,12 +371,13 @@ int MainNodeManager(std::vector<char*>& arguments) {
         std::cerr << "  Got '" << arguments[0] << "' instead.\n";
         return 1;
       }
+      attribute.set_name("node_alias");
+      attribute.set_value(arguments[0]);
+      attributes.push_back(attribute);
       arguments.erase(arguments.begin());
       std::cerr << "pre-assigned node: " << preassigned_node_id << "\n";
     }
   }
-  distbench::Attribute attribute;
-  std::vector<distbench::Attribute> attributes;
   std::vector<std::string> key_value;
   // In the following loop we are parsing the remaining arguments passed
   // through the command line into pairs of name and value for the attributes
