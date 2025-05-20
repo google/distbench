@@ -203,6 +203,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int next_iteration ABSL_GUARDED_BY(iteration_mutex);
     int finished_iterations ABSL_GUARDED_BY(iteration_mutex);
     absl::Time next_iteration_time = absl::InfiniteFuture();
+    absl::Time warmup_done_time = absl::InfinitePast();
 
     int64_t iteration_limit = std::numeric_limits<int64_t>::max();
     absl::Time time_limit = absl::InfiniteFuture();

@@ -1907,7 +1907,13 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
   bool open_loop = false;
   int64_t max_iterations = 1;
   absl::Time time_limit = absl::InfiniteFuture();
+  absl::Time start_time;  // used to avoid calls to clock_->Now if possible.
   if (action.proto.has_iterations()) {
+    start_time = clock_->Now();
+    if (action.proto.iterations().warmup_ns() > 0) {
+      action_state->warmup_done_time =
+          start_time + absl::Nanoseconds(action.proto.iterations().warmup_ns());
+    }
     if (action.proto.iterations().has_max_iteration_count()) {
       max_iterations = action.proto.iterations().max_iteration_count();
     } else {
@@ -1915,7 +1921,7 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
     }
     if (action.proto.iterations().has_max_duration_us()) {
       time_limit =
-          clock_->Now() +
+          start_time +
           absl::Microseconds(action.proto.iterations().max_duration_us());
     }
     open_loop = action.proto.iterations().has_open_loop_interval_ns();
@@ -1939,11 +1945,11 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
     auto& interval_distribution = action_state->action->proto.iterations()
                                       .open_loop_interval_distribution();
     if (interval_distribution == "sync_burst") {
-      absl::Duration start = clock_->Now() - absl::UnixEpoch();
+      absl::Duration start = start_time - absl::UnixEpoch();
       action_state->next_iteration_time =
           period + absl::UnixEpoch() + absl::Floor(start, period);
     } else if (interval_distribution == "sync_burst_spread") {
-      absl::Duration start = clock_->Now() - absl::UnixEpoch();
+      absl::Duration start = start_time - absl::UnixEpoch();
       double nb_peers = peers_[action_state->rpc_service_index].size();
       double fraction = service_instance_ / nb_peers;
       LOG(INFO) << "sync_burst_spread burst delay: " << fraction * period;
@@ -1953,7 +1959,7 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
     } else {
       action_state->interval_is_exponential =
           (interval_distribution == "exponential");
-      action_state->next_iteration_time = clock_->Now();
+      action_state->next_iteration_time = start_time;
     }
     // StartOpenLoopIteration will be called from RunActionList().
   } else {
@@ -2096,6 +2102,12 @@ void DistBenchEngine::StartIteration(
       action_state->actionlist_state->warmup_ ||
       (iteration_state->iteration_number <
        action_state->action->proto.iterations().warmup_iterations());
+  if (!iteration_state->warmup &&
+      action_state->warmup_done_time != absl::InfinitePast()) {
+    if (clock_->Now() < action_state->warmup_done_time) {
+      iteration_state->warmup = true;
+    }
+  }
   action_state->iteration_function(iteration_state);
 }
 

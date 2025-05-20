@@ -134,6 +134,7 @@ message Iterations {
   // Marks RPCs triggered by the first N iterations as warmup RPCs,
   // which can be discarded by downstream analysis tools.
   optional int64 warmup_iterations = 6 [default = 0];
+  optional int64 warmup_ns = 7 [default = 0];
 }
 
 message ActivityConfig {
