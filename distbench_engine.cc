@@ -1473,8 +1473,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     // Idle here until some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
-            next_iteration_time,
-            traffic_config_.delay_actions_by_spinning())) {
+            next_iteration_time, traffic_config_.delay_actions_by_spinning())) {
       s.HandleFinishedActions();
     }
     s.action_mu.Unlock();
