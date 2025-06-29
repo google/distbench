@@ -38,6 +38,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
+#include "absl/time/time.h"
 #include "distbench_netutils.h"
 #include "distbench_thread_support.h"
 #include "distbench_utils.h"
