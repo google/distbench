@@ -1953,7 +1953,6 @@ void DistBenchEngine::InitiateAction(ActionState* action_state) {
       absl::Duration start = start_time - absl::UnixEpoch();
       double nb_peers = peers_[action_state->rpc_service_index].size();
       double fraction = service_instance_ / nb_peers;
-      LOG(INFO) << "sync_burst_spread burst delay: " << fraction * period;
       action_state->next_iteration_time = period + absl::UnixEpoch() +
                                           absl::Floor(start, period) +
                                           fraction * period;
