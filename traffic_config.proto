@@ -232,6 +232,9 @@ message ActionList {
   // skipped, and any actions that depend on skipped actions will also be
   // skipped.
   map<string, float> predicate_probabilities = 4;
+
+  // Overrides the setting in DistributedSystemDescription.
+  optional bool delay_actions_by_spinning = 5;
 }
 
 message NamedSetting {
