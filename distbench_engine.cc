@@ -1352,6 +1352,11 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     }
   }
 
+  bool config_delay_by_spinning = traffic_config_.delay_actions_by_spinning();
+  if (s.action_list->proto.has_delay_actions_by_spinning()) {
+    config_delay_by_spinning = s.action_list->proto.delay_actions_by_spinning();
+  }
+
   int size = s.action_list->proto.action_names_size();
   s.finished_action_indices.reserve(size);
   s.state_table = std::make_unique<ActionState[]>(size);
@@ -1464,7 +1469,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
       absl::MutexLock m(&s.state_table[i].iteration_mutex);
       if (!s.state_table[i].finished) {
         if (s.state_table[i].next_iteration_time < next_action_time) {
-          delay_by_spinning = traffic_config_.delay_actions_by_spinning();
+          delay_by_spinning = config_delay_by_spinning;
           next_action_time = s.state_table[i].next_iteration_time;
         }
         done = false;
