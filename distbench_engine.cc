@@ -1459,10 +1459,12 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     }
     absl::Time next_action_time = absl::InfiniteFuture();
     bool done = true;
+    bool delay_by_spinning = false;  // Should only spin when delaying an action
     for (int i = 0; i < size; ++i) {
       absl::MutexLock m(&s.state_table[i].iteration_mutex);
       if (!s.state_table[i].finished) {
         if (s.state_table[i].next_iteration_time < next_action_time) {
+          delay_by_spinning = traffic_config_.delay_actions_by_spinning();
           next_action_time = s.state_table[i].next_iteration_time;
         }
         done = false;
@@ -1474,7 +1476,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     // Idle here until some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
-            next_action_time, traffic_config_.delay_actions_by_spinning())) {
+            next_action_time, delay_by_spinning)) {
       s.HandleFinishedActions();
     }
     s.action_mu.Unlock();
