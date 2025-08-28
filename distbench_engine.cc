@@ -1457,13 +1457,13 @@ void DistBenchEngine::RunActionList(int actionlist_index,
         InitiateAction(&s.state_table[i]);
       }
     }
-    absl::Time next_iteration_time = absl::InfiniteFuture();
+    absl::Time next_action_time = absl::InfiniteFuture();
     bool done = true;
     for (int i = 0; i < size; ++i) {
       absl::MutexLock m(&s.state_table[i].iteration_mutex);
       if (!s.state_table[i].finished) {
-        if (s.state_table[i].next_iteration_time < next_iteration_time) {
-          next_iteration_time = s.state_table[i].next_iteration_time;
+        if (s.state_table[i].next_iteration_time < next_action_time) {
+          next_action_time = s.state_table[i].next_iteration_time;
         }
         done = false;
       }
@@ -1474,7 +1474,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
     // Idle here until some actions are finished.
     if (clock_->MutexLockWhenWithDeadline(
             &s.action_mu, absl::Condition(&some_actions_finished),
-            next_iteration_time, traffic_config_.delay_actions_by_spinning())) {
+            next_action_time, traffic_config_.delay_actions_by_spinning())) {
       s.HandleFinishedActions();
     }
     s.action_mu.Unlock();
