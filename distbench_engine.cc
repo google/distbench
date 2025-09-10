@@ -1380,12 +1380,14 @@ void DistBenchEngine::RunActionList(int actionlist_index,
       auto deps = s.action_list->list_actions[i].dependent_action_indices;
       bool deps_ready = true;
       bool should_skip = false;
+      absl::Time last_dep_time = deps.empty() ? now : absl::InfinitePast();
       for (const auto& dep : deps) {
         if (!s.state_table[dep].finished) {
           deps_ready = false;
           break;
         }
         should_skip |= s.state_table[dep].skipped;
+        last_dep_time = std::max(last_dep_time, s.state_table[dep].finish_time);
       }
       if (!deps_ready) continue;
       if (!s.state_table[i].waiting_for_delay) {
@@ -1395,9 +1397,9 @@ void DistBenchEngine::RunActionList(int actionlist_index,
               delay_distribution_generators_[s.action_list->list_actions[i]
                                                  .delay_distribution_index]
                   ->GetScalarRandomSample(local_bitgen);
-          auto real_start_time = now + absl::Nanoseconds(delay_ns);
+          auto delayed_start_time = last_dep_time + absl::Nanoseconds(delay_ns);
           absl::MutexLock m(&s.state_table[i].iteration_mutex);
-          s.state_table[i].next_iteration_time = real_start_time;
+          s.state_table[i].next_iteration_time = delayed_start_time;
           continue;
         }
       }
@@ -1430,7 +1432,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
             CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
                           absl::Seconds(1));
           }
-          s.FinishAction(i);
+          s.FinishAction(i, clock_->Now());
         };
       } else {
         s.state_table[i].all_done_callback = [&s, i, this]() {
@@ -1438,7 +1440,7 @@ void DistBenchEngine::RunActionList(int actionlist_index,
             CancelTraffic(absl::CancelledError("cancel_traffic_when_done"),
                           absl::Seconds(1));
           }
-          s.FinishAction(i);
+          s.FinishAction(i, clock_->Now());
         };
       }
       if (!should_skip) {
@@ -1522,8 +1524,10 @@ void DistBenchEngine::RunActionList(int actionlist_index,
   s.UpdateActivitiesLog(&cumulative_activity_logs_);
 }
 
-void DistBenchEngine::ActionListState::FinishAction(int action_index) {
+void DistBenchEngine::ActionListState::FinishAction(
+    int action_index, absl::Time finish_time) {
   action_mu.Lock();
+  state_table[action_index].finish_time = finish_time;
   finished_action_indices.push_back(action_index);
   atomic_fetch_sub_explicit(&pending_action_count_, 1,
                             std::memory_order_relaxed);
