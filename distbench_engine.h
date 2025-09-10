@@ -204,6 +204,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
     int finished_iterations ABSL_GUARDED_BY(iteration_mutex);
     absl::Time next_iteration_time = absl::InfiniteFuture();
     absl::Time warmup_done_time = absl::InfinitePast();
+    absl::Time finish_time = absl::InfiniteFuture();
 
     int64_t iteration_limit = std::numeric_limits<int64_t>::max();
     absl::Time time_limit = absl::InfiniteFuture();
@@ -254,7 +255,7 @@ class DistBenchEngine : public ConnectionSetup::Service {
   static_assert(std::is_trivially_constructible<PackedLatencySample>::value);
 
   struct ActionListState {
-    void FinishAction(int action_index);
+    void FinishAction(int action_index, absl::Time finish_time);
     void WaitForAllPendingActions();
     void CancelActivities();
     void UpdateActivitiesLog(
