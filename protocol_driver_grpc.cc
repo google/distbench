@@ -30,11 +30,6 @@
 #include "absl/log/log.h"
 #include "distbench_thread_support.h"
 
-#if WITH_HOMA_GRPC
-#include "homa_client.h"
-#include "homa_listener.h"
-#endif
-
 namespace distbench {
 
 namespace {
@@ -56,15 +51,7 @@ std::string AddGrpcProtocol(std::string_view s) {
 
 absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
     const std::string& socket_address, std::string_view transport) {
-  if (transport == "homa") {
-#if WITH_HOMA_GRPC
-    return HomaClient::createInsecureChannel(socket_address.data());
-#else
-    LOG(ERROR) << "Homa transport not compiled in";
-    LOG(ERROR) << "You must build with bazel build --//:with-homa-grpc";
-    return absl::UnimplementedError("Homa transport not compiled in");
-#endif
-  } else if (transport == "tcp") {
+  if (transport == "tcp") {
     std::shared_ptr<grpc::ChannelCredentials> creds = MakeChannelCredentials();
     return grpc::CreateCustomChannel(AddGrpcProtocol(socket_address), creds,
                                      DistbenchCustomChannelArguments());
@@ -77,15 +64,7 @@ absl::StatusOr<std::shared_ptr<grpc::Channel>> CreateClientChannel(
 
 absl::StatusOr<std::shared_ptr<grpc::ServerCredentials>> CreateServerCreds(
     std::string_view transport) {
-  if (transport == "homa") {
-#if WITH_HOMA_GRPC
-    return HomaListener::insecureCredentials();
-#else
-    LOG(ERROR) << "Homa transport not compiled in";
-    LOG(ERROR) << "You must build with bazel build --//:with-homa-grpc";
-    return absl::UnimplementedError("Homa transport not compiled in");
-#endif
-  } else if (transport == "tcp") {
+  if (transport == "tcp") {
     return MakeServerCredentials();
   } else {
     LOG(ERROR) << "protocol_driver_grpc: unknown transport: " << transport;

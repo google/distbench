@@ -324,14 +324,6 @@ std::string HomaOptions() {
   return ProtoToString(pdo);
 }
 
-std::string HomaTransport(std::string pdo_in) {
-  ProtocolDriverOptions pdo = PdoFromString(pdo_in);
-  auto opt = pdo.add_server_settings();
-  opt->set_name("transport");
-  opt->set_string_value("homa");
-  return ProtoToString(pdo);
-}
-
 std::string MercuryOptions() {
   ProtocolDriverOptions pdo;
   pdo.set_protocol_name("mercury");
@@ -348,13 +340,6 @@ INSTANTIATE_TEST_SUITE_P(ProtocolDriverTests, ProtocolDriverTest,
                            GrpcCallbackClientInlineServer(),
 #ifdef WITH_HOMA
                            HomaOptions(),
-#endif
-#ifdef WITH_HOMA_GRPC
-                           HomaTransport(GrpcOptions()),
-                           HomaTransport(GrpcAsynCallbackOptions()),
-                           HomaTransport(GrpcPollingClientHandoffServer()),
-                           HomaTransport(GrpcPollingClientPollingServer()),
-                           HomaTransport(GrpcCallbackClientInlineServer()),
 #endif
 #ifdef WITH_MERCURY
                            MercuryOptions(),
