@@ -9,7 +9,7 @@ package(
 )
 
 # Declare flags that can be set on the build/test command line,
-# e.g. bazel build :all --//:with-homa=true --//:with-homa-grpc=true
+# e.g. bazel build :all --//:with-homa=true
 bool_flag(
     name = "with-mercury",
     build_setting_default = False,
@@ -17,11 +17,6 @@ bool_flag(
 
 bool_flag(
     name = "with-homa",
-    build_setting_default = False,
-)
-
-bool_flag(
-    name = "with-homa-grpc",
     build_setting_default = False,
 )
 
@@ -34,11 +29,6 @@ config_setting(
 config_setting(
     name = "with_homa",
     flag_values = {":with-homa": "True"},
-)
-
-config_setting(
-    name = "with_homa_grpc",
-    flag_values = {":with-homa-grpc": "True"},
 )
 
 cc_library(
@@ -239,10 +229,7 @@ cc_library(
         ":grpc_wrapper",
         ":protocol_driver_api",
         "@com_google_absl//absl/log:check",
-    ] + select({
-        ":with_homa_grpc": ["@grpc_homa//:homa_lib"],
-        "//conditions:default": [],
-    }),
+    ]
 )
 
 cc_library(

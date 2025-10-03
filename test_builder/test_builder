@@ -779,7 +779,7 @@ function grpc_protocol_driver_setup() {
   set_parameter_default server_type "inline" "handoff inline polling"
   set_parameter_default threadpool_type "" "simple, elastic, null, or '' for default."
   set_parameter_default threadpool_size "0" "1, 2, 3, etc. and 0 for NumCPUs() threads."
-  set_parameter_default transport "" "tcp, homa, or '' for default."
+  set_parameter_default transport "" "tcp, or '' for default."
   local CLIENT_TYPE="${params_dict[client_type]}"
   local SERVER_TYPE="${params_dict[server_type]}"
   local THREADPOOL_TYPE="${params_dict[threadpool_type]:-}"

@@ -29,7 +29,6 @@ test_builder -o . clique
 test_builder -o . clique:test_duration=45
 
 test_builder -o . clique:grpc
-test_builder -o . clique:grpc:transport=homa
 test_builder -o . clique:grpc:transport=tcp
 
 test_builder -o . clique:grpc:client_type=callback:server_type=handoff
