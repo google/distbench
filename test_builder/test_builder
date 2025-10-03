@@ -1135,6 +1135,13 @@ which dist_to_proto &> /dev/null && function homa_cp_node_traffic_pattern_setup(
 ${CDF_POINTS}
   }"
 }
+if ! which dist_to_proto &> /dev/null; then
+  unset homa_cp_node_traffic_pattern_setup
+  function homa_cp_node_traffic_pattern_setup() {
+    echo "required tool dist_to_proto not found on path"
+    exit 16
+  }
+fi
 
 ################################################################################
 # Setup the test config proto for the clique traffic pattern:

@@ -5,8 +5,15 @@ mkdir test_builder_golden_configs -p
 cd test_builder_golden_configs
 PATH+=":.."
 
-! make -C "$(bazel info output_base)/external/homa_module/util" dist_to_proto
-PATH="$PATH:$(bazel info output_base)/external/homa_module/util/"
+if ! which dist_to_proto &> /dev/null; then
+  if [[ -d "$(bazel info output_base)/external/homa_module/util" ]]; then
+    make -C "$(bazel info output_base)/external/homa_module/util" dist_to_proto
+    PATH="$PATH:$(bazel info output_base)/external/homa_module/util/"
+  else
+    echo "This script requires dist_to_proto, but it's not on the PATH nor buildable."
+    exit 1
+  fi
+fi
 
 # Generate a config for each flag of each traffic pattern and protocol driver:
 TEMPFILE="tcp_in_a_file"
