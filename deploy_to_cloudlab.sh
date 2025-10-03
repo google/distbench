@@ -418,7 +418,7 @@ fi
 ${CXX} -v
 
 echo_magenta "\\nChecking for working copy of bazel..."
-bazel-5.4.0 version 2> /dev/null || (
+bazel-7.6.2 version 2> /dev/null || (
   echo_magenta "  Installing bazel..."
   curl -fsSL https://bazel.build/bazel-release.pub.gpg |
     gpg --dearmor > bazel.gpg
@@ -426,7 +426,7 @@ bazel-5.4.0 version 2> /dev/null || (
   dsrc="deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8"
   echo "$dsrc" | sudo tee /etc/apt/sources.list.d/bazel.list
   sudo apt-get update
-  sudo apt-get install bazel bazel-5.4.0 -y
+  sudo apt-get install bazel bazel-7.6.2 -y
 )
 
 echo_magenta "\\nChecking for local copy of libfabric/libmercury ..."
