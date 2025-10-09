@@ -1,3 +1,6 @@
+load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary")
+
 sh_test(
     name = "results_conversion_test",
     srcs = ["results_conversion_test.sh"],

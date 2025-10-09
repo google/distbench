@@ -1,15 +1,82 @@
 ##### Simple, optional repos in the local filesystem:
 ##### These are only available after running setup_mercury.sh
+
 new_local_repository(
     name = "mercury",
     path = "external_repos/opt/mercury",
-    build_file = "mercury.BUILD",
+    build_file_content = """
+cc_library(
+    name = "mercury",
+    hdrs = glob(["**/*.h", "**/*.tcc"]),
+    strip_include_prefix = "include/",
+    includes = ["include/"],
+    visibility = ["//visibility:public"],
+    deps = [
+      ":mercury_static",
+      ":mercury_na_static",
+      ":mercury_util_static",
+      "@libfabric//:libfabric",
+    ],
+    defines = [
+        "WITH_MERCURY",
+    ],
+    linkopts = ["-lm","-lpthread"],
+)
+
+cc_import(
+    name = "mercury_static",
+    static_library = "lib/libmercury.a",
+)
+
+cc_import(
+    name = "mercury_hl_static",
+    static_library = "lib/libmercury_hl.a",
+)
+
+cc_import(
+    name = "mercury_util_static",
+    static_library = "lib/libmercury_util.a",
+)
+
+cc_import(
+    name = "mercury_na_static",
+    static_library = "lib/libna.a",
+)
+
+cc_import(
+    name = "mercury_mchecksum_static",
+    static_library = "lib/libmchecksum.a",
+)
+    """,
 )
 
 new_local_repository(
     name = "libfabric",
     path = "external_repos/opt/libfabric",
-    build_file = "libfabric.BUILD",
+    build_file_content = """
+cc_library(
+    name = "libfabric",
+    hdrs = glob(["**/*.h", "**/*.tcc"]),
+    strip_include_prefix = "include/",
+    includes = ["include/"],
+    visibility = ["//visibility:public"],
+    deps = [":libfabric_static"],
+    linkopts = [
+        "-lm",
+        "-lnuma",
+        "-luuid",
+        "-lpthread",
+        "-lrt",
+        "-ldl",
+        "-latomic",
+    ],
+)
+
+cc_import(
+    name = "libfabric_static",
+    static_library = "lib/libfabric.a",
+)
+    """,
 )
 
 ##### Helper function to fetch code via http:
@@ -44,9 +111,9 @@ http_archive(
 ##### grpc_deps() and grpc_extra_deps().
 http_archive(
     name = "com_github_grpc_grpc",
-    sha256 = "931f07db9d48cff6a6007c1033ba6d691fe655bea2765444bc1ad974dfc840aa",
-    strip_prefix = "grpc-1.56.2",
-    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.56.2.tar.gz",
+    strip_prefix = "grpc-1.72.2",
+    integrity = "sha256-rhSg3iIkhf1uO69SAox0rL2a2NaFyBNYBAHTgyz66fE=",
+    url = "https://github.com/grpc/grpc/archive/refs/tags/v1.72.2.tar.gz",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
@@ -63,9 +130,3 @@ http_archive(
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 boost_deps()
 
-##### Perform a version check on our bazel dialect:
-load("@bazel_skylib//lib:versions.bzl", "versions")
-versions.check(
-    minimum_bazel_version = "5.4.0",
-    maximum_bazel_version = "6.5.0",
-)
