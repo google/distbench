@@ -9,6 +9,7 @@ bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "grpc", version = "1.74.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "protobuf", version = "33.0-rc2", repo_name = "com_google_protobuf")
 bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "rules_python", version = "1.6.3")
 
 bazel_dep(name = "boost.preprocessor", version = "1.89.0")
 
@@ -19,3 +20,34 @@ http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "ht
 
 
 # -- repo definitions -- #
+#
+
+local_runtime_repo = use_repo_rule(
+    "@rules_python//python/local_toolchains:repos.bzl",
+    "local_runtime_repo",
+)
+
+local_runtime_toolchains_repo = use_repo_rule(
+    "@rules_python//python/local_toolchains:repos.bzl",
+    "local_runtime_toolchains_repo",
+)
+
+# Step 1: Define the Python runtime
+local_runtime_repo(
+    name = "local_python3",
+    interpreter_path = "python3",
+    on_failure = "fail",
+    dev_dependency = True
+)
+
+# Step 2: Create toolchains for the runtimes
+local_runtime_toolchains_repo(
+    name = "local_toolchains",
+    runtimes = ["local_python3"],
+    # TIP: The `target_settings` arg can be used to activate them based on
+    # command line flags; see docs below.
+    dev_dependency = True
+)
+
+# Step 3: Register the toolchains
+register_toolchains("@local_toolchains//:all", dev_dependency = True)
