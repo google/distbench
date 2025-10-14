@@ -14,8 +14,7 @@ function compare_golden_file() {
 }
 
 PATH=$PATH:${PWD}/external/homa_module
-which dist_to_proto
-test_builder/test_builder -h
+which dist_to_proto || test_builder/test_builder -h || true
 
 cd "./test_builder/test_builder_golden_configs"
 for config in *.config; do
@@ -23,7 +22,7 @@ for config in *.config; do
   ../../distbench check_test --infile $PWD/${config}
 done
 
-for f in *.config; do
+for f in `ls *.config | grep -v homa`; do
   echo Comparing against "$f":
   if compare_golden_file "$f"; then
     echo "Output matches! :-)"

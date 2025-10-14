@@ -4,3 +4,4 @@ bazel-distbench
 bazel-out
 bazel-testlogs
 external_repos
+__pycache__

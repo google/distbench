@@ -4,6 +4,5 @@ sh_test(
     data = glob(["test_builder_golden_configs/*"]) + [
         "test_builder",
         "//:distbench",
-        "@homa_module//:dist_to_proto"
     ],
 )
