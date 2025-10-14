@@ -10,6 +10,7 @@ build --host_cxxopt='-std=c++17'
 # hundreds of distracting warnings.
 build --cxxopt='-Wno-deprecated-enum-enum-conversion'
 build --cxxopt='-Wno-attributes'
+build --cxxopt='-Wno-trigraphs'
 build --host_cxxopt='-Wno-deprecated-enum-enum-conversion'
 build --host_cxxopt='-Wno-attributes'
 
