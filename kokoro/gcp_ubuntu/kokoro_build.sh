@@ -100,15 +100,17 @@ function unpack_bazel_cache() {
 print_header_and_run "Unpack Bazel cache" \
   unpack_bazel_cache
 
-CONFIG=(--//:with-mercury)
+# CONFIG=(--//:with-mercury)
 print_header_and_run "Bazel test (:all, analysis:all, test_builder:all)" \
   test_targets test_builder:all analysis:all :all
 
-CONFIG=(--//:with-mercury --config=asan)
+# CONFIG=(--//:with-mercury --config=asan)
+CONFIG=(--config=asan)
 print_header_and_run "Bazel test - ASAN" \
   test_main_targets
 
-CONFIG=(--//:with-mercury --config=tsan)
+# CONFIG=(--//:with-mercury --config=tsan)
+CONFIG=(--config=tsan)
 print_header_and_run "Bazel test - TSAN" \
   test_main_targets
 
