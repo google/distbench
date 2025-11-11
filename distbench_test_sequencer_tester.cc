@@ -71,6 +71,7 @@ absl::Status DistBenchTester::Resize(size_t num_nodes) {
     nm_opts.port = &port;
     nm_opts.test_sequencer_service_address = test_sequencer->service_address();
     nm_opts.control_plane_device = "lo";
+    nm_opts.service_hostname = "localhost";
     nodes[i] = std::make_unique<NodeManager>();
     auto ret = nodes[i]->Initialize(nm_opts);
     if (!ret.ok()) return ret;

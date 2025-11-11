@@ -50,6 +50,8 @@ ABSL_FLAG(std::string, service_address, "",
           "Incoming RPC address for the node_manager to report to the "
           "test_sequencer. Useful if DNS cannot resolve the hostname. "
           "Must include gRPC protocol host and port e.g. ipv4:///1.2.3.4:5678");
+ABSL_FLAG(std::string, service_hostname, "",
+          "Hostname for the node_manager to use. Useful for multi-homed hosts");
 
 namespace {
 
@@ -334,6 +336,7 @@ int MainTestSequencer(std::vector<char*>& arguments) {
             absl::GetFlag(FLAGS_default_data_plane_device),
         .control_plane_device = absl::GetFlag(FLAGS_control_plane_device),
         .port = &new_port,
+        .service_hostname = absl::GetFlag(FLAGS_service_hostname),
     };
     nodes.push_back(std::make_unique<distbench::NodeManager>());
     absl::Status status = nodes.back()->Initialize(opts);
@@ -402,6 +405,7 @@ int MainNodeManager(std::vector<char*>& arguments) {
       .port = &port,
       .attributes = attributes,
       .service_address = absl::GetFlag(FLAGS_service_address),
+      .service_hostname = absl::GetFlag(FLAGS_service_hostname),
   };
   distbench::NodeManager node_manager;
   absl::Status status = node_manager.Initialize(opts);
